@@ -1,8 +1,42 @@
 # Contributing to svelte-fluid
 
+Welcome! Thanks for taking the time to contribute. This guide covers
+the toolchain, the architectural rules, the common workflows, and how
+to file useful issues.
+
+If you're considering anything more than a typo fix or a tuning
+tweak, please open a discussion or issue first so we can align on
+direction before you write code.
+
 ## Prerequisites
 
 - [bun](https://bun.com) 1.3 or newer. That's it. No npm, no node, no python.
+
+## Hard rules
+
+These are non-negotiable. They exist because previous violations
+caused real bugs (see `docs/learnings/`).
+
+1. **bun and uv only.** No npm, no pnpm, no yarn, no `node` invocations
+   in scripts, no `python3` / `pip`. Helper one-shots use `bun -e`.
+   See [ADR 0001](./decisions/0001-bun-and-uv-only-tooling.md).
+2. **Svelte 5 runes only.** Use `$props`, `$state`, `$derived`,
+   `$effect`, `$bindable`, `untrack`. Never `export let`, never `$:`,
+   never Svelte 4 stores. The whole component model is built around
+   the runes API.
+3. **`.js` extensions on every relative TypeScript import.** This
+   project uses `moduleResolution: NodeNext` which requires explicit
+   extensions: write `import { X } from './foo.js'` even when `foo`
+   is `foo.ts`. The single most common contribution footgun — see
+   `docs/learnings/typescript-and-svelte5.md`.
+4. **Engine changes require an ADR.** If your change touches anything
+   in `src/lib/engine/` beyond a tuning value or a comment, write a
+   new ADR in `docs/decisions/` first explaining the *why*. Use the
+   existing ADRs as a template. ADR 0015 (preset components) and
+   ADR 0016 (burn-in dissipation) are the most recent precedents.
+5. **No new runtime dependencies.** The peer dep on `svelte ^5` is
+   the only allowed runtime dep. Devtime additions are fine but flag
+   them in the PR.
 
 ## Local development
 
@@ -89,11 +123,21 @@ svelte-fluid/
 
 ### Publish a release
 
-1. Bump the version in `package.json`.
-2. Update the README's changelog or release notes.
-3. `bun run prepack` — runs `svelte-package` and `publint`.
-4. Inspect the generated `dist/` for sanity.
-5. `bun publish` (if applicable).
+1. Bump the version in `package.json` following semver:
+   - **patch** — bug fixes, doc fixes, internal refactors
+   - **minor** — new presets, new props, additive engine features
+   - **major** — breaking API changes (renaming props, removing
+     exports, changing default behavior in a user-visible way)
+2. Add a new entry at the top of `CHANGELOG.md` with the version,
+   the date, and a short list of changes grouped by **Added**,
+   **Changed**, **Fixed**, **Removed**.
+3. `bun run check` — must be 0 errors, 0 warnings.
+4. `bun run prepack` — runs `svelte-package` and `publint`. publint
+   must report `All good!`.
+5. Inspect the generated `dist/` for sanity (all 6 presets present,
+   .d.ts files present, no stray files).
+6. `bun publish` (if applicable).
+7. Tag the release: `git tag v<version>` and `git push --tags`.
 
 ## Verification checklist
 
