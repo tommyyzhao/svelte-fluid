@@ -14,6 +14,15 @@
     be drowned out by the engine's seeded color rotation.
   - Heavy bloom (`bloomIntensity: 1.5`) is the look — without it the
     bands appear flat.
+  - **`sunraysWeight: 1.4` is intentionally above the "safe ceiling"**
+    derived in `docs/learnings/presets.md` (which recommends 0.3–0.4
+    for whiteout-resistant glow). At 1.4 the closed-form peak
+    amplification is `(1 + 11.4 × 1.4) × 0.7 ≈ 11.9×`, so the canvas
+    will brighten significantly over the first ~10 seconds as the
+    bands spread into more of the sunrays mask. This is the desired
+    aurora look — a slowly-growing wash of color rather than a static
+    snapshot. If you want a more restrained version, fork this preset
+    and drop `sunraysWeight` to 0.6 and `bloomIntensity` to 1.0.
 -->
 
 <script lang="ts" module>
