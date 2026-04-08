@@ -37,8 +37,13 @@
 </svelte:head>
 
 <!-- Background hero instance — fills the viewport behind everything else. -->
-<div class="hero">
-	<Fluid curl={20} bloomIntensity={1.2} initialSplatCount={18} />
+<div class="hero" aria-hidden="true">
+	<Fluid
+		curl={20}
+		bloomIntensity={1.2}
+		initialSplatCount={18}
+		aria-label="Decorative background fluid simulation"
+	/>
 </div>
 
 <main>
@@ -57,11 +62,24 @@
 
 	<section class="grid">
 		<Card title="Default" description="Out-of-the-box configuration with bloom + sunrays.">
-			<Fluid seed={1234} initialSplatCount={12} />
+			<Fluid
+				seed={1234}
+				initialSplatCount={12}
+				lazy
+				aria-label="Default fluid configuration with bloom and sunrays"
+			/>
 		</Card>
 
 		<Card title="No bloom, low curl" description="bloom={false} curl={5} densityDissipation={0.4}">
-			<Fluid seed={5678} bloom={false} curl={5} densityDissipation={0.4} initialSplatCount={10} />
+			<Fluid
+				seed={5678}
+				bloom={false}
+				curl={5}
+				densityDissipation={0.4}
+				initialSplatCount={10}
+				lazy
+				aria-label="Fluid with bloom disabled and low curl"
+			/>
 		</Card>
 
 		<Card title="No shading, big splats" description="shading={false} splatRadius={0.8}">
@@ -71,6 +89,8 @@
 				splatRadius={0.8}
 				splatForce={9000}
 				initialSplatCount={8}
+				lazy
+				aria-label="Fluid with shading disabled and large splats"
 			/>
 		</Card>
 
@@ -81,6 +101,8 @@
 				densityDissipation={0.5}
 				transparent
 				initialSplatCount={14}
+				lazy
+				aria-label="Slow-motion fluid with transparent background"
 			/>
 		</Card>
 	</section>
@@ -96,22 +118,22 @@
 		</header>
 		<div class="grid">
 			<Card title="Lava Lamp" description="Slow, lazy warm blobs drifting on a warm-silver background.">
-				<LavaLamp seed={101} />
+				<LavaLamp seed={101} lazy aria-label="LavaLamp preset: warm blobs on silver" />
 			</Card>
 			<Card title="Plasma" description="Persistent full-spectrum energy field.">
-				<Plasma seed={202} />
+				<Plasma seed={202} lazy aria-label="Plasma preset: persistent full-spectrum energy field" />
 			</Card>
 			<Card title="Ink in Water" description="Dark blue dye blooming on a pale background.">
-				<InkInWater seed={303} />
+				<InkInWater seed={303} lazy aria-label="Ink in Water preset: dark blue ink on cream" />
 			</Card>
 			<Card title="Frozen Swirl" description="A single icy whirlpool that spins itself out.">
-				<FrozenSwirl seed={404} />
+				<FrozenSwirl seed={404} lazy aria-label="Frozen Swirl preset: single icy whirlpool" />
 			</Card>
 			<Card title="Aurora" description="Northern-lights ribbons drifting laterally.">
-				<Aurora seed={505} />
+				<Aurora seed={505} lazy aria-label="Aurora preset: northern lights ribbons" />
 			</Card>
 			<Card title="Galaxy" description="Spiral arms with bloom-lit core.">
-				<Galaxy seed={606} />
+				<Galaxy seed={606} lazy aria-label="Galaxy preset: spiral arms with bloom core" />
 			</Card>
 		</div>
 	</section>
@@ -121,6 +143,8 @@
 			<Fluid
 				bind:this={controlsRef}
 				seed={42}
+				lazy
+				aria-label="Interactive playground fluid simulation, controlled by the panel below"
 				{curl}
 				{splatRadius}
 				{splatForce}

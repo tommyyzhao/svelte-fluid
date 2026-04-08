@@ -33,14 +33,25 @@
 	import type { FluidProps } from '../Fluid.svelte';
 
 	/** Props consumed by `<InkInWater />`. */
-	export type InkInWaterProps = Pick<FluidProps, 'width' | 'height' | 'class' | 'style' | 'seed'>;
+	export type InkInWaterProps = Pick<
+		FluidProps,
+		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'aria-label'
+	>;
 </script>
 
 <script lang="ts">
 	import Fluid from '../Fluid.svelte';
 	import type { FluidHandle, PresetSplat } from '../engine/types.js';
 
-	let { width, height, class: className, style, seed }: InkInWaterProps = $props();
+	let {
+		width,
+		height,
+		class: className,
+		style,
+		seed,
+		lazy,
+		'aria-label': ariaLabel
+	}: InkInWaterProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
 
@@ -64,6 +75,8 @@
 	class={className}
 	{style}
 	{seed}
+	{lazy}
+	aria-label={ariaLabel}
 	curl={5}
 	densityDissipation={0.4}
 	velocityDissipation={0.1}

@@ -52,14 +52,25 @@
 	import type { FluidProps } from '../Fluid.svelte';
 
 	/** Props consumed by `<LavaLamp />`. Sizing/seed/styling are forwarded; all other physics props are hard-coded. */
-	export type LavaLampProps = Pick<FluidProps, 'width' | 'height' | 'class' | 'style' | 'seed'>;
+	export type LavaLampProps = Pick<
+		FluidProps,
+		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'aria-label'
+	>;
 </script>
 
 <script lang="ts">
 	import Fluid from '../Fluid.svelte';
 	import type { FluidHandle, PresetSplat } from '../engine/types.js';
 
-	let { width, height, class: className, style, seed }: LavaLampProps = $props();
+	let {
+		width,
+		height,
+		class: className,
+		style,
+		seed,
+		lazy,
+		'aria-label': ariaLabel
+	}: LavaLampProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
 
@@ -97,6 +108,8 @@
 	class={className}
 	{style}
 	{seed}
+	{lazy}
+	aria-label={ariaLabel}
 	curl={5}
 	densityDissipation={0}
 	initialDensityDissipation={0.25}

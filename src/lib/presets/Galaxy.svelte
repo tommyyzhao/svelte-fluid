@@ -31,14 +31,25 @@
 	import type { FluidProps } from '../Fluid.svelte';
 
 	/** Props consumed by `<Galaxy />`. */
-	export type GalaxyProps = Pick<FluidProps, 'width' | 'height' | 'class' | 'style' | 'seed'>;
+	export type GalaxyProps = Pick<
+		FluidProps,
+		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'aria-label'
+	>;
 </script>
 
 <script lang="ts">
 	import Fluid from '../Fluid.svelte';
 	import type { FluidHandle, PresetSplat, RGB } from '../engine/types.js';
 
-	let { width, height, class: className, style, seed }: GalaxyProps = $props();
+	let {
+		width,
+		height,
+		class: className,
+		style,
+		seed,
+		lazy,
+		'aria-label': ariaLabel
+	}: GalaxyProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
 
@@ -88,6 +99,8 @@
 	class={className}
 	{style}
 	{seed}
+	{lazy}
+	aria-label={ariaLabel}
 	curl={50}
 	densityDissipation={0}
 	initialDensityDissipation={0.3}

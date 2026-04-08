@@ -117,8 +117,9 @@ config from the upstream project.
 | `initialSplatCount` | `number` | — | exact count for the first frame |
 | `initialSplatCountMin` | `number` | `5` | min of random range |
 | `initialSplatCountMax` | `number` | `25` | max of random range |
-| `pointerInput` | `boolean` | `true` | construct-only |
+| `pointerInput` | `boolean` | `true` | hot; toggles canvas + window listeners |
 | `presetSplats` | `PresetSplat[]` | — | construct-only; declarative initial scene (see [Presets](#presets)) |
+| `lazy` | `boolean` | `false` | construct-only; defer engine creation until container enters viewport |
 
 The component also forwards any standard `<canvas>` attributes
 (`class`, `style`, `aria-label`, …) onto the underlying canvas via
@@ -241,6 +242,21 @@ it across resizes.
 Each `<Fluid />` owns its own WebGL context, framebuffers, RAF loop,
 listeners, and pointer state. Browsers cap simultaneous WebGL contexts
 at 8–16 per tab, so plan accordingly for very dense layouts.
+
+For pages with more than ~6 simultaneous instances, pass `lazy={true}`
+on each one. The component will then defer engine creation until the
+container enters the viewport (with a 200px lookahead) and tear it
+down when it leaves, keeping the live context count bounded:
+
+```svelte
+<LavaLamp lazy />
+<Plasma lazy />
+<Galaxy lazy />
+```
+
+The cost is a one-time shader-recompile pause (~100–500ms) when an
+instance scrolls back into view. For demo / showcase pages this is
+hidden behind the user's scroll momentum and rarely noticed.
 
 ## Programmatic engine
 
