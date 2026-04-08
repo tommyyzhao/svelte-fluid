@@ -218,6 +218,7 @@ export class FluidEngine implements FluidHandle {
 	private colorUpdateTimer = 0;
 	private rafId = 0;
 	private disposed = false;
+	private pointerListenersInstalled = false;
 
 	// --- Bound listeners ---
 	private onMouseDown = (e: MouseEvent) => this.handleMouseDown(e);
@@ -320,10 +321,15 @@ export class FluidEngine implements FluidHandle {
 
 	/**
 	 * Hot-update a subset of config fields. Uses a 4-bucket strategy:
-	 *   A — scalar/boolean assignment, picked up next frame
-	 *   B — display shader keyword recompile
+	 *   A — scalar/boolean assignment, picked up next frame.
+	 *       Includes `pointerInput`, which also installs/removes the
+	 *       canvas + window event listeners on transition.
+	 *   B — display shader keyword recompile (shading, bloom, sunrays)
 	 *   C — FBO rebuild (sim/dye/bloom/sunrays resolutions)
-	 *   D — construct-only (seed, initialSplatCount*, pointerInput) — ignored
+	 *   D — construct-only — `seed`, `initialSplatCount*`, `presetSplats`.
+	 *       These are silently ignored: `seed` and `initialSplatCount*`
+	 *       only affect the first frame, and `presetSplats` is absent
+	 *       from `ResolvedConfig` entirely.
 	 */
 	setConfig(patch: FluidConfig): void {
 		if (this.disposed) return;
@@ -336,6 +342,7 @@ export class FluidEngine implements FluidHandle {
 			a.BLOOM_RESOLUTION !== b.BLOOM_RESOLUTION || a.BLOOM_ITERATIONS !== b.BLOOM_ITERATIONS;
 		const sunraysChanged = a.SUNRAYS_RESOLUTION !== b.SUNRAYS_RESOLUTION;
 		const kwChanged = a.SHADING !== b.SHADING || a.BLOOM !== b.BLOOM || a.SUNRAYS !== b.SUNRAYS;
+		const pointerInputChanged = a.POINTER_INPUT !== b.POINTER_INPUT;
 
 		this.config = b;
 
@@ -343,6 +350,19 @@ export class FluidEngine implements FluidHandle {
 		if (bloomChanged) this.initBloomFramebuffers();
 		if (sunraysChanged) this.initSunraysFramebuffers();
 		if (kwChanged) this.updateKeywords();
+		if (pointerInputChanged) {
+			if (b.POINTER_INPUT) {
+				this.installPointerListeners();
+			} else {
+				this.removePointerListeners();
+				// Also drain any in-flight pointer state so a half-press
+				// doesn't keep emitting splats after the listeners are gone.
+				for (const p of this.pointers) {
+					p.down = false;
+					p.moved = false;
+				}
+			}
+		}
 	}
 
 	dispose(): void {
@@ -351,13 +371,8 @@ export class FluidEngine implements FluidHandle {
 
 		cancelAnimationFrame(this.rafId);
 
-		if (this.config.POINTER_INPUT) {
-			this.canvas.removeEventListener('mousedown', this.onMouseDown);
-			this.canvas.removeEventListener('mousemove', this.onMouseMove);
-			window.removeEventListener('mouseup', this.onMouseUp);
-			this.canvas.removeEventListener('touchstart', this.onTouchStart);
-			this.canvas.removeEventListener('touchmove', this.onTouchMove);
-			window.removeEventListener('touchend', this.onTouchEnd);
+		if (this.pointerListenersInstalled) {
+			this.removePointerListeners();
 		}
 
 		const gl = this.gl;
@@ -1011,12 +1026,25 @@ export class FluidEngine implements FluidHandle {
 	/* ---------------------------------------------------------------------- */
 
 	private installPointerListeners(): void {
+		if (this.pointerListenersInstalled) return;
 		this.canvas.addEventListener('mousedown', this.onMouseDown);
 		this.canvas.addEventListener('mousemove', this.onMouseMove);
 		window.addEventListener('mouseup', this.onMouseUp);
 		this.canvas.addEventListener('touchstart', this.onTouchStart, { passive: false });
 		this.canvas.addEventListener('touchmove', this.onTouchMove, { passive: false });
 		window.addEventListener('touchend', this.onTouchEnd);
+		this.pointerListenersInstalled = true;
+	}
+
+	private removePointerListeners(): void {
+		if (!this.pointerListenersInstalled) return;
+		this.canvas.removeEventListener('mousedown', this.onMouseDown);
+		this.canvas.removeEventListener('mousemove', this.onMouseMove);
+		window.removeEventListener('mouseup', this.onMouseUp);
+		this.canvas.removeEventListener('touchstart', this.onTouchStart);
+		this.canvas.removeEventListener('touchmove', this.onTouchMove);
+		window.removeEventListener('touchend', this.onTouchEnd);
+		this.pointerListenersInstalled = false;
 	}
 
 	private getCanvasOffset(clientX: number, clientY: number): { x: number; y: number } {
