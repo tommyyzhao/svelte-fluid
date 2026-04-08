@@ -25,10 +25,10 @@ four buckets and acts accordingly:
 
 | Bucket | Fields | Action |
 | --- | --- | --- |
-| **A** Hot scalar | `densityDissipation`, `velocityDissipation`, `pressure`, `pressureIterations`, `curl`, `splatRadius`, `splatForce`, `colorful`, `colorUpdateSpeed`, `paused`, `backColor`, `transparent`, `bloomIntensity`, `bloomThreshold`, `bloomSoftKnee`, `sunraysWeight` | Just write to `this.config.X`. The next frame's `step()` reads the new value. |
+| **A** Hot scalar | `densityDissipation`, `initialDensityDissipation`, `initialDensityDissipationDuration`, `velocityDissipation`, `pressure`, `pressureIterations`, `curl`, `splatRadius`, `splatForce`, `colorful`, `colorUpdateSpeed`, `paused`, `backColor`, `transparent`, `bloomIntensity`, `bloomThreshold`, `bloomSoftKnee`, `sunraysWeight`, `pointerInput` | Just write to `this.config.X`. The next frame's `step()` reads the new value. `pointerInput` additionally installs/removes the canvas + window event listeners on transition (see `installPointerListeners`/`removePointerListeners`). |
 | **B** Keyword recompile | `shading`, `bloom`, `sunrays` | Call `updateKeywords()` → `displayMaterial.setKeywords([...])`. Recompiles the display fragment shader (~1–2 ms). |
 | **C** FBO rebuild | `simResolution`, `dyeResolution`, `bloomIterations`, `bloomResolution`, `sunraysResolution` | Call `initFramebuffers()` / `initBloomFramebuffers()` / `initSunraysFramebuffers()`. The dye texture's contents are copied via `resizeDoubleFBO`. |
-| **D** Construct-only | `seed`, `initialSplatCount`, `initialSplatCountMin`, `initialSplatCountMax`, `pointerInput` | Ignored after construction. |
+| **D** Construct-only | `seed`, `initialSplatCount`, `initialSplatCountMin`, `initialSplatCountMax`, `presetSplats` | Ignored after construction. `seed` is captured at construction time and only matters for the first random splats; `initialSplatCount*` only affects the random initial splats; `presetSplats` is intentionally absent from `ResolvedConfig` entirely. |
 
 The implementation is a single diff against `this.config` followed by
 conditional method calls — see `FluidEngine.setConfig`.

@@ -5,12 +5,16 @@
 
 ## Context
 
-The user constraint was explicit: "Everything done via `bun` or `uv` NO
-EXCEPTIONS. No npm, no python3, only bun and uv (if any python is
-needed at all)."
+This project commits to a single-binary toolchain: **bun** for every
+JavaScript/TypeScript task and **uv** for any Python helper that may
+ever be needed. No npm, no pnpm, no yarn, no `node` shell-outs, no
+`python3`, no `pip`. The constraint covers scaffolding (sv create),
+package management, script execution, lockfiles, and any helper
+tooling.
 
-This affects scaffolding (sv create), package management, script
-execution, and any helper tooling.
+The motivation is reproducibility and contributor friction: a single
+binary means one install command, one lockfile, one execution path,
+and zero version mismatches between developer machines.
 
 ## Decision
 
@@ -19,6 +23,8 @@ execution, and any helper tooling.
   shipped with `vite build && npm run prepack` — we patched it to
   `vite build && bun run prepack`.
 - Dependencies are installed via `bun install`, locked in `bun.lock`.
+- `.npmrc` sets `engine-strict=true` so consumers who try to use
+  npm/pnpm with the lockfile fail loudly.
 - No Python dependencies introduced (uv stays unused for now, but the
   constraint stands for future additions).
 - Helper one-shots (e.g. base64-encoding the dithering PNG) use
@@ -40,6 +46,6 @@ execution, and any helper tooling.
   has to be patched (the scaffold's `build` script was an example).
 
 **Rejected alternatives:**
-- *npm/pnpm/yarn:* Violates the user constraint.
+- *npm/pnpm/yarn:* Violates the single-binary policy.
 - *Polyglot tooling (bun for some scripts, npm for others):* Defeats
-  the constraint and introduces lockfile drift.
+  the policy and introduces lockfile drift.

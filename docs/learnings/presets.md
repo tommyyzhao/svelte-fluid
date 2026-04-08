@@ -197,10 +197,15 @@ tracks the dye texture exactly, which (with `densityDissipation: 0`)
 is conserved. Use bright splat colors plus 3D shading for visual
 punch instead of post-process glow.
 
-The Plasma, LavaLamp, and Galaxy presets all use `bloom: false,
-sunrays: false` for this reason. Aurora and FrozenSwirl keep bloom
-on because their use cases tolerate (or want) the spreading-coverage
-brightening.
+The LavaLamp and Galaxy presets use `bloom: false, sunrays: false`
+for this reason — they want a perfectly stable steady-state with
+permanent dye. Plasma is the deliberate exception: it keeps bloom
+off but holds **sunrays on at a low weight (0.35, ~3.5× peak gain)**
+because the radial-toward-center sunrays mask is more visually
+forgiving than full-screen bloom even with `densityDissipation: 0`.
+Aurora and FrozenSwirl keep both bloom and sunrays on because their
+short-lived motion (Aurora) or rapid freeze-out (FrozenSwirl)
+tolerate (or want) the spreading-coverage brightening.
 
 **Why this matters:** "It can't be a feedback loop because bloom
 doesn't write back to dye" is technically correct but practically
