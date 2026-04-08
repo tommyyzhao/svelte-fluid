@@ -4,6 +4,17 @@
  * https://github.com/PavelDoGreat/WebGL-Fluid-Simulation
  */
 
+/**
+ * RGB triple. Unit conventions vary by call site:
+ *
+ * - {@link FluidConfig.backColor} — **0–255** (CSS-style). Normalized
+ *   internally by `normalizeColor` before reaching the shader.
+ * - {@link PresetSplat.color} and {@link FluidHandle.splat} — **0–1**
+ *   (linear). Values above 1 are valid HDR and read as bloom highlights.
+ * - All RGB values returned by `generateColor` / `HSVtoRGB` — 0–1.
+ *
+ * Each consumer documents its own range explicitly.
+ */
 export interface RGB {
 	r: number;
 	g: number;
@@ -17,9 +28,14 @@ export interface RGB {
  *
  * Coordinates are normalized: x ∈ [0,1] (left → right),
  * y ∈ [0,1] (**bottom → top**, y-inverted from DOM space).
- * dx/dy are pixel velocities, multiplied internally by SPLAT_FORCE.
- * Color components are in 0–1 range; values above 1 are valid and
- * useful for HDR-style bloom highlights.
+ *
+ * `dx` / `dy` are raw velocity values written directly to the splat
+ * shader uniform (in pixels per frame). Unlike pointer-driven splats,
+ * preset velocities are **not** multiplied by `splatForce` — pick the
+ * absolute magnitude you want.
+ *
+ * `color` components are in **0–1** linear range; values above 1 are
+ * valid and useful for HDR-style bloom highlights.
  */
 export interface PresetSplat {
 	x: number;
@@ -79,7 +95,17 @@ export interface FluidConfig {
 	colorUpdateSpeed?: number;
 	/** Pause the simulation step (rendering still occurs). Default false. */
 	paused?: boolean;
-	/** Background color (0–1 RGB). Default { r: 0, g: 0, b: 0 }. */
+	/**
+	 * Background color in **0–255 RGB** (CSS-style). Normalized internally
+	 * by `normalizeColor` before reaching the shader. Default
+	 * `{ r: 0, g: 0, b: 0 }` (pure black).
+	 *
+	 * Example: `{ r: 222, g: 218, b: 215 }` is a warm silver.
+	 *
+	 * Note that this differs from {@link PresetSplat.color} and
+	 * {@link FluidHandle.splat}, which use 0–1 linear color. See
+	 * {@link RGB} for the full convention table.
+	 */
 	backColor?: RGB;
 	/** Render with transparent background (checkerboard fallback). Default false. */
 	transparent?: boolean;
@@ -207,13 +233,13 @@ export interface DoubleFBO {
 export interface FluidHandle {
 	/**
 	 * Inject a splat at the given normalized coordinates with optional
-	 * velocity and color.
+	 * velocity and color. Identical semantics to {@link PresetSplat}.
 	 *
 	 * @param x  X position in normalized coords (0 = left, 1 = right)
 	 * @param y  Y position in normalized coords (0 = bottom, 1 = top)
-	 * @param dx X velocity in pixels/frame (will be multiplied by SPLAT_FORCE)
-	 * @param dy Y velocity in pixels/frame
-	 * @param color RGB triple in 0–1 range
+	 * @param dx X velocity (raw value, **not** scaled by `splatForce`)
+	 * @param dy Y velocity (raw value, **not** scaled by `splatForce`)
+	 * @param color RGB triple in 0–1 linear range; HDR (>1) is valid
 	 */
 	splat(x: number, y: number, dx: number, dy: number, color: RGB): void;
 	/** Push N additional random splats onto the splat queue. */
