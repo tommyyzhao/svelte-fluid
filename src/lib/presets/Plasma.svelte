@@ -38,14 +38,25 @@
 	import type { FluidProps } from '../Fluid.svelte';
 
 	/** Props consumed by `<Plasma />`. Sizing/seed/styling are forwarded; all other physics props are hard-coded. */
-	export type PlasmaProps = Pick<FluidProps, 'width' | 'height' | 'class' | 'style' | 'seed'>;
+	export type PlasmaProps = Pick<
+		FluidProps,
+		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'aria-label'
+	>;
 </script>
 
 <script lang="ts">
 	import Fluid from '../Fluid.svelte';
 	import type { FluidHandle } from '../engine/types.js';
 
-	let { width, height, class: className, style, seed }: PlasmaProps = $props();
+	let {
+		width,
+		height,
+		class: className,
+		style,
+		seed,
+		lazy,
+		'aria-label': ariaLabel
+	}: PlasmaProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
 
@@ -62,6 +73,8 @@
 	class={className}
 	{style}
 	{seed}
+	{lazy}
+	aria-label={ariaLabel}
 	curl={30}
 	densityDissipation={0}
 	initialDensityDissipation={0.3}
