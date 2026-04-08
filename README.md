@@ -1,0 +1,286 @@
+# svelte-fluid
+
+WebGL fluid simulation as a Svelte 5 component library.
+
+A modern, multi-instance, deterministic-resize port of Pavel Dobryakov's
+[WebGL-Fluid-Simulation](https://github.com/PavelDoGreat/WebGL-Fluid-Simulation)
+to Svelte 5 (runes) and TypeScript.
+
+- 🌀 Drop a `<Fluid />` anywhere in your Svelte 5 app — fixed-size or fluid
+- 🪄 Multiple independent instances on a single page (no shared GL state)
+- 📐 `ResizeObserver` auto-tracks the parent; deterministic seed reproduces
+  the same initial splat pattern after every resize
+- 🎛️ All ~24 physics / visual config knobs exposed as camelCase props
+- ⚡ Live prop updates — scalars hot-set, shader keywords recompile,
+  resolution changes rebuild framebuffers
+- 🎯 Imperative API for `splat()` / `randomSplats()` via `bind:this`
+- 🧹 Full cleanup on unmount — no leaks, no rogue `requestAnimationFrame`s
+
+## Install
+
+```sh
+bun add svelte-fluid
+```
+
+> Requires Svelte ≥ 5.
+
+## Quick start
+
+```svelte
+<script lang="ts">
+  import { Fluid } from 'svelte-fluid';
+</script>
+
+<div style="width:100%; height:100vh">
+  <Fluid />
+</div>
+```
+
+That's the entire setup. The canvas fills its parent and tracks parent
+size via `ResizeObserver`.
+
+### Fixed dimensions
+
+```svelte
+<Fluid width={400} height={300} />
+```
+
+### Custom physics
+
+```svelte
+<Fluid
+  curl={20}
+  splatRadius={0.5}
+  bloom={false}
+  shading
+  densityDissipation={0.4}
+  initialSplatCount={12}
+  seed={42}
+/>
+```
+
+### Imperative API via `bind:this`
+
+```svelte
+<script lang="ts">
+  import { Fluid } from 'svelte-fluid';
+
+  type Ref = {
+    handle: {
+      splat(x: number, y: number, dx: number, dy: number, color: { r: number; g: number; b: number }): void;
+      randomSplats(count: number): void;
+    };
+  };
+  let ref = $state<Ref | undefined>();
+</script>
+
+<button onclick={() => ref?.handle.randomSplats(10)}>Splat!</button>
+<Fluid bind:this={ref} />
+```
+
+## Props
+
+All props are optional. CamelCase wraps the original SCREAMING_CASE
+config from the upstream project.
+
+| Prop | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `width` | `number` | — | CSS px. Omit to fill parent. |
+| `height` | `number` | — | CSS px. Omit to fill parent. |
+| `seed` | `number` | random | 32-bit uint; deterministic initial splats |
+| `simResolution` | `number` | `128` | velocity grid; **rebuilds FBOs** |
+| `dyeResolution` | `number` | `1024` | dye grid; **rebuilds FBOs** |
+| `densityDissipation` | `number` | `1` | hot; **steady-state** value |
+| `initialDensityDissipation` | `number` | (= `densityDissipation`) | hot; ramp start (see [burn-in pattern](#burn-in-density-dissipation)) |
+| `initialDensityDissipationDuration` | `number` | `0` | seconds; duration of the linear ramp |
+| `velocityDissipation` | `number` | `0.2` | hot |
+| `pressure` | `number` | `0.8` | hot |
+| `pressureIterations` | `number` | `20` | hot |
+| `curl` | `number` | `30` | vorticity confinement; hot |
+| `splatRadius` | `number` | `0.25` | hot |
+| `splatForce` | `number` | `6000` | hot |
+| `shading` | `boolean` | `true` | **shader recompile** |
+| `colorful` | `boolean` | `true` | hot |
+| `colorUpdateSpeed` | `number` | `10` | hot |
+| `paused` | `boolean` | `false` | hot |
+| `backColor` | `{r,g,b}` | `{0,0,0}` | 0–255 RGB; hot |
+| `transparent` | `boolean` | `false` | hot |
+| `bloom` | `boolean` | `true` | **shader recompile** |
+| `bloomIterations` | `number` | `8` | **rebuilds FBOs** |
+| `bloomResolution` | `number` | `256` | **rebuilds FBOs** |
+| `bloomIntensity` | `number` | `0.8` | hot |
+| `bloomThreshold` | `number` | `0.6` | hot |
+| `bloomSoftKnee` | `number` | `0.7` | hot |
+| `sunrays` | `boolean` | `true` | **shader recompile** |
+| `sunraysResolution` | `number` | `196` | **rebuilds FBOs** |
+| `sunraysWeight` | `number` | `1` | hot |
+| `initialSplatCount` | `number` | — | exact count for the first frame |
+| `initialSplatCountMin` | `number` | `5` | min of random range |
+| `initialSplatCountMax` | `number` | `25` | max of random range |
+| `pointerInput` | `boolean` | `true` | construct-only |
+| `presetSplats` | `PresetSplat[]` | — | construct-only; declarative initial scene (see [Presets](#presets)) |
+
+The component also forwards any standard `<canvas>` attributes
+(`class`, `style`, `aria-label`, …) onto the underlying canvas via
+`...rest`.
+
+## Presets
+
+Six opinionated wrapper components ship alongside `<Fluid />`. Each one
+hard-codes a physics + visual configuration and (for most of them) a
+hand-crafted set of opening splats so you can drop them in without any
+tuning:
+
+| Component | Look |
+| --- | --- |
+| `<LavaLamp />` | Slow warm blobs rising in a dim purple ambience |
+| `<Plasma />` | Persistent full-spectrum energy field |
+| `<InkInWater />` | Dark blue dye blooming on a pale background |
+| `<FrozenSwirl />` | A single icy whirlpool that spins itself out |
+| `<Aurora />` | Northern-lights ribbons drifting laterally |
+| `<Galaxy />` | Spiral arms with bloom-lit core |
+
+```svelte
+<script lang="ts">
+  import { LavaLamp, Plasma, Galaxy } from 'svelte-fluid';
+</script>
+
+<div style="height: 100vh">
+  <LavaLamp />
+</div>
+
+<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:16px">
+  <Plasma />
+  <Galaxy />
+</div>
+```
+
+Each preset accepts only `width`, `height`, `class`, `style`, and
+`seed` — the rest of the configuration is intentionally fixed. They all
+re-expose the imperative `handle` so you can still call `splat()` /
+`randomSplats()` from outside via `bind:this`.
+
+### Building your own preset
+
+A preset is a tiny wrapper around `<Fluid />` that pins config and
+optionally passes a `presetSplats` array. The engine consumes
+`presetSplats` once at construction (right after the random initial
+splats), so the opening scene is fully deterministic and reproducible
+across resizes.
+
+```svelte
+<script lang="ts">
+  import { Fluid, type PresetSplat, type FluidHandle } from 'svelte-fluid';
+
+  const SPLATS: PresetSplat[] = [
+    { x: 0.5, y: 0.1, dx: 0, dy: 800, color: { r: 1.6, g: 0.4, b: 0.1 } }
+  ];
+
+  let inner = $state<{ handle: FluidHandle } | undefined>();
+  export const handle: FluidHandle = {
+    splat: (x, y, dx, dy, c) => inner?.handle.splat(x, y, dx, dy, c),
+    randomSplats: (n) => inner?.handle.randomSplats(n)
+  };
+</script>
+
+<Fluid
+  bind:this={inner}
+  curl={50}
+  densityDissipation={0}
+  initialSplatCount={0}
+  presetSplats={SPLATS}
+/>
+```
+
+Note: `presetSplats` is **construct-only** — like `seed`, changes after
+mount are ignored. To paint a new scene, change the `seed` (which forces
+a teardown/rebuild) or call `handle.splat()` imperatively.
+
+Splat coordinates are normalized: `x ∈ [0,1]` left-to-right and
+`y ∈ [0,1]` **bottom-to-top**. Color components are in 0–1 range; values
+above 1 are valid and read as HDR highlights through the bloom pass.
+
+## Burn-in density dissipation
+
+If you want a `densityDissipation: 0` "vivid persistent" look but the
+opening splats are bright enough to overwhelm the canvas, use a
+temporary high dissipation that decays to zero:
+
+```svelte
+<Fluid
+  densityDissipation={0}
+  initialDensityDissipation={1.5}
+  initialDensityDissipationDuration={2}
+  presetSplats={SPLATS}
+/>
+```
+
+The engine linearly interpolates from `initialDensityDissipation` →
+`densityDissipation` over `initialDensityDissipationDuration` seconds,
+then holds at the steady-state value forever. This lets the overlapping
+additive splats "burn in" — overbright pixels fade for the first couple
+of seconds — before dissipation locks at zero so the remaining dye
+persists indefinitely. The `LavaLamp`, `Plasma`, and `Galaxy` presets
+all use this pattern.
+
+The clock starts when the engine begins ticking (post-mount, post
+first ResizeObserver fire), so the burn-in survives `setConfig`
+updates and matches the user's perception of "since the canvas
+appeared".
+
+## Resize behavior
+
+A `ResizeObserver` watches the wrapper container. Whenever the CSS
+dimensions change, the engine is fully torn down and reinstantiated with
+the same `seed`, so the initial splat pattern is identical. If you don't
+provide a `seed`, the component generates one once at mount and reuses
+it across resizes.
+
+## Multiple instances
+
+Each `<Fluid />` owns its own WebGL context, framebuffers, RAF loop,
+listeners, and pointer state. Browsers cap simultaneous WebGL contexts
+at 8–16 per tab, so plan accordingly for very dense layouts.
+
+## Programmatic engine
+
+If you need raw control without the Svelte component:
+
+```ts
+import { FluidEngine } from 'svelte-fluid';
+
+const canvas = document.querySelector('canvas')!;
+canvas.width = canvas.clientWidth * devicePixelRatio;
+canvas.height = canvas.clientHeight * devicePixelRatio;
+
+const engine = new FluidEngine({
+  canvas,
+  config: { curl: 20, bloom: false, seed: 42 }
+});
+
+// later…
+engine.splat(0.5, 0.5, 100, 0, { r: 1, g: 0.5, b: 0 });
+engine.randomSplats(8);
+engine.setConfig({ curl: 5 });
+engine.dispose();
+```
+
+## Development
+
+This project uses **bun**.
+
+```sh
+bun install
+bun run dev      # demo playground at http://localhost:5173
+bun run check    # svelte-check
+bun run package  # produces dist/ with svelte-package
+bun run build    # builds the SvelteKit demo site
+```
+
+## Acknowledgments
+
+This library is a derivative work of
+[PavelDoGreat/WebGL-Fluid-Simulation](https://github.com/PavelDoGreat/WebGL-Fluid-Simulation),
+the original 2017 WebGL implementation by Pavel Dobryakov. The shader
+sources are reused unchanged. Both the upstream project and this port
+are MIT-licensed; see `LICENSE` for the full notices.
