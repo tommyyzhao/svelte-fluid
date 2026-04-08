@@ -30,10 +30,23 @@
 
 	type FluidRef = { handle: { randomSplats: (n: number) => void } } | undefined;
 	let controlsRef = $state<FluidRef>(undefined);
+
+	// Code snippet shown in the get-started block. Built from string
+	// concatenation so the Svelte HTML parser does not see a literal
+	// closing tag inside this top-level scripting context.
+	const SCRIPT_OPEN = '<' + 'script lang="ts">';
+	const SCRIPT_CLOSE = '<' + '/script>';
+	const usageSnippet = [
+		SCRIPT_OPEN,
+		"  import { Fluid, LavaLamp } from 'svelte-fluid';",
+		SCRIPT_CLOSE,
+		'',
+		'<div style="height: 100vh"><LavaLamp /></div>'
+	].join('\n');
 </script>
 
 <svelte:head>
-	<title>svelte-fluid demo</title>
+	<title>svelte-fluid — WebGL fluid simulation as a Svelte 5 component</title>
 </svelte:head>
 
 <!-- Background hero instance — fills the viewport behind everything else. -->
@@ -58,7 +71,42 @@
 			tears down and reinitializes with the <em>same</em> initial splats
 			thanks to the seed prop.
 		</p>
+		<nav class="header-links" aria-label="Project links">
+			<a href="https://github.com/tommyyzhao/svelte-fluid" rel="noreferrer" target="_blank">
+				GitHub
+			</a>
+			<span aria-hidden="true">·</span>
+			<a
+				href="https://github.com/tommyyzhao/svelte-fluid#readme"
+				rel="noreferrer"
+				target="_blank">README</a
+			>
+			<span aria-hidden="true">·</span>
+			<a
+				href="https://github.com/tommyyzhao/svelte-fluid/tree/main/docs"
+				rel="noreferrer"
+				target="_blank">Docs</a
+			>
+			<span aria-hidden="true">·</span>
+			<a
+				href="https://github.com/tommyyzhao/svelte-fluid/blob/main/docs/contributing.md"
+				rel="noreferrer"
+				target="_blank">Contribute</a
+			>
+		</nav>
 	</header>
+
+	<section class="get-started" aria-labelledby="get-started-heading">
+		<h2 id="get-started-heading">Get started</h2>
+		<pre class="code-block"><code>bun add svelte-fluid</code></pre>
+		<pre class="code-block"><code>{usageSnippet}</code></pre>
+		<p class="caption">
+			That's the entire setup — the canvas fills its parent and tracks
+			parent size automatically. Six presets ship out of the box;
+			<code>&lt;Fluid /&gt;</code> exposes the full ~28-prop config surface
+			for custom physics and visuals.
+		</p>
+	</section>
 
 	<section class="grid">
 		<Card title="Default" description="Out-of-the-box configuration with bloom + sunrays.">
@@ -138,7 +186,15 @@
 		</div>
 	</section>
 
-	<section class="playground">
+	<section class="playground-section">
+		<header class="section-header">
+			<h2>Playground</h2>
+			<p>
+				Tweak any parameter live — changes apply instantly via
+				<code>setConfig()</code> without remounting the engine.
+			</p>
+		</header>
+	<div class="playground">
 		<div class="playground-canvas">
 			<Fluid
 				bind:this={controlsRef}
@@ -181,15 +237,33 @@
 			bind:simResolution
 			onRandomSplats={() => controlsRef?.handle.randomSplats(10)}
 		/>
+	</div>
 	</section>
 
 	<footer>
-		<p>
-			Port of <a
+		<div class="footer-links">
+			<a href="https://github.com/tommyyzhao/svelte-fluid" rel="noreferrer" target="_blank">
+				GitHub
+			</a>
+			<span aria-hidden="true">·</span>
+			<a
+				href="https://github.com/tommyyzhao/svelte-fluid/issues"
+				rel="noreferrer"
+				target="_blank">Issues</a
+			>
+			<span aria-hidden="true">·</span>
+			<a
+				href="https://github.com/tommyyzhao/svelte-fluid/blob/main/LICENSE"
+				rel="noreferrer"
+				target="_blank">MIT License</a
+			>
+		</div>
+		<p class="credit">
+			Derivative work of <a
 				href="https://github.com/PavelDoGreat/WebGL-Fluid-Simulation"
 				rel="noreferrer"
 				target="_blank">PavelDoGreat/WebGL-Fluid-Simulation</a
-			>. MIT licensed.
+			> by Pavel Dobryakov (c) 2017. Shader sources reused unchanged.
 		</p>
 	</footer>
 </main>
@@ -199,7 +273,15 @@
 		position: fixed;
 		inset: 0;
 		z-index: -1;
-		opacity: 0.4;
+		opacity: 0.32;
+	}
+	/* Subtle dark veil so foreground text reads against any hero color. */
+	.hero::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.78) 100%);
+		pointer-events: none;
 	}
 
 	main {
@@ -217,22 +299,82 @@
 	}
 	h1 {
 		margin: 0 0 8px;
-		font-size: 2.4rem;
+		font-size: 2.6rem;
 		letter-spacing: -0.02em;
+		color: #fff;
 	}
 	.tagline {
 		margin: 0 0 12px;
-		color: #aaa;
-		font-size: 1rem;
+		color: #ddd;
+		font-size: 1.05rem;
 	}
 	.hint {
-		margin: 0;
-		color: #666;
-		font-size: 0.85rem;
+		margin: 0 0 18px;
+		color: #aaa;
+		font-size: 0.88rem;
 	}
 	.hint em {
 		color: #6cf;
 		font-style: normal;
+	}
+	.header-links {
+		display: flex;
+		gap: 10px;
+		justify-content: center;
+		flex-wrap: wrap;
+		font-size: 0.88rem;
+	}
+	.header-links a {
+		color: #cce6ff;
+		text-decoration: none;
+		border-bottom: 1px dotted rgba(204, 230, 255, 0.4);
+	}
+	.header-links a:hover {
+		color: #fff;
+		border-bottom-color: #fff;
+	}
+	.header-links span {
+		color: #555;
+	}
+
+	.get-started {
+		background: rgba(20, 20, 22, 0.85);
+		border: 1px solid #2a2a2e;
+		border-radius: 12px;
+		padding: 22px 26px;
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+	}
+	.get-started h2 {
+		margin: 0 0 4px;
+		font-size: 1.05rem;
+		color: #fff;
+		letter-spacing: -0.01em;
+	}
+	.code-block {
+		background: #0d0d10;
+		border: 1px solid #1f1f24;
+		border-radius: 8px;
+		padding: 12px 14px;
+		margin: 0;
+		overflow-x: auto;
+		font-size: 0.82rem;
+		line-height: 1.55;
+		color: #d6e8ff;
+		font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+	}
+	.get-started .caption {
+		margin: 0;
+		color: #999;
+		font-size: 0.83rem;
+		line-height: 1.5;
+	}
+	.get-started code {
+		background: #1a1a1e;
+		padding: 1px 6px;
+		border-radius: 4px;
+		font-size: 0.78rem;
 	}
 
 	.grid {
@@ -267,6 +409,11 @@
 		gap: 14px;
 	}
 
+	.playground-section {
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
+	}
 	.playground {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) 280px;
@@ -285,14 +432,44 @@
 		.playground {
 			grid-template-columns: 1fr;
 		}
+		.playground-canvas {
+			min-height: 320px;
+		}
 	}
 
 	footer {
 		text-align: center;
-		color: #555;
-		font-size: 0.8rem;
+		color: #888;
+		font-size: 0.85rem;
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		padding-top: 24px;
+		border-top: 1px solid #1c1c1f;
 	}
-	footer a {
+	.footer-links {
+		display: flex;
+		gap: 10px;
+		justify-content: center;
+		flex-wrap: wrap;
+	}
+	.footer-links a {
+		color: #cce6ff;
+		text-decoration: none;
+	}
+	.footer-links a:hover {
+		color: #fff;
+		text-decoration: underline;
+	}
+	.footer-links span {
+		color: #444;
+	}
+	.credit {
+		margin: 0;
+		color: #666;
+		font-size: 0.78rem;
+	}
+	.credit a {
 		color: #888;
 	}
 </style>

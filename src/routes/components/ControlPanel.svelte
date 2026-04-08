@@ -1,20 +1,40 @@
 <script lang="ts">
+	// Engine defaults — kept in sync with FluidEngine.DEFAULTS. Used by both
+	// the $bindable initializers below and the "Reset to defaults" button.
+	const D = {
+		curl: 30,
+		splatRadius: 0.25,
+		splatForce: 6000,
+		densityDissipation: 1,
+		velocityDissipation: 0.2,
+		pressure: 0.8,
+		bloomIntensity: 0.8,
+		sunraysWeight: 1,
+		shading: true,
+		bloom: true,
+		sunrays: true,
+		colorful: true,
+		paused: false,
+		dyeResolution: 1024,
+		simResolution: 128
+	} as const;
+
 	let {
-		curl = $bindable(30),
-		splatRadius = $bindable(0.25),
-		splatForce = $bindable(6000),
-		densityDissipation = $bindable(1),
-		velocityDissipation = $bindable(0.2),
-		pressure = $bindable(0.8),
-		bloomIntensity = $bindable(0.8),
-		sunraysWeight = $bindable(1),
-		shading = $bindable(true),
-		bloom = $bindable(true),
-		sunrays = $bindable(true),
-		colorful = $bindable(true),
-		paused = $bindable(false),
-		dyeResolution = $bindable(1024),
-		simResolution = $bindable(128),
+		curl = $bindable(D.curl),
+		splatRadius = $bindable(D.splatRadius),
+		splatForce = $bindable(D.splatForce),
+		densityDissipation = $bindable(D.densityDissipation),
+		velocityDissipation = $bindable(D.velocityDissipation),
+		pressure = $bindable(D.pressure),
+		bloomIntensity = $bindable(D.bloomIntensity),
+		sunraysWeight = $bindable(D.sunraysWeight),
+		shading = $bindable(D.shading),
+		bloom = $bindable(D.bloom),
+		sunrays = $bindable(D.sunrays),
+		colorful = $bindable(D.colorful),
+		paused = $bindable(D.paused),
+		dyeResolution = $bindable(D.dyeResolution),
+		simResolution = $bindable(D.simResolution),
 		onRandomSplats
 	}: {
 		curl?: number;
@@ -34,6 +54,75 @@
 		simResolution?: number;
 		onRandomSplats?: () => void;
 	} = $props();
+
+	let copyState = $state<'idle' | 'copied' | 'error'>('idle');
+	let copyTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function reset() {
+		curl = D.curl;
+		splatRadius = D.splatRadius;
+		splatForce = D.splatForce;
+		densityDissipation = D.densityDissipation;
+		velocityDissipation = D.velocityDissipation;
+		pressure = D.pressure;
+		bloomIntensity = D.bloomIntensity;
+		sunraysWeight = D.sunraysWeight;
+		shading = D.shading;
+		bloom = D.bloom;
+		sunrays = D.sunrays;
+		colorful = D.colorful;
+		paused = D.paused;
+		dyeResolution = D.dyeResolution;
+		simResolution = D.simResolution;
+	}
+
+	/**
+	 * Generate a `<Fluid ... />` snippet that captures only the props
+	 * which differ from the engine defaults. Numeric props are formatted
+	 * with the same precision shown in the slider readouts.
+	 */
+	function buildSnippet(): string {
+		const lines: string[] = [];
+		const fmt = (key: keyof typeof D, value: number | boolean) => {
+			if (value === D[key]) return;
+			if (typeof value === 'boolean') {
+				lines.push(value ? `  ${key}` : `  ${key}={false}`);
+			} else if (Number.isInteger(value)) {
+				lines.push(`  ${key}={${value}}`);
+			} else {
+				lines.push(`  ${key}={${Number(value.toFixed(3))}}`);
+			}
+		};
+		fmt('curl', curl);
+		fmt('splatRadius', splatRadius);
+		fmt('splatForce', splatForce);
+		fmt('densityDissipation', densityDissipation);
+		fmt('velocityDissipation', velocityDissipation);
+		fmt('pressure', pressure);
+		fmt('bloomIntensity', bloomIntensity);
+		fmt('sunraysWeight', sunraysWeight);
+		fmt('shading', shading);
+		fmt('bloom', bloom);
+		fmt('sunrays', sunrays);
+		fmt('colorful', colorful);
+		fmt('paused', paused);
+		fmt('dyeResolution', dyeResolution);
+		fmt('simResolution', simResolution);
+		if (lines.length === 0) return '<Fluid />';
+		return ['<Fluid', ...lines, '/>'].join('\n');
+	}
+
+	async function copySnippet() {
+		const snippet = buildSnippet();
+		try {
+			await navigator.clipboard.writeText(snippet);
+			copyState = 'copied';
+		} catch {
+			copyState = 'error';
+		}
+		clearTimeout(copyTimer);
+		copyTimer = setTimeout(() => (copyState = 'idle'), 1800);
+	}
 </script>
 
 <aside class="panel">
@@ -106,7 +195,18 @@
 		</label>
 	</section>
 
-	<button type="button" onclick={() => onRandomSplats?.()}>Random Splats</button>
+	<div class="actions">
+		<button type="button" onclick={() => onRandomSplats?.()}>Random Splats</button>
+		<button type="button" class="secondary" onclick={reset}>Reset</button>
+		<button
+			type="button"
+			class="secondary"
+			onclick={copySnippet}
+			aria-live="polite"
+		>
+			{#if copyState === 'copied'}Copied!{:else if copyState === 'error'}Copy failed{:else}Copy as code{/if}
+		</button>
+	</div>
 </aside>
 
 <style>
@@ -167,6 +267,11 @@
 		border-radius: 6px;
 		padding: 4px 8px;
 	}
+	.actions {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
 	button {
 		background: #1c2a3a;
 		color: #cfe;
@@ -180,5 +285,14 @@
 	}
 	button:hover {
 		background: #243a52;
+	}
+	button.secondary {
+		background: #1a1a1c;
+		border-color: #2c2c30;
+		color: #bbb;
+	}
+	button.secondary:hover {
+		background: #232326;
+		color: #fff;
 	}
 </style>
