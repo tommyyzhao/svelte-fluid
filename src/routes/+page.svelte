@@ -95,7 +95,7 @@
 			</p>
 		</header>
 		<div class="grid">
-			<Card title="Lava Lamp" description="Slow warm blobs rising in a dim purple ambience.">
+			<Card title="Lava Lamp" description="Slow, lazy warm blobs drifting on a warm-silver background.">
 				<LavaLamp seed={101} />
 			</Card>
 			<Card title="Plasma" description="Persistent full-spectrum energy field.">
