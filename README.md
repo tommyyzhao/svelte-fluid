@@ -1,6 +1,11 @@
+[![CI](https://github.com/tommyyzhao/svelte-fluid/actions/workflows/ci.yml/badge.svg)](https://github.com/tommyyzhao/svelte-fluid/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 # svelte-fluid
 
 WebGL fluid simulation as a Svelte 5 component library.
+
+**Live demo:** [https://tommyyzhao.github.io/svelte-fluid/](https://tommyyzhao.github.io/svelte-fluid/)
 
 A modern, multi-instance, deterministic-resize port of Pavel Dobryakov's
 [WebGL-Fluid-Simulation](https://github.com/PavelDoGreat/WebGL-Fluid-Simulation)
@@ -63,20 +68,24 @@ size via `ResizeObserver`.
 
 ```svelte
 <script lang="ts">
-  import { Fluid } from 'svelte-fluid';
+  import { Fluid, type FluidHandle } from 'svelte-fluid';
 
-  type Ref = {
-    handle: {
-      splat(x: number, y: number, dx: number, dy: number, color: { r: number; g: number; b: number }): void;
-      randomSplats(count: number): void;
-    };
-  };
-  let ref = $state<Ref | undefined>();
+  let ref = $state<{ handle: FluidHandle } | undefined>();
 </script>
 
 <button onclick={() => ref?.handle.randomSplats(10)}>Splat!</button>
 <Fluid bind:this={ref} />
 ```
+
+## Browser compatibility
+
+- **WebGL 1** (with linear filtering) and **WebGL 2** both work
+- Tested on Chrome 120+, Firefox 121+, Safari 17+
+- **Mobile:** works on iOS Safari 16+ and Chrome Android, with `lazy={true}`
+  strongly recommended on dense pages
+- **Linear filtering fallback:** when `OES_texture_float_linear` is unavailable,
+  the engine drops shading, bloom, sunrays and clamps `dyeResolution` ≤ 512 —
+  see `FluidEngine.initContext()`
 
 ## Props
 
