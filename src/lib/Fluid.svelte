@@ -37,9 +37,10 @@
 		 * `<Fluid />` instances. Browsers cap WebGL contexts at 8–16 per
 		 * tab, so dense layouts hit the ceiling otherwise.
 		 *
-		 * The IntersectionObserver uses `rootMargin: 200px` so the engine
-		 * comes alive slightly before it would be visible, hiding the
-		 * recompile pause behind the user's scroll momentum.
+		 * The IntersectionObserver uses `rootMargin: 50px` so the engine
+		 * comes alive shortly before it would be visible, hiding the
+		 * recompile pause behind the user's scroll momentum while
+		 * minimizing simultaneous context creation.
 		 */
 		lazy?: boolean;
 	}
@@ -218,7 +219,7 @@
 						reconcile();
 					}
 				},
-				{ rootMargin: '200px' }
+				{ rootMargin: '50px' }
 			);
 			io.observe(container);
 		}

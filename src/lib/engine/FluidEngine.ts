@@ -389,7 +389,10 @@ export class FluidEngine implements FluidHandle {
 		disposeFBO(gl, this.sunrays);
 		disposeFBO(gl, this.sunraysTemp);
 
-		if (this.ditheringTexture) gl.deleteTexture(this.ditheringTexture.texture);
+		if (this.ditheringTexture) {
+			this.ditheringTexture.dispose();
+			gl.deleteTexture(this.ditheringTexture.texture);
+		}
 
 		// Programs
 		const programs: ProgramWrap[] = [
