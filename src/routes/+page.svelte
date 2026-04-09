@@ -52,6 +52,7 @@
 <!-- Background hero instance — fills the viewport behind everything else. -->
 <div class="hero" aria-hidden="true">
 	<Fluid
+		lazy
 		curl={20}
 		bloomIntensity={1.2}
 		initialSplatCount={18}

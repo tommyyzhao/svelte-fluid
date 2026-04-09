@@ -18,6 +18,8 @@ export interface DitheringTexture {
 	texture: WebGLTexture;
 	width: number;
 	height: number;
+	/** Mark the texture as disposed to prevent async callback from using dead context. */
+	dispose(): void;
 	attach(id: number): number;
 }
 
@@ -49,10 +51,15 @@ export function createDitheringTexture(gl: GL): DitheringTexture {
 		new Uint8Array([255, 255, 255])
 	);
 
+	let disposed = false;
+
 	const obj: DitheringTexture = {
 		texture,
 		width: 1,
 		height: 1,
+		dispose() {
+			disposed = true;
+		},
 		attach(id: number) {
 			gl.activeTexture(gl.TEXTURE0 + id);
 			gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -62,6 +69,9 @@ export function createDitheringTexture(gl: GL): DitheringTexture {
 
 	const image = new Image();
 	image.onload = () => {
+		// If the engine was disposed before the image loaded, skip the upload.
+		// The context may already be lost and using it would cause errors.
+		if (disposed) return;
 		obj.width = image.width;
 		obj.height = image.height;
 		gl.bindTexture(gl.TEXTURE_2D, texture);
