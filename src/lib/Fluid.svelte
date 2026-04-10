@@ -89,6 +89,13 @@
 		initialSplatCountMax,
 		pointerInput = true,
 		presetSplats,
+		randomSplatRate,
+		randomSplatCount,
+		randomSplatColor,
+		randomSplatDx,
+		randomSplatDy,
+		randomSplatSpawnY,
+		containerShape,
 		lazy = false,
 		...rest
 	}: FluidProps = $props();
@@ -151,6 +158,13 @@
 			initialSplatCount,
 			initialSplatCountMin,
 			initialSplatCountMax,
+			randomSplatRate,
+			randomSplatCount,
+			randomSplatColor,
+			randomSplatDx,
+			randomSplatDy,
+			randomSplatSpawnY,
+			containerShape,
 			pointerInput,
 			seed: stableSeed,
 			presetSplats: stablePresetSplats

@@ -46,6 +46,23 @@ export interface PresetSplat {
 }
 
 /**
+ * Describes the shape of a fluid container. The simulation physically
+ * confines fluid within the shape — velocity has zero normal component
+ * at the wall and dye cannot escape — rather than merely clipping the
+ * rendered output.
+ *
+ * Coordinates follow the same convention as splat positions:
+ * `cx`/`cy` ∈ [0, 1] (left→right, bottom→top). `radius` is normalised
+ * by canvas height: `radius: 0.45` gives a physical radius of 45% of
+ * the canvas height, which fits comfortably inside landscape canvases.
+ *
+ * Additional variants can be added to this union in future ADRs without
+ * changing any physics shader — only `applyMaskShader` needs updating.
+ */
+export type ContainerShape =
+	| { type: 'circle'; cx: number; cy: number; radius: number };
+
+/**
  * Public, camelCase fluid configuration. Every field is optional;
  * the engine fills in defaults at construction time.
  */
@@ -149,6 +166,42 @@ export interface FluidConfig {
 	 * random splats entirely. See {@link PresetSplat}.
 	 */
 	presetSplats?: ReadonlyArray<PresetSplat>;
+	/**
+	 * Continuous random splat generation. Splats per second; 0 = disabled.
+	 * Default 0. Bucket A (hot-updatable).
+	 */
+	randomSplatRate?: number;
+	/** Number of splats per continuous burst. Default 1. Bucket A. */
+	randomSplatCount?: number;
+	/**
+	 * Fixed color for continuous splats. Null = random via generateColor().
+	 * Components are in 0–1 linear range; the engine applies a 10× HDR
+	 * multiplier before injecting. Default null. Bucket A.
+	 */
+	randomSplatColor?: RGB | null;
+	/** X velocity for continuous splats (raw, NOT scaled by splatForce). Default 0. Bucket A. */
+	randomSplatDx?: number;
+	/** Y velocity for continuous splats (raw, NOT scaled by splatForce). Negative = downward in DOM. Default 0. Bucket A. */
+	randomSplatDy?: number;
+	/**
+	 * Vertical spawn center for continuous splats, in 0–1 (bottom-to-top).
+	 * Default 0.5. The engine adds ±0.05 jitter around this value.
+	 * Bucket A.
+	 */
+	randomSplatSpawnY?: number;
+	/**
+	 * Confine the fluid to a geometric shape. The simulation physically
+	 * enforces the boundary — velocity is zeroed outside after every physics
+	 * pass, and dye is masked after advection. `null` (default) = full
+	 * rectangle with no masking.
+	 *
+	 * Changing this field at runtime triggers a mask-FBO rebuild (Bucket C)
+	 * and a display-shader keyword recompile (Bucket B). Both are cheap
+	 * (~one GPU blit + ~1 ms shader compile).
+	 *
+	 * See {@link ContainerShape} for coordinate conventions.
+	 */
+	containerShape?: ContainerShape | null;
 }
 
 /**
@@ -186,6 +239,13 @@ export interface ResolvedConfig {
 	INITIAL_SPLAT_MAX: number;
 	POINTER_INPUT: boolean;
 	SEED: number;
+	RANDOM_SPLAT_RATE: number;
+	RANDOM_SPLAT_COUNT: number;
+	RANDOM_SPLAT_COLOR: RGB | null;
+	RANDOM_SPLAT_DX: number;
+	RANDOM_SPLAT_DY: number;
+	RANDOM_SPLAT_SPAWN_Y: number;
+	CONTAINER_SHAPE: ContainerShape | null;
 }
 
 /** Pixel format pair returned by `getSupportedFormat`. */

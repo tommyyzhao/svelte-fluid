@@ -132,6 +132,9 @@ export const displayShaderSource = `
     uniform sampler2D uDithering;
     uniform vec2 ditherScale;
     uniform vec2 texelSize;
+    uniform vec2 uContainerCircle;
+    uniform float uContainerRadius;
+    uniform float uContainerAspect;
 
     vec3 linearToGamma (vec3 color) {
         color = max(color, vec3(0));
@@ -178,6 +181,17 @@ export const displayShaderSource = `
     #endif
 
         float a = max(c.r, max(c.g, c.b));
+
+    #ifdef CONTAINER_MASK
+        vec2 cp = vec2((vUv.x - uContainerCircle.x) * uContainerAspect,
+                       vUv.y - uContainerCircle.y);
+        float cmask = 1.0 - smoothstep(uContainerRadius - 0.005,
+                                        uContainerRadius + 0.005,
+                                        length(cp));
+        c *= cmask;
+        a *= cmask;
+    #endif
+
         gl_FragColor = vec4(c, a);
     }
 `;
@@ -479,5 +493,34 @@ export const gradientSubtractShader = `
         vec2 velocity = texture2D(uVelocity, vUv).xy;
         velocity.xy -= vec2(R - L, T - B);
         gl_FragColor = vec4(velocity, 0.0, 1.0);
+    }
+`;
+
+/**
+ * Multiplies a target FBO by an inline circle SDF mask. Used as a
+ * ping-pong blit after each velocity and dye write to zero out cells
+ * outside the container shape. The SDF is computed per-fragment from
+ * uniforms — no separate mask texture is needed.
+ *
+ * `uAspect` = canvas width / canvas height ensures the shape is
+ * geometrically round on screen regardless of FBO dimensions.
+ */
+export const applyMaskShader = `
+    precision highp float;
+    precision highp sampler2D;
+
+    varying vec2 vUv;
+    uniform sampler2D uTarget;
+    uniform float uCx;
+    uniform float uCy;
+    uniform float uRadius;
+    uniform float uAspect;
+
+    void main () {
+        vec4 val = texture2D(uTarget, vUv);
+        vec2 p = vec2((vUv.x - uCx) * uAspect, vUv.y - uCy);
+        float d = length(p);
+        float inside = 1.0 - smoothstep(uRadius - 0.005, uRadius + 0.005, d);
+        gl_FragColor = val * inside;
     }
 `;
