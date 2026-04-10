@@ -5,7 +5,7 @@
 
 ## Context
 
-The persistent-canvas presets (LavaLamp, Plasma, Galaxy) have a hard
+KM|The persistent-canvas presets (LavaLamp, Plasma) have a hard
 constraint: in steady state, dye must never fade. Any
 `densityDissipation > 0` is exponential decay with a long half-life,
 so the canvas eventually drains to black — see the "Steady-state
@@ -72,7 +72,7 @@ so existing consumers see *zero* behavior change.
 
 **Positive:**
 - The "bright AND persistent" combination is now achievable. The three
-  presets that need it (LavaLamp, Plasma, Galaxy) each use a brief
+  BP|  presets that need it (LavaLamp, Plasma) each use a brief
   burn-in (0.25–0.3 initial, 1.0s duration) that bleeds 12–15% of the
   initial dye, then locks at zero dissipation forever.
 - The math is *predictable*. Per-frame survival is

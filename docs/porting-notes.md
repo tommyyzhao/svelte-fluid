@@ -211,8 +211,8 @@ that the single-page demo didn't have.
   [`0006`](./decisions/0006-imperative-api-via-bind-this.md).
 - **`pointerInput: false`** to suppress the mouse/touch listeners
   entirely for non-interactive backdrops.
-- **The six preset components** (`LavaLamp`, `Plasma`, `InkInWater`,
-  `FrozenSwirl`, `Aurora`, `Galaxy`) in `src/lib/presets/`. Each is
+QS|- **The five preset components** (`LavaLamp`, `Plasma`, `InkInWater`,
+  NR|  `FrozenSwirl`, `Aurora`) in `src/lib/presets/`. Each is
   ~50 LOC of declarative `<Fluid />` props plus a `presetSplats[]`
   literal. See `docs/learnings/presets.md` for the tuning rationale.
 

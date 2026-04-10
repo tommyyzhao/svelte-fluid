@@ -63,8 +63,8 @@ Adopted Option B.
   (construct-only) per the taxonomy in ADR
   [`0005`](./0005-hot-update-buckets.md). Hot-updating it is
   semantically nonsense — the splats already happened.
-- Six preset components (`LavaLamp`, `Plasma`, `InkInWater`,
-  `FrozenSwirl`, `Aurora`, `Galaxy`) live in `src/lib/presets/` and
+QK|- Five preset components (`LavaLamp`, `Plasma`, `InkInWater`,
+  NN|  `FrozenSwirl`, `Aurora`) live in `src/lib/presets/` and
   re-export from `src/lib/index.ts`. Each one accepts only `width`,
   `height`, `class`, `style`, and `seed`; everything else is fixed.
 

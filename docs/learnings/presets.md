@@ -133,7 +133,7 @@ Either:
 - Reduce the initial splat count and/or `splatRadius` so the opening
   frame isn't already in the runaway regime.
 
-The Plasma and Galaxy presets use all four mitigations after I shipped
+WX|The Plasma preset uses all four mitigations after I shipped
 v0 with `densityDissipation: 0` and watched both whiteout within ~3
 seconds.
 
@@ -197,7 +197,7 @@ tracks the dye texture exactly, which (with `densityDissipation: 0`)
 is conserved. Use bright splat colors plus 3D shading for visual
 punch instead of post-process glow.
 
-The LavaLamp and Galaxy presets use `bloom: false, sunrays: false`
+SS|The LavaLamp preset uses `bloom: false, sunrays: false`
 for this reason — they want a perfectly stable steady-state with
 permanent dye. Plasma is the deliberate exception: it keeps bloom
 off but holds **sunrays on at a low weight (0.35, ~3.5× peak gain)**
@@ -362,3 +362,97 @@ splatRadius: 0.22, splatForce: 2200` (discrete blobs sway indefinitely).
 simulation, not a UI speed slider. If you want gentler motion, lower
 the *force*. If you want longer-lasting motion, lower the *dissipation*.
 The two knobs are independent and the names make it easy to confuse them.
+
+## Continuous random splats: `randomSplatRate` and friends
+
+**What it is:** Six new config fields (`randomSplatRate`, `randomSplatCount`, `randomSplatColor`, `randomSplatDx`, `randomSplatDy`, `randomSplatSpawnY`) that make the engine emit splats continuously at a configurable rate.
+
+**Design decisions worth preserving:**
+
+- The timer accumulates delta time in `accumulateRandomSplatTimer()`, called from `update()` before `step()`. This keeps timing in the engine's single RAF loop rather than splitting it across a Svelte `$effect` + `setInterval`.
+- Accumulation happens even while paused (timer keeps running). The splats are still queued via `splatStack` and consumed by `applyInputs()` on the next unpaused frame. This means re-enabling after pause doesn't produce a burst — the timer ran ahead but `applyInputs()` only fires when `!PAUSED`.
+- When `randomSplatColor` is set, the same 10× HDR multiplier applied to `generateColor` output is applied to the fixed color. See the HDR splat colors entry above for why.
+- Velocity fields (`randomSplatDx`, `randomSplatDy`) are passed directly to `splat()` raw — they are NOT scaled by `splatForce`. This is consistent with `PresetSplat.dx/dy` semantics.
+- All six fields are Bucket A: hot-updatable without teardown. Setting `randomSplatRate = 0` stops generation and resets the timer.
+
+**Why this matters:** Previously, continuous effects required imperative calls to `handle.randomSplats()`. Now presets like `InkInWater` can declaratively specify a "drops in water" look. The `randomSplatColor` + `randomSplatDx/Dy` fields allow fixed color+velocity matching the initial preset splats, rather than the fully-random `multipleSplats()` behavior.
+
+## Galaxy preset was removed
+
+The `Galaxy` preset was removed from the library. Its visual effect (spiral arms with bloom-lit core) was too similar to `Plasma` and didn't offer a distinct enough aesthetic. The preset component file (`Galaxy.svelte`), its export from `index.ts`, its demo card, and all documentation references were deleted. The preset count went from six to five.
+
+`CircularFluid` was subsequently added (see below), returning the count to six.
+
+## Shaped containers: inline SDF mask penalisation
+
+`CircularFluid` is the first preset to use the `containerShape` prop, which enforces a physical boundary via mask penalisation rather than naive alpha clipping.
+
+**How it works:**
+
+After every velocity and dye write in `step()`, the engine blits the target DoubleFBO through `applyMaskShader`, which multiplies each texel by a circle SDF computed inline from uniforms. Cells outside the domain receive 0.0; cells inside receive 1.0 (with a thin smoothstep feather at the boundary). Because the velocity is zeroed outside the domain, the divergence there is also zero. The pressure Jacobi solver sees nothing to correct, so it produces correct no-penetration boundary pressure implicitly — without any physics shader changes.
+
+The SDF is aspect-ratio-corrected inside the shader:
+
+```glsl
+vec2 p = vec2((vUv.x - uCx) * uAspect, vUv.y - uCy);
+float inside = 1.0 - smoothstep(uRadius - 0.005, uRadius + 0.005, length(p));
+gl_FragColor = val * inside;
+```
+
+where `uAspect = drawingBufferWidth / drawingBufferHeight` and `uRadius` is normalised by canvas height. This makes the circle geometrically round on any aspect ratio.
+
+The display shader also clips outside the circle analytically via `#ifdef CONTAINER_MASK` so pixels outside show only `backColor` with zero alpha.
+
+**Hot-update bucket:** `containerShape` is Bucket B only (keyword recompile). No FBO rebuild needed because the mask is computed inline from uniforms.
+
+**`ContainerShape` type:**
+
+```typescript
+export type ContainerShape =
+  | { type: 'circle'; cx: number; cy: number; radius: number };
+```
+
+Extensible: add new union members for ellipse, rounded rect, or arbitrary SDF without touching any physics shader — only `applyMaskShader` and the display `CONTAINER_MASK` block need new SDF branches.
+
+**Known limitation:** The mask boundary resolution is the sim resolution (128px). There is an inherent one-texel diffuse zone at the edge — roughly 1/128th of canvas height. This is visible under magnification but acceptable for the intended preset use cases.
+
+## GL program rebind after inserted blit passes (CRITICAL)
+
+**Rule:** When inserting a new blit pass (like `applyMask`) between two existing passes that share a GL program, the shared program must be explicitly re-bound after the inserted pass.
+
+**What happened:** The velocity-advection and dye-advection passes share `advectionProgram`. The original code bound it once for velocity advection and relied on it staying bound for dye advection. Inserting `applyMask(velocity)` between them switched the active program to `applyMaskProgram`. The dye advection then:
+
+1. Set uniforms for `advectionProgram` → `INVALID_OPERATION` (wrong active program)
+2. Called `blit(dye.write)` → executed the **mask shader** instead of the **advection shader**
+3. The mask shader's `uTarget` was still bound to velocity from the prior mask call → wrote velocity XY as RGB into the dye buffer
+4. Result: flat red/yellow/green/black (velocity components as color)
+
+**Diagnosis was difficult** because:
+- WebGL `INVALID_OPERATION` errors don't throw — they set a flag checked by `gl.getError()`
+- The symptom (flat primary colors) suggested HDR saturation, not a program-binding bug
+- Static analysis of 1000+ lines of GL calls couldn't spot the implicit program-reuse assumption
+- The fix was ultimately found by adding `gl.getError()` logging inside `applyMask`
+
+**The fix:** One line — `this.advectionProgram.bind()` after the velocity mask call, before the dye advection uniforms.
+
+**General pattern to watch for in `step()`:** Any pair of consecutive blits that reuse a program without an explicit `.bind()` between them. Currently the only such pair is velocity→dye advection. If future features insert passes between ANY two blits in `step()`, check whether the subsequent blit assumes a program is still bound.
+
+## Preset splat positioning for circular containers
+
+Jets must be positioned in UV space accounting for the canvas aspect ratio. The circle's UV-space horizontal extent is `radius / aspect`, which shrinks on wider canvases. For CircularFluid (radius 0.45):
+
+- Physical distance from center: ~0.35 (78% of radius, inside with margin)
+- UV positions computed assuming aspect ~1.8 (16:9-ish)
+- Safe for aspect ratios up to ~2.3:1
+- On ultra-wide canvases, horizontal jets may land outside and get zeroed by the mask — acceptable
+
+## Dye concentration in confined containers
+
+The engine's random-splat path applies a **10× HDR multiplier** to all random splat colors (both `generateColor()` and `randomSplatColor`). On a full canvas, this creates vivid bloom highlights. In a confined container (~35% of canvas area), the same energy concentrates into fewer pixels, quickly oversaturating the dye.
+
+Mitigations for `CircularFluid`:
+- Preset splat colors use moderate values (0.5–1.1) instead of Plasma's HDR (1.5–2.2)
+- `densityDissipation: 0.4` (vs Plasma's 0.1) — faster fade prevents accumulation
+- `bloomThreshold: 0.6` — lower threshold lets bloom activate on moderate values
+
+A more general solution would scale the 10× multiplier by container area, but this isn't implemented yet.
