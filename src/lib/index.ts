@@ -15,7 +15,8 @@ export type {
 	RGB,
 	FBO,
 	DoubleFBO,
-	ExtInfo
+	ExtInfo,
+	ContainerShape
 } from './engine/types.js';
 export { mulberry32, randomSeed, generateColor, HSVtoRGB, normalizeColor, type Rng } from './engine/rng.js';
 
@@ -26,4 +27,4 @@ export { default as Plasma, type PlasmaProps } from './presets/Plasma.svelte';
 export { default as InkInWater, type InkInWaterProps } from './presets/InkInWater.svelte';
 export { default as FrozenSwirl, type FrozenSwirlProps } from './presets/FrozenSwirl.svelte';
 export { default as Aurora, type AuroraProps } from './presets/Aurora.svelte';
-export { default as Galaxy, type GalaxyProps } from './presets/Galaxy.svelte';
+export { default as CircularFluid, type CircularFluidProps } from './presets/CircularFluid.svelte';

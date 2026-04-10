@@ -86,7 +86,12 @@
 	shading={false}
 	colorful={false}
 	bloom={false}
-	sunrays={false}
+sunrays={false}
+	randomSplatRate={0.5}
+	randomSplatColor={{ r: 0.05, g: 0.09, b: 0.53 }}
+	randomSplatDx={0}
+	randomSplatDy={-320}
+	randomSplatSpawnY={0.88}
 	initialSplatCount={0}
 	backColor={{ r: 240, g: 240, b: 245 }}
 	presetSplats={PRESET_SPLATS}

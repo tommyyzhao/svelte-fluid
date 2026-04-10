@@ -1,9 +1,9 @@
 <script lang="ts">
 	import {
 		Aurora,
+		CircularFluid,
 		Fluid,
 		FrozenSwirl,
-		Galaxy,
 		InkInWater,
 		LavaLamp,
 		Plasma
@@ -181,8 +181,8 @@
 			<Card title="Aurora" description="Northern-lights ribbons drifting laterally.">
 				<Aurora seed={505} lazy aria-label="Aurora preset: northern lights ribbons" />
 			</Card>
-			<Card title="Galaxy" description="Spiral arms with bloom-lit core.">
-				<Galaxy seed={606} lazy aria-label="Galaxy preset: spiral arms with bloom core" />
+			<Card title="Circular Fluid" description="Plasma physically confined inside a circular boundary — the simulation enforces the wall.">
+				<CircularFluid seed={606} lazy aria-label="Circular Fluid preset: plasma confined inside a circle" />
 			</Card>
 		</div>
 	</section>

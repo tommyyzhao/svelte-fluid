@@ -99,9 +99,15 @@ const DEFAULTS: ResolvedConfig = {
 	INITIAL_SPLAT_MIN: 5,
 	INITIAL_SPLAT_MAX: 25,
 	POINTER_INPUT: true,
-	SEED: 0
+	SEED: 0,
+	RANDOM_SPLAT_RATE: 0,
+	RANDOM_SPLAT_COUNT: 1,
+	RANDOM_SPLAT_COLOR: null,
+	RANDOM_SPLAT_DX: 0,
+	RANDOM_SPLAT_DY: 0,
+	RANDOM_SPLAT_SPAWN_Y: 0.5,
+	CONTAINER_SHAPE: null
 };
-
 function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): ResolvedConfig {
 	const out: ResolvedConfig = { ...base };
 	if (!input) return out;
@@ -148,7 +154,28 @@ function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): Re
 	}
 	if (input.pointerInput !== undefined) out.POINTER_INPUT = input.pointerInput;
 	if (input.seed !== undefined) out.SEED = input.seed >>> 0;
+	if (input.randomSplatRate !== undefined) out.RANDOM_SPLAT_RATE = input.randomSplatRate;
+	if (input.randomSplatCount !== undefined) out.RANDOM_SPLAT_COUNT = input.randomSplatCount;
+	if (input.randomSplatColor !== undefined) out.RANDOM_SPLAT_COLOR = input.randomSplatColor;
+	if (input.randomSplatDx !== undefined) out.RANDOM_SPLAT_DX = input.randomSplatDx;
+	if (input.randomSplatDy !== undefined) out.RANDOM_SPLAT_DY = input.randomSplatDy;
+	if (input.randomSplatSpawnY !== undefined) out.RANDOM_SPLAT_SPAWN_Y = Math.max(0, Math.min(1, input.randomSplatSpawnY));
+	if (input.containerShape !== undefined) out.CONTAINER_SHAPE = input.containerShape ?? null;
 	return out;
+}
+
+/** Deep equality for ContainerShape values used in the setConfig diff. */
+function containerShapeEqual(
+	a: ResolvedConfig['CONTAINER_SHAPE'],
+	b: ResolvedConfig['CONTAINER_SHAPE']
+): boolean {
+	if (a === b) return true;
+	if (a == null || b == null) return false;
+	if (a.type !== b.type) return false;
+	if (a.type === 'circle' && b.type === 'circle') {
+		return a.cx === b.cx && a.cy === b.cy && a.radius === b.radius;
+	}
+	return false;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -197,6 +224,7 @@ export class FluidEngine implements FluidHandle {
 	private pressureProgram!: ProgramWrap;
 	private gradientSubtractProgram!: ProgramWrap;
 	private displayMaterial!: Material;
+	private applyMaskProgram!: ProgramWrap;
 
 	// --- Framebuffers ---
 	private dye!: DoubleFBO;
@@ -216,6 +244,7 @@ export class FluidEngine implements FluidHandle {
 	private lastUpdateTime = 0;
 	private engineStartTime = 0;
 	private colorUpdateTimer = 0;
+	private randomSplatTimer = 0;
 	private rafId = 0;
 	private disposed = false;
 	private pointerListenersInstalled = false;
@@ -342,6 +371,7 @@ export class FluidEngine implements FluidHandle {
 			a.BLOOM_RESOLUTION !== b.BLOOM_RESOLUTION || a.BLOOM_ITERATIONS !== b.BLOOM_ITERATIONS;
 		const sunraysChanged = a.SUNRAYS_RESOLUTION !== b.SUNRAYS_RESOLUTION;
 		const kwChanged = a.SHADING !== b.SHADING || a.BLOOM !== b.BLOOM || a.SUNRAYS !== b.SUNRAYS;
+		const shapeChanged = !containerShapeEqual(a.CONTAINER_SHAPE, b.CONTAINER_SHAPE);
 		const pointerInputChanged = a.POINTER_INPUT !== b.POINTER_INPUT;
 
 		this.config = b;
@@ -349,7 +379,7 @@ export class FluidEngine implements FluidHandle {
 		if (fbChanged) this.initFramebuffers();
 		if (bloomChanged) this.initBloomFramebuffers();
 		if (sunraysChanged) this.initSunraysFramebuffers();
-		if (kwChanged) this.updateKeywords();
+		if (kwChanged || shapeChanged) this.updateKeywords();
 		if (pointerInputChanged) {
 			if (b.POINTER_INPUT) {
 				this.installPointerListeners();
@@ -412,7 +442,8 @@ export class FluidEngine implements FluidHandle {
 			this.curlProgram,
 			this.vorticityProgram,
 			this.pressureProgram,
-			this.gradientSubtractProgram
+			this.gradientSubtractProgram,
+			this.applyMaskProgram
 		];
 		for (const p of programs) gl.deleteProgram(p.program);
 		this.displayMaterial.dispose();
@@ -476,7 +507,8 @@ export class FluidEngine implements FluidHandle {
 			curl: compileShader(gl, gl.FRAGMENT_SHADER, S.curlShader),
 			vorticity: compileShader(gl, gl.FRAGMENT_SHADER, S.vorticityShader),
 			pressure: compileShader(gl, gl.FRAGMENT_SHADER, S.pressureShader),
-			gradientSubtract: compileShader(gl, gl.FRAGMENT_SHADER, S.gradientSubtractShader)
+			gradientSubtract: compileShader(gl, gl.FRAGMENT_SHADER, S.gradientSubtractShader),
+			applyMask: compileShader(gl, gl.FRAGMENT_SHADER, S.applyMaskShader)
 		};
 
 		for (const f of Object.values(fragments)) this.fragmentShaders.push(f);
@@ -514,6 +546,7 @@ export class FluidEngine implements FluidHandle {
 		this.gradientSubtractProgram = makeProgram(gl, this.baseVertexShader, f.gradientSubtract);
 
 		this.displayMaterial = new Material(gl, this.baseVertexShader, S.displayShaderSource);
+		this.applyMaskProgram = makeProgram(gl, this.baseVertexShader, f.applyMask);
 	}
 
 	private initFramebuffers(): void {
@@ -677,11 +710,30 @@ export class FluidEngine implements FluidHandle {
 		);
 	}
 
+	/** Multiply a DoubleFBO's contents by the container shape SDF in place. */
+	private applyMask(target: DoubleFBO): void {
+		const shape = this.config.CONTAINER_SHAPE;
+		if (!shape || shape.type !== 'circle') return;
+		const gl = this.gl;
+		this.applyMaskProgram.bind();
+		gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
+		gl.uniform1f(this.applyMaskProgram.uniforms.uCx, shape.cx);
+		gl.uniform1f(this.applyMaskProgram.uniforms.uCy, shape.cy);
+		gl.uniform1f(this.applyMaskProgram.uniforms.uRadius, shape.radius);
+		gl.uniform1f(
+			this.applyMaskProgram.uniforms.uAspect,
+			gl.drawingBufferWidth / gl.drawingBufferHeight
+		);
+		this.blit(target.write);
+		target.swap();
+	}
+
 	private updateKeywords(): void {
 		const keywords: string[] = [];
 		if (this.config.SHADING) keywords.push('SHADING');
 		if (this.config.BLOOM) keywords.push('BLOOM');
 		if (this.config.SUNRAYS) keywords.push('SUNRAYS');
+		if (this.config.CONTAINER_SHAPE) keywords.push('CONTAINER_MASK');
 		this.displayMaterial.setKeywords(keywords);
 	}
 
@@ -694,6 +746,7 @@ export class FluidEngine implements FluidHandle {
 		const dt = this.calcDeltaTime();
 		this.updateColors(dt);
 		this.applyInputs();
+		this.accumulateRandomSplatTimer(dt);
 		if (!this.config.PAUSED) this.step(dt);
 		this.render(null);
 		this.rafId = requestAnimationFrame(this.tick);
@@ -730,6 +783,30 @@ export class FluidEngine implements FluidHandle {
 		}
 	}
 
+	private accumulateRandomSplatTimer(dt: number): void {
+		const rate = this.config.RANDOM_SPLAT_RATE;
+		if (rate <= 0) { this.randomSplatTimer = 0; return; }
+		this.randomSplatTimer += dt;
+		const interval = 1 / rate;
+		while (this.randomSplatTimer >= interval) {
+			this.randomSplatTimer -= interval;
+			for (let i = 0; i < this.config.RANDOM_SPLAT_COUNT; i++) {
+				let color: RGB;
+				if (this.config.RANDOM_SPLAT_COLOR) {
+					color = { ...this.config.RANDOM_SPLAT_COLOR };
+					color.r *= 10; color.g *= 10; color.b *= 10;
+				} else {
+					color = generateColor(this.rng);
+					color.r *= 10; color.g *= 10; color.b *= 10;
+				}
+				const x = this.rng();
+				const spawnY = this.config.RANDOM_SPLAT_SPAWN_Y;
+				const y = Math.max(0, Math.min(1, spawnY + (this.rng() - 0.5) * 0.1));
+				this.splat(x, y, this.config.RANDOM_SPLAT_DX, this.config.RANDOM_SPLAT_DY, color);
+			}
+		}
+	}
+
 	private step(dt: number): void {
 		const gl = this.gl;
 		gl.disable(gl.BLEND);
@@ -755,6 +832,7 @@ export class FluidEngine implements FluidHandle {
 		gl.uniform1f(this.vorticityProgram.uniforms.dt, dt);
 		this.blit(this.velocity.write);
 		this.velocity.swap();
+		if (this.config.CONTAINER_SHAPE) this.applyMask(this.velocity);
 
 		this.divergenceProgram.bind();
 		gl.uniform2f(
@@ -800,6 +878,7 @@ export class FluidEngine implements FluidHandle {
 		);
 		this.blit(this.velocity.write);
 		this.velocity.swap();
+		if (this.config.CONTAINER_SHAPE) this.applyMask(this.velocity);
 
 		this.advectionProgram.bind();
 		gl.uniform2f(
@@ -824,6 +903,11 @@ export class FluidEngine implements FluidHandle {
 		);
 		this.blit(this.velocity.write);
 		this.velocity.swap();
+		if (this.config.CONTAINER_SHAPE) this.applyMask(this.velocity);
+
+		// Re-bind advection program — applyMask switches the active GL
+		// program, and the dye advection below reuses advectionProgram.
+		if (this.config.CONTAINER_SHAPE) this.advectionProgram.bind();
 
 		if (!this.ext.supportLinearFiltering) {
 			gl.uniform2f(
@@ -840,6 +924,7 @@ export class FluidEngine implements FluidHandle {
 		);
 		this.blit(this.dye.write);
 		this.dye.swap();
+		if (this.config.CONTAINER_SHAPE) this.applyMask(this.dye);
 	}
 
 	private render(target: FBO | null): void {
@@ -905,6 +990,15 @@ export class FluidEngine implements FluidHandle {
 		}
 		if (this.config.SUNRAYS) {
 			gl.uniform1i(this.displayMaterial.uniforms.uSunrays, this.sunrays.attach(3));
+		}
+		if (this.config.CONTAINER_SHAPE?.type === 'circle') {
+			const s = this.config.CONTAINER_SHAPE;
+			gl.uniform2f(this.displayMaterial.uniforms.uContainerCircle, s.cx, s.cy);
+			gl.uniform1f(this.displayMaterial.uniforms.uContainerRadius, s.radius);
+			gl.uniform1f(
+				this.displayMaterial.uniforms.uContainerAspect,
+				width / height
+			);
 		}
 		this.blit(target);
 	}
