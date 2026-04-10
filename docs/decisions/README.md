@@ -22,6 +22,8 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0014](./0014-sveltekit-library-template.md) | SvelteKit library template + demo routes (single repo) | Accepted |
 | [0015](./0015-preset-components.md) | Preset wrapper components + construct-only `presetSplats` field | Accepted |
 | [0016](./0016-burn-in-density-dissipation.md) | Burn-in density dissipation via linear ramp | Accepted |
+| [0017](./0017-continuous-random-splats.md) | Continuous random splat generation via config fields | Accepted |
+| [0018](./0018-shaped-containers-mask-penalisation.md) | Shaped fluid containers via mask penalisation | Accepted |
 
 ## How to add a new ADR
 

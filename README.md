@@ -126,6 +126,12 @@ config from the upstream project.
 | `initialSplatCount` | `number` | — | exact count for the first frame |
 | `initialSplatCountMin` | `number` | `5` | min of random range |
 | `initialSplatCountMax` | `number` | `25` | max of random range |
+| `randomSplatRate` | `number` | `0` | continuous splats/sec; 0 = disabled (Bucket A) |
+| `randomSplatCount` | `number` | `1` | splats per continuous burst (Bucket A) |
+| `randomSplatColor` | `{r,g,b}` | `null` | fixed color for continuous splats; null = random (Bucket A) |
+| `randomSplatDx` | `number` | `0` | x velocity for continuous splats (Bucket A) |
+| `randomSplatDy` | `number` | `0` | y velocity for continuous splats (Bucket A) |
+| `randomSplatSpawnY` | `number` | `0.5` | normalized y position for continuous splats (0–1, clamped) (Bucket A) |
 | `pointerInput` | `boolean` | `true` | hot; toggles canvas + window listeners |
 | `presetSplats` | `PresetSplat[]` | — | construct-only; declarative initial scene (see [Presets](#presets)) |
 | `lazy` | `boolean` | `false` | construct-only; defer engine creation until container enters viewport |
@@ -136,7 +142,7 @@ The component also forwards any standard `<canvas>` attributes
 
 ## Presets
 
-Six opinionated wrapper components ship alongside `<Fluid />`. Each one
+Five opinionated wrapper components ship alongside `<Fluid />`. Each one
 hard-codes a physics + visual configuration and (for most of them) a
 hand-crafted set of opening splats so you can drop them in without any
 tuning:
@@ -147,22 +153,19 @@ tuning:
 | `<Plasma />` | Persistent full-spectrum energy field |
 | `<InkInWater />` | Dark blue dye blooming on a pale background |
 | `<FrozenSwirl />` | A single icy whirlpool that spins itself out |
-| `<Aurora />` | Northern-lights ribbons drifting laterally |
-| `<Galaxy />` | Spiral arms with bloom-lit core |
 
 ```svelte
-<script lang="ts">
-  import { LavaLamp, Plasma, Galaxy } from 'svelte-fluid';
+VP|<script lang="ts">
+  BW|  import { LavaLamp, Plasma } from 'svelte-fluid';
 </script>
 
 <div style="height: 100vh">
   <LavaLamp />
 </div>
 
-<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:16px">
-  <Plasma />
-  <Galaxy />
-</div>
+ZP|<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:16px">
+BX|  <Plasma />
+YH|</div>
 ```
 
 Each preset accepts only `width`, `height`, `class`, `style`, and
@@ -229,9 +232,9 @@ The engine linearly interpolates from `initialDensityDissipation` →
 `densityDissipation` over `initialDensityDissipationDuration` seconds,
 then holds at the steady-state value forever. This lets the overlapping
 additive splats "burn in" — overbright pixels fade for the first couple
-of seconds — before dissipation locks at zero so the remaining dye
-persists indefinitely. The `LavaLamp`, `Plasma`, and `Galaxy` presets
-all use this pattern.
+SK|of seconds — before dissipation locks at zero so the remaining dye
+persists indefinitely. The `LavaLamp` and `Plasma` presets
+use this pattern.
 
 The clock starts when the engine begins ticking (post-mount, post
 first ResizeObserver fire), so the burn-in survives `setConfig`
@@ -259,9 +262,8 @@ down when it leaves, keeping the live context count bounded:
 
 ```svelte
 <LavaLamp lazy />
-<Plasma lazy />
-<Galaxy lazy />
-```
+ST|<Plasma lazy />
+HX|```
 
 The cost is a one-time shader-recompile pause (~100–500ms) when an
 instance scrolls back into view. For demo / showcase pages this is
