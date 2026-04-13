@@ -429,3 +429,135 @@ describe('containerMask — roundedRect', () => {
 		expect(viaContainer).toBe(direct);
 	});
 });
+
+/* ------------------------------------------------------------------ */
+/*                  containerShapeEqual — annulus                      */
+/* ------------------------------------------------------------------ */
+
+describe('containerShapeEqual — annulus', () => {
+	const a: ContainerShape = { type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.4 };
+
+	it('identical annuli are equal', () => {
+		const b: ContainerShape = { type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.4 };
+		expect(containerShapeEqual(a, b)).toBe(true);
+	});
+
+	it('same reference is equal', () => {
+		expect(containerShapeEqual(a, a)).toBe(true);
+	});
+
+	it('different innerRadius ⇒ not equal', () => {
+		const b: ContainerShape = { type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.2, outerRadius: 0.4 };
+		expect(containerShapeEqual(a, b)).toBe(false);
+	});
+
+	it('different outerRadius ⇒ not equal', () => {
+		const b: ContainerShape = { type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.45 };
+		expect(containerShapeEqual(a, b)).toBe(false);
+	});
+
+	it('different cx ⇒ not equal', () => {
+		const b: ContainerShape = { type: 'annulus', cx: 0.6, cy: 0.5, innerRadius: 0.15, outerRadius: 0.4 };
+		expect(containerShapeEqual(a, b)).toBe(false);
+	});
+
+	it('annulus !== circle', () => {
+		const c: ContainerShape = { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.4 };
+		expect(containerShapeEqual(a, c)).toBe(false);
+	});
+
+	it('annulus !== frame', () => {
+		const f: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.25, halfH: 0.25 };
+		expect(containerShapeEqual(a, f)).toBe(false);
+	});
+
+	it('null !== annulus', () => {
+		expect(containerShapeEqual(null, a)).toBe(false);
+	});
+});
+
+/* ------------------------------------------------------------------ */
+/*                  containerMask — annulus                            */
+/* ------------------------------------------------------------------ */
+
+describe('containerMask — annulus', () => {
+	const ann: ContainerShape = { type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.4 };
+	const aspect = 1.0;
+
+	it('returns 0 at the center (inside inner circle)', () => {
+		expect(containerMask(ann, 0.5, 0.5, aspect)).toBe(0);
+	});
+
+	it('returns 1 at the midpoint of the ring', () => {
+		// midpoint radius = (0.15 + 0.4) / 2 = 0.275, so y = 0.5 + 0.275 = 0.775
+		const val = containerMask(ann, 0.5, 0.775, aspect);
+		expect(val).toBe(1);
+	});
+
+	it('returns 0 well outside the outer circle', () => {
+		expect(containerMask(ann, 0.0, 0.0, aspect)).toBe(0);
+		expect(containerMask(ann, 1.0, 1.0, aspect)).toBe(0);
+	});
+
+	it('returns ~0.5 at the outer boundary', () => {
+		// distance = outerRadius = 0.4 at y = 0.5 + 0.4 = 0.9
+		const val = containerMask(ann, 0.5, 0.9, aspect);
+		expect(val).toBeCloseTo(0.5, 1);
+	});
+
+	it('returns ~0.5 at the inner boundary', () => {
+		// distance = innerRadius = 0.15 at y = 0.5 + 0.15 = 0.65
+		const val = containerMask(ann, 0.5, 0.65, aspect);
+		expect(val).toBeCloseTo(0.5, 1);
+	});
+
+	it('handles non-square aspect ratio', () => {
+		// With aspect=2.0, a UV offset of 0.1 in x maps to physical distance 0.2
+		// Point at (0.6, 0.5) with aspect=2: physical distance = 0.1 * 2 = 0.2
+		// 0.2 is between 0.15 and 0.4 → inside ring
+		const val = containerMask(ann, 0.6, 0.5, 2.0);
+		expect(val).toBe(1);
+	});
+
+	it('aspect correction pushes point outside outer circle', () => {
+		// Point at (0.75, 0.5) with aspect=2: physical distance = 0.25 * 2 = 0.5
+		// 0.5 > outerRadius 0.4 → outside ring
+		const val = containerMask(ann, 0.75, 0.5, 2.0);
+		expect(val).toBe(0);
+	});
+});
+
+/* ------------------------------------------------------------------ */
+/*                  containerMask — annulus edge cases                 */
+/* ------------------------------------------------------------------ */
+
+describe('containerMask — annulus edge cases', () => {
+	it('degenerate annulus (innerR >= outerR) → 0 everywhere', () => {
+		const deg: ContainerShape = { type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.4, outerRadius: 0.15 };
+		expect(containerMask(deg, 0.5, 0.5, 1.0)).toBe(0);
+		expect(containerMask(deg, 0.5, 0.8, 1.0)).toBe(0);
+		expect(containerMask(deg, 0.5, 0.7, 1.0)).toBe(0);
+	});
+
+	it('innerRadius = 0 is like a filled circle at center', () => {
+		const filled: ContainerShape = { type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0, outerRadius: 0.4 };
+		// At center, distance=0, sdf = max(0-0.4, 0-0) = max(-0.4, 0) = 0
+		// smoothstep(-0.005, 0.005, 0) = 0.5, so mask = 0.5
+		const val = containerMask(filled, 0.5, 0.5, 1.0);
+		expect(val).toBeCloseTo(0.5, 1);
+		// Slightly away from center: distance=0.01, sdf = max(0.01-0.4, 0-0.01) = max(-0.39, -0.01) = -0.01
+		// mask ≈ 1
+		const val2 = containerMask(filled, 0.5, 0.51, 1.0);
+		expect(val2).toBeGreaterThan(0.9);
+	});
+
+	it('equal radii → ~0 away from boundary', () => {
+		const zero: ContainerShape = { type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.3, outerRadius: 0.3 };
+		// Well outside: distance 0.3 from center, sdf = max(0.3-0.3, 0.3-0.3) = 0 → ~0.5 at exact boundary
+		// But further away: clear 0
+		expect(containerMask(zero, 0.0, 0.0, 1.0)).toBe(0);
+		expect(containerMask(zero, 1.0, 1.0, 1.0)).toBe(0);
+		// At center: distance=0, sdf = max(-0.3, 0.3) = 0.3 → 0
+		expect(containerMask(zero, 0.5, 0.5, 1.0)).toBe(0);
+	});
+});

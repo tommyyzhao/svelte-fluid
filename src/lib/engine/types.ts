@@ -67,11 +67,17 @@ export interface PresetSplat {
  * is confined *inside* the rounded rectangle rather than outside it.
  * `halfW`/`halfH` define the rectangle extents in UV space (same as `frame`),
  * and `cornerRadius` (also in UV space) controls how rounded the corners are.
+ *
+ * **`annulus`** — fluid confined to a circular ring between `innerRadius` and
+ * `outerRadius`. Both radii are normalised by canvas height (same as `circle`).
+ * Everything inside the inner circle and outside the outer circle is zeroed.
+ * Aspect correction is applied, matching the `circle` type.
  */
 export type ContainerShape =
 	| { type: 'circle'; cx: number; cy: number; radius: number }
 	| { type: 'frame'; cx: number; cy: number; halfW: number; halfH: number; cornerRadius?: number }
-	| { type: 'roundedRect'; cx: number; cy: number; halfW: number; halfH: number; cornerRadius: number };
+	| { type: 'roundedRect'; cx: number; cy: number; halfW: number; halfH: number; cornerRadius: number }
+	| { type: 'annulus'; cx: number; cy: number; innerRadius: number; outerRadius: number };
 
 /**
  * Public, camelCase fluid configuration. Every field is optional;

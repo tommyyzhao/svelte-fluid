@@ -15,7 +15,7 @@ to Svelte 5 (runes) and TypeScript.
 - 🪄 Multiple independent instances on a single page (no shared GL state)
 - 📐 `ResizeObserver` auto-tracks the parent; deterministic seed reproduces
   the same initial splat pattern after every resize
-- 🎛️ All ~24 physics / visual config knobs exposed as camelCase props
+- 🎛️ All 40+ physics / visual config knobs exposed as camelCase props
 - ⚡ Live prop updates — scalars hot-set, shader keywords recompile,
   resolution changes rebuild framebuffers
 - 🎯 Imperative API for `splat()` / `randomSplats()` via `bind:this`
@@ -142,7 +142,7 @@ The component also forwards any standard `<canvas>` attributes
 
 ## Presets
 
-Five opinionated wrapper components ship alongside `<Fluid />`. Each one
+Eight opinionated wrapper components ship alongside `<Fluid />`. Each one
 hard-codes a physics + visual configuration and (for most of them) a
 hand-crafted set of opening splats so you can drop them in without any
 tuning:
@@ -153,23 +153,27 @@ tuning:
 | `<Plasma />` | Persistent full-spectrum energy field |
 | `<InkInWater />` | Dark blue dye blooming on a pale background |
 | `<FrozenSwirl />` | A single icy whirlpool that spins itself out |
+| `<Aurora />` | Green, magenta, and pale-blue ribbons drifting like northern lights |
+| `<CircularFluid />` | Vivid plasma ball physically confined inside a circle |
+| `<FrameFluid />` | Colorful fluid swirling around a rectangular inner cutout |
+| `<AnnularFluid />` | Ring-vortex fluid confined between two concentric circles |
 
 ```svelte
-VP|<script lang="ts">
-  BW|  import { LavaLamp, Plasma } from 'svelte-fluid';
+<script lang="ts">
+  import { LavaLamp, Plasma } from 'svelte-fluid';
 </script>
 
 <div style="height: 100vh">
   <LavaLamp />
 </div>
 
-ZP|<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:16px">
-BX|  <Plasma />
-YH|</div>
+<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:16px">
+  <Plasma />
+</div>
 ```
 
-Each preset accepts only `width`, `height`, `class`, `style`, and
-`seed` — the rest of the configuration is intentionally fixed. They all
+Each preset accepts only `width`, `height`, `class`, `style`, `seed`,
+`lazy`, and `aria-label` — the rest of the configuration is intentionally fixed. They all
 re-expose the imperative `handle` so you can still call `splat()` /
 `randomSplats()` from outside via `bind:this`.
 
@@ -232,7 +236,7 @@ The engine linearly interpolates from `initialDensityDissipation` →
 `densityDissipation` over `initialDensityDissipationDuration` seconds,
 then holds at the steady-state value forever. This lets the overlapping
 additive splats "burn in" — overbright pixels fade for the first couple
-SK|of seconds — before dissipation locks at zero so the remaining dye
+of seconds — before dissipation locks at zero so the remaining dye
 persists indefinitely. The `LavaLamp` and `Plasma` presets
 use this pattern.
 
@@ -262,8 +266,8 @@ down when it leaves, keeping the live context count bounded:
 
 ```svelte
 <LavaLamp lazy />
-ST|<Plasma lazy />
-HX|```
+<Plasma lazy />
+```
 
 The cost is a one-time shader-recompile pause (~100–500ms) when an
 instance scrolls back into view. For demo / showcase pages this is

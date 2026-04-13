@@ -29,7 +29,9 @@
 		containerRadius: 0.45,
 		containerHalfW: 0.25,
 		containerHalfH: 0.25,
-		containerCornerRadius: 0.05
+		containerCornerRadius: 0.05,
+		containerInnerRadius: 0.15,
+		containerOuterRadius: 0.40
 	} as const;
 
 	let {
@@ -61,6 +63,8 @@
 		containerHalfW = $bindable(D.containerHalfW),
 		containerHalfH = $bindable(D.containerHalfH),
 		containerCornerRadius = $bindable(D.containerCornerRadius),
+		containerInnerRadius = $bindable(D.containerInnerRadius),
+		containerOuterRadius = $bindable(D.containerOuterRadius),
 		onRandomSplats
 	}: {
 		curl?: number;
@@ -84,13 +88,15 @@
 		backColorG?: number;
 		backColorB?: number;
 		transparent?: boolean;
-		containerShapeType?: 'none' | 'circle' | 'frame' | 'roundedRect';
+		containerShapeType?: 'none' | 'circle' | 'frame' | 'roundedRect' | 'annulus';
 		containerCx?: number;
 		containerCy?: number;
 		containerRadius?: number;
 		containerHalfW?: number;
 		containerHalfH?: number;
 		containerCornerRadius?: number;
+		containerInnerRadius?: number;
+		containerOuterRadius?: number;
 		onRandomSplats?: () => void;
 	} = $props();
 
@@ -126,6 +132,8 @@
 		containerHalfW = D.containerHalfW;
 		containerHalfH = D.containerHalfH;
 		containerCornerRadius = D.containerCornerRadius;
+		containerInnerRadius = D.containerInnerRadius;
+		containerOuterRadius = D.containerOuterRadius;
 	}
 
 	/**
@@ -287,6 +295,7 @@
 				<option value="circle">circle</option>
 				<option value="frame">frame</option>
 				<option value="roundedRect">roundedRect</option>
+				<option value="annulus">annulus</option>
 			</select>
 		</label>
 		{#if containerShapeType !== 'none'}
@@ -319,6 +328,16 @@
 			<label>
 				<span>cornerRadius <em>{containerCornerRadius.toFixed(2)}</em></span>
 				<input type="range" min="0" max="0.15" step="0.005" bind:value={containerCornerRadius} />
+			</label>
+		{/if}
+		{#if containerShapeType === 'annulus'}
+			<label>
+				<span>innerRadius <em>{containerInnerRadius.toFixed(2)}</em></span>
+				<input type="range" min="0" max="0.45" step="0.01" bind:value={containerInnerRadius} />
+			</label>
+			<label>
+				<span>outerRadius <em>{containerOuterRadius.toFixed(2)}</em></span>
+				<input type="range" min="0.05" max="0.5" step="0.01" bind:value={containerOuterRadius} />
 			</label>
 		{/if}
 	</section>
