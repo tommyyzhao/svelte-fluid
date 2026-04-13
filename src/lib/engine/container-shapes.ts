@@ -31,6 +31,9 @@ export function containerShapeEqual(
 			a.cornerRadius === b.cornerRadius
 		);
 	}
+	if (a.type === 'annulus' && b.type === 'annulus') {
+		return a.cx === b.cx && a.cy === b.cy && a.innerRadius === b.innerRadius && a.outerRadius === b.outerRadius;
+	}
 	return false;
 }
 
@@ -56,6 +59,8 @@ export function containerMask(
 			return frameMask(uvX, uvY, shape.cx, shape.cy, shape.halfW, shape.halfH, shape.cornerRadius);
 		case 'roundedRect':
 			return roundedRectSDF(uvX, uvY, shape.cx, shape.cy, shape.halfW, shape.halfH, shape.cornerRadius, aspect);
+		case 'annulus':
+			return annulusMask(uvX, uvY, shape.cx, shape.cy, shape.innerRadius, shape.outerRadius, aspect);
 	}
 }
 
@@ -123,6 +128,26 @@ export function roundedRectSDF(
 	const insideDist = Math.min(Math.max(dx, dy), 0);
 	const d = outsideDist + insideDist - cornerRadius;
 	return 1.0 - glslSmoothstep(-0.005, 0.005, d);
+}
+
+/**
+ * Annulus mask: 1 inside the ring (between inner and outer circles), 0 outside.
+ * Uses aspect correction like circleMask since it's circular.
+ *
+ * SDF: max(d - outerRadius, innerRadius - d) is negative inside the ring,
+ * positive outside. smoothstep provides soft antialiased edges.
+ */
+function annulusMask(
+	uvX: number, uvY: number,
+	cx: number, cy: number,
+	innerRadius: number, outerRadius: number,
+	aspect: number
+): number {
+	const px = (uvX - cx) * aspect;
+	const py = uvY - cy;
+	const d = Math.sqrt(px * px + py * py);
+	const sdf = Math.max(d - outerRadius, innerRadius - d);
+	return 1.0 - glslSmoothstep(-0.005, 0.005, sdf);
 }
 
 /** GLSL smoothstep: Hermite interpolation clamped to [0,1]. */

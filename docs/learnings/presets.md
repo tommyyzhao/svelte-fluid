@@ -488,3 +488,11 @@ Setting `spread: 2.0` scatters splats across the entire canvas. The container ma
 ## Frame cornerRadius
 
 The frame shape now supports rounded inner cutouts via an optional `cornerRadius` parameter. When `cornerRadius > 0`, the inner-cutout SDF switches from sharp Chebyshev box distance to an Inigo Quilez rounded-box SDF. This is exposed on the preset as `<FrameFluid cornerRadius={0.06} />` for a rounded picture-frame effect. The rounding is purely cosmetic -- it doesn't change the physics behavior, only the shape of the mask boundary.
+
+## Annulus (circular ring) container shape
+
+The annulus confines fluid between two concentric circles. The SDF `max(d - outerR, innerR - d)` elegantly combines two distance checks into one signed distance field: negative inside the band (fluid allowed), positive outside (fluid zeroed). This is simpler than the two-smoothstep approach (`smoothstep(inner) * (1 - smoothstep(outer))`) and gives correct antialiased edges with a single smoothstep call.
+
+Aspect correction matches the circle shape exactly: `px = (uvX - cx) * aspect`. Both radii are in height-normalized space, so the ring appears circular on any aspect ratio. The degenerate case (innerR >= outerR) naturally produces sdf >= 0 everywhere, so the mask is zero with no special-case code needed.
+
+The AnnularFluid preset uses 8 tangential jets at the midpoint radius to establish a ring-vortex pattern. High `randomSplatSwirl: 600` sustains the orbital motion. Like CircularFluid, moderate `spread: 0.8` scatters random splats broadly; the mask discards out-of-band ones.

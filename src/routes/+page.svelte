@@ -1,5 +1,6 @@
 <script lang="ts">
 	import {
+		AnnularFluid,
 		Aurora,
 		CircularFluid,
 		Fluid,
@@ -34,18 +35,21 @@
 	let backColorG = $state(0);
 	let backColorB = $state(0);
 	let transparent = $state(false);
-	let containerShapeType = $state<'none' | 'circle' | 'frame' | 'roundedRect'>('none');
+	let containerShapeType = $state<'none' | 'circle' | 'frame' | 'roundedRect' | 'annulus'>('none');
 	let containerCx = $state(0.5);
 	let containerCy = $state(0.5);
 	let containerRadius = $state(0.45);
 	let containerHalfW = $state(0.25);
 	let containerHalfH = $state(0.25);
 	let containerCornerRadius = $state(0.05);
+	let containerInnerRadius = $state(0.15);
+	let containerOuterRadius = $state(0.40);
 
 	let containerShape = $derived.by(() => {
 		if (containerShapeType === 'circle') return { type: 'circle' as const, cx: containerCx, cy: containerCy, radius: containerRadius };
 		if (containerShapeType === 'frame') return { type: 'frame' as const, cx: containerCx, cy: containerCy, halfW: containerHalfW, halfH: containerHalfH };
 		if (containerShapeType === 'roundedRect') return { type: 'roundedRect' as const, cx: containerCx, cy: containerCy, halfW: containerHalfW, halfH: containerHalfH, cornerRadius: containerCornerRadius };
+		if (containerShapeType === 'annulus') return { type: 'annulus' as const, cx: containerCx, cy: containerCy, innerRadius: containerInnerRadius, outerRadius: containerOuterRadius };
 		return undefined;
 	});
 
@@ -216,6 +220,9 @@
 			<Card title="Rounded Frame" description="Frame with rounded inner cutout — cornerRadius on FrameFluid.">
 				<FrameFluid seed={808} lazy cornerRadius={0.06} aria-label="Rounded Frame preset: fluid around rounded rectangular cutout" />
 			</Card>
+			<Card title="Annular Fluid" description="Ring-vortex fluid confined between two concentric circles.">
+				<AnnularFluid seed={909} lazy aria-label="Annular Fluid preset: ring vortex between concentric circles" />
+			</Card>
 		</div>
 	</section>
 
@@ -286,6 +293,8 @@
 			bind:containerHalfW
 			bind:containerHalfH
 			bind:containerCornerRadius
+			bind:containerInnerRadius
+			bind:containerOuterRadius
 			onRandomSplats={() => controlsRef?.handle.randomSplats(10)}
 		/>
 	</div>

@@ -795,6 +795,14 @@ export class FluidEngine implements FluidHandle {
 			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfW, shape.halfW);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfH, shape.halfH);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uCornerRadius, shape.cornerRadius);
+		} else if (shape.type === 'annulus') {
+			gl.uniform1i(this.applyMaskProgram.uniforms.uShapeType, 3);
+			gl.uniform1f(this.applyMaskProgram.uniforms.uRadius, shape.outerRadius);
+			gl.uniform1f(this.applyMaskProgram.uniforms.uInnerRadius, shape.innerRadius);
+			gl.uniform1f(
+				this.applyMaskProgram.uniforms.uAspect,
+				gl.drawingBufferWidth / gl.drawingBufferHeight
+			);
 		}
 
 		this.blit(target.write);
@@ -1098,6 +1106,14 @@ export class FluidEngine implements FluidHandle {
 				gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfW, s.halfW);
 				gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfH, s.halfH);
 				gl.uniform1f(this.displayMaterial.uniforms.uContainerCornerRadius, s.cornerRadius);
+			} else if (s.type === 'annulus') {
+				gl.uniform1i(this.displayMaterial.uniforms.uContainerShapeType, 3);
+				gl.uniform1f(this.displayMaterial.uniforms.uContainerRadius, s.outerRadius);
+				gl.uniform1f(this.displayMaterial.uniforms.uContainerInnerRadius, s.innerRadius);
+				gl.uniform1f(
+					this.displayMaterial.uniforms.uContainerAspect,
+					width / height
+				);
 			}
 		}
 		this.blit(target);
@@ -1209,6 +1225,8 @@ export class FluidEngine implements FluidHandle {
 			areaFraction = 1.0 - (2 * shape.halfW) * (2 * shape.halfH);
 		} else if (shape.type === 'roundedRect') {
 			areaFraction = (2 * shape.halfW) * (2 * shape.halfH);
+		} else if (shape.type === 'annulus') {
+			areaFraction = Math.PI * Math.max(0, shape.outerRadius ** 2 - shape.innerRadius ** 2);
 		}
 		// Scale the 10x base by area fraction, clamped to reasonable range
 		return Math.max(3.0, 10.0 * Math.sqrt(areaFraction));
