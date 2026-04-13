@@ -28,3 +28,4 @@ export { default as InkInWater, type InkInWaterProps } from './presets/InkInWate
 export { default as FrozenSwirl, type FrozenSwirlProps } from './presets/FrozenSwirl.svelte';
 export { default as Aurora, type AuroraProps } from './presets/Aurora.svelte';
 export { default as CircularFluid, type CircularFluidProps } from './presets/CircularFluid.svelte';
+export { default as FrameFluid, type FrameFluidProps } from './presets/FrameFluid.svelte';

@@ -132,9 +132,12 @@ export const displayShaderSource = `
     uniform sampler2D uDithering;
     uniform vec2 ditherScale;
     uniform vec2 texelSize;
-    uniform vec2 uContainerCircle;
+    uniform int uContainerShapeType;
+    uniform vec2 uContainerCenter;
     uniform float uContainerRadius;
     uniform float uContainerAspect;
+    uniform float uContainerHalfW;
+    uniform float uContainerHalfH;
 
     vec3 linearToGamma (vec3 color) {
         color = max(color, vec3(0));
@@ -183,11 +186,18 @@ export const displayShaderSource = `
         float a = max(c.r, max(c.g, c.b));
 
     #ifdef CONTAINER_MASK
-        vec2 cp = vec2((vUv.x - uContainerCircle.x) * uContainerAspect,
-                       vUv.y - uContainerCircle.y);
-        float cmask = 1.0 - smoothstep(uContainerRadius - 0.005,
-                                        uContainerRadius + 0.005,
-                                        length(cp));
+        float cmask = 1.0;
+        if (uContainerShapeType == 0) {
+            vec2 cp = vec2((vUv.x - uContainerCenter.x) * uContainerAspect,
+                           vUv.y - uContainerCenter.y);
+            cmask = 1.0 - smoothstep(uContainerRadius - 0.005,
+                                      uContainerRadius + 0.005,
+                                      length(cp));
+        } else if (uContainerShapeType == 1) {
+            float fdx = abs(vUv.x - uContainerCenter.x) - uContainerHalfW;
+            float fdy = abs(vUv.y - uContainerCenter.y) - uContainerHalfH;
+            cmask = smoothstep(-0.005, 0.005, max(fdx, fdy));
+        }
         c *= cmask;
         a *= cmask;
     #endif
@@ -497,13 +507,14 @@ export const gradientSubtractShader = `
 `;
 
 /**
- * Multiplies a target FBO by an inline circle SDF mask. Used as a
- * ping-pong blit after each velocity and dye write to zero out cells
- * outside the container shape. The SDF is computed per-fragment from
- * uniforms — no separate mask texture is needed.
+ * Multiplies a target FBO by an inline SDF mask. Used as a ping-pong blit
+ * after each velocity and dye write to zero out cells outside (or inside)
+ * the container shape. The SDF is computed per-fragment from uniforms — no
+ * separate mask texture is needed.
  *
- * `uAspect` = canvas width / canvas height ensures the shape is
- * geometrically round on screen regardless of FBO dimensions.
+ * Shape selection via `uShapeType`:
+ *   0 — circle: 1 inside, 0 outside. `uAspect` corrects for non-square canvases.
+ *   1 — frame:  0 inside inner rect, 1 outside. Box SDF in UV space (no aspect).
  */
 export const applyMaskShader = `
     precision highp float;
@@ -511,16 +522,31 @@ export const applyMaskShader = `
 
     varying vec2 vUv;
     uniform sampler2D uTarget;
+    uniform int uShapeType;
     uniform float uCx;
     uniform float uCy;
     uniform float uRadius;
     uniform float uAspect;
+    uniform float uHalfW;
+    uniform float uHalfH;
 
     void main () {
         vec4 val = texture2D(uTarget, vUv);
-        vec2 p = vec2((vUv.x - uCx) * uAspect, vUv.y - uCy);
-        float d = length(p);
-        float inside = 1.0 - smoothstep(uRadius - 0.005, uRadius + 0.005, d);
-        gl_FragColor = val * inside;
+        float mask = 1.0;
+
+        if (uShapeType == 0) {
+            // Circle: keep inside, zero outside
+            vec2 p = vec2((vUv.x - uCx) * uAspect, vUv.y - uCy);
+            float d = length(p);
+            mask = 1.0 - smoothstep(uRadius - 0.005, uRadius + 0.005, d);
+        } else if (uShapeType == 1) {
+            // Frame: zero inside inner rect, keep outside
+            float dx = abs(vUv.x - uCx) - uHalfW;
+            float dy = abs(vUv.y - uCy) - uHalfH;
+            float d = max(dx, dy);
+            mask = smoothstep(-0.005, 0.005, d);
+        }
+
+        gl_FragColor = val * mask;
     }
 `;
