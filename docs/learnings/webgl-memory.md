@@ -74,6 +74,14 @@ During window resize, the ResizeObserver fires rapidly. Each fire triggers `tear
 
 **Key insight:** The combination of `lazy` (teardown on scroll-out, freeing the context slot) and `autoPause` (RAF pause on scroll-out, keeping context alive) gives two tiers of resource management. Dense pages should use `lazy`; lighter pages get `autoPause` by default with zero configuration.
 
+### 7. Graceful context exhaustion (2026-04-13)
+
+**Problem:** When too many WebGL contexts are requested (beyond the browser limit), `new FluidEngine()` throws an unhandled exception from `getWebGLContext()` that silently killed the component. The canvas remained as a white rectangle with no error feedback to the user.
+
+**Fix:** `Fluid.svelte` now wraps `new FluidEngine()` in a try-catch. The canvas element has `background: #000` CSS applied unconditionally, so if engine construction fails, the canvas shows clean black instead of white. The error is caught and logged but does not propagate -- the component remains mounted (with a black canvas) and can recover if a context becomes available later (e.g., via context loss recovery on another instance freeing a slot).
+
+**Why this matters:** On dense pages with many fluid instances, the browser may hit its context limit even with `lazy` and `autoPause` enabled. Previously this produced a jarring white rectangle and a console error. Now it produces a clean black rectangle that blends with dark backgrounds, matching the visual intent of most presets.
+
 ## Recommendations
 
 1. `autoPause` is on by default — off-screen engines stop their RAF loop automatically

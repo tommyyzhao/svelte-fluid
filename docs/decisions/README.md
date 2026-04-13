@@ -25,6 +25,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0017](./0017-continuous-random-splats.md) | Continuous random splat generation via config fields | Accepted |
 | [0018](./0018-shaped-containers-mask-penalisation.md) | Shaped fluid containers via mask penalisation | Accepted |
 | [0019](./0019-auto-pause-and-context-loss-recovery.md) | Automatic pause on visibility loss and WebGL context loss recovery | Accepted |
+| [0020](./0020-random-splat-enhancements.md) | Random splat enhancements: swirl, spread, even spacing, jittered timing | Accepted |
 
 ## How to add a new ADR
 

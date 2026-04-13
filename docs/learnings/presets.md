@@ -468,3 +468,23 @@ A more general solution would scale the 10× multiplier by container area, but t
 **Testing:** SDF math was extracted to a pure TypeScript module (`container-shapes.ts`) with functions that mirror the GLSL. 33 vitest tests cover both shapes' SDF evaluation, `containerShapeEqual`, and edge cases. This is the first test infrastructure in the project.
 
 **FrameFluid preset:** 8 jets (4 edge + 4 corner) in clockwise circulation around the frame border. Colors and forces tuned for the narrower flow region.
+
+## Randomized burst timing
+
+Fixed-interval spawning of random splat bursts creates a metronome effect that looks artificial. Jittering the interval by +/-50% via `baseInterval * (0.5 + rng())` makes the bursts feel organic. The RNG is seeded, so the jitter pattern is still deterministic for a given seed -- the "randomness" is in the timing rhythm, not the reproducibility.
+
+## Tangential velocity via randomSplatSwirl
+
+For container-confined presets, per-splat tangential velocity creates natural rotational flow that prevents the fluid from pooling at the center. The formula is `dx = -(y - cy) * swirl`, `dy = (x - cx) * swirl`, where `(cx, cy)` is the container center. Positive swirl = CCW, negative = CW.
+
+CircularFluid uses `swirl: 500` (aggressive, drives a visible vortex), FrameFluid uses `swirl: 300` (gentler -- complex geometry with corners needs less force to maintain visual motion).
+
+## Full-canvas scatter with randomSplatSpread
+
+The `randomSplatSpread` config controls vertical jitter range for random splat spawn positions (default 0.1 = +/-0.05). For frame shapes, the default narrow spawn band often falls inside the masked-out cutout, so splats are immediately zeroed by the mask and produce no visible effect.
+
+Setting `spread: 2.0` scatters splats across the entire canvas. The container mask naturally discards any splats that land outside the fluid domain, so only the in-bounds ones contribute. This is wasteful (many splats are discarded) but simple and correct.
+
+## Frame cornerRadius
+
+The frame shape now supports rounded inner cutouts via an optional `cornerRadius` parameter. When `cornerRadius > 0`, the inner-cutout SDF switches from sharp Chebyshev box distance to an Inigo Quilez rounded-box SDF. This is exposed on the preset as `<FrameFluid cornerRadius={0.06} />` for a rounded picture-frame effect. The rounding is purely cosmetic -- it doesn't change the physics behavior, only the shape of the mask boundary.
