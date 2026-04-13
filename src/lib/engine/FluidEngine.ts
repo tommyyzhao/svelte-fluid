@@ -236,6 +236,8 @@ export class FluidEngine implements FluidHandle {
 	private rafId = 0;
 	private disposed = false;
 	private pointerListenersInstalled = false;
+	private rafRunning = false;
+	private contextLost = false;
 
 	// --- Bound listeners ---
 	private onMouseDown = (e: MouseEvent) => this.handleMouseDown(e);
@@ -244,6 +246,8 @@ export class FluidEngine implements FluidHandle {
 	private onTouchStart = (e: TouchEvent) => this.handleTouchStart(e);
 	private onTouchMove = (e: TouchEvent) => this.handleTouchMove(e);
 	private onTouchEnd = (e: TouchEvent) => this.handleTouchEnd(e);
+	private onContextLost = (e: Event) => this.handleContextLost(e);
+	private onContextRestored = () => this.handleContextRestored();
 	private tick = () => this.update();
 
 	constructor(opts: FluidEngineOptions) {
@@ -277,9 +281,12 @@ export class FluidEngine implements FluidHandle {
 			this.installPointerListeners();
 		}
 
+		this.canvas.addEventListener('webglcontextlost', this.onContextLost);
+		this.canvas.addEventListener('webglcontextrestored', this.onContextRestored);
+
 		this.lastUpdateTime = performance.now();
 		this.engineStartTime = this.lastUpdateTime;
-		this.rafId = requestAnimationFrame(this.tick);
+		this.startRaf();
 	}
 
 	/**
@@ -310,6 +317,7 @@ export class FluidEngine implements FluidHandle {
 	/* ---------------------------------------------------------------------- */
 
 	splat(x: number, y: number, dx: number, dy: number, color: RGB): void {
+		if (this.contextLost) return;
 		const gl = this.gl;
 		this.splatProgram.bind();
 		gl.uniform1i(this.splatProgram.uniforms.uTarget, this.velocity.read.attach(0));
@@ -336,6 +344,24 @@ export class FluidEngine implements FluidHandle {
 		this.splatStack.push(count);
 	}
 
+	/** Stop the animation loop. The GL context stays alive. Idempotent. */
+	pause(): void {
+		if (!this.rafRunning || this.disposed) return;
+		cancelAnimationFrame(this.rafId);
+		this.rafRunning = false;
+	}
+
+	/** Restart the animation loop after a pause. Idempotent. */
+	resume(): void {
+		if (this.rafRunning || this.disposed || this.contextLost) return;
+		this.lastUpdateTime = performance.now();
+		this.startRaf();
+	}
+
+	get isPaused(): boolean {
+		return !this.rafRunning;
+	}
+
 	/**
 	 * Hot-update a subset of config fields. Uses a 4-bucket strategy:
 	 *   A — scalar/boolean assignment, picked up next frame.
@@ -349,7 +375,7 @@ export class FluidEngine implements FluidHandle {
 	 *       from `ResolvedConfig` entirely.
 	 */
 	setConfig(patch: FluidConfig): void {
-		if (this.disposed) return;
+		if (this.disposed || this.contextLost) return;
 		const next = resolveConfig(patch, this.config);
 		const a = this.config;
 		const b = next;
@@ -383,11 +409,49 @@ export class FluidEngine implements FluidHandle {
 		}
 	}
 
+	/* ---------------------------------------------------------------------- */
+	/*                         RAF + context loss                             */
+	/* ---------------------------------------------------------------------- */
+
+	private startRaf(): void {
+		if (this.rafRunning) return;
+		this.rafRunning = true;
+		this.rafId = requestAnimationFrame(this.tick);
+	}
+
+	private handleContextLost(e: Event): void {
+		e.preventDefault(); // Signals to the browser we intend to restore
+		this.contextLost = true;
+		cancelAnimationFrame(this.rafId);
+		this.rafRunning = false;
+	}
+
+	private handleContextRestored(): void {
+		this.contextLost = false;
+		// Full reinit — the GL state is wiped on context loss.
+		this.initContext();
+		this.compileShaders();
+		this.initBuffersAndPrograms();
+		this.ditheringTexture = createDitheringTexture(this.gl);
+		this.updateKeywords();
+		this.initFramebuffers();
+		this.multipleSplats(this.randomSplatCount());
+		if (this.config.POINTER_INPUT && !this.pointerListenersInstalled) {
+			this.installPointerListeners();
+		}
+		this.lastUpdateTime = performance.now();
+		this.startRaf();
+	}
+
 	dispose(): void {
 		if (this.disposed) return;
 		this.disposed = true;
 
 		cancelAnimationFrame(this.rafId);
+		this.rafRunning = false;
+
+		this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
+		this.canvas.removeEventListener('webglcontextrestored', this.onContextRestored);
 
 		if (this.pointerListenersInstalled) {
 			this.removePointerListeners();
@@ -739,7 +803,7 @@ export class FluidEngine implements FluidHandle {
 	/* ---------------------------------------------------------------------- */
 
 	private update(): void {
-		if (this.disposed) return;
+		if (this.disposed || this.contextLost || !this.rafRunning) return;
 		const dt = this.calcDeltaTime();
 		this.updateColors(dt);
 		this.applyInputs();
