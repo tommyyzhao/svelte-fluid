@@ -28,6 +28,28 @@
 	let paused = $state(false);
 	let dyeResolution = $state(1024);
 	let simResolution = $state(128);
+	let randomSplatRate = $state(0);
+	let randomSplatSwirl = $state(0);
+	let backColorR = $state(0);
+	let backColorG = $state(0);
+	let backColorB = $state(0);
+	let transparent = $state(false);
+	let containerShapeType = $state<'none' | 'circle' | 'frame' | 'roundedRect'>('none');
+	let containerCx = $state(0.5);
+	let containerCy = $state(0.5);
+	let containerRadius = $state(0.45);
+	let containerHalfW = $state(0.25);
+	let containerHalfH = $state(0.25);
+	let containerCornerRadius = $state(0.05);
+
+	let containerShape = $derived.by(() => {
+		if (containerShapeType === 'circle') return { type: 'circle' as const, cx: containerCx, cy: containerCy, radius: containerRadius };
+		if (containerShapeType === 'frame') return { type: 'frame' as const, cx: containerCx, cy: containerCy, halfW: containerHalfW, halfH: containerHalfH };
+		if (containerShapeType === 'roundedRect') return { type: 'roundedRect' as const, cx: containerCx, cy: containerCy, halfW: containerHalfW, halfH: containerHalfH, cornerRadius: containerCornerRadius };
+		return undefined;
+	});
+
+	let backColor = $derived({ r: backColorR, g: backColorG, b: backColorB });
 
 	type FluidRef = { handle: { randomSplats: (n: number) => void } } | undefined;
 	let controlsRef = $state<FluidRef>(undefined);
@@ -48,15 +70,18 @@
 
 <svelte:head>
 	<title>svelte-fluid — WebGL fluid simulation as a Svelte 5 component</title>
+	<meta name="description" content="Drop-in WebGL fluid simulation for Svelte 5. Multi-instance, resize-stable, deterministic seeding, seven presets. MIT licensed." />
+	<meta property="og:title" content="svelte-fluid" />
+	<meta property="og:description" content="WebGL fluid simulation as a Svelte 5 component. Multi-instance, resize-stable, seven hand-tuned presets." />
 </svelte:head>
 
 <!-- Background hero instance — fills the viewport behind everything else. -->
 <div class="hero" aria-hidden="true">
 	<Fluid
-		lazy
 		curl={20}
 		bloomIntensity={1.2}
 		initialSplatCount={18}
+		pointerInput={false}
 		aria-label="Decorative background fluid simulation"
 	/>
 </div>
@@ -104,7 +129,7 @@
 		<pre class="code-block"><code>{usageSnippet}</code></pre>
 		<p class="caption">
 			That's the entire setup — the canvas fills its parent and tracks
-			parent size automatically. Six presets ship out of the box;
+			parent size automatically. Seven presets ship out of the box;
 			<code>&lt;Fluid /&gt;</code> exposes the full ~28-prop config surface
 			for custom physics and visuals.
 		</p>
@@ -188,6 +213,9 @@
 			<Card title="Frame Fluid" description="Fluid swirls around a rectangular inner cutout — a living picture frame.">
 				<FrameFluid seed={707} lazy aria-label="Frame Fluid preset: fluid around rectangular cutout" />
 			</Card>
+			<Card title="Rounded Frame" description="Frame with rounded inner cutout — cornerRadius on FrameFluid.">
+				<FrameFluid seed={808} lazy cornerRadius={0.06} aria-label="Rounded Frame preset: fluid around rounded rectangular cutout" />
+			</Card>
 		</div>
 	</section>
 
@@ -221,6 +249,11 @@
 				{paused}
 				{dyeResolution}
 				{simResolution}
+				{randomSplatRate}
+				{randomSplatSwirl}
+				{transparent}
+				backColor={backColor}
+				containerShape={containerShape}
 				initialSplatCount={15}
 			/>
 		</div>
@@ -240,6 +273,19 @@
 			bind:paused
 			bind:dyeResolution
 			bind:simResolution
+			bind:randomSplatRate
+			bind:randomSplatSwirl
+			bind:backColorR
+			bind:backColorG
+			bind:backColorB
+			bind:transparent
+			bind:containerShapeType
+			bind:containerCx
+			bind:containerCy
+			bind:containerRadius
+			bind:containerHalfW
+			bind:containerHalfH
+			bind:containerCornerRadius
 			onRandomSplats={() => controlsRef?.handle.randomSplats(10)}
 		/>
 	</div>

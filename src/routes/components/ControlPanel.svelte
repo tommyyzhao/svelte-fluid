@@ -10,13 +10,26 @@
 		pressure: 0.8,
 		bloomIntensity: 0.8,
 		sunraysWeight: 1,
+		randomSplatRate: 0,
+		randomSplatSwirl: 0,
 		shading: true,
 		bloom: true,
 		sunrays: true,
 		colorful: true,
 		paused: false,
 		dyeResolution: 1024,
-		simResolution: 128
+		simResolution: 128,
+		backColorR: 0,
+		backColorG: 0,
+		backColorB: 0,
+		transparent: false,
+		containerShapeType: 'none' as const,
+		containerCx: 0.5,
+		containerCy: 0.5,
+		containerRadius: 0.45,
+		containerHalfW: 0.25,
+		containerHalfH: 0.25,
+		containerCornerRadius: 0.05
 	} as const;
 
 	let {
@@ -28,6 +41,8 @@
 		pressure = $bindable(D.pressure),
 		bloomIntensity = $bindable(D.bloomIntensity),
 		sunraysWeight = $bindable(D.sunraysWeight),
+		randomSplatRate = $bindable(D.randomSplatRate),
+		randomSplatSwirl = $bindable(D.randomSplatSwirl),
 		shading = $bindable(D.shading),
 		bloom = $bindable(D.bloom),
 		sunrays = $bindable(D.sunrays),
@@ -35,6 +50,17 @@
 		paused = $bindable(D.paused),
 		dyeResolution = $bindable(D.dyeResolution),
 		simResolution = $bindable(D.simResolution),
+		backColorR = $bindable(D.backColorR),
+		backColorG = $bindable(D.backColorG),
+		backColorB = $bindable(D.backColorB),
+		transparent = $bindable(D.transparent),
+		containerShapeType = $bindable(D.containerShapeType),
+		containerCx = $bindable(D.containerCx),
+		containerCy = $bindable(D.containerCy),
+		containerRadius = $bindable(D.containerRadius),
+		containerHalfW = $bindable(D.containerHalfW),
+		containerHalfH = $bindable(D.containerHalfH),
+		containerCornerRadius = $bindable(D.containerCornerRadius),
 		onRandomSplats
 	}: {
 		curl?: number;
@@ -45,6 +71,8 @@
 		pressure?: number;
 		bloomIntensity?: number;
 		sunraysWeight?: number;
+		randomSplatRate?: number;
+		randomSplatSwirl?: number;
 		shading?: boolean;
 		bloom?: boolean;
 		sunrays?: boolean;
@@ -52,6 +80,17 @@
 		paused?: boolean;
 		dyeResolution?: number;
 		simResolution?: number;
+		backColorR?: number;
+		backColorG?: number;
+		backColorB?: number;
+		transparent?: boolean;
+		containerShapeType?: 'none' | 'circle' | 'frame' | 'roundedRect';
+		containerCx?: number;
+		containerCy?: number;
+		containerRadius?: number;
+		containerHalfW?: number;
+		containerHalfH?: number;
+		containerCornerRadius?: number;
 		onRandomSplats?: () => void;
 	} = $props();
 
@@ -67,6 +106,8 @@
 		pressure = D.pressure;
 		bloomIntensity = D.bloomIntensity;
 		sunraysWeight = D.sunraysWeight;
+		randomSplatRate = D.randomSplatRate;
+		randomSplatSwirl = D.randomSplatSwirl;
 		shading = D.shading;
 		bloom = D.bloom;
 		sunrays = D.sunrays;
@@ -74,6 +115,17 @@
 		paused = D.paused;
 		dyeResolution = D.dyeResolution;
 		simResolution = D.simResolution;
+		backColorR = D.backColorR;
+		backColorG = D.backColorG;
+		backColorB = D.backColorB;
+		transparent = D.transparent;
+		containerShapeType = D.containerShapeType;
+		containerCx = D.containerCx;
+		containerCy = D.containerCy;
+		containerRadius = D.containerRadius;
+		containerHalfW = D.containerHalfW;
+		containerHalfH = D.containerHalfH;
+		containerCornerRadius = D.containerCornerRadius;
 	}
 
 	/**
@@ -101,6 +153,8 @@
 		fmt('pressure', pressure);
 		fmt('bloomIntensity', bloomIntensity);
 		fmt('sunraysWeight', sunraysWeight);
+		fmt('randomSplatRate', randomSplatRate);
+		fmt('randomSplatSwirl', randomSplatSwirl);
 		fmt('shading', shading);
 		fmt('bloom', bloom);
 		fmt('sunrays', sunrays);
@@ -108,6 +162,10 @@
 		fmt('paused', paused);
 		fmt('dyeResolution', dyeResolution);
 		fmt('simResolution', simResolution);
+		if (backColorR !== D.backColorR || backColorG !== D.backColorG || backColorB !== D.backColorB) {
+			lines.push(`  backColor={{ r: ${backColorR}, g: ${backColorG}, b: ${backColorB} }}`);
+		}
+		fmt('transparent', transparent);
 		if (lines.length === 0) return '<Fluid />';
 		return ['<Fluid', ...lines, '/>'].join('\n');
 	}
@@ -160,7 +218,15 @@
 		</label>
 		<label>
 			<span>sunraysWeight <em>{sunraysWeight.toFixed(2)}</em></span>
-			<input type="range" min="0" max="1" step="0.05" bind:value={sunraysWeight} />
+			<input type="range" min="0" max="2" step="0.05" bind:value={sunraysWeight} />
+		</label>
+		<label>
+			<span>randomSplatRate <em>{randomSplatRate.toFixed(1)}</em></span>
+			<input type="range" min="0" max="3" step="0.1" bind:value={randomSplatRate} />
+		</label>
+		<label>
+			<span>randomSplatSwirl <em>{randomSplatSwirl}</em></span>
+			<input type="range" min="-1000" max="1000" step="50" bind:value={randomSplatSwirl} />
 		</label>
 	</section>
 
@@ -195,6 +261,68 @@
 		</label>
 	</section>
 
+	<section>
+		<h4>Background</h4>
+		<label>
+			<span>backColor R <em>{backColorR}</em></span>
+			<input type="range" min="0" max="255" step="1" bind:value={backColorR} />
+		</label>
+		<label>
+			<span>backColor G <em>{backColorG}</em></span>
+			<input type="range" min="0" max="255" step="1" bind:value={backColorG} />
+		</label>
+		<label>
+			<span>backColor B <em>{backColorB}</em></span>
+			<input type="range" min="0" max="255" step="1" bind:value={backColorB} />
+		</label>
+		<label class="check"><input type="checkbox" bind:checked={transparent} /> transparent</label>
+	</section>
+
+	<section>
+		<h4>Container shape</h4>
+		<label>
+			<span>shape</span>
+			<select bind:value={containerShapeType}>
+				<option value="none">none</option>
+				<option value="circle">circle</option>
+				<option value="frame">frame</option>
+				<option value="roundedRect">roundedRect</option>
+			</select>
+		</label>
+		{#if containerShapeType !== 'none'}
+			<label>
+				<span>cx <em>{containerCx.toFixed(2)}</em></span>
+				<input type="range" min="0" max="1" step="0.01" bind:value={containerCx} />
+			</label>
+			<label>
+				<span>cy <em>{containerCy.toFixed(2)}</em></span>
+				<input type="range" min="0" max="1" step="0.01" bind:value={containerCy} />
+			</label>
+		{/if}
+		{#if containerShapeType === 'circle'}
+			<label>
+				<span>radius <em>{containerRadius.toFixed(2)}</em></span>
+				<input type="range" min="0.05" max="0.5" step="0.01" bind:value={containerRadius} />
+			</label>
+		{/if}
+		{#if containerShapeType === 'frame' || containerShapeType === 'roundedRect'}
+			<label>
+				<span>halfW <em>{containerHalfW.toFixed(2)}</em></span>
+				<input type="range" min="0.05" max="0.45" step="0.01" bind:value={containerHalfW} />
+			</label>
+			<label>
+				<span>halfH <em>{containerHalfH.toFixed(2)}</em></span>
+				<input type="range" min="0.05" max="0.45" step="0.01" bind:value={containerHalfH} />
+			</label>
+		{/if}
+		{#if containerShapeType === 'roundedRect'}
+			<label>
+				<span>cornerRadius <em>{containerCornerRadius.toFixed(2)}</em></span>
+				<input type="range" min="0" max="0.15" step="0.005" bind:value={containerCornerRadius} />
+			</label>
+		{/if}
+	</section>
+
 	<div class="actions">
 		<button type="button" onclick={() => onRandomSplats?.()}>Random Splats</button>
 		<button type="button" class="secondary" onclick={reset}>Reset</button>
@@ -219,6 +347,8 @@
 		border: 1px solid #222;
 		border-radius: 12px;
 		font-size: 0.78rem;
+		max-height: 80vh;
+		overflow-y: auto;
 	}
 	h3 {
 		margin: 0;

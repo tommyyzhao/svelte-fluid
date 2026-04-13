@@ -138,6 +138,7 @@ export const displayShaderSource = `
     uniform float uContainerAspect;
     uniform float uContainerHalfW;
     uniform float uContainerHalfH;
+    uniform float uContainerCornerRadius;
 
     vec3 linearToGamma (vec3 color) {
         color = max(color, vec3(0));
@@ -194,9 +195,22 @@ export const displayShaderSource = `
                                       uContainerRadius + 0.005,
                                       length(cp));
         } else if (uContainerShapeType == 1) {
-            float fdx = abs(vUv.x - uContainerCenter.x) - uContainerHalfW;
-            float fdy = abs(vUv.y - uContainerCenter.y) - uContainerHalfH;
-            cmask = smoothstep(-0.005, 0.005, max(fdx, fdy));
+            // Frame: 0 inside inner rect/rounded-rect, 1 outside
+            float cr = uContainerCornerRadius;
+            if (cr > 0.0) {
+                vec2 d = abs(vec2(vUv.x - uContainerCenter.x, vUv.y - uContainerCenter.y)) - vec2(uContainerHalfW, uContainerHalfH) + cr;
+                float dist = length(max(d, 0.0)) - cr;
+                cmask = smoothstep(-0.005, 0.005, dist);
+            } else {
+                float fdx = abs(vUv.x - uContainerCenter.x) - uContainerHalfW;
+                float fdy = abs(vUv.y - uContainerCenter.y) - uContainerHalfH;
+                cmask = smoothstep(-0.005, 0.005, max(fdx, fdy));
+            }
+        } else if (uContainerShapeType == 2) {
+            // Rounded rect: 1 inside, 0 outside
+            vec2 rd = abs(vec2(vUv.x - uContainerCenter.x, vUv.y - uContainerCenter.y)) - vec2(uContainerHalfW, uContainerHalfH) + uContainerCornerRadius;
+            float rdDist = length(max(rd, 0.0)) - uContainerCornerRadius;
+            cmask = 1.0 - smoothstep(-0.005, 0.005, rdDist);
         }
         c *= cmask;
         a *= cmask;
@@ -529,6 +543,7 @@ export const applyMaskShader = `
     uniform float uAspect;
     uniform float uHalfW;
     uniform float uHalfH;
+    uniform float uCornerRadius;
 
     void main () {
         vec4 val = texture2D(uTarget, vUv);
@@ -540,11 +555,23 @@ export const applyMaskShader = `
             float d = length(p);
             mask = 1.0 - smoothstep(uRadius - 0.005, uRadius + 0.005, d);
         } else if (uShapeType == 1) {
-            // Frame: zero inside inner rect, keep outside
-            float dx = abs(vUv.x - uCx) - uHalfW;
-            float dy = abs(vUv.y - uCy) - uHalfH;
-            float d = max(dx, dy);
-            mask = smoothstep(-0.005, 0.005, d);
+            // Frame: zero inside inner rect/rounded-rect, keep outside
+            float cr = uCornerRadius;
+            if (cr > 0.0) {
+                vec2 d = abs(vec2(vUv.x - uCx, vUv.y - uCy)) - vec2(uHalfW, uHalfH) + cr;
+                float dist = length(max(d, 0.0)) - cr;
+                mask = smoothstep(-0.005, 0.005, dist);
+            } else {
+                float dx = abs(vUv.x - uCx) - uHalfW;
+                float dy = abs(vUv.y - uCy) - uHalfH;
+                float d = max(dx, dy);
+                mask = smoothstep(-0.005, 0.005, d);
+            }
+        } else if (uShapeType == 2) {
+            // Rounded rect: keep inside, zero outside
+            vec2 rd = abs(vec2(vUv.x - uCx, vUv.y - uCy)) - vec2(uHalfW, uHalfH) + uCornerRadius;
+            float rdDist = length(max(rd, 0.0)) - uCornerRadius;
+            mask = 1.0 - smoothstep(-0.005, 0.005, rdDist);
         }
 
         gl_FragColor = val * mask;

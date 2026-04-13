@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
 	containerShapeEqual,
 	containerMask,
-	glslSmoothstep
+	glslSmoothstep,
+	roundedRectSDF
 } from '../container-shapes.js';
 import type { ContainerShape } from '../types.js';
 
@@ -87,6 +88,24 @@ describe('containerShapeEqual', () => {
 		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15 };
 		const b: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.25 };
 		expect(containerShapeEqual(a, b)).toBe(false);
+	});
+
+	it('frame with cornerRadius=0 equals frame without cornerRadius', () => {
+		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, cornerRadius: 0 };
+		const b: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15 };
+		expect(containerShapeEqual(a, b)).toBe(true);
+	});
+
+	it('frames with different cornerRadius are not equal', () => {
+		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, cornerRadius: 0.05 };
+		const b: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, cornerRadius: 0.10 };
+		expect(containerShapeEqual(a, b)).toBe(false);
+	});
+
+	it('frames with same cornerRadius are equal', () => {
+		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, cornerRadius: 0.05 };
+		const b: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, cornerRadius: 0.05 };
+		expect(containerShapeEqual(a, b)).toBe(true);
 	});
 
 	// --- cross-type ---
@@ -217,5 +236,196 @@ describe('containerMask — frame', () => {
 		// dx = |0.68-0.5| - 0.2 = -0.02, dy = -0.15 → d = -0.02 << -0.005
 		const val = containerMask(frame, 0.68, 0.5, aspect);
 		expect(val).toBeCloseTo(0.0, 2);
+	});
+});
+
+/* ------------------------------------------------------------------ */
+/*            containerMask — frame with cornerRadius                 */
+/* ------------------------------------------------------------------ */
+
+describe('containerMask — frame with cornerRadius', () => {
+	// Centered frame with rounded inner cutout: 40% width x 30% height, corner radius 0.05
+	const frameRounded: ContainerShape = {
+		type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, cornerRadius: 0.05
+	};
+	const aspect = 1.0;
+
+	it('returns 0 at the center (inside inner rounded rect)', () => {
+		expect(containerMask(frameRounded, 0.5, 0.5, aspect)).toBe(0);
+	});
+
+	it('returns 1 well outside the inner rect (in the frame region)', () => {
+		expect(containerMask(frameRounded, 0.05, 0.05, aspect)).toBe(1);
+	});
+
+	it('returns 1 at canvas corners', () => {
+		expect(containerMask(frameRounded, 0, 0, aspect)).toBe(1);
+		expect(containerMask(frameRounded, 1, 1, aspect)).toBe(1);
+	});
+
+	it('returns ~0.5 at the flat edge boundary (right side)', () => {
+		// Right edge midpoint: x = 0.5 + 0.2 = 0.7, y = 0.5
+		const val = containerMask(frameRounded, 0.7, 0.5, aspect);
+		expect(val).toBeCloseTo(0.5, 1);
+	});
+
+	it('bounding-box corner is outside the mask (rounded off)', () => {
+		// The exact corner of the inner bounding box (0.7, 0.65) is outside
+		// the rounded inner cutout, so the frame mask should be ~1 there
+		// (fluid is allowed because the cutout corner is rounded away).
+		const val = containerMask(frameRounded, 0.7, 0.65, aspect);
+		expect(val).toBeCloseTo(1.0, 1);
+	});
+
+	it('without cornerRadius, bounding-box corner is inside the cutout', () => {
+		// Same position with sharp-cornered frame: should be ~0.5 (on the edge)
+		const frameSharp: ContainerShape = {
+			type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15
+		};
+		const val = containerMask(frameSharp, 0.7, 0.65, aspect);
+		expect(val).toBeCloseTo(0.5, 1);
+	});
+});
+
+/* ------------------------------------------------------------------ */
+/*                      roundedRectSDF (unit)                         */
+/* ------------------------------------------------------------------ */
+
+describe('roundedRectSDF', () => {
+	// Centered rounded rect: 40% wide x 30% tall, corner radius 0.05
+	const cx = 0.5, cy = 0.5, halfW = 0.2, halfH = 0.15, cr = 0.05;
+	const aspect = 1.0;
+
+	it('returns 1 at the center', () => {
+		expect(roundedRectSDF(0.5, 0.5, cx, cy, halfW, halfH, cr, aspect)).toBe(1);
+	});
+
+	it('returns 1 well inside the rect', () => {
+		expect(roundedRectSDF(0.55, 0.55, cx, cy, halfW, halfH, cr, aspect)).toBe(1);
+	});
+
+	it('returns 0 well outside the rect', () => {
+		expect(roundedRectSDF(0.0, 0.0, cx, cy, halfW, halfH, cr, aspect)).toBe(0);
+	});
+
+	it('returns ~0.5 at the flat edge boundary (right side)', () => {
+		// Right edge: x = 0.5 + 0.2 = 0.7, y = 0.5 (centered)
+		// dx = |0.7-0.5| - 0.2 + 0.05 = 0.05, dy = |0.5-0.5| - 0.15 + 0.05 = -0.10
+		// outsideDist = sqrt(0.05^2 + 0) = 0.05, insideDist = min(max(0.05,-0.10),0) = 0
+		// d = 0.05 - 0.05 = 0 → smoothstep midpoint → ~0.5
+		const val = roundedRectSDF(0.7, 0.5, cx, cy, halfW, halfH, cr, aspect);
+		expect(val).toBeCloseTo(0.5, 1);
+	});
+
+	it('returns ~0.5 at the flat edge boundary (top side)', () => {
+		// Top edge: y = 0.5 + 0.15 = 0.65, x = 0.5
+		const val = roundedRectSDF(0.5, 0.65, cx, cy, halfW, halfH, cr, aspect);
+		expect(val).toBeCloseTo(0.5, 1);
+	});
+
+	it('returns 0 at corners outside the rounding', () => {
+		// The exact corner of the bounding box (0.7, 0.65) is outside
+		// because the corner is rounded. The corner radius cuts it off.
+		// dx = 0.05, dy = 0.05 → outsideDist = sqrt(0.05^2+0.05^2) ≈ 0.0707
+		// d = 0.0707 - 0.05 ≈ 0.0207 >> 0.005 → mask ≈ 0
+		const val = roundedRectSDF(0.7, 0.65, cx, cy, halfW, halfH, cr, aspect);
+		expect(val).toBeCloseTo(0.0, 1);
+	});
+
+	it('returns 0 at canvas corners', () => {
+		expect(roundedRectSDF(0, 0, cx, cy, halfW, halfH, cr, aspect)).toBe(0);
+		expect(roundedRectSDF(1, 0, cx, cy, halfW, halfH, cr, aspect)).toBe(0);
+		expect(roundedRectSDF(0, 1, cx, cy, halfW, halfH, cr, aspect)).toBe(0);
+		expect(roundedRectSDF(1, 1, cx, cy, halfW, halfH, cr, aspect)).toBe(0);
+	});
+
+	it('is independent of aspect ratio (operates in UV space)', () => {
+		const val1 = roundedRectSDF(0.6, 0.55, cx, cy, halfW, halfH, cr, 1.0);
+		const val2 = roundedRectSDF(0.6, 0.55, cx, cy, halfW, halfH, cr, 2.0);
+		expect(val1).toBeCloseTo(val2, 5);
+	});
+});
+
+/* ------------------------------------------------------------------ */
+/*                containerShapeEqual — roundedRect                   */
+/* ------------------------------------------------------------------ */
+
+describe('containerShapeEqual — roundedRect', () => {
+	it('identical roundedRects are equal', () => {
+		const a: ContainerShape = { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.3, halfH: 0.2, cornerRadius: 0.05 };
+		expect(containerShapeEqual(a, { ...a })).toBe(true);
+	});
+
+	it('same reference is equal', () => {
+		const a: ContainerShape = { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.3, halfH: 0.2, cornerRadius: 0.05 };
+		expect(containerShapeEqual(a, a)).toBe(true);
+	});
+
+	it('different cornerRadius are not equal', () => {
+		const a: ContainerShape = { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.3, halfH: 0.2, cornerRadius: 0.05 };
+		const b: ContainerShape = { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.3, halfH: 0.2, cornerRadius: 0.10 };
+		expect(containerShapeEqual(a, b)).toBe(false);
+	});
+
+	it('different halfW are not equal', () => {
+		const a: ContainerShape = { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.3, halfH: 0.2, cornerRadius: 0.05 };
+		const b: ContainerShape = { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.4, halfH: 0.2, cornerRadius: 0.05 };
+		expect(containerShapeEqual(a, b)).toBe(false);
+	});
+
+	it('roundedRect !== circle', () => {
+		const rr: ContainerShape = { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.3, halfH: 0.2, cornerRadius: 0.05 };
+		const c: ContainerShape = { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.4 };
+		expect(containerShapeEqual(rr, c)).toBe(false);
+	});
+
+	it('roundedRect !== frame', () => {
+		const rr: ContainerShape = { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.3, halfH: 0.2, cornerRadius: 0.05 };
+		const f: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.3, halfH: 0.2 };
+		expect(containerShapeEqual(rr, f)).toBe(false);
+	});
+
+	it('null !== roundedRect', () => {
+		const rr: ContainerShape = { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.3, halfH: 0.2, cornerRadius: 0.05 };
+		expect(containerShapeEqual(null, rr)).toBe(false);
+	});
+});
+
+/* ------------------------------------------------------------------ */
+/*                  containerMask — roundedRect                       */
+/* ------------------------------------------------------------------ */
+
+describe('containerMask — roundedRect', () => {
+	const rr: ContainerShape = { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, cornerRadius: 0.05 };
+	const aspect = 1.0;
+
+	it('returns 1 at the center', () => {
+		expect(containerMask(rr, 0.5, 0.5, aspect)).toBe(1);
+	});
+
+	it('returns 0 well outside the rect', () => {
+		expect(containerMask(rr, 0.0, 0.0, aspect)).toBe(0);
+	});
+
+	it('returns ~0.5 at the flat edge boundary', () => {
+		const val = containerMask(rr, 0.7, 0.5, aspect);
+		expect(val).toBeCloseTo(0.5, 1);
+	});
+
+	it('returns 0 at the bounding-box corner (rounded off)', () => {
+		// The corner (0.7, 0.65) is cut by the rounding
+		const val = containerMask(rr, 0.7, 0.65, aspect);
+		expect(val).toBeCloseTo(0.0, 1);
+	});
+
+	it('returns 0 at canvas corners', () => {
+		expect(containerMask(rr, 0, 0, aspect)).toBe(0);
+		expect(containerMask(rr, 1, 1, aspect)).toBe(0);
+	});
+
+	it('delegates correctly (matches roundedRectSDF directly)', () => {
+		const direct = roundedRectSDF(0.6, 0.55, 0.5, 0.5, 0.2, 0.15, 0.05, aspect);
+		const viaContainer = containerMask(rr, 0.6, 0.55, aspect);
+		expect(viaContainer).toBe(direct);
 	});
 });
