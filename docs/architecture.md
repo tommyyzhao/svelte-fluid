@@ -54,6 +54,8 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 │   • randomSplats(count)                                         │
 │   • pause() / resume() / isPaused  ← RAF control               │
 │   • setConfig(partial)        ← 4-bucket hot update             │
+│   •   includes randomSplatSwirl, randomSplatEvenSpacing,        │
+│   •   randomSplatSpread (Bucket A)                              │
 │   • dispose()                 ← removes everything              │
 │                                                                 │
 │  Private (ports of script.js):                                  │
@@ -78,9 +80,11 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 │  pointer.ts          Pointer, createPointer, update*Data,       │
 │                      correctDeltaX/Y                            │
 │  container-shapes.ts containerShapeEqual, containerMask (SDF),  │
-│                      glslSmoothstep (TS mirror of GLSL)         │
+│                      roundedRectSDF, glslSmoothstep             │
+│                      (TS mirror of GLSL)                        │
 │  types.ts            FluidConfig, ResolvedConfig, FluidHandle,  │
-│                      ContainerShape, FBO, DoubleFBO, ExtInfo    │
+│                      ContainerShape (circle | frame |           │
+│                      roundedRect), FBO, DoubleFBO, ExtInfo      │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -140,7 +144,8 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 1. Any tracked prop changes → `$effect` re-runs.
 2. `buildConfig()` collects current values.
 3. `engine.setConfig(cfg)` walks the four buckets:
-   - **A** scalars/booleans → write to `this.config.X`, picked up next frame
+   - **A** scalars/booleans → write to `this.config.X`, picked up next frame.
+     Includes `randomSplatSwirl`, `randomSplatEvenSpacing`, `randomSplatSpread`.
    - **B** SHADING/BLOOM/SUNRAYS → `updateKeywords()` recompiles display shader
    - **C** SIM/DYE/BLOOM/SUNRAYS resolution → `init*Framebuffers()` rebuilds FBOs
    - **D** seed / pointerInput / initialSplatCount* → ignored after construction
