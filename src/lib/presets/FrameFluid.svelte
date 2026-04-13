@@ -20,7 +20,7 @@
 	export type FrameFluidProps = Pick<
 		FluidProps,
 		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'aria-label'
-	>;
+	> & { cornerRadius?: number };
 </script>
 
 <script lang="ts">
@@ -34,7 +34,8 @@
 		style,
 		seed,
 		lazy,
-		'aria-label': ariaLabel
+		'aria-label': ariaLabel,
+		cornerRadius
 	}: FrameFluidProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
@@ -73,14 +74,14 @@
 	{seed}
 	{lazy}
 	aria-label={ariaLabel}
-	containerShape={{ type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.25, halfH: 0.25 }}
+	containerShape={{ type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.25, halfH: 0.25, cornerRadius }}
 	curl={30}
-	densityDissipation={0.5}
-	initialDensityDissipation={0.9}
+	densityDissipation={0.08}
+	initialDensityDissipation={0.5}
 	initialDensityDissipationDuration={2.0}
-	velocityDissipation={0.15}
+	velocityDissipation={0.06}
 	pressure={0.8}
-	splatRadius={0.25}
+	splatRadius={0.42}
 	splatForce={5000}
 	shading
 	colorful
@@ -92,6 +93,9 @@
 	initialSplatCount={0}
 	backColor={{ r: 0, g: 0, b: 0 }}
 	presetSplats={PRESET_SPLATS}
-	randomSplatRate={0.3}
+	randomSplatRate={0.5}
+	randomSplatCount={6}
 	randomSplatSpawnY={0.5}
+	randomSplatSpread={2.0}
+	randomSplatSwirl={300}
 />

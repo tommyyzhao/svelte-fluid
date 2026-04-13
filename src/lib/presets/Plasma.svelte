@@ -95,7 +95,7 @@
 	{lazy}
 	aria-label={ariaLabel}
 	curl={40}
-	densityDissipation={0.1}
+	densityDissipation={0.12}
 	initialDensityDissipation={0.6}
 	initialDensityDissipationDuration={2.0}
 	velocityDissipation={0.08}
@@ -106,13 +106,15 @@
 	colorful
 	colorUpdateSpeed={8}
 	bloom
-	bloomThreshold={0.9}
-	bloomIntensity={1.2}
+	bloomThreshold={0.6}
+	bloomIntensity={1.5}
 	sunrays
 	sunraysWeight={0.5}
 	initialSplatCount={0}
 	backColor={{ r: 4, g: 2, b: 12 }}
 	presetSplats={PRESET_SPLATS}
 	randomSplatRate={0.4}
+	randomSplatCount={4}
+	randomSplatEvenSpacing={false}
 	randomSplatSpawnY={0.5}
 />

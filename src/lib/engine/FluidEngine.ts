@@ -107,6 +107,9 @@ const DEFAULTS: ResolvedConfig = {
 	RANDOM_SPLAT_DX: 0,
 	RANDOM_SPLAT_DY: 0,
 	RANDOM_SPLAT_SPAWN_Y: 0.5,
+	RANDOM_SPLAT_EVEN_SPACING: false,
+	RANDOM_SPLAT_SWIRL: 0,
+	RANDOM_SPLAT_SPREAD: 0.1,
 	CONTAINER_SHAPE: null
 };
 function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): ResolvedConfig {
@@ -161,6 +164,9 @@ function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): Re
 	if (input.randomSplatDx !== undefined) out.RANDOM_SPLAT_DX = input.randomSplatDx;
 	if (input.randomSplatDy !== undefined) out.RANDOM_SPLAT_DY = input.randomSplatDy;
 	if (input.randomSplatSpawnY !== undefined) out.RANDOM_SPLAT_SPAWN_Y = Math.max(0, Math.min(1, input.randomSplatSpawnY));
+	if (input.randomSplatEvenSpacing !== undefined) out.RANDOM_SPLAT_EVEN_SPACING = input.randomSplatEvenSpacing;
+	if (input.randomSplatSwirl !== undefined) out.RANDOM_SPLAT_SWIRL = input.randomSplatSwirl;
+	if (input.randomSplatSpread !== undefined) out.RANDOM_SPLAT_SPREAD = input.randomSplatSpread;
 	if (input.containerShape !== undefined) out.CONTAINER_SHAPE = input.containerShape ?? null;
 	return out;
 }
@@ -783,6 +789,12 @@ export class FluidEngine implements FluidHandle {
 			gl.uniform1i(this.applyMaskProgram.uniforms.uShapeType, 1);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfW, shape.halfW);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfH, shape.halfH);
+			gl.uniform1f(this.applyMaskProgram.uniforms.uCornerRadius, shape.cornerRadius ?? 0);
+		} else if (shape.type === 'roundedRect') {
+			gl.uniform1i(this.applyMaskProgram.uniforms.uShapeType, 2);
+			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfW, shape.halfW);
+			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfH, shape.halfH);
+			gl.uniform1f(this.applyMaskProgram.uniforms.uCornerRadius, shape.cornerRadius);
 		}
 
 		this.blit(target.write);
@@ -848,22 +860,36 @@ export class FluidEngine implements FluidHandle {
 		const rate = this.config.RANDOM_SPLAT_RATE;
 		if (rate <= 0) { this.randomSplatTimer = 0; return; }
 		this.randomSplatTimer += dt;
-		const interval = 1 / rate;
+		// Jitter the interval ±50% so bursts feel organic, not metronome-like.
+		const baseInterval = 1 / rate;
+		const interval = baseInterval * (0.5 + this.rng());
+		const hdr = this.hdrMultiplier();
 		while (this.randomSplatTimer >= interval) {
 			this.randomSplatTimer -= interval;
-			for (let i = 0; i < this.config.RANDOM_SPLAT_COUNT; i++) {
+			const count = this.config.RANDOM_SPLAT_COUNT;
+			const evenSpacing = this.config.RANDOM_SPLAT_EVEN_SPACING;
+			for (let i = 0; i < count; i++) {
 				let color: RGB;
 				if (this.config.RANDOM_SPLAT_COLOR) {
 					color = { ...this.config.RANDOM_SPLAT_COLOR };
-					color.r *= 10; color.g *= 10; color.b *= 10;
+					color.r *= hdr; color.g *= hdr; color.b *= hdr;
 				} else {
 					color = generateColor(this.rng);
-					color.r *= 10; color.g *= 10; color.b *= 10;
+					color.r *= hdr; color.g *= hdr; color.b *= hdr;
 				}
-				const x = this.rng();
+				const x = evenSpacing ? (i + 0.5) / count : this.rng();
 				const spawnY = this.config.RANDOM_SPLAT_SPAWN_Y;
-				const y = Math.max(0, Math.min(1, spawnY + (this.rng() - 0.5) * 0.1));
-				this.splat(x, y, this.config.RANDOM_SPLAT_DX, this.config.RANDOM_SPLAT_DY, color);
+				const y = Math.max(0, Math.min(1, spawnY + (this.rng() - 0.5) * this.config.RANDOM_SPLAT_SPREAD));
+				let splatDx = this.config.RANDOM_SPLAT_DX;
+				let splatDy = this.config.RANDOM_SPLAT_DY;
+				const swirl = this.config.RANDOM_SPLAT_SWIRL;
+				if (swirl !== 0) {
+					const cx = this.config.CONTAINER_SHAPE?.cx ?? 0.5;
+					const cy = this.config.CONTAINER_SHAPE?.cy ?? 0.5;
+					splatDx = -(y - cy) * swirl;
+					splatDy = (x - cx) * swirl;
+				}
+				this.splat(x, y, splatDx, splatDy, color);
 			}
 		}
 	}
@@ -1066,6 +1092,12 @@ export class FluidEngine implements FluidHandle {
 				gl.uniform1i(this.displayMaterial.uniforms.uContainerShapeType, 1);
 				gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfW, s.halfW);
 				gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfH, s.halfH);
+				gl.uniform1f(this.displayMaterial.uniforms.uContainerCornerRadius, s.cornerRadius ?? 0);
+			} else if (s.type === 'roundedRect') {
+				gl.uniform1i(this.displayMaterial.uniforms.uContainerShapeType, 2);
+				gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfW, s.halfW);
+				gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfH, s.halfH);
+				gl.uniform1f(this.displayMaterial.uniforms.uContainerCornerRadius, s.cornerRadius);
 			}
 		}
 		this.blit(target);
@@ -1165,12 +1197,30 @@ export class FluidEngine implements FluidHandle {
 		this.splat(pointer.texcoordX, pointer.texcoordY, dx, dy, pointer.color);
 	}
 
+	private hdrMultiplier(): number {
+		const shape = this.config.CONTAINER_SHAPE;
+		if (!shape) return 10.0;
+		// Approximate area fraction of the container vs full canvas
+		let areaFraction = 1.0;
+		if (shape.type === 'circle') {
+			areaFraction = Math.PI * shape.radius * shape.radius;
+		} else if (shape.type === 'frame') {
+			// Frame area = 1 - inner rect area
+			areaFraction = 1.0 - (2 * shape.halfW) * (2 * shape.halfH);
+		} else if (shape.type === 'roundedRect') {
+			areaFraction = (2 * shape.halfW) * (2 * shape.halfH);
+		}
+		// Scale the 10x base by area fraction, clamped to reasonable range
+		return Math.max(3.0, 10.0 * Math.sqrt(areaFraction));
+	}
+
 	private multipleSplats(amount: number): void {
+		const hdr = this.hdrMultiplier();
 		for (let i = 0; i < amount; i++) {
 			const color = generateColor(this.rng);
-			color.r *= 10.0;
-			color.g *= 10.0;
-			color.b *= 10.0;
+			color.r *= hdr;
+			color.g *= hdr;
+			color.b *= hdr;
 			const x = this.rng();
 			const y = this.rng();
 			const dx = 1000 * (this.rng() - 0.5);

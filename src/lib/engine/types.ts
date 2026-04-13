@@ -62,10 +62,16 @@ export interface PresetSplat {
  * `halfW`/`halfH` are in UV space (0–1), so `halfW: 0.2` means the inner
  * rectangle extends 20% of canvas width on each side of `cx`.
  * Think of it as a picture frame: fluid fills the border region.
+ *
+ * **`roundedRect`** — like `frame` but with rounded corners, and the fluid
+ * is confined *inside* the rounded rectangle rather than outside it.
+ * `halfW`/`halfH` define the rectangle extents in UV space (same as `frame`),
+ * and `cornerRadius` (also in UV space) controls how rounded the corners are.
  */
 export type ContainerShape =
 	| { type: 'circle'; cx: number; cy: number; radius: number }
-	| { type: 'frame'; cx: number; cy: number; halfW: number; halfH: number };
+	| { type: 'frame'; cx: number; cy: number; halfW: number; halfH: number; cornerRadius?: number }
+	| { type: 'roundedRect'; cx: number; cy: number; halfW: number; halfH: number; cornerRadius: number };
 
 /**
  * Public, camelCase fluid configuration. Every field is optional;
@@ -195,6 +201,28 @@ export interface FluidConfig {
 	 */
 	randomSplatSpawnY?: number;
 	/**
+	 * When true, distribute continuous splats evenly across the horizontal
+	 * axis instead of placing them at random x positions. The `randomSplatCount`
+	 * splats are spaced at `(i + 0.5) / count` for i in 0..count-1.
+	 * Default false. Bucket A.
+	 */
+	randomSplatEvenSpacing?: boolean;
+	/**
+	 * When non-zero, random splats receive tangential velocity relative to
+	 * the container center (or canvas center if no container shape).
+	 * Positive = counter-clockwise, negative = clockwise.
+	 * The magnitude controls speed. Default 0. Bucket A.
+	 */
+	randomSplatSwirl?: number;
+	/**
+	 * Vertical spread of continuous splat spawning. The y-coordinate is
+	 * `spawnY + (random - 0.5) * spread`, clamped to [0, 1].
+	 * Default 0.1 (±0.05 jitter). Set to 2.0 for full-canvas coverage
+	 * (useful with container shapes where the mask discards out-of-bounds
+	 * splats naturally). Bucket A.
+	 */
+	randomSplatSpread?: number;
+	/**
 	 * Confine the fluid to a geometric shape. The simulation physically
 	 * enforces the boundary — velocity is zeroed outside after every physics
 	 * pass, and dye is masked after advection. `null` (default) = full
@@ -250,6 +278,9 @@ export interface ResolvedConfig {
 	RANDOM_SPLAT_DX: number;
 	RANDOM_SPLAT_DY: number;
 	RANDOM_SPLAT_SPAWN_Y: number;
+	RANDOM_SPLAT_EVEN_SPACING: boolean;
+	RANDOM_SPLAT_SWIRL: number;
+	RANDOM_SPLAT_SPREAD: number;
 	CONTAINER_SHAPE: ContainerShape | null;
 }
 

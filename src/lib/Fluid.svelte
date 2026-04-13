@@ -107,6 +107,9 @@
 		randomSplatDx,
 		randomSplatDy,
 		randomSplatSpawnY,
+		randomSplatEvenSpacing,
+		randomSplatSwirl,
+		randomSplatSpread,
 		containerShape,
 		lazy = false,
 		autoPause = true,
@@ -178,6 +181,9 @@
 			randomSplatDx,
 			randomSplatDy,
 			randomSplatSpawnY,
+			randomSplatEvenSpacing,
+			randomSplatSwirl,
+			randomSplatSpread,
 			containerShape,
 			pointerInput,
 			seed: stableSeed,
@@ -195,7 +201,14 @@
 		const dpr = window.devicePixelRatio || 1;
 		canvasEl.width = Math.max(1, Math.floor(cssW * dpr));
 		canvasEl.height = Math.max(1, Math.floor(cssH * dpr));
-		engine = new FluidEngine({ canvas: canvasEl, config: buildConfig() });
+		try {
+			engine = new FluidEngine({ canvas: canvasEl, config: buildConfig() });
+		} catch {
+			// WebGL context creation can fail when the browser's context limit
+			// is exceeded or when half-float textures are unsupported. Degrade
+			// gracefully — the canvas stays blank rather than crashing the page.
+			engine = undefined;
+		}
 	}
 
 	/**
@@ -329,6 +342,7 @@
 		display: block;
 		width: 100%;
 		height: 100%;
+		background: #000;
 		touch-action: none;
 	}
 </style>
