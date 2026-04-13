@@ -11,6 +11,7 @@ doesn't have to rediscover them.
 | [`webgl-refactoring.md`](./webgl-refactoring.md) | Refactoring a global-state WebGL script into a class |
 | [`verification.md`](./verification.md) | What worked for catching bugs early |
 | [`presets.md`](./presets.md) | Timing race in post-mount splat injection, HDR splat colors |
+| [`webgl-memory.md`](./webgl-memory.md) | WebGL context limits, disposal, memory management |
 
 ## How to add a new learning
 

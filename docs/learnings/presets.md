@@ -456,3 +456,15 @@ Mitigations for `CircularFluid`:
 - `bloomThreshold: 0.6` — lower threshold lets bloom activate on moderate values
 
 A more general solution would scale the 10× multiplier by container area, but this isn't implemented yet.
+
+## Frame shape: rectangular inner cutout via box SDF
+
+**What it is:** A second `ContainerShape` variant: `{ type: 'frame'; cx; cy; halfW; halfH }`. Fluid flows everywhere except inside a rectangular cutout — like a picture frame. This is the inverse of `circle` where fluid is confined inside.
+
+**SDF math:** Chebyshev box distance in UV space. `d = max(abs(x-cx)-halfW, abs(y-cy)-halfH)`. Inside the box d<0 (mask=0, no fluid); outside d>0 (mask=1, fluid flows). No aspect correction needed because the rectangle is specified in UV coordinates.
+
+**Shader approach:** The `applyMaskShader` was refactored from a single circle SDF to support multiple shapes via `uniform int uShapeType`. Circle is type 0, frame is type 1. Both share `uCx`/`uCy`; circle uses `uRadius`/`uAspect`; frame uses `uHalfW`/`uHalfH`. The display shader's `CONTAINER_MASK` block uses the same branching.
+
+**Testing:** SDF math was extracted to a pure TypeScript module (`container-shapes.ts`) with functions that mirror the GLSL. 33 vitest tests cover both shapes' SDF evaluation, `containerShapeEqual`, and edge cases. This is the first test infrastructure in the project.
+
+**FrameFluid preset:** 8 jets (4 edge + 4 corner) in clockwise circulation around the frame border. Colors and forces tuned for the narrower flow region.
