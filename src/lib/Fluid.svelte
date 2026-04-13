@@ -43,6 +43,18 @@
 		 * minimizing simultaneous context creation.
 		 */
 		lazy?: boolean;
+		/**
+		 * Automatically pause the animation loop when the canvas is not
+		 * visible — either scrolled out of the viewport or on a hidden
+		 * browser tab. Resumes when visibility is restored. Default `true`.
+		 *
+		 * This is lighter than `lazy`: the WebGL context stays alive (no
+		 * recompile pause on resume) but the RAF loop stops, freeing CPU
+		 * and GPU cycles. When both `lazy` and `autoPause` are set, `lazy`
+		 * takes precedence for scroll visibility (full teardown), while
+		 * `autoPause` still handles tab-level visibility (Page Visibility API).
+		 */
+		autoPause?: boolean;
 	}
 </script>
 
@@ -97,15 +109,17 @@
 		randomSplatSpawnY,
 		containerShape,
 		lazy = false,
+		autoPause = true,
 		...rest
 	}: FluidProps = $props();
 
 	let canvasEl = $state<HTMLCanvasElement | undefined>(undefined);
 	let container = $state<HTMLDivElement | undefined>(undefined);
 	let engine: FluidEngine | undefined;
-	// `lazy` is captured once, like `seed`. Toggling it after mount has no
-	// effect — the IntersectionObserver wiring is decided in `onMount`.
+	// `lazy` and `autoPause` are captured once, like `seed`. Toggling after
+	// mount has no effect — the observer wiring is decided in `onMount`.
 	const stableLazy = untrack(() => lazy);
+	const stableAutoPause = untrack(() => autoPause);
 	let isVisible = !stableLazy;
 
 	/**
@@ -201,7 +215,10 @@
 	/** Imperative API exposed to parents via `bind:this`. */
 	export const handle: FluidHandle = {
 		splat: (x, y, dx, dy, color) => engine?.splat(x, y, dx, dy, color),
-		randomSplats: (count) => engine?.randomSplats(count)
+		randomSplats: (count) => engine?.randomSplats(count),
+		pause: () => engine?.pause(),
+		resume: () => engine?.resume(),
+		get isPaused() { return engine?.isPaused ?? true; }
 	};
 
 	onMount(() => {
@@ -223,14 +240,30 @@
 		});
 		ro.observe(container);
 
+		// --- Scroll visibility ---
+		// `lazy` mode: full teardown/rebuild when scrolling out/into view.
+		// `autoPause` mode (without lazy): pause/resume the RAF loop.
+		// Both use IntersectionObserver; lazy takes precedence.
 		let io: IntersectionObserver | undefined;
-		if (stableLazy) {
+		let inViewport = true;
+		if (stableLazy || stableAutoPause) {
 			io = new IntersectionObserver(
 				(entries) => {
 					for (const entry of entries) {
-						if (entry.isIntersecting === isVisible) continue;
-						isVisible = entry.isIntersecting;
-						reconcile();
+						inViewport = entry.isIntersecting;
+						if (stableLazy) {
+							// Lazy mode: teardown/rebuild
+							if (entry.isIntersecting === isVisible) continue;
+							isVisible = entry.isIntersecting;
+							reconcile();
+						} else if (stableAutoPause) {
+							// autoPause mode: pause/resume RAF
+							if (entry.isIntersecting) {
+								engine?.resume();
+							} else {
+								engine?.pause();
+							}
+						}
 					}
 				},
 				{ rootMargin: '50px' }
@@ -238,9 +271,27 @@
 			io.observe(container);
 		}
 
+		// --- Page Visibility API ---
+		// Pause all engines when the tab is hidden, regardless of scroll.
+		let onVisibilityChange: (() => void) | undefined;
+		if (stableAutoPause) {
+			onVisibilityChange = () => {
+				if (document.hidden) {
+					engine?.pause();
+				} else if (inViewport) {
+					// Only resume if the canvas is still in the viewport.
+					engine?.resume();
+				}
+			};
+			document.addEventListener('visibilitychange', onVisibilityChange);
+		}
+
 		return () => {
 			ro.disconnect();
 			io?.disconnect();
+			if (onVisibilityChange) {
+				document.removeEventListener('visibilitychange', onVisibilityChange);
+			}
 			teardown();
 		};
 	});

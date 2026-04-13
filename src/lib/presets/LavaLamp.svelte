@@ -97,7 +97,10 @@
 	/** Imperative API forwarded to the inner Fluid. */
 	export const handle: FluidHandle = {
 		splat: (x, y, dx, dy, color) => inner?.handle.splat(x, y, dx, dy, color),
-		randomSplats: (count) => inner?.handle.randomSplats(count)
+		randomSplats: (count) => inner?.handle.randomSplats(count),
+		pause: () => inner?.handle.pause(),
+		resume: () => inner?.handle.resume(),
+		get isPaused() { return inner?.handle.isPaused ?? true; }
 	};
 </script>
 

@@ -309,4 +309,16 @@ export interface FluidHandle {
 	splat(x: number, y: number, dx: number, dy: number, color: RGB): void;
 	/** Push N additional random splats onto the splat queue. */
 	randomSplats(count: number): void;
+	/**
+	 * Stop the animation loop. The WebGL context stays alive but no frames
+	 * are requested. Call {@link resume} to restart. Idempotent.
+	 */
+	pause(): void;
+	/**
+	 * Restart the animation loop after a {@link pause}. Idempotent —
+	 * calling resume on an already-running engine is a no-op.
+	 */
+	resume(): void;
+	/** Whether the engine's animation loop is currently paused. */
+	readonly isPaused: boolean;
 }
