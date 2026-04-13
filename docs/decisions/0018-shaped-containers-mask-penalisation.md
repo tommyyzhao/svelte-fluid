@@ -1,6 +1,6 @@
 # ADR 0018: Shaped fluid containers via mask penalisation
 
-**Status:** Accepted (amended 2026-04-10)
+**Status:** Accepted (amended 2026-04-10, 2026-04-12)
 **Date:** 2026-04-10
 
 ## Context
@@ -40,7 +40,8 @@ Shape is expressed as a new `ContainerShape` discriminated union in `types.ts`:
 
 ```ts
 export type ContainerShape =
-  | { type: 'circle'; cx: number; cy: number; radius: number };
+  | { type: 'circle'; cx: number; cy: number; radius: number }
+  | { type: 'frame'; cx: number; cy: number; halfW: number; halfH: number };
 ```
 
 All coordinates follow the existing convention: `cx`/`cy` ∈ [0, 1]
@@ -80,6 +81,24 @@ resolution, `maskDyeFBO` at dye resolution) pre-rendered by a
 The per-fragment SDF cost (4 extra evaluations per frame — 3 velocity + 1 dye)
 is negligible compared to the texture lookup it replaced.
 
+## Amendment (2026-04-12): Frame shape type added
+
+The `ContainerShape` union was extended with a `frame` variant:
+
+```ts
+export type ContainerShape =
+  | { type: 'circle'; cx: number; cy: number; radius: number }
+  | { type: 'frame'; cx: number; cy: number; halfW: number; halfH: number };
+```
+
+**Frame** is the inverse of a typical container: fluid flows everywhere *except* inside a rectangular cutout (a "picture frame"). The SDF uses Chebyshev box distance in UV space — no aspect correction because the rectangle is defined in UV coordinates. The mask is 0 inside the inner rectangle and 1 outside, with the same ±0.005 smoothstep feather as circle.
+
+The `applyMaskShader` was refactored to support both shapes via a `uniform int uShapeType` (0=circle, 1=frame). The display shader's `CONTAINER_MASK` block uses the same branching. All uniforms for both shapes are declared; the engine sets only the relevant ones per shape type.
+
+A `containerShapeEqual` function was extracted from `FluidEngine.ts` to a new `container-shapes.ts` module alongside pure TypeScript SDF mirror functions used for testing. 33 vitest unit tests cover both shapes' SDF math, equality comparisons, and edge cases.
+
+`FrameFluid` preset added: 8 jets in clockwise circulation around the frame border.
+
 ## Consequences
 
 **Positive:**
@@ -88,7 +107,8 @@ is negligible compared to the texture lookup it replaced.
   condition without explicit wall reflection logic.
 - Adding future shapes requires only extending `applyMaskShader` and the
   display shader's `CONTAINER_MASK` block. All physics passes are unaware of
-  the specific shape.
+  the specific shape. (Validated by the frame shape addition in the 2026-04-12
+  amendment — no physics shaders were modified.)
 - Cost at steady state: 4 extra blit passes per frame (3 velocity + 1 dye),
   each trivially cheap. No branching in the physics shaders, no extra
   uniforms in the hot path.
@@ -120,3 +140,34 @@ is negligible compared to the texture lookup it replaced.
 - *Separate mask FBO (original design):* Cleaner abstraction boundary but
   introduced FBO format compatibility risks, extra GPU memory, and a more
   complex hot-update path (Bucket B + C). Replaced by inline SDF.
+
+## Amendment (2026-04-12): Frame shape type added
+
+The `ContainerShape` union was extended with a `frame` variant:
+
+```ts
+export type ContainerShape =
+  | { type: 'circle'; cx: number; cy: number; radius: number }
+  | { type: 'frame'; cx: number; cy: number; halfW: number; halfH: number };
+```
+
+**Frame** is the inverse of a typical container: fluid flows everywhere *except*
+inside a rectangular cutout (a "picture frame"). The SDF uses Chebyshev box
+distance in UV space — no aspect correction because the rectangle is defined in
+UV coordinates. The mask is 0 inside the inner rectangle and 1 outside, with the
+same ±0.005 smoothstep feather as circle.
+
+The `applyMaskShader` was refactored to support both shapes via a
+`uniform int uShapeType` (0=circle, 1=frame). The display shader's
+`CONTAINER_MASK` block uses the same branching. All uniforms for both shapes are
+declared; the engine sets only the relevant ones per shape type.
+
+A `containerShapeEqual` function was extracted from `FluidEngine.ts` to a new
+`container-shapes.ts` module alongside pure TypeScript SDF mirror functions used
+for testing. 33 vitest unit tests cover both shapes' SDF math, equality
+comparisons, and edge cases. This validates the original ADR's claim that "adding
+future shapes requires only extending `applyMaskShader` and the display shader's
+`CONTAINER_MASK` block."
+
+`FrameFluid` preset added: 8 jets in clockwise circulation around the frame
+border.

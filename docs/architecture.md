@@ -24,7 +24,10 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 │   │  ─ ResizeObserver(container)                         │      │
 │   │      → teardown() → instantiate()                    │      │
 │   │  ─ $effect → engine.setConfig(buildConfig())         │      │
-│   │  ─ export const handle = { splat, randomSplats }     │      │
+│   │  ─ IntersectionObserver  (autoPause + lazy)           │      │
+│   │  ─ visibilitychange      (autoPause)                 │      │
+│   │  ─ export const handle = { splat, randomSplats,      │      │
+│   │                             pause, resume, isPaused } │      │
 │   └────────────────────────┬─────────────────────────────┘      │
 │                            │ canvas + config                    │
 └────────────────────────────┼────────────────────────────────────┘
@@ -49,6 +52,7 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 │   • new FluidEngine({ canvas, config? })                        │
 │   • splat(x, y, dx, dy, color)                                  │
 │   • randomSplats(count)                                         │
+│   • pause() / resume() / isPaused  ← RAF control               │
 │   • setConfig(partial)        ← 4-bucket hot update             │
 │   • dispose()                 ← removes everything              │
 │                                                                 │
@@ -73,8 +77,10 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 │                      HSVtoRGB, normalizeColor                   │
 │  pointer.ts          Pointer, createPointer, update*Data,       │
 │                      correctDeltaX/Y                            │
+│  container-shapes.ts containerShapeEqual, containerMask (SDF),  │
+│                      glslSmoothstep (TS mirror of GLSL)         │
 │  types.ts            FluidConfig, ResolvedConfig, FluidHandle,  │
-│                      FBO, DoubleFBO, ExtInfo, RGB               │
+│                      ContainerShape, FBO, DoubleFBO, ExtInfo    │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -183,7 +189,10 @@ wall-clock time.
 ## Trade-offs and known limitations
 
 - **WebGL context limit.** Browsers cap simultaneous contexts at ~8–16 per tab.
-  Beyond that the oldest context is silently lost. Plan dense layouts accordingly.
+  Beyond that the oldest context is silently lost. Mitigated by three layers:
+  `autoPause` (default on, stops RAF when off-screen), `lazy` (full teardown on
+  scroll-out), and context loss/restore handlers (automatic reinit). See ADR
+  [`0019`](./decisions/0019-auto-pause-and-context-loss-recovery.md).
 - **No live state preservation across resize.** Resizing means brand-new fluid;
   the old simulation state is gone. The seed makes the *initial* splats stable
   but any user-painted state is lost. (See ADR
