@@ -56,11 +56,16 @@ export interface PresetSplat {
  * by canvas height: `radius: 0.45` gives a physical radius of 45% of
  * the canvas height, which fits comfortably inside landscape canvases.
  *
- * Additional variants can be added to this union in future ADRs without
- * changing any physics shader — only `applyMaskShader` needs updating.
+ * **`circle`** — fluid confined inside a circle. Everything outside is zeroed.
+ *
+ * **`frame`** — fluid flows everywhere *except* inside a rectangular cutout.
+ * `halfW`/`halfH` are in UV space (0–1), so `halfW: 0.2` means the inner
+ * rectangle extends 20% of canvas width on each side of `cx`.
+ * Think of it as a picture frame: fluid fills the border region.
  */
 export type ContainerShape =
-	| { type: 'circle'; cx: number; cy: number; radius: number };
+	| { type: 'circle'; cx: number; cy: number; radius: number }
+	| { type: 'frame'; cx: number; cy: number; halfW: number; halfH: number };
 
 /**
  * Public, camelCase fluid configuration. Every field is optional;

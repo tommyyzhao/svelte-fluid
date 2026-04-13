@@ -3,6 +3,7 @@
 		Aurora,
 		CircularFluid,
 		Fluid,
+		FrameFluid,
 		FrozenSwirl,
 		InkInWater,
 		LavaLamp,
@@ -183,6 +184,9 @@
 			</Card>
 			<Card title="Circular Fluid" description="Plasma physically confined inside a circular boundary — the simulation enforces the wall.">
 				<CircularFluid seed={606} lazy aria-label="Circular Fluid preset: plasma confined inside a circle" />
+			</Card>
+			<Card title="Frame Fluid" description="Fluid swirls around a rectangular inner cutout — a living picture frame.">
+				<FrameFluid seed={707} lazy aria-label="Frame Fluid preset: fluid around rectangular cutout" />
 			</Card>
 		</div>
 	</section>

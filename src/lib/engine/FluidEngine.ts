@@ -63,6 +63,7 @@ import {
 import { type DitheringTexture, createDitheringTexture } from './dithering.js';
 import { type Pointer, createPointer, updatePointerDownData, updatePointerMoveData, updatePointerUpData } from './pointer.js';
 import { type Rng, generateColor, mulberry32, normalizeColor, randomSeed } from './rng.js';
+import { containerShapeEqual } from './container-shapes.js';
 import * as S from './shaders.js';
 
 /* -------------------------------------------------------------------------- */
@@ -164,19 +165,6 @@ function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): Re
 	return out;
 }
 
-/** Deep equality for ContainerShape values used in the setConfig diff. */
-function containerShapeEqual(
-	a: ResolvedConfig['CONTAINER_SHAPE'],
-	b: ResolvedConfig['CONTAINER_SHAPE']
-): boolean {
-	if (a === b) return true;
-	if (a == null || b == null) return false;
-	if (a.type !== b.type) return false;
-	if (a.type === 'circle' && b.type === 'circle') {
-		return a.cx === b.cx && a.cy === b.cy && a.radius === b.radius;
-	}
-	return false;
-}
 
 /* -------------------------------------------------------------------------- */
 /*                                FluidEngine                                 */
@@ -713,17 +701,26 @@ export class FluidEngine implements FluidHandle {
 	/** Multiply a DoubleFBO's contents by the container shape SDF in place. */
 	private applyMask(target: DoubleFBO): void {
 		const shape = this.config.CONTAINER_SHAPE;
-		if (!shape || shape.type !== 'circle') return;
+		if (!shape) return;
 		const gl = this.gl;
 		this.applyMaskProgram.bind();
 		gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		gl.uniform1f(this.applyMaskProgram.uniforms.uCx, shape.cx);
 		gl.uniform1f(this.applyMaskProgram.uniforms.uCy, shape.cy);
-		gl.uniform1f(this.applyMaskProgram.uniforms.uRadius, shape.radius);
-		gl.uniform1f(
-			this.applyMaskProgram.uniforms.uAspect,
-			gl.drawingBufferWidth / gl.drawingBufferHeight
-		);
+
+		if (shape.type === 'circle') {
+			gl.uniform1i(this.applyMaskProgram.uniforms.uShapeType, 0);
+			gl.uniform1f(this.applyMaskProgram.uniforms.uRadius, shape.radius);
+			gl.uniform1f(
+				this.applyMaskProgram.uniforms.uAspect,
+				gl.drawingBufferWidth / gl.drawingBufferHeight
+			);
+		} else if (shape.type === 'frame') {
+			gl.uniform1i(this.applyMaskProgram.uniforms.uShapeType, 1);
+			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfW, shape.halfW);
+			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfH, shape.halfH);
+		}
+
 		this.blit(target.write);
 		target.swap();
 	}
@@ -991,14 +988,21 @@ export class FluidEngine implements FluidHandle {
 		if (this.config.SUNRAYS) {
 			gl.uniform1i(this.displayMaterial.uniforms.uSunrays, this.sunrays.attach(3));
 		}
-		if (this.config.CONTAINER_SHAPE?.type === 'circle') {
+		if (this.config.CONTAINER_SHAPE) {
 			const s = this.config.CONTAINER_SHAPE;
-			gl.uniform2f(this.displayMaterial.uniforms.uContainerCircle, s.cx, s.cy);
-			gl.uniform1f(this.displayMaterial.uniforms.uContainerRadius, s.radius);
-			gl.uniform1f(
-				this.displayMaterial.uniforms.uContainerAspect,
-				width / height
-			);
+			gl.uniform2f(this.displayMaterial.uniforms.uContainerCenter, s.cx, s.cy);
+			if (s.type === 'circle') {
+				gl.uniform1i(this.displayMaterial.uniforms.uContainerShapeType, 0);
+				gl.uniform1f(this.displayMaterial.uniforms.uContainerRadius, s.radius);
+				gl.uniform1f(
+					this.displayMaterial.uniforms.uContainerAspect,
+					width / height
+				);
+			} else if (s.type === 'frame') {
+				gl.uniform1i(this.displayMaterial.uniforms.uContainerShapeType, 1);
+				gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfW, s.halfW);
+				gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfH, s.halfH);
+			}
 		}
 		this.blit(target);
 	}
