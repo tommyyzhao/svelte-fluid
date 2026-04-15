@@ -521,10 +521,6 @@ export class FluidEngine implements FluidHandle {
 		// Buffers
 		gl.deleteBuffer(this.vertexBuffer);
 		gl.deleteBuffer(this.indexBuffer);
-
-		// Force the driver to free GPU resources promptly.
-		const loseCtx = gl.getExtension('WEBGL_lose_context');
-		loseCtx?.loseContext();
 	}
 
 	/* ---------------------------------------------------------------------- */
