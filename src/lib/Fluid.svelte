@@ -226,12 +226,13 @@
 			else if (maxPx < 768) cfg.bloomIterations = 5;
 		}
 
-		// Fewer pressure iterations on small sim grids — Jacobi converges
-		// faster when there are fewer cells to propagate across.
+		// Fewer pressure iterations when the canvas is small or the sim grid
+		// is coarse — the Jacobi solver converges fast at low resolution and
+		// the visual difference is imperceptible on small cards.
 		if (pressureIterations === undefined) {
 			const sim = cfg.simResolution ?? 128;
 			if (sim <= 64) cfg.pressureIterations = 6;
-			else if (sim <= 96) cfg.pressureIterations = 10;
+			else if (sim <= 96 || maxPx < 600) cfg.pressureIterations = 10;
 		}
 
 		try {
