@@ -201,8 +201,33 @@
 		const dpr = window.devicePixelRatio || 1;
 		canvasEl.width = Math.max(1, Math.floor(cssW * dpr));
 		canvasEl.height = Math.max(1, Math.floor(cssH * dpr));
+
+		const cfg = buildConfig();
+		const maxPx = Math.max(canvasEl.width, canvasEl.height);
+
+		// Adaptive resolution: cap texture sizes to actual canvas pixels.
+		// A 520×480 card doesn't need a 1024² dye texture.
+		cfg.dyeResolution = Math.min(cfg.dyeResolution ?? 1024, maxPx);
+		cfg.bloomResolution = Math.min(cfg.bloomResolution ?? 256, maxPx);
+		cfg.sunraysResolution = Math.min(cfg.sunraysResolution ?? 196, maxPx);
+
+		// Auto-suppress expensive post-processing on small canvases
+		// when the user hasn't explicitly opted in.
+		if (maxPx < 600) {
+			if (bloom === undefined) cfg.bloom = false;
+			if (sunrays === undefined) cfg.sunrays = false;
+		}
+
+		// Fewer pressure iterations on small sim grids — Jacobi converges
+		// faster when there are fewer cells to propagate across.
+		if (pressureIterations === undefined) {
+			const sim = cfg.simResolution ?? 128;
+			if (sim <= 64) cfg.pressureIterations = 6;
+			else if (sim <= 96) cfg.pressureIterations = 10;
+		}
+
 		try {
-			engine = new FluidEngine({ canvas: canvasEl, config: buildConfig() });
+			engine = new FluidEngine({ canvas: canvasEl, config: cfg });
 		} catch {
 			// WebGL context creation can fail when the browser's context limit
 			// is exceeded or when half-float textures are unsupported. Degrade

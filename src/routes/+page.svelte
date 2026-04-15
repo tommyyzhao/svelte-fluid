@@ -90,6 +90,9 @@
 <!-- Background hero instance — fills the viewport behind everything else. -->
 <div class="hero" aria-hidden="true">
 	<Fluid
+		dyeResolution={512}
+		simResolution={64}
+		bloomIterations={4}
 		curl={20}
 		bloomIntensity={1.2}
 		initialSplatCount={18}
