@@ -405,14 +405,21 @@ The display shader also clips outside the circle analytically via `#ifdef CONTAI
 
 **Hot-update bucket:** `containerShape` is Bucket B only (keyword recompile). No FBO rebuild needed because the mask is computed inline from uniforms.
 
-**`ContainerShape` type:**
+**`ContainerShape` type (4 variants):**
 
 ```typescript
 export type ContainerShape =
-  | { type: 'circle'; cx: number; cy: number; radius: number };
+  | { type: 'circle'; cx: number; cy: number; radius: number }
+  | { type: 'frame'; cx: number; cy: number; halfW: number; halfH: number;
+      innerCornerRadius?: number; outerHalfW?: number; outerHalfH?: number;
+      outerCornerRadius?: number }
+  | { type: 'roundedRect'; cx: number; cy: number; halfW: number;
+      halfH: number; cornerRadius: number }
+  | { type: 'annulus'; cx: number; cy: number; innerRadius: number;
+      outerRadius: number };
 ```
 
-Extensible: add new union members for ellipse, rounded rect, or arbitrary SDF without touching any physics shader — only `applyMaskShader` and the display `CONTAINER_MASK` block need new SDF branches.
+Each variant has a corresponding SDF branch in both `applyMaskShader` and the display `CONTAINER_MASK` block, plus a TypeScript mirror in `container-shapes.ts`.
 
 **Known limitation:** The mask boundary resolution is the sim resolution (128px). There is an inherent one-texel diffuse zone at the edge — roughly 1/128th of canvas height. This is visible under magnification but acceptable for the intended preset use cases.
 
@@ -455,7 +462,7 @@ Mitigations for `CircularFluid`:
 - `densityDissipation: 0.4` (vs Plasma's 0.1) — faster fade prevents accumulation
 - `bloomThreshold: 0.6` — lower threshold lets bloom activate on moderate values
 
-A more general solution would scale the 10× multiplier by container area, but this isn't implemented yet.
+This is now handled by `hdrMultiplier()` in `FluidEngine.ts`, which scales the 10× base by `sqrt(areaFraction)` where `areaFraction` is the container's area relative to the full canvas. Each shape variant computes its own area approximation.
 
 ## Frame shape: rectangular inner cutout via box SDF
 

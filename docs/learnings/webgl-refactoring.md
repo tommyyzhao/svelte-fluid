@@ -97,7 +97,8 @@ GL resources before canceling the RAF, the next scheduled frame runs
 5. Delete programs / materials
 6. Delete shaders
 7. Delete vertex/index buffers
-8. `WEBGL_lose_context.loseContext()`
+8. ~~`WEBGL_lose_context.loseContext()`~~ (removed — broke lazy rebuild
+   cycle; the explicit deletes above are sufficient)
 
 The `update()` method also early-returns on `this.disposed` as a
 defensive guard against the inevitable race.

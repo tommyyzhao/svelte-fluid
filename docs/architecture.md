@@ -17,12 +17,12 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 │                          │ props ($props)                       │
 │                          ▼                                      │
 │   ┌─────────────────────────────────────────────────────┐       │
-│   │ src/lib/Fluid.svelte         (Svelte 5, ~200 LOC)   │       │
+│   │ src/lib/Fluid.svelte         (Svelte 5, ~390 LOC)   │       │
 │   │  ─ stableSeed: const         (untrack’d once)       │       │
 │   │  ─ container: HTMLDivElement                         │      │
 │   │  ─ canvasEl: HTMLCanvasElement                       │      │
 │   │  ─ ResizeObserver(container)                         │      │
-│   │      → teardown() → instantiate()                    │      │
+│   │      → teardown() → debounce 150ms → reconcile()     │      │
 │   │  ─ $effect → engine.setConfig(buildConfig())         │      │
 │   │  ─ IntersectionObserver  (autoPause + lazy)           │      │
 │   │  ─ visibilitychange      (autoPause)                 │      │
@@ -33,14 +33,14 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 └────────────────────────────┼────────────────────────────────────┘
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ src/lib/engine/FluidEngine.ts             (TS class, ~1050 LOC) │
+│ src/lib/engine/FluidEngine.ts             (TS class, ~1400 LOC) │
 │                                                                 │
 │  Owned state (per instance, never shared):                      │
 │   • gl, ext (WebGL2 or WebGL1)                                  │
 │   • ResolvedConfig                                              │
 │   • Rng (mulberry32, seeded)                                    │
 │   • vertex/index buffers + blit closure                         │
-│   • 16 ProgramWrap + Material (display)                         │
+│   • 18 ProgramWrap + Material (display)                         │
 │   • dye / velocity / pressure DoubleFBOs                        │
 │   • divergence / curlFBO single FBOs                            │
 │   • bloom + bloomFramebuffers + sunrays + sunraysTemp           │
@@ -116,9 +116,9 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
    1. Resolve config from camelCase props into SCREAMING_CASE `ResolvedConfig`.
    2. Create RNG from `config.SEED`.
    3. `getWebGLContext` → store `gl`, `ext`. Apply non-linear-filtering fallback.
-   4. Compile all 22 shader stages.
+   4. Compile all shader stages (2 vertex + 18 fragment).
    5. Create vertex/index buffers + `blit` closure.
-   6. Link all 17 programs + display `Material`.
+   6. Link all 18 programs + display `Material`.
    7. Create dithering texture (1x1 placeholder, async PNG decode).
    8. `updateKeywords()` selects display shader variant.
    9. `initFramebuffers()` allocates dye/velocity/divergence/curl/pressure/bloom*/sunrays*.
@@ -137,10 +137,24 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 
 1. `ResizeObserver` callback fires with new dimensions.
 2. Component compares against `cssW`/`cssH`; bails out if unchanged.
-3. `teardown()` → `engine.dispose()` (cancels RAF, removes listeners,
-   deletes all GL resources, calls `WEBGL_lose_context.loseContext()`).
-4. `instantiate()` → new `FluidEngine` with the **same `stableSeed`**.
-5. The deterministic RNG produces the same initial splat pattern.
+3. `teardown()` runs immediately — `engine.dispose()` cancels RAF, removes
+   listeners, deletes all GL resources (FBOs, textures, programs, shaders,
+   buffers). The canvas is blank during the drag.
+4. `reconcile()` is **debounced by 150 ms** — only fires after the last
+   resize event settles. This prevents GPU spikes from repeated shader
+   recompilation during continuous window drag.
+5. `instantiate()` runs inside `reconcile()`. It applies **adaptive
+   resolution capping** before constructing the engine:
+   - `dyeResolution`, `bloomResolution`, `sunraysResolution` are capped
+     to `max(canvas.width, canvas.height)` so textures never exceed the
+     canvas's actual pixel dimensions.
+   - Bloom and sunrays are auto-suppressed on canvases under 600 px
+     (max dimension) when the user hasn't explicitly opted in.
+   - `bloomIterations` is capped to 4 (< 512 px) or 5 (< 768 px).
+   - `pressureIterations` is reduced to 10 on small canvases, 6 on
+     tiny sim grids (≤ 64).
+6. `new FluidEngine` is created with the **same `stableSeed`**.
+7. The deterministic RNG produces the same initial splat pattern.
 
 ### Hot prop update
 
@@ -151,7 +165,9 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
      Includes `randomSplatSwirl`, `randomSplatEvenSpacing`, `randomSplatSpread`.
    - **B** SHADING/BLOOM/SUNRAYS → `updateKeywords()` recompiles display shader
    - **C** SIM/DYE/BLOOM/SUNRAYS resolution → `init*Framebuffers()` rebuilds FBOs
-   - **D** seed / pointerInput / initialSplatCount* → ignored after construction
+   - **A** also includes `pointerInput` — installs/removes canvas+window
+     event listeners on transition.
+   - **D** seed / initialSplatCount* / presetSplats → ignored after construction
 
 ### Unmount
 

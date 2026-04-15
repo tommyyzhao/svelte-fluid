@@ -160,11 +160,15 @@ allocations before creating new ones.
 **Original:** `this.programs[hash] = program` (sparse JS array).
 **Port:** `Map<number, WebGLProgram>`. Same semantics, clearer typing.
 
-### 8. `WEBGL_lose_context` on dispose
+### 8. `WEBGL_lose_context` on dispose (removed)
 **Original:** No dispose path; resources leak when the page unloads.
-**Port:** `dispose()` calls `gl.getExtension('WEBGL_lose_context').loseContext()`
-to force the GPU driver to release texture memory immediately rather than
-waiting for V8 to garbage-collect the context.
+**Port:** Initially `dispose()` called `loseContext()` to force-free GPU
+memory. This was removed because it put the canvas's WebGL context into a
+permanent lost state, breaking the `lazy` teardown/rebuild cycle — when
+the canvas scrolled back into view, `getContext('webgl2')` returned the
+same (lost) context and all GL operations silently failed. The explicit
+`gl.delete*` calls for FBOs, textures, programs, shaders, and buffers
+are sufficient to release GPU memory.
 
 ### 9. `calcDeltaTime` uses `performance.now()`
 **Original:** `Date.now()`.
