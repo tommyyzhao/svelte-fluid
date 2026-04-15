@@ -62,6 +62,9 @@ export interface PresetSplat {
  * `halfW`/`halfH` are in UV space (0–1), so `halfW: 0.2` means the inner
  * rectangle extends 20% of canvas width on each side of `cx`.
  * Think of it as a picture frame: fluid fills the border region.
+ * `innerCornerRadius` rounds the inner cutout corners.
+ * `outerHalfW`/`outerHalfH`/`outerCornerRadius` define the outer boundary
+ * (defaults to full canvas when omitted). Both boundaries are fluid-conforming.
  *
  * **`roundedRect`** — like `frame` but with rounded corners, and the fluid
  * is confined *inside* the rounded rectangle rather than outside it.
@@ -75,7 +78,7 @@ export interface PresetSplat {
  */
 export type ContainerShape =
 	| { type: 'circle'; cx: number; cy: number; radius: number }
-	| { type: 'frame'; cx: number; cy: number; halfW: number; halfH: number; cornerRadius?: number }
+	| { type: 'frame'; cx: number; cy: number; halfW: number; halfH: number; innerCornerRadius?: number; outerHalfW?: number; outerHalfH?: number; outerCornerRadius?: number }
 	| { type: 'roundedRect'; cx: number; cy: number; halfW: number; halfH: number; cornerRadius: number }
 	| { type: 'annulus'; cx: number; cy: number; innerRadius: number; outerRadius: number };
 

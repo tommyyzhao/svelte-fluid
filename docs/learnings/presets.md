@@ -485,9 +485,17 @@ The `randomSplatSpread` config controls vertical jitter range for random splat s
 
 Setting `spread: 2.0` scatters splats across the entire canvas. The container mask naturally discards any splats that land outside the fluid domain, so only the in-bounds ones contribute. This is wasteful (many splats are discarded) but simple and correct.
 
-## Frame cornerRadius
+## Frame inner + outer corner radius
 
-The frame shape now supports rounded inner cutouts via an optional `cornerRadius` parameter. When `cornerRadius > 0`, the inner-cutout SDF switches from sharp Chebyshev box distance to an Inigo Quilez rounded-box SDF. This is exposed on the preset as `<FrameFluid cornerRadius={0.06} />` for a rounded picture-frame effect. The rounding is purely cosmetic -- it doesn't change the physics behavior, only the shape of the mask boundary.
+The frame shape supports rounded corners on both the inner cutout (`innerCornerRadius`) and the outer boundary (`outerCornerRadius`). The SDF computes `innerMask * outerMask` — the intersection of being outside the inner rounded-rect AND inside the outer rounded-rect. When outer params are omitted, defaults (`outerHalfW=0.5, outerHalfH=0.5, outerCornerRadius=0`) cover the full canvas, preserving backward compatibility. The rename from `cornerRadius` to `innerCornerRadius` was a deliberate breaking change for API clarity once outer params existed. Exposed as `<FrameFluid innerCornerRadius={0.06} />`.
+
+## Rejection sampling for shape-aware splat spawning
+
+Random splats now use rejection sampling (up to 10 attempts) against `containerMask()` before splatting. This avoids wasting GPU work on splats that land outside the fluid domain. For a 50%x50% frame cutout, ~75% of the canvas is valid, giving ~5.6% drop rate at 10 attempts — acceptable for organic visuals. When `evenSpacing` is true, only `y` is re-sampled (the x column is deterministic), so shapes that don't intersect that column will drop those splats silently.
+
+## SVG shape preview coordinate gotchas
+
+The SVG overlay for the playground must use `cr * Math.min(w, h)` for corner radii, not separate `rx`/`ry`, because the GLSL SDF applies corner radius isotropically in UV space. Using separate pixel-space radii would produce elliptical corners on non-square canvases while the actual fluid boundary has circular corners. Circle/annulus shapes use `radius * height` as the SVG radius since the SDF normalizes by canvas height with aspect correction.
 
 ## Annulus (circular ring) container shape
 

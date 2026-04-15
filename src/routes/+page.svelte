@@ -12,6 +12,7 @@
 	} from '$lib/index.js';
 	import Card from './components/Card.svelte';
 	import ControlPanel from './components/ControlPanel.svelte';
+	import ShapePreview from './components/ShapePreview.svelte';
 
 	// Live-bound config for the controls instance.
 	let curl = $state(30);
@@ -42,12 +43,19 @@
 	let containerHalfW = $state(0.25);
 	let containerHalfH = $state(0.25);
 	let containerCornerRadius = $state(0.05);
+	let containerInnerCornerRadius = $state(0.05);
 	let containerInnerRadius = $state(0.15);
 	let containerOuterRadius = $state(0.40);
+	let containerOuterHalfW = $state(0.45);
+	let containerOuterHalfH = $state(0.45);
+	let containerOuterCornerRadius = $state(0.0);
+	let showShapePreview = $state(false);
+	let canvasWidth = $state(0);
+	let canvasHeight = $state(0);
 
 	let containerShape = $derived.by(() => {
 		if (containerShapeType === 'circle') return { type: 'circle' as const, cx: containerCx, cy: containerCy, radius: containerRadius };
-		if (containerShapeType === 'frame') return { type: 'frame' as const, cx: containerCx, cy: containerCy, halfW: containerHalfW, halfH: containerHalfH };
+		if (containerShapeType === 'frame') return { type: 'frame' as const, cx: containerCx, cy: containerCy, halfW: containerHalfW, halfH: containerHalfH, innerCornerRadius: containerInnerCornerRadius, outerHalfW: containerOuterHalfW, outerHalfH: containerOuterHalfH, outerCornerRadius: containerOuterCornerRadius };
 		if (containerShapeType === 'roundedRect') return { type: 'roundedRect' as const, cx: containerCx, cy: containerCy, halfW: containerHalfW, halfH: containerHalfH, cornerRadius: containerCornerRadius };
 		if (containerShapeType === 'annulus') return { type: 'annulus' as const, cx: containerCx, cy: containerCy, innerRadius: containerInnerRadius, outerRadius: containerOuterRadius };
 		return undefined;
@@ -217,8 +225,8 @@
 			<Card title="Frame Fluid" description="Fluid swirls around a rectangular inner cutout — a living picture frame.">
 				<FrameFluid seed={707} lazy aria-label="Frame Fluid preset: fluid around rectangular cutout" />
 			</Card>
-			<Card title="Rounded Frame" description="Frame with rounded inner cutout — cornerRadius on FrameFluid.">
-				<FrameFluid seed={808} lazy cornerRadius={0.06} aria-label="Rounded Frame preset: fluid around rounded rectangular cutout" />
+			<Card title="Rounded Frame" description="Frame with rounded inner cutout — innerCornerRadius on FrameFluid.">
+				<FrameFluid seed={808} lazy innerCornerRadius={0.06} aria-label="Rounded Frame preset: fluid around rounded rectangular cutout" />
 			</Card>
 			<Card title="Annular Fluid" description="Ring-vortex fluid confined between two concentric circles.">
 				<AnnularFluid seed={909} lazy aria-label="Annular Fluid preset: ring vortex between concentric circles" />
@@ -235,7 +243,7 @@
 			</p>
 		</header>
 	<div class="playground">
-		<div class="playground-canvas">
+		<div class="playground-canvas" bind:clientWidth={canvasWidth} bind:clientHeight={canvasHeight}>
 			<Fluid
 				bind:this={controlsRef}
 				seed={42}
@@ -263,6 +271,9 @@
 				containerShape={containerShape}
 				initialSplatCount={15}
 			/>
+			{#if showShapePreview && containerShape}
+				<ShapePreview shape={containerShape} width={canvasWidth} height={canvasHeight} />
+			{/if}
 		</div>
 		<ControlPanel
 			bind:curl
@@ -293,8 +304,13 @@
 			bind:containerHalfW
 			bind:containerHalfH
 			bind:containerCornerRadius
+			bind:containerInnerCornerRadius
 			bind:containerInnerRadius
 			bind:containerOuterRadius
+			bind:containerOuterHalfW
+			bind:containerOuterHalfH
+			bind:containerOuterCornerRadius
+			bind:showShapePreview
 			onRandomSplats={() => controlsRef?.handle.randomSplats(10)}
 		/>
 	</div>

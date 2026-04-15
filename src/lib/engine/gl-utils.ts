@@ -237,7 +237,8 @@ export function makeProgram(gl: GL, vs: WebGLShader, fs: WebGLShader): ProgramWr
  * Ported from script.js:351-382.
  */
 export class Material {
-	private programs = new Map<number, WebGLProgram>();
+	private programs = new Map<string, WebGLProgram>();
+	private fragmentShaders = new Map<string, WebGLShader>();
 	activeProgram: WebGLProgram | null = null;
 	uniforms: Record<string, WebGLUniformLocation | null> = {};
 
@@ -248,8 +249,7 @@ export class Material {
 	) {}
 
 	setKeywords(keywords: string[]): void {
-		let hash = 0;
-		for (const k of keywords) hash += hashCode(k);
+		const hash = [...keywords].sort().join(',');
 
 		let program = this.programs.get(hash) ?? null;
 		if (program == null) {
@@ -261,6 +261,7 @@ export class Material {
 			);
 			program = createProgram(this.gl, this.vertexShader, fragmentShader);
 			this.programs.set(hash, program);
+			this.fragmentShaders.set(hash, fragmentShader);
 		}
 
 		if (program === this.activeProgram) return;
@@ -274,8 +275,16 @@ export class Material {
 	}
 
 	dispose(): void {
-		for (const p of this.programs.values()) this.gl.deleteProgram(p);
+		for (const [hash, p] of this.programs) {
+			const fs = this.fragmentShaders.get(hash);
+			if (fs) {
+				this.gl.detachShader(p, fs);
+				this.gl.deleteShader(fs);
+			}
+			this.gl.deleteProgram(p);
+		}
 		this.programs.clear();
+		this.fragmentShaders.clear();
 		this.activeProgram = null;
 	}
 }

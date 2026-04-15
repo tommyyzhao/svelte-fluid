@@ -236,6 +236,7 @@
 
 	onMount(() => {
 		if (!container) return;
+		let resizeDebounce: ReturnType<typeof setTimeout> | undefined;
 		const ro = new ResizeObserver((entries) => {
 			for (const entry of entries) {
 				const box = entry.contentBoxSize?.[0];
@@ -244,11 +245,18 @@
 				if (w === cssW && h === cssH) continue;
 				cssW = w;
 				cssH = h;
-				// On a real size change we always tear down + reinstantiate
-				// (the engine's FBOs are sized to the canvas), but only if
-				// the visibility predicate still says we should exist.
+				// Tear down immediately so the stale-sized engine stops
+				// rendering. The canvas is blank during the drag — acceptable
+				// vs. GPU spikes from repeated rebuilds on every pixel.
 				teardown();
-				reconcile();
+				// Debounce the rebuild: only reconcile 150 ms after the last
+				// resize event so that continuous window-drag doesn't trigger
+				// shader recompilation and FBO allocation on every pixel.
+				clearTimeout(resizeDebounce);
+				resizeDebounce = setTimeout(() => {
+					resizeDebounce = undefined;
+					reconcile();
+				}, 150);
 			}
 		});
 		ro.observe(container);
@@ -305,6 +313,8 @@
 			if (onVisibilityChange) {
 				document.removeEventListener('visibilitychange', onVisibilityChange);
 			}
+			clearTimeout(resizeDebounce);
+			resizeDebounce = undefined;
 			teardown();
 		};
 	});

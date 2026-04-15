@@ -20,7 +20,11 @@ export function containerShapeEqual(
 		return a.cx === b.cx && a.cy === b.cy && a.radius === b.radius;
 	}
 	if (a.type === 'frame' && b.type === 'frame') {
-		return a.cx === b.cx && a.cy === b.cy && a.halfW === b.halfW && a.halfH === b.halfH && (a.cornerRadius ?? 0) === (b.cornerRadius ?? 0);
+		return a.cx === b.cx && a.cy === b.cy && a.halfW === b.halfW && a.halfH === b.halfH &&
+			(a.innerCornerRadius ?? 0) === (b.innerCornerRadius ?? 0) &&
+			(a.outerHalfW ?? 0.5) === (b.outerHalfW ?? 0.5) &&
+			(a.outerHalfH ?? 0.5) === (b.outerHalfH ?? 0.5) &&
+			(a.outerCornerRadius ?? 0) === (b.outerCornerRadius ?? 0);
 	}
 	if (a.type === 'roundedRect' && b.type === 'roundedRect') {
 		return (
@@ -56,7 +60,8 @@ export function containerMask(
 		case 'circle':
 			return circleMask(uvX, uvY, shape.cx, shape.cy, shape.radius, aspect);
 		case 'frame':
-			return frameMask(uvX, uvY, shape.cx, shape.cy, shape.halfW, shape.halfH, shape.cornerRadius);
+			return frameMask(uvX, uvY, shape.cx, shape.cy, shape.halfW, shape.halfH,
+				shape.innerCornerRadius, shape.outerHalfW, shape.outerHalfH, shape.outerCornerRadius);
 		case 'roundedRect':
 			return roundedRectSDF(uvX, uvY, shape.cx, shape.cy, shape.halfW, shape.halfH, shape.cornerRadius, aspect);
 		case 'annulus':
@@ -79,33 +84,59 @@ function circleMask(
 }
 
 /**
- * Frame mask: 0 inside the inner rectangle (or rounded-rect), 1 outside, smooth edge.
- * The frame is the region between the canvas boundary and the inner cutout.
+ * Frame mask: fluid fills the region between an inner and outer rectangle.
+ * Returns 0 inside the inner cutout, 0 outside the outer boundary, 1 in the frame region.
  *
- * When `cornerRadius` > 0, uses the rounded-box SDF so the inner cutout
- * has rounded corners. Otherwise falls back to Chebyshev distance (sharp corners).
+ * Both inner and outer boundaries support rounded corners via their respective
+ * corner radius params. Uses the Inigo Quilez rounded-box SDF when radius > 0.
  *
- * Uses a box SDF in UV space — no aspect correction because the rectangle
- * is specified directly in UV coordinates.
+ * Uses a box SDF in UV space — no aspect correction because the rectangles
+ * are specified directly in UV coordinates.
+ *
+ * When outer params are omitted (defaults: outerHalfW=0.5, outerHalfH=0.5,
+ * outerCornerRadius=0), the outer boundary covers the full canvas.
  */
 function frameMask(
 	uvX: number, uvY: number,
 	cx: number, cy: number, halfW: number, halfH: number,
-	cornerRadius?: number
+	innerCornerRadius?: number,
+	outerHalfW?: number, outerHalfH?: number, outerCornerRadius?: number
 ): number {
-	const cr = cornerRadius ?? 0;
-	if (cr > 0) {
-		const dx = Math.abs(uvX - cx) - halfW + cr;
-		const dy = Math.abs(uvY - cy) - halfH + cr;
+	// Inner mask: 0 inside inner rect, 1 outside
+	const icr = innerCornerRadius ?? 0;
+	let innerMask: number;
+	if (icr > 0) {
+		const dx = Math.abs(uvX - cx) - halfW + icr;
+		const dy = Math.abs(uvY - cy) - halfH + icr;
 		const outsideDist = Math.sqrt(Math.max(dx, 0) ** 2 + Math.max(dy, 0) ** 2);
 		const insideDist = Math.min(Math.max(dx, dy), 0);
-		const dist = outsideDist + insideDist - cr;
-		return glslSmoothstep(-0.005, 0.005, dist);
+		const dist = outsideDist + insideDist - icr;
+		innerMask = glslSmoothstep(-0.005, 0.005, dist);
+	} else {
+		const dx = Math.abs(uvX - cx) - halfW;
+		const dy = Math.abs(uvY - cy) - halfH;
+		innerMask = glslSmoothstep(-0.005, 0.005, Math.max(dx, dy));
 	}
-	const dx = Math.abs(uvX - cx) - halfW;
-	const dy = Math.abs(uvY - cy) - halfH;
-	const d = Math.max(dx, dy);
-	return glslSmoothstep(-0.005, 0.005, d);
+
+	// Outer mask: 1 inside outer rect, 0 outside
+	const ohw = outerHalfW ?? 0.5;
+	const ohh = outerHalfH ?? 0.5;
+	const ocr = outerCornerRadius ?? 0;
+	let outerMask: number;
+	if (ocr > 0) {
+		const dx = Math.abs(uvX - cx) - ohw + ocr;
+		const dy = Math.abs(uvY - cy) - ohh + ocr;
+		const outsideDist = Math.sqrt(Math.max(dx, 0) ** 2 + Math.max(dy, 0) ** 2);
+		const insideDist = Math.min(Math.max(dx, dy), 0);
+		const dist = outsideDist + insideDist - ocr;
+		outerMask = 1.0 - glslSmoothstep(-0.005, 0.005, dist);
+	} else {
+		const dx = Math.abs(uvX - cx) - ohw;
+		const dy = Math.abs(uvY - cy) - ohh;
+		outerMask = 1.0 - glslSmoothstep(-0.005, 0.005, Math.max(dx, dy));
+	}
+
+	return innerMask * outerMask;
 }
 
 /**

@@ -27,6 +27,8 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0019](./0019-auto-pause-and-context-loss-recovery.md) | Automatic pause on visibility loss and WebGL context loss recovery | Accepted |
 | [0020](./0020-random-splat-enhancements.md) | Random splat enhancements: swirl, spread, even spacing, jittered timing | Accepted |
 | [0021](./0021-annulus-container-shape.md) | Annulus (circular ring) container shape | Accepted |
+| [0022](./0022-apply-mask-performance-analysis.md) | applyMask performance analysis and optimization paths | Accepted |
+| [0023](./0023-frame-outer-boundary-and-shape-aware-spawning.md) | Rounded outer frame boundary and shape-aware splat spawning | Accepted |
 
 ## How to add a new ADR
 

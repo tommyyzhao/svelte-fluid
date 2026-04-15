@@ -63,7 +63,7 @@ import {
 import { type DitheringTexture, createDitheringTexture } from './dithering.js';
 import { type Pointer, createPointer, updatePointerDownData, updatePointerMoveData, updatePointerUpData } from './pointer.js';
 import { type Rng, generateColor, mulberry32, normalizeColor, randomSeed } from './rng.js';
-import { containerShapeEqual } from './container-shapes.js';
+import { containerShapeEqual, containerMask } from './container-shapes.js';
 import * as S from './shaders.js';
 
 /* -------------------------------------------------------------------------- */
@@ -438,6 +438,7 @@ export class FluidEngine implements FluidHandle {
 		this.initContext();
 		this.compileShaders();
 		this.initBuffersAndPrograms();
+		this.ditheringTexture.dispose(); // prevent stale image.onload from touching the new context
 		this.ditheringTexture = createDitheringTexture(this.gl);
 		this.updateKeywords();
 		this.initFramebuffers();
@@ -541,6 +542,10 @@ export class FluidEngine implements FluidHandle {
 	}
 
 	private compileShaders(): void {
+		// On context restore the old shader handles are stale (driver already
+		// freed them). Reset the accumulator so dispose() only sees live handles.
+		this.fragmentShaders = [];
+
 		const gl = this.gl;
 
 		this.baseVertexShader = compileShader(gl, gl.VERTEX_SHADER, S.baseVertexShader);
@@ -603,6 +608,11 @@ export class FluidEngine implements FluidHandle {
 		this.pressureProgram = makeProgram(gl, this.baseVertexShader, f.pressure);
 		this.gradientSubtractProgram = makeProgram(gl, this.baseVertexShader, f.gradientSubtract);
 
+		// On context restore the old Material holds a Map of stale program/shader
+		// entries. Dispose it so the JS heap doesn't accumulate orphaned Maps.
+		if (this.displayMaterial) {
+			this.displayMaterial.dispose();
+		}
 		this.displayMaterial = new Material(gl, this.baseVertexShader, S.displayShaderSource);
 		this.applyMaskProgram = makeProgram(gl, this.baseVertexShader, f.applyMask);
 	}
@@ -789,12 +799,15 @@ export class FluidEngine implements FluidHandle {
 			gl.uniform1i(this.applyMaskProgram.uniforms.uShapeType, 1);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfW, shape.halfW);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfH, shape.halfH);
-			gl.uniform1f(this.applyMaskProgram.uniforms.uCornerRadius, shape.cornerRadius ?? 0);
+			gl.uniform1f(this.applyMaskProgram.uniforms.uInnerCornerRadius, shape.innerCornerRadius ?? 0);
+			gl.uniform1f(this.applyMaskProgram.uniforms.uOuterHalfW, shape.outerHalfW ?? 0.5);
+			gl.uniform1f(this.applyMaskProgram.uniforms.uOuterHalfH, shape.outerHalfH ?? 0.5);
+			gl.uniform1f(this.applyMaskProgram.uniforms.uOuterCornerRadius, shape.outerCornerRadius ?? 0);
 		} else if (shape.type === 'roundedRect') {
 			gl.uniform1i(this.applyMaskProgram.uniforms.uShapeType, 2);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfW, shape.halfW);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfH, shape.halfH);
-			gl.uniform1f(this.applyMaskProgram.uniforms.uCornerRadius, shape.cornerRadius);
+			gl.uniform1f(this.applyMaskProgram.uniforms.uInnerCornerRadius, shape.cornerRadius);
 		} else if (shape.type === 'annulus') {
 			gl.uniform1i(this.applyMaskProgram.uniforms.uShapeType, 3);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uRadius, shape.outerRadius);
@@ -868,11 +881,21 @@ export class FluidEngine implements FluidHandle {
 		const rate = this.config.RANDOM_SPLAT_RATE;
 		if (rate <= 0) { this.randomSplatTimer = 0; return; }
 		this.randomSplatTimer += dt;
-		// Jitter the interval ±50% so bursts feel organic, not metronome-like.
 		const baseInterval = 1 / rate;
-		const interval = baseInterval * (0.5 + this.rng());
+		// Cap accumulated time to prevent a burst avalanche when autoPause is
+		// false and the browser throttled RAF while the tab was hidden.
+		const maxAccumulation = baseInterval * 3.0;
+		if (this.randomSplatTimer > maxAccumulation) {
+			this.randomSplatTimer = maxAccumulation;
+		}
 		const hdr = this.hdrMultiplier();
-		while (this.randomSplatTimer >= interval) {
+		const shape = this.config.CONTAINER_SHAPE;
+		const aspect = this.gl.drawingBufferWidth / this.gl.drawingBufferHeight;
+		// Re-jitter interval each iteration so back-to-back splats don't
+		// all subtract the same value.
+		for (;;) {
+			const interval = baseInterval * (0.5 + this.rng());
+			if (this.randomSplatTimer < interval) break;
 			this.randomSplatTimer -= interval;
 			const count = this.config.RANDOM_SPLAT_COUNT;
 			const evenSpacing = this.config.RANDOM_SPLAT_EVEN_SPACING;
@@ -885,9 +908,19 @@ export class FluidEngine implements FluidHandle {
 					color = generateColor(this.rng);
 					color.r *= hdr; color.g *= hdr; color.b *= hdr;
 				}
-				const x = evenSpacing ? (i + 0.5) / count : this.rng();
 				const spawnY = this.config.RANDOM_SPLAT_SPAWN_Y;
-				const y = Math.max(0, Math.min(1, spawnY + (this.rng() - 0.5) * this.config.RANDOM_SPLAT_SPREAD));
+				const spread = this.config.RANDOM_SPLAT_SPREAD;
+				let x = evenSpacing ? (i + 0.5) / count : this.rng();
+				let y = Math.max(0, Math.min(1, spawnY + (this.rng() - 0.5) * spread));
+				if (shape) {
+					let attempts = 10;
+					while (attempts > 0 && containerMask(shape, x, y, aspect) < 0.5) {
+						if (!evenSpacing) x = this.rng();
+						y = Math.max(0, Math.min(1, spawnY + (this.rng() - 0.5) * spread));
+						attempts--;
+					}
+					if (attempts === 0) continue;
+				}
 				let splatDx = this.config.RANDOM_SPLAT_DX;
 				let splatDy = this.config.RANDOM_SPLAT_DY;
 				const swirl = this.config.RANDOM_SPLAT_SWIRL;
@@ -927,7 +960,6 @@ export class FluidEngine implements FluidHandle {
 		gl.uniform1f(this.vorticityProgram.uniforms.dt, dt);
 		this.blit(this.velocity.write);
 		this.velocity.swap();
-		if (this.config.CONTAINER_SHAPE) this.applyMask(this.velocity);
 
 		this.divergenceProgram.bind();
 		gl.uniform2f(
@@ -973,7 +1005,6 @@ export class FluidEngine implements FluidHandle {
 		);
 		this.blit(this.velocity.write);
 		this.velocity.swap();
-		if (this.config.CONTAINER_SHAPE) this.applyMask(this.velocity);
 
 		this.advectionProgram.bind();
 		gl.uniform2f(
@@ -1100,12 +1131,15 @@ export class FluidEngine implements FluidHandle {
 				gl.uniform1i(this.displayMaterial.uniforms.uContainerShapeType, 1);
 				gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfW, s.halfW);
 				gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfH, s.halfH);
-				gl.uniform1f(this.displayMaterial.uniforms.uContainerCornerRadius, s.cornerRadius ?? 0);
+				gl.uniform1f(this.displayMaterial.uniforms.uContainerInnerCornerRadius, s.innerCornerRadius ?? 0);
+				gl.uniform1f(this.displayMaterial.uniforms.uContainerOuterHalfW, s.outerHalfW ?? 0.5);
+				gl.uniform1f(this.displayMaterial.uniforms.uContainerOuterHalfH, s.outerHalfH ?? 0.5);
+				gl.uniform1f(this.displayMaterial.uniforms.uContainerOuterCornerRadius, s.outerCornerRadius ?? 0);
 			} else if (s.type === 'roundedRect') {
 				gl.uniform1i(this.displayMaterial.uniforms.uContainerShapeType, 2);
 				gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfW, s.halfW);
 				gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfH, s.halfH);
-				gl.uniform1f(this.displayMaterial.uniforms.uContainerCornerRadius, s.cornerRadius);
+				gl.uniform1f(this.displayMaterial.uniforms.uContainerInnerCornerRadius, s.cornerRadius);
 			} else if (s.type === 'annulus') {
 				gl.uniform1i(this.displayMaterial.uniforms.uContainerShapeType, 3);
 				gl.uniform1f(this.displayMaterial.uniforms.uContainerRadius, s.outerRadius);
@@ -1221,8 +1255,9 @@ export class FluidEngine implements FluidHandle {
 		if (shape.type === 'circle') {
 			areaFraction = Math.PI * shape.radius * shape.radius;
 		} else if (shape.type === 'frame') {
-			// Frame area = 1 - inner rect area
-			areaFraction = 1.0 - (2 * shape.halfW) * (2 * shape.halfH);
+			const outerArea = (2 * (shape.outerHalfW ?? 0.5)) * (2 * (shape.outerHalfH ?? 0.5));
+			const innerArea = (2 * shape.halfW) * (2 * shape.halfH);
+			areaFraction = Math.max(0, outerArea - innerArea);
 		} else if (shape.type === 'roundedRect') {
 			areaFraction = (2 * shape.halfW) * (2 * shape.halfH);
 		} else if (shape.type === 'annulus') {
@@ -1234,13 +1269,24 @@ export class FluidEngine implements FluidHandle {
 
 	private multipleSplats(amount: number): void {
 		const hdr = this.hdrMultiplier();
+		const shape = this.config.CONTAINER_SHAPE;
+		const aspect = this.gl.drawingBufferWidth / this.gl.drawingBufferHeight;
 		for (let i = 0; i < amount; i++) {
 			const color = generateColor(this.rng);
 			color.r *= hdr;
 			color.g *= hdr;
 			color.b *= hdr;
-			const x = this.rng();
-			const y = this.rng();
+			let x = this.rng();
+			let y = this.rng();
+			if (shape) {
+				let attempts = 10;
+				while (attempts > 0 && containerMask(shape, x, y, aspect) < 0.5) {
+					x = this.rng();
+					y = this.rng();
+					attempts--;
+				}
+				if (attempts === 0) continue;
+			}
 			const dx = 1000 * (this.rng() - 0.5);
 			const dy = 1000 * (this.rng() - 0.5);
 			this.splat(x, y, dx, dy, color);
@@ -1320,10 +1366,13 @@ export class FluidEngine implements FluidHandle {
 	private handleTouchStart(e: TouchEvent): void {
 		e.preventDefault();
 		const touches = e.targetTouches;
-		while (touches.length >= this.pointers.length) {
-			this.pointers.push(createPointer());
-		}
 		for (let i = 0; i < touches.length; i++) {
+			// Reuse existing slots from previous gestures. Only push when
+			// there is no slot at this index, bounding the array at
+			// maxConcurrentTouches + 1 (slot 0 is the permanent mouse pointer).
+			if (i + 1 >= this.pointers.length) {
+				this.pointers.push(createPointer());
+			}
 			const { x, y } = this.getCanvasOffset(touches[i].clientX, touches[i].clientY);
 			updatePointerDownData(
 				this.pointers[i + 1],
