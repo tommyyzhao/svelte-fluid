@@ -30,8 +30,12 @@
 		containerHalfW: 0.25,
 		containerHalfH: 0.25,
 		containerCornerRadius: 0.05,
+		containerInnerCornerRadius: 0.05,
 		containerInnerRadius: 0.15,
-		containerOuterRadius: 0.40
+		containerOuterRadius: 0.40,
+		containerOuterHalfW: 0.45,
+		containerOuterHalfH: 0.45,
+		containerOuterCornerRadius: 0
 	} as const;
 
 	let {
@@ -63,8 +67,13 @@
 		containerHalfW = $bindable(D.containerHalfW),
 		containerHalfH = $bindable(D.containerHalfH),
 		containerCornerRadius = $bindable(D.containerCornerRadius),
+		containerInnerCornerRadius = $bindable(D.containerInnerCornerRadius),
 		containerInnerRadius = $bindable(D.containerInnerRadius),
 		containerOuterRadius = $bindable(D.containerOuterRadius),
+		containerOuterHalfW = $bindable(D.containerOuterHalfW),
+		containerOuterHalfH = $bindable(D.containerOuterHalfH),
+		containerOuterCornerRadius = $bindable(D.containerOuterCornerRadius),
+		showShapePreview = $bindable(false),
 		onRandomSplats
 	}: {
 		curl?: number;
@@ -95,8 +104,13 @@
 		containerHalfW?: number;
 		containerHalfH?: number;
 		containerCornerRadius?: number;
+		containerInnerCornerRadius?: number;
 		containerInnerRadius?: number;
 		containerOuterRadius?: number;
+		containerOuterHalfW?: number;
+		containerOuterHalfH?: number;
+		containerOuterCornerRadius?: number;
+		showShapePreview?: boolean;
 		onRandomSplats?: () => void;
 	} = $props();
 
@@ -132,8 +146,13 @@
 		containerHalfW = D.containerHalfW;
 		containerHalfH = D.containerHalfH;
 		containerCornerRadius = D.containerCornerRadius;
+		containerInnerCornerRadius = D.containerInnerCornerRadius;
 		containerInnerRadius = D.containerInnerRadius;
 		containerOuterRadius = D.containerOuterRadius;
+		containerOuterHalfW = D.containerOuterHalfW;
+		containerOuterHalfH = D.containerOuterHalfH;
+		containerOuterCornerRadius = D.containerOuterCornerRadius;
+		showShapePreview = false;
 	}
 
 	/**
@@ -174,6 +193,23 @@
 			lines.push(`  backColor={{ r: ${backColorR}, g: ${backColorG}, b: ${backColorB} }}`);
 		}
 		fmt('transparent', transparent);
+		if (containerShapeType !== 'none') {
+			const n = (v: number) => Number(v.toFixed(3));
+			if (containerShapeType === 'circle') {
+				lines.push(`  containerShape={{ type: 'circle', cx: ${n(containerCx)}, cy: ${n(containerCy)}, radius: ${n(containerRadius)} }}`);
+			} else if (containerShapeType === 'frame') {
+				const parts = [`type: 'frame', cx: ${n(containerCx)}, cy: ${n(containerCy)}, halfW: ${n(containerHalfW)}, halfH: ${n(containerHalfH)}`];
+				if (containerInnerCornerRadius !== 0) parts.push(`innerCornerRadius: ${n(containerInnerCornerRadius)}`);
+				if (containerOuterHalfW !== 0.5) parts.push(`outerHalfW: ${n(containerOuterHalfW)}`);
+				if (containerOuterHalfH !== 0.5) parts.push(`outerHalfH: ${n(containerOuterHalfH)}`);
+				if (containerOuterCornerRadius !== 0) parts.push(`outerCornerRadius: ${n(containerOuterCornerRadius)}`);
+				lines.push(`  containerShape={{ ${parts.join(', ')} }}`);
+			} else if (containerShapeType === 'roundedRect') {
+				lines.push(`  containerShape={{ type: 'roundedRect', cx: ${n(containerCx)}, cy: ${n(containerCy)}, halfW: ${n(containerHalfW)}, halfH: ${n(containerHalfH)}, cornerRadius: ${n(containerCornerRadius)} }}`);
+			} else if (containerShapeType === 'annulus') {
+				lines.push(`  containerShape={{ type: 'annulus', cx: ${n(containerCx)}, cy: ${n(containerCy)}, innerRadius: ${n(containerInnerRadius)}, outerRadius: ${n(containerOuterRadius)} }}`);
+			}
+		}
 		if (lines.length === 0) return '<Fluid />';
 		return ['<Fluid', ...lines, '/>'].join('\n');
 	}
@@ -324,6 +360,24 @@
 				<input type="range" min="0.05" max="0.45" step="0.01" bind:value={containerHalfH} />
 			</label>
 		{/if}
+		{#if containerShapeType === 'frame'}
+			<label>
+				<span>innerCornerRadius <em>{containerInnerCornerRadius.toFixed(3)}</em></span>
+				<input type="range" min="0" max="0.15" step="0.005" bind:value={containerInnerCornerRadius} />
+			</label>
+			<label>
+				<span>outerHalfW <em>{containerOuterHalfW.toFixed(2)}</em></span>
+				<input type="range" min="0.1" max="0.5" step="0.01" bind:value={containerOuterHalfW} />
+			</label>
+			<label>
+				<span>outerHalfH <em>{containerOuterHalfH.toFixed(2)}</em></span>
+				<input type="range" min="0.1" max="0.5" step="0.01" bind:value={containerOuterHalfH} />
+			</label>
+			<label>
+				<span>outerCornerRadius <em>{containerOuterCornerRadius.toFixed(3)}</em></span>
+				<input type="range" min="0" max="0.2" step="0.005" bind:value={containerOuterCornerRadius} />
+			</label>
+		{/if}
 		{#if containerShapeType === 'roundedRect'}
 			<label>
 				<span>cornerRadius <em>{containerCornerRadius.toFixed(2)}</em></span>
@@ -339,6 +393,9 @@
 				<span>outerRadius <em>{containerOuterRadius.toFixed(2)}</em></span>
 				<input type="range" min="0.05" max="0.5" step="0.01" bind:value={containerOuterRadius} />
 			</label>
+		{/if}
+		{#if containerShapeType !== 'none'}
+			<label class="check"><input type="checkbox" bind:checked={showShapePreview} /> show shape outline</label>
 		{/if}
 	</section>
 

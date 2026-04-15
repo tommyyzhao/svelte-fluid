@@ -90,21 +90,21 @@ describe('containerShapeEqual', () => {
 		expect(containerShapeEqual(a, b)).toBe(false);
 	});
 
-	it('frame with cornerRadius=0 equals frame without cornerRadius', () => {
-		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, cornerRadius: 0 };
+	it('frame with innerCornerRadius=0 equals frame without innerCornerRadius', () => {
+		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, innerCornerRadius: 0 };
 		const b: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15 };
 		expect(containerShapeEqual(a, b)).toBe(true);
 	});
 
-	it('frames with different cornerRadius are not equal', () => {
-		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, cornerRadius: 0.05 };
-		const b: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, cornerRadius: 0.10 };
+	it('frames with different innerCornerRadius are not equal', () => {
+		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, innerCornerRadius: 0.05 };
+		const b: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, innerCornerRadius: 0.10 };
 		expect(containerShapeEqual(a, b)).toBe(false);
 	});
 
-	it('frames with same cornerRadius are equal', () => {
-		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, cornerRadius: 0.05 };
-		const b: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, cornerRadius: 0.05 };
+	it('frames with same innerCornerRadius are equal', () => {
+		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, innerCornerRadius: 0.05 };
+		const b: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, innerCornerRadius: 0.05 };
 		expect(containerShapeEqual(a, b)).toBe(true);
 	});
 
@@ -185,11 +185,13 @@ describe('containerMask — frame', () => {
 		expect(containerMask(frame, 0.05, 0.05, aspect)).toBe(1);
 	});
 
-	it('returns 1 at canvas corners (outside inner rect)', () => {
-		expect(containerMask(frame, 0, 0, aspect)).toBe(1);
-		expect(containerMask(frame, 1, 0, aspect)).toBe(1);
-		expect(containerMask(frame, 0, 1, aspect)).toBe(1);
-		expect(containerMask(frame, 1, 1, aspect)).toBe(1);
+	it('returns ~0.5 at canvas corners (on outer boundary edge)', () => {
+		// With default outerHalfW=0.5, outerHalfH=0.5, canvas corners are
+		// exactly on the outer boundary → smoothstep midpoint
+		expect(containerMask(frame, 0, 0, aspect)).toBeCloseTo(0.5, 1);
+		expect(containerMask(frame, 1, 0, aspect)).toBeCloseTo(0.5, 1);
+		expect(containerMask(frame, 0, 1, aspect)).toBeCloseTo(0.5, 1);
+		expect(containerMask(frame, 1, 1, aspect)).toBeCloseTo(0.5, 1);
 	});
 
 	it('returns ~0.5 at the inner rect boundary', () => {
@@ -220,8 +222,9 @@ describe('containerMask — frame', () => {
 		};
 		// Center of inner rect at (0.3, 0.7) → should be 0
 		expect(containerMask(offCenter, 0.3, 0.7, aspect)).toBe(0);
-		// Far from inner rect → should be 1
-		expect(containerMask(offCenter, 0.9, 0.1, aspect)).toBe(1);
+		// Inside outer rect (default 0.5 half-size centered at 0.3,0.7)
+		// but well outside inner rect → should be 1
+		expect(containerMask(offCenter, 0.6, 0.4, aspect)).toBe(1);
 	});
 
 	it('returns 1 just outside the inner rect border', () => {
@@ -240,13 +243,13 @@ describe('containerMask — frame', () => {
 });
 
 /* ------------------------------------------------------------------ */
-/*            containerMask — frame with cornerRadius                 */
+/*            containerMask — frame with innerCornerRadius                 */
 /* ------------------------------------------------------------------ */
 
-describe('containerMask — frame with cornerRadius', () => {
+describe('containerMask — frame with innerCornerRadius', () => {
 	// Centered frame with rounded inner cutout: 40% width x 30% height, corner radius 0.05
 	const frameRounded: ContainerShape = {
-		type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, cornerRadius: 0.05
+		type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, innerCornerRadius: 0.05
 	};
 	const aspect = 1.0;
 
@@ -258,9 +261,9 @@ describe('containerMask — frame with cornerRadius', () => {
 		expect(containerMask(frameRounded, 0.05, 0.05, aspect)).toBe(1);
 	});
 
-	it('returns 1 at canvas corners', () => {
-		expect(containerMask(frameRounded, 0, 0, aspect)).toBe(1);
-		expect(containerMask(frameRounded, 1, 1, aspect)).toBe(1);
+	it('returns ~0.5 at canvas corners (on outer boundary edge)', () => {
+		expect(containerMask(frameRounded, 0, 0, aspect)).toBeCloseTo(0.5, 1);
+		expect(containerMask(frameRounded, 1, 1, aspect)).toBeCloseTo(0.5, 1);
 	});
 
 	it('returns ~0.5 at the flat edge boundary (right side)', () => {
@@ -277,13 +280,140 @@ describe('containerMask — frame with cornerRadius', () => {
 		expect(val).toBeCloseTo(1.0, 1);
 	});
 
-	it('without cornerRadius, bounding-box corner is inside the cutout', () => {
+	it('without innerCornerRadius, bounding-box corner is inside the cutout', () => {
 		// Same position with sharp-cornered frame: should be ~0.5 (on the edge)
 		const frameSharp: ContainerShape = {
 			type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15
 		};
 		const val = containerMask(frameSharp, 0.7, 0.65, aspect);
 		expect(val).toBeCloseTo(0.5, 1);
+	});
+});
+
+/* ------------------------------------------------------------------ */
+/*               containerShapeEqual — frame outer params             */
+/* ------------------------------------------------------------------ */
+
+describe('containerShapeEqual — frame outer params', () => {
+	it('frames with default outer params equal frames without them', () => {
+		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15 };
+		const b: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, outerHalfW: 0.5, outerHalfH: 0.5, outerCornerRadius: 0 };
+		expect(containerShapeEqual(a, b)).toBe(true);
+	});
+
+	it('different outerHalfW are not equal', () => {
+		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, outerHalfW: 0.4 };
+		const b: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, outerHalfW: 0.5 };
+		expect(containerShapeEqual(a, b)).toBe(false);
+	});
+
+	it('different outerCornerRadius are not equal', () => {
+		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, outerCornerRadius: 0.05 };
+		const b: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, outerCornerRadius: 0.10 };
+		expect(containerShapeEqual(a, b)).toBe(false);
+	});
+
+	it('same outer params are equal', () => {
+		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, outerHalfW: 0.4, outerHalfH: 0.35, outerCornerRadius: 0.08 };
+		const b: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, outerHalfW: 0.4, outerHalfH: 0.35, outerCornerRadius: 0.08 };
+		expect(containerShapeEqual(a, b)).toBe(true);
+	});
+});
+
+/* ------------------------------------------------------------------ */
+/*               containerMask — frame with outer boundary            */
+/* ------------------------------------------------------------------ */
+
+describe('containerMask — frame with outer boundary', () => {
+	// Frame: inner 0.2x0.15 centered, outer 0.4x0.35 centered
+	const frame: ContainerShape = {
+		type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.1, halfH: 0.1,
+		outerHalfW: 0.3, outerHalfH: 0.3, outerCornerRadius: 0
+	};
+	const aspect = 1.0;
+
+	it('returns 0 inside the inner rect', () => {
+		expect(containerMask(frame, 0.5, 0.5, aspect)).toBe(0);
+	});
+
+	it('returns 1 in the frame region (between inner and outer)', () => {
+		expect(containerMask(frame, 0.25, 0.5, aspect)).toBe(1);
+		expect(containerMask(frame, 0.75, 0.5, aspect)).toBe(1);
+	});
+
+	it('returns 0 well outside the outer rect', () => {
+		expect(containerMask(frame, 0.05, 0.05, aspect)).toBe(0);
+		expect(containerMask(frame, 0.95, 0.95, aspect)).toBe(0);
+	});
+
+	it('returns ~0.5 at the outer rect boundary', () => {
+		// Right edge of outer rect: x = 0.5 + 0.3 = 0.8
+		const val = containerMask(frame, 0.8, 0.5, aspect);
+		expect(val).toBeCloseTo(0.5, 1);
+	});
+
+	it('returns ~0.5 at the inner rect boundary', () => {
+		const val = containerMask(frame, 0.6, 0.5, aspect);
+		expect(val).toBeCloseTo(0.5, 1);
+	});
+});
+
+describe('containerMask — frame with rounded outer boundary', () => {
+	const frame: ContainerShape = {
+		type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.1, halfH: 0.1,
+		outerHalfW: 0.3, outerHalfH: 0.3, outerCornerRadius: 0.1
+	};
+	const aspect = 1.0;
+
+	it('returns 1 in the frame region', () => {
+		expect(containerMask(frame, 0.25, 0.5, aspect)).toBe(1);
+	});
+
+	it('returns 0 inside the inner rect', () => {
+		expect(containerMask(frame, 0.5, 0.5, aspect)).toBe(0);
+	});
+
+	it('returns 0 outside the rounded outer rect', () => {
+		expect(containerMask(frame, 0.05, 0.05, aspect)).toBe(0);
+	});
+
+	it('outer bounding-box corner is rounded off (mask < 1)', () => {
+		// Exact outer corner (0.8, 0.8) — the rounded corner cuts this off
+		const val = containerMask(frame, 0.8, 0.8, aspect);
+		expect(val).toBeLessThan(0.5);
+	});
+
+	it('slightly inside the rounded outer corner gives mask > 0', () => {
+		// Slightly inside the rounded corner
+		const val = containerMask(frame, 0.75, 0.75, aspect);
+		expect(val).toBeGreaterThan(0.5);
+	});
+});
+
+describe('containerMask — frame with both inner and outer rounding', () => {
+	const frame: ContainerShape = {
+		type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.15, halfH: 0.15,
+		innerCornerRadius: 0.05,
+		outerHalfW: 0.35, outerHalfH: 0.35, outerCornerRadius: 0.08
+	};
+	const aspect = 1.0;
+
+	it('center is inside inner rect → 0', () => {
+		expect(containerMask(frame, 0.5, 0.5, aspect)).toBe(0);
+	});
+
+	it('mid-frame is 1', () => {
+		expect(containerMask(frame, 0.25, 0.5, aspect)).toBe(1);
+	});
+
+	it('far outside is 0', () => {
+		expect(containerMask(frame, 0.0, 0.0, aspect)).toBe(0);
+	});
+
+	it('inner bounding-box corner is rounded away (fluid allowed there)', () => {
+		// Inner rect corner at (0.65, 0.65) is rounded off by innerCornerRadius
+		const val = containerMask(frame, 0.65, 0.65, aspect);
+		expect(val).toBeCloseTo(1.0, 1);
 	});
 });
 

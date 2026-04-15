@@ -20,7 +20,7 @@
 	export type FrameFluidProps = Pick<
 		FluidProps,
 		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'aria-label'
-	> & { cornerRadius?: number };
+	> & { innerCornerRadius?: number };
 </script>
 
 <script lang="ts">
@@ -35,7 +35,7 @@
 		seed,
 		lazy,
 		'aria-label': ariaLabel,
-		cornerRadius
+		innerCornerRadius
 	}: FrameFluidProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
@@ -74,7 +74,7 @@
 	{seed}
 	{lazy}
 	aria-label={ariaLabel}
-	containerShape={{ type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.25, halfH: 0.25, cornerRadius }}
+	containerShape={{ type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.25, halfH: 0.25, innerCornerRadius }}
 	curl={30}
 	densityDissipation={0.08}
 	initialDensityDissipation={0.5}
