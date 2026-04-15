@@ -1,21 +1,22 @@
 # ADR 0022: applyMask performance analysis and optimization paths
 
-**Status:** Accepted
+**Status:** Accepted (Optimization #1 implemented)
 **Date:** 2026-04-13
+**Updated:** 2026-04-15
 
 ## Context
 
-Every frame, the engine calls `applyMask()` 4 times when a container shape is active:
+When a container shape is active, the engine calls `applyMask()` **2 times**
+per frame:
 
-1. After vorticity confinement (velocity)
-2. After gradient subtraction (velocity)
-3. After velocity advection (velocity)
-4. After dye advection (dye)
+1. After velocity advection (velocity)
+2. After dye advection (dye)
 
-Each call binds the `applyMaskProgram`, sets uniforms, attaches a read FBO,
-blits to a write FBO, and swaps. At `simResolution: 128` (default), each blit
-is 128x128 pixels — negligible. At 256 or 512, the texture sizes quadruple or
-16x, and the 4 blits per frame become measurable.
+Previously (before the velocity mask merge), `applyMask` was called 4 times —
+also after vorticity confinement and gradient subtraction. Those two calls were
+removed because the intermediate leakage within a single frame is imperceptible
+and the final velocity mask after advection zeros out any escaped values before
+they persist to the next frame.
 
 ## Current cost model
 
@@ -25,11 +26,11 @@ Per `applyMask` call:
 - 1 `gl.drawArrays(TRIANGLE_FAN, 0, 4)` full-screen quad
 - 1 FBO swap
 
-Per frame: 4 calls = 4 full-screen quad draws + 4 FBO swaps.
+Per frame: 2 calls = 2 full-screen quad draws + 2 FBO swaps.
 
 At `simResolution: 512`, the velocity FBO is 512x512 and the dye FBO is up to
-2048x2048 (or 1024x1024 if linear filtering is unsupported). The 3 velocity
-mask blits are ~786K fragments each; the 1 dye mask blit is ~4M fragments.
+2048x2048 (or 1024x1024 if linear filtering is unsupported). The 1 velocity
+mask blit is ~262K fragments; the 1 dye mask blit is ~4M fragments.
 
 ## Profiling approach
 
@@ -50,16 +51,12 @@ use Chrome DevTools GPU timeline or `EXT_disjoint_timer_query_webgl2`.
 
 ## Optimization paths (ordered by effort/impact)
 
-### 1. Merge 3 velocity masks into 1 (medium effort, ~3x reduction)
+### 1. ~~Merge 3 velocity masks into 1~~ — IMPLEMENTED
 
-Instead of masking velocity after vorticity, gradient-subtract, and advection
-separately, mask once after the final velocity advection. The intermediate
-masked values only affect subsequent physics passes within the same frame —
-for most simulations, masking once at the end is visually indistinguishable.
-
-**Trade-off:** Fluid may briefly "leak" into the masked region during
-intermediate physics steps within a single frame. For most use cases this
-is imperceptible.
+The post-vorticity and post-gradient-subtract velocity mask calls were removed.
+Only the post-advection velocity mask remains (plus the dye mask). The
+intermediate leakage into the masked region during physics steps within a single
+frame is imperceptible — the final mask zeros everything before the next frame.
 
 ### 2. Pre-baked mask texture (low effort, lower per-fragment cost)
 
@@ -88,15 +85,16 @@ no inner cutout), skip `applyMask` entirely. Already partially handled by the
 
 ## Decision
 
-For now, the 4x blit approach is retained at default resolutions (128).
-Optimization #1 (merge velocity masks) is the recommended first step if
-profiling reveals a bottleneck at higher resolutions. The rejection sampling
-added for splat spawning (Work Item 2) already reduces wasted computation
-elsewhere.
+Optimization #1 (merge velocity masks) has been implemented, reducing the
+per-frame mask overhead from 4 blits to 2. Pre-baking (#2) was evaluated
+and rejected — after adaptive resolution capping reduces dye textures to
+canvas pixel size, the per-fragment SDF cost is negligible.
 
 ## Consequences
 
-- Users running `simResolution: 256+` with container shapes should be aware
-  of the 4x mask overhead. The playground's simResolution slider exposes this.
-- Future optimization work has a clear roadmap: merge first, then pre-bake
-  if needed.
+- The 2x blit approach is minimal overhead at default resolutions (128).
+- Users running `simResolution: 256+` with container shapes pay 2 extra
+  full-screen blits per frame. The playground's simResolution slider
+  exposes this.
+- Stencil-based masking (#3) remains available as a future optimization
+  if large masked areas become a bottleneck.
