@@ -243,6 +243,7 @@ export class FluidEngine implements FluidHandle {
 	private disposed = false;
 	private pointerListenersInstalled = false;
 	private rafRunning = false;
+	private normalizedBackColor: RGB = { r: 0, g: 0, b: 0 };
 	private contextLost = false;
 
 	// --- Bound listeners ---
@@ -260,6 +261,7 @@ export class FluidEngine implements FluidHandle {
 		this.canvas = opts.canvas;
 		const seed = opts.config?.seed ?? randomSeed();
 		this.config = resolveConfig({ ...opts.config, seed }, DEFAULTS);
+		this.normalizedBackColor = normalizeColor(this.config.BACK_COLOR);
 		this.rng = mulberry32(this.config.SEED);
 
 		this.initContext();
@@ -395,6 +397,9 @@ export class FluidEngine implements FluidHandle {
 		const pointerInputChanged = a.POINTER_INPUT !== b.POINTER_INPUT;
 
 		this.config = b;
+		if (a.BACK_COLOR !== b.BACK_COLOR) {
+			this.normalizedBackColor = normalizeColor(b.BACK_COLOR);
+		}
 
 		if (fbChanged) this.initFramebuffers();
 		if (bloomChanged) this.initBloomFramebuffers();
@@ -1070,7 +1075,7 @@ export class FluidEngine implements FluidHandle {
 		}
 
 		if (!this.config.TRANSPARENT) {
-			this.drawColor(target, normalizeColor(this.config.BACK_COLOR));
+			this.drawColor(target, this.normalizedBackColor);
 		}
 		if (target == null && this.config.TRANSPARENT) {
 			this.drawCheckerboard(target);
