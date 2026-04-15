@@ -218,6 +218,14 @@
 			if (sunrays === undefined) cfg.sunrays = false;
 		}
 
+		// Cap bloom mip-chain depth for small canvases. 8 iterations on
+		// a 480px canvas creates 15 bloom draw calls; 4 iterations creates 9
+		// with no visible quality loss at that size.
+		if (bloomIterations === undefined) {
+			if (maxPx < 512) cfg.bloomIterations = 4;
+			else if (maxPx < 768) cfg.bloomIterations = 5;
+		}
+
 		// Fewer pressure iterations on small sim grids — Jacobi converges
 		// faster when there are fewer cells to propagate across.
 		if (pressureIterations === undefined) {
