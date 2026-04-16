@@ -47,10 +47,9 @@ bun install            # populates node_modules + bun.lock
 bun run dev            # demo playground at http://localhost:5173
 ```
 
-The demo at `src/routes/+page.svelte` mounts fifteen `<Fluid />`
-instances: a full-bleed hero, four variation cards (different physics
-configs), nine preset cards (one per shipping preset, including shape
-variants), and a playground canvas wired to a live control panel. Use it
+The demo at `src/routes/+page.svelte` mounts fourteen `<Fluid />`
+instances: five preset cards, four configuration cards, four container-shape
+cards, and a playground canvas wired to a live control panel. Use it
 to verify any change interactively.
 
 ## Repository layout
@@ -153,7 +152,7 @@ bun run build       # builds the demo
 If you touched anything in `src/lib/engine/`, also do these manual
 checks in a real browser:
 
-- [ ] All fifteen demo instances render fluid correctly
+- [ ] All fourteen demo instances render fluid correctly
 - [ ] Drag inside each instance — pointer input is isolated
 - [ ] Resize the browser window — every instance reinits with the
   same initial splat pattern

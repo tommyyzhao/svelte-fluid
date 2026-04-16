@@ -86,7 +86,7 @@
 	aria-label={ariaLabel}
 	containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
 	curl={35}
-	densityDissipation={0.08}
+	densityDissipation={0.15}
 	initialDensityDissipation={0.5}
 	initialDensityDissipationDuration={2.0}
 	velocityDissipation={0.06}
@@ -103,8 +103,8 @@
 	initialSplatCount={0}
 	backColor={{ r: 4, g: 2, b: 12 }}
 	presetSplats={PRESET_SPLATS}
-	randomSplatRate={0.5}
-	randomSplatCount={5}
+	randomSplatRate={1.2}
+	randomSplatCount={1}
 	randomSplatSpawnY={0.5}
 	randomSplatSpread={0.8}
 	randomSplatSwirl={500}

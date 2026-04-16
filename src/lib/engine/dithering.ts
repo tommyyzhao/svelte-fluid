@@ -72,10 +72,15 @@ export function createDitheringTexture(gl: GL): DitheringTexture {
 		// If the engine was disposed before the image loaded, skip the upload.
 		// The context may already be lost and using it would cause errors.
 		if (disposed) return;
-		obj.width = image.width;
-		obj.height = image.height;
-		gl.bindTexture(gl.TEXTURE_2D, texture);
-		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+		try {
+			obj.width = image.width;
+			obj.height = image.height;
+			gl.bindTexture(gl.TEXTURE_2D, texture);
+			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+		} catch {
+			// Context was lost between the disposed check and the GL calls.
+			// The contextrestored handler will recreate the texture.
+		}
 	};
 	image.src = `data:image/png;base64,${DITHERING_PNG_BASE64}`;
 

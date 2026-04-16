@@ -13,6 +13,15 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `splatOnHover` prop — when true, moving the mouse over the canvas
+  creates splats without requiring a click. The splat velocity follows
+  the cursor movement. Hot-updatable (Bucket A).
+- `engines` field in `package.json` (`>=18`).
+- npm version badge in README.
+- "Why this library?" differentiator section in README.
+- Hero GIF showing 4 presets (LavaLamp, Aurora, InkInWater, CircularFluid).
+- `/capture` route for recording hero media from a 2×2 preset grid.
+- `bun run test` step in CI workflow — 106 tests now run on every push.
 - `lazy` prop on `<Fluid />` and all preset wrappers — defers engine
   construction until the container enters the viewport (with a 200px
   rootMargin lookahead) and tears it down when it leaves. Recommended
@@ -32,6 +41,19 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Demo page: removed invisible hero background (saved 1 WebGL context),
+  reordered sections (presets first), fixed grid to 2 columns (no more
+  3+1 asymmetry), moved shape presets to a "Container shapes" subsection
+  under Configuration, added `splatOnHover` to config example cards.
+- CircularFluid preset: `densityDissipation` 0.08 → 0.15, changed from
+  5 splats every 2s to 1 splat every ~0.8s for more organic appearance.
+- InkInWater preset: `randomSplatRate` 0.5 → 0.167 (3× slower drops).
+- README: added npm/pnpm install options alongside bun, deduplicated
+  feature bullets into "Why this library?" section, added `splatOnHover`
+  to props table.
+- Demo page copy: "seven presets" → "eight", "~28-prop" → "40+",
+  `bun add` → `npm install`, rewrote card descriptions from raw prop
+  syntax to human-readable prose.
 - `RGB` interface now documents per-call-site unit conventions:
   `backColor` is **0–255** (CSS-style, normalized internally),
   `PresetSplat.color` and `FluidHandle.splat` are **0–1** linear with
@@ -57,6 +79,11 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Default pointer color sentinel `b: 300` → `b: 0` (upstream heritage,
+  never rendered, but out-of-range value cleaned up for public API).
+- Defensive optional chaining on `pointers[0]` in mouse handlers.
+- Try-catch around async dithering texture upload to guard against
+  context loss during image decode.
 - `pointerInput` hot-update lifecycle — toggling at runtime now
   correctly installs or removes event listeners and drains in-flight
   pointer state.

@@ -1,29 +1,39 @@
 [![CI](https://github.com/tommyyzhao/svelte-fluid/actions/workflows/ci.yml/badge.svg)](https://github.com/tommyyzhao/svelte-fluid/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/svelte-fluid)](https://www.npmjs.com/package/svelte-fluid)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 # svelte-fluid
 
 WebGL fluid simulation as a Svelte 5 component library.
 
-**Live demo:** [https://tommyyzhao.github.io/svelte-fluid/](https://tommyyzhao.github.io/svelte-fluid/)
+<p align="center">
+  <img src="static/hero.gif" alt="Four svelte-fluid presets running simultaneously: LavaLamp, Aurora, Ink in Water, and Circular Fluid" width="720" />
+</p>
 
-A modern, multi-instance, deterministic-resize port of Pavel Dobryakov's
-[WebGL-Fluid-Simulation](https://github.com/PavelDoGreat/WebGL-Fluid-Simulation)
-to Svelte 5 (runes) and TypeScript.
+<p align="center">
+  <strong><a href="https://tommyyzhao.github.io/svelte-fluid/">Live demo</a></strong>
+</p>
 
-- 🌀 Drop a `<Fluid />` anywhere in your Svelte 5 app — fixed-size or fluid
-- 🪄 Multiple independent instances on a single page (no shared GL state)
-- 📐 `ResizeObserver` auto-tracks the parent; deterministic seed reproduces
-  the same initial splat pattern after every resize
-- 🎛️ All 40+ physics / visual config knobs exposed as camelCase props
-- ⚡ Live prop updates — scalars hot-set, shader keywords recompile,
-  resolution changes rebuild framebuffers
-- 🎯 Imperative API for `splat()` / `randomSplats()` via `bind:this`
-- 🧹 Full cleanup on unmount — no leaks, no rogue `requestAnimationFrame`s
+### Why this library?
+
+Other WebGL fluid packages are vanilla JS wrappers around the same upstream
+simulation. svelte-fluid is purpose-built for Svelte 5:
+
+- **True component API** — `<Fluid />` with 40+ typed props, live reactive updates, and full cleanup on unmount
+- **Multiple independent instances** per page — no shared GL state
+- **Deterministic seeding** — same `seed` reproduces the same splat pattern across resizes
+- **8 presets** — drop-in `<LavaLamp />`, `<Aurora />`, `<CircularFluid />`, etc.
+- **4 container shapes** — circle, frame, roundedRect, annulus via SDF masking
+- **Lazy loading + auto-pause** — defer engine creation until viewport entry
+- **Imperative API** — `splat()` and `randomSplats()` via `bind:this`
 
 ## Install
 
 ```sh
+npm install svelte-fluid
+# or
+pnpm add svelte-fluid
+# or
 bun add svelte-fluid
 ```
 
@@ -133,6 +143,7 @@ config from the upstream project.
 | `randomSplatDy` | `number` | `0` | y velocity for continuous splats (Bucket A) |
 | `randomSplatSpawnY` | `number` | `0.5` | normalized y position for continuous splats (0–1, clamped) (Bucket A) |
 | `pointerInput` | `boolean` | `true` | hot; toggles canvas + window listeners |
+| `splatOnHover` | `boolean` | `false` | hot; splat on mousemove without click |
 | `presetSplats` | `PresetSplat[]` | — | construct-only; declarative initial scene (see [Presets](#presets)) |
 | `lazy` | `boolean` | `false` | construct-only; defer engine creation until container enters viewport |
 
