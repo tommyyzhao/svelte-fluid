@@ -90,7 +90,7 @@
 	colorful={false}
 	bloom={false}
 sunrays={false}
-	randomSplatRate={0.5}
+	randomSplatRate={0.167}
 	randomSplatColor={{ r: 0.05, g: 0.09, b: 0.53 }}
 	randomSplatDx={0}
 	randomSplatDy={-320}

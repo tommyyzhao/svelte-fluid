@@ -100,6 +100,7 @@ const DEFAULTS: ResolvedConfig = {
 	INITIAL_SPLAT_MIN: 5,
 	INITIAL_SPLAT_MAX: 25,
 	POINTER_INPUT: true,
+	SPLAT_ON_HOVER: false,
 	SEED: 0,
 	RANDOM_SPLAT_RATE: 0,
 	RANDOM_SPLAT_COUNT: 1,
@@ -157,6 +158,7 @@ function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): Re
 		out.INITIAL_SPLAT_MAX = input.initialSplatCount;
 	}
 	if (input.pointerInput !== undefined) out.POINTER_INPUT = input.pointerInput;
+	if (input.splatOnHover !== undefined) out.SPLAT_ON_HOVER = input.splatOnHover;
 	if (input.seed !== undefined) out.SEED = input.seed >>> 0;
 	if (input.randomSplatRate !== undefined) out.RANDOM_SPLAT_RATE = input.randomSplatRate;
 	if (input.randomSplatCount !== undefined) out.RANDOM_SPLAT_COUNT = input.randomSplatCount;
@@ -250,6 +252,7 @@ export class FluidEngine implements FluidHandle {
 	private onMouseDown = (e: MouseEvent) => this.handleMouseDown(e);
 	private onMouseMove = (e: MouseEvent) => this.handleMouseMove(e);
 	private onMouseUp = () => this.handleMouseUp();
+	private onMouseLeave = () => this.handleMouseLeave();
 	private onTouchStart = (e: TouchEvent) => this.handleTouchStart(e);
 	private onTouchMove = (e: TouchEvent) => this.handleTouchMove(e);
 	private onTouchEnd = (e: TouchEvent) => this.handleTouchEnd(e);
@@ -1309,6 +1312,7 @@ export class FluidEngine implements FluidHandle {
 		if (this.pointerListenersInstalled) return;
 		this.canvas.addEventListener('mousedown', this.onMouseDown);
 		this.canvas.addEventListener('mousemove', this.onMouseMove);
+		this.canvas.addEventListener('mouseleave', this.onMouseLeave);
 		window.addEventListener('mouseup', this.onMouseUp);
 		this.canvas.addEventListener('touchstart', this.onTouchStart, { passive: false });
 		this.canvas.addEventListener('touchmove', this.onTouchMove, { passive: false });
@@ -1320,6 +1324,7 @@ export class FluidEngine implements FluidHandle {
 		if (!this.pointerListenersInstalled) return;
 		this.canvas.removeEventListener('mousedown', this.onMouseDown);
 		this.canvas.removeEventListener('mousemove', this.onMouseMove);
+		this.canvas.removeEventListener('mouseleave', this.onMouseLeave);
 		window.removeEventListener('mouseup', this.onMouseUp);
 		this.canvas.removeEventListener('touchstart', this.onTouchStart);
 		this.canvas.removeEventListener('touchmove', this.onTouchMove);
@@ -1355,13 +1360,37 @@ export class FluidEngine implements FluidHandle {
 
 	private handleMouseMove(e: MouseEvent): void {
 		const pointer = this.pointers[0];
-		if (!pointer.down) return;
+		if (!pointer) return;
+		if (!pointer.down) {
+			// In hover-splat mode, synthesize a pointer-down so the move
+			// generates a splat. The first move seeds the position; the
+			// second move onward produces a delta that drives the splat.
+			if (!this.config.SPLAT_ON_HOVER) return;
+			const { x, y } = this.getCanvasOffset(e.clientX, e.clientY);
+			updatePointerDownData(
+				pointer, -1, x, y,
+				this.canvas.width, this.canvas.height,
+				generateColor(this.rng)
+			);
+			return;
+		}
 		const { x, y } = this.getCanvasOffset(e.clientX, e.clientY);
 		updatePointerMoveData(pointer, x, y, this.canvas.width, this.canvas.height);
 	}
 
 	private handleMouseUp(): void {
-		updatePointerUpData(this.pointers[0]);
+		const pointer = this.pointers[0];
+		if (pointer) updatePointerUpData(pointer);
+	}
+
+	private handleMouseLeave(): void {
+		// End the hover-splat stream when the cursor leaves the canvas,
+		// so re-entering doesn't produce a splat that stretches from the
+		// exit point to the new entry point.
+		if (this.config.SPLAT_ON_HOVER) {
+			const pointer = this.pointers[0];
+			if (pointer) updatePointerUpData(pointer);
+		}
 	}
 
 	private handleTouchStart(e: TouchEvent): void {

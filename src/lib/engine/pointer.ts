@@ -33,7 +33,7 @@ export function createPointer(): Pointer {
 		deltaY: 0,
 		down: false,
 		moved: false,
-		color: { r: 30, g: 0, b: 300 }
+		color: { r: 0, g: 0, b: 0 }
 	};
 }
 

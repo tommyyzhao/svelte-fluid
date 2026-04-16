@@ -82,24 +82,10 @@
 
 <svelte:head>
 	<title>svelte-fluid — WebGL fluid simulation as a Svelte 5 component</title>
-	<meta name="description" content="Drop-in WebGL fluid simulation for Svelte 5. Multi-instance, resize-stable, deterministic seeding, seven presets. MIT licensed." />
+	<meta name="description" content="Drop-in WebGL fluid simulation for Svelte 5. Multi-instance, resize-stable, deterministic seeding, eight presets. MIT licensed." />
 	<meta property="og:title" content="svelte-fluid" />
-	<meta property="og:description" content="WebGL fluid simulation as a Svelte 5 component. Multi-instance, resize-stable, seven hand-tuned presets." />
+	<meta property="og:description" content="WebGL fluid simulation as a Svelte 5 component. Multi-instance, resize-stable, eight hand-tuned presets." />
 </svelte:head>
-
-<!-- Background hero instance — fills the viewport behind everything else. -->
-<div class="hero" aria-hidden="true">
-	<Fluid
-		dyeResolution={512}
-		simResolution={64}
-		bloomIterations={4}
-		curl={20}
-		bloomIntensity={1.2}
-		initialSplatCount={18}
-		pointerInput={false}
-		aria-label="Decorative background fluid simulation"
-	/>
-</div>
 
 <main>
 	<header>
@@ -107,11 +93,6 @@
 		<p class="tagline">
 			WebGL fluid simulation as a Svelte 5 component. Multi-instance,
 			resize-stable, deterministic seeding.
-		</p>
-		<p class="hint">
-			Drag inside any canvas. Try resizing the window — every instance
-			tears down and reinitializes with the <em>same</em> initial splats
-			thanks to the seed prop.
 		</p>
 		<nav class="header-links" aria-label="Project links">
 			<a href="https://github.com/tommyyzhao/svelte-fluid" rel="noreferrer" target="_blank">
@@ -140,99 +121,119 @@
 
 	<section class="get-started" aria-labelledby="get-started-heading">
 		<h2 id="get-started-heading">Get started</h2>
-		<pre class="code-block"><code>bun add svelte-fluid</code></pre>
+		<pre class="code-block"><code>npm install svelte-fluid</code></pre>
 		<pre class="code-block"><code>{usageSnippet}</code></pre>
 		<p class="caption">
-			That's the entire setup — the canvas fills its parent and tracks
-			parent size automatically. Seven presets ship out of the box;
-			<code>&lt;Fluid /&gt;</code> exposes the full ~28-prop config surface
-			for custom physics and visuals.
+			The canvas fills its parent automatically. Eight presets ship out of the box;
+			<code>&lt;Fluid /&gt;</code> exposes 40+ props for custom physics and visuals.
 		</p>
-	</section>
-
-	<section class="grid">
-		<Card title="Default" description="Out-of-the-box configuration with bloom + sunrays.">
-			<Fluid
-				seed={1234}
-				initialSplatCount={12}
-				lazy
-				aria-label="Default fluid configuration with bloom and sunrays"
-			/>
-		</Card>
-
-		<Card title="No bloom, low curl" description="bloom={false} curl={5} densityDissipation={0.4}">
-			<Fluid
-				seed={5678}
-				bloom={false}
-				curl={5}
-				densityDissipation={0.4}
-				initialSplatCount={10}
-				lazy
-				aria-label="Fluid with bloom disabled and low curl"
-			/>
-		</Card>
-
-		<Card title="No shading, big splats" description="shading={false} splatRadius={0.8}">
-			<Fluid
-				seed={9012}
-				shading={false}
-				splatRadius={0.8}
-				splatForce={9000}
-				initialSplatCount={8}
-				lazy
-				aria-label="Fluid with shading disabled and large splats"
-			/>
-		</Card>
-
-		<Card title="Slow mo, transparent" description="velocityDissipation={0.05} transparent">
-			<Fluid
-				seed={3456}
-				velocityDissipation={0.05}
-				densityDissipation={0.5}
-				transparent
-				initialSplatCount={14}
-				lazy
-				aria-label="Slow-motion fluid with transparent background"
-			/>
-		</Card>
 	</section>
 
 	<section class="presets">
 		<header class="section-header">
 			<h2>Presets</h2>
 			<p>
-				Drop-in wrapper components with hard-coded physics + hand-crafted
-				opening splats. Import any of them from <code>svelte-fluid</code>
-				and render in a sized container.
+				Ready-made components you can drop in with zero configuration.
+				Each one pins its own physics, visuals, and opening splats.
 			</p>
 		</header>
-		<div class="grid">
-			<Card title="Lava Lamp" description="Slow, lazy warm blobs drifting on a warm-silver background.">
-				<LavaLamp seed={101} lazy aria-label="LavaLamp preset: warm blobs on silver" />
+		<div class="grid-2col">
+			<Card title="Lava Lamp" description="Warm blobs drifting lazily on a silver background.">
+				<LavaLamp seed={101} lazy aria-label="LavaLamp preset" />
 			</Card>
 			<Card title="Plasma" description="Persistent full-spectrum energy field.">
-				<Plasma seed={202} lazy aria-label="Plasma preset: persistent full-spectrum energy field" />
+				<Plasma seed={202} lazy aria-label="Plasma preset" />
 			</Card>
-			<Card title="Ink in Water" description="Dark blue dye blooming on a pale background.">
-				<InkInWater seed={303} lazy aria-label="Ink in Water preset: dark blue ink on cream" />
+			<Card title="Ink in Water" description="Blue dye blooming on a pale background.">
+				<InkInWater seed={303} lazy aria-label="Ink in Water preset" />
 			</Card>
 			<Card title="Frozen Swirl" description="A single icy whirlpool that spins itself out.">
-				<FrozenSwirl seed={404} lazy aria-label="Frozen Swirl preset: single icy whirlpool" />
+				<FrozenSwirl seed={404} lazy aria-label="Frozen Swirl preset" />
 			</Card>
 			<Card title="Aurora" description="Northern-lights ribbons drifting laterally.">
-				<Aurora seed={505} lazy aria-label="Aurora preset: northern lights ribbons" />
+				<Aurora seed={505} lazy aria-label="Aurora preset" />
 			</Card>
-			<Card title="Circular Fluid" description="Plasma physically confined inside a circular boundary — the simulation enforces the wall.">
-				<CircularFluid seed={606} lazy aria-label="Circular Fluid preset: plasma confined inside a circle" />
+		</div>
+	</section>
+
+	<section class="examples">
+		<header class="section-header">
+			<h2>Configuration</h2>
+			<p>
+				Every prop on <code>&lt;Fluid /&gt;</code> is optional.
+				A few combinations to show the range.
+			</p>
+		</header>
+		<div class="grid-2col">
+			<Card title="Default" description="Out-of-the-box look with bloom, sunrays, and shading.">
+				<Fluid
+					seed={1234}
+					initialSplatCount={12}
+					splatOnHover
+					lazy
+					aria-label="Default fluid configuration"
+				/>
 			</Card>
-			<Card title="Frame Fluid" description="Fluid swirls around a rectangular inner cutout — a living picture frame.">
-				<FrameFluid seed={707} lazy aria-label="Frame Fluid preset: fluid around rectangular cutout" />
+
+			<Card title="Flat + soft" description="Bloom off, low curl, faster dye fade.">
+				<Fluid
+					seed={5678}
+					bloom={false}
+					curl={5}
+					densityDissipation={0.4}
+					initialSplatCount={10}
+					splatOnHover
+					lazy
+					aria-label="Flat fluid with low curl"
+				/>
 			</Card>
-			<Card title="Rounded Frame" description="Frame with rounded inner cutout — innerCornerRadius on FrameFluid.">
-				<FrameFluid seed={808} lazy innerCornerRadius={0.06} aria-label="Rounded Frame preset: fluid around rounded rectangular cutout" />
+
+			<Card title="Bold splats" description="Shading off, oversized splats, high force.">
+				<Fluid
+					seed={9012}
+					shading={false}
+					splatRadius={0.8}
+					splatForce={9000}
+					initialSplatCount={8}
+					splatOnHover
+					lazy
+					aria-label="Fluid with large bold splats"
+				/>
 			</Card>
-			<Card title="Annular Fluid" description="Ring-vortex fluid confined between two concentric circles.">
-				<AnnularFluid seed={909} lazy aria-label="Annular Fluid preset: ring vortex between concentric circles" />
+
+			<Card title="Slow + transparent" description="Low velocity dissipation on a transparent canvas.">
+				<Fluid
+					seed={3456}
+					velocityDissipation={0.05}
+					densityDissipation={0.5}
+					transparent
+					initialSplatCount={14}
+					splatOnHover
+					lazy
+					aria-label="Slow-motion transparent fluid"
+				/>
+			</Card>
+		</div>
+
+		<header class="section-header subsection-header">
+			<h3>Container shapes</h3>
+			<p>
+				An SDF mask confines the simulation to a region.
+				Four shape types are built in.
+			</p>
+		</header>
+		<div class="grid-2col">
+			<Card title="Circle" description="Plasma confined inside a circular boundary.">
+				<CircularFluid seed={606} lazy aria-label="Circular fluid shape demo" />
+			</Card>
+			<Card title="Frame" description="Fluid around a rectangular inner cutout.">
+				<FrameFluid seed={707} lazy aria-label="Frame fluid shape demo" />
+			</Card>
+			<Card title="Annulus" description="Ring-vortex fluid between two concentric circles.">
+				<AnnularFluid seed={909} lazy aria-label="Annular fluid shape demo" />
+			</Card>
+			<Card title="Rounded frame" description="Same frame with rounded inner corners via innerCornerRadius.">
+				<FrameFluid seed={808} lazy innerCornerRadius={0.06} aria-label="Rounded frame shape demo" />
 			</Card>
 		</div>
 	</section>
@@ -348,21 +349,6 @@
 </main>
 
 <style>
-	.hero {
-		position: fixed;
-		inset: 0;
-		z-index: -1;
-		opacity: 0.32;
-	}
-	/* Subtle dark veil so foreground text reads against any hero color. */
-	.hero::after {
-		content: '';
-		position: absolute;
-		inset: 0;
-		background: linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.78) 100%);
-		pointer-events: none;
-	}
-
 	main {
 		position: relative;
 		max-width: 1100px;
@@ -386,15 +372,6 @@
 		margin: 0 0 12px;
 		color: #ddd;
 		font-size: 1.05rem;
-	}
-	.hint {
-		margin: 0 0 18px;
-		color: #aaa;
-		font-size: 0.88rem;
-	}
-	.hint em {
-		color: #6cf;
-		font-style: normal;
 	}
 	.header-links {
 		display: flex;
@@ -456,10 +433,16 @@
 		font-size: 0.78rem;
 	}
 
-	.grid {
+	.grid-2col {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+		grid-template-columns: repeat(2, 1fr);
 		gap: 18px;
+	}
+
+	@media (max-width: 600px) {
+		.grid-2col {
+			grid-template-columns: 1fr;
+		}
 	}
 
 	.section-header {
@@ -482,7 +465,16 @@
 		border-radius: 4px;
 		font-size: 0.78rem;
 	}
-	.presets {
+	.subsection-header {
+		margin-top: 18px;
+	}
+	.subsection-header h3 {
+		margin: 0 0 6px;
+		font-size: 1.05rem;
+		letter-spacing: -0.01em;
+	}
+	.presets,
+	.examples {
 		display: flex;
 		flex-direction: column;
 		gap: 14px;

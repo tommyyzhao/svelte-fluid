@@ -100,6 +100,7 @@
 		initialSplatCountMin,
 		initialSplatCountMax,
 		pointerInput = true,
+		splatOnHover,
 		presetSplats,
 		randomSplatRate,
 		randomSplatCount,
@@ -186,6 +187,7 @@
 			randomSplatSpread,
 			containerShape,
 			pointerInput,
+			splatOnHover,
 			seed: stableSeed,
 			presetSplats: stablePresetSplats
 		};

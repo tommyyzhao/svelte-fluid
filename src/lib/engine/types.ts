@@ -173,6 +173,12 @@ export interface FluidConfig {
 	/** Enable mouse / touch input. Default true. */
 	pointerInput?: boolean;
 	/**
+	 * When true, moving the mouse over the canvas creates splats without
+	 * requiring a click. The splat velocity follows the cursor movement.
+	 * Has no effect when `pointerInput` is false. Default false.
+	 */
+	splatOnHover?: boolean;
+	/**
 	 * 32-bit unsigned integer seed for the deterministic PRNG. If omitted,
 	 * the Svelte component generates one once per mount and reuses it
 	 * across resizes so the same initial splat pattern reappears.
@@ -280,6 +286,7 @@ export interface ResolvedConfig {
 	INITIAL_SPLAT_MIN: number;
 	INITIAL_SPLAT_MAX: number;
 	POINTER_INPUT: boolean;
+	SPLAT_ON_HOVER: boolean;
 	SEED: number;
 	RANDOM_SPLAT_RATE: number;
 	RANDOM_SPLAT_COUNT: number;

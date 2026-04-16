@@ -62,7 +62,7 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 │   update / step / render / drawColor / drawDisplay              │
 │   applyBloom / applySunrays / blur / multipleSplats             │
 │   initFramebuffers / initBloom / initSunrays / updateKeywords   │
-│   handleMouseDown/Move/Up / handleTouchStart/Move/End           │
+│   handleMouseDown/Move/Up/Leave / handleTouchStart/Move/End           │
 └─────────────────────────────────────────────────────────────────┘
                              │
                              ▼
@@ -165,8 +165,9 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
      Includes `randomSplatSwirl`, `randomSplatEvenSpacing`, `randomSplatSpread`.
    - **B** SHADING/BLOOM/SUNRAYS → `updateKeywords()` recompiles display shader
    - **C** SIM/DYE/BLOOM/SUNRAYS resolution → `init*Framebuffers()` rebuilds FBOs
-   - **A** also includes `pointerInput` — installs/removes canvas+window
-     event listeners on transition.
+   - **A** also includes `pointerInput` (installs/removes canvas+window
+     event listeners on transition) and `splatOnHover` (cursor movement
+     over the canvas creates splats without requiring a click).
    - **D** seed / initialSplatCount* / presetSplats → ignored after construction
 
 ### Unmount
