@@ -30,20 +30,27 @@
 </script>
 
 {#if shape && width > 0 && height > 0}
+	<!-- Small inset so strokes at the canvas edge (e.g. outerHalfW=0.5)
+		 don't get clipped by the card's overflow:hidden -->
+	{@const inset = 3}
+	{@const vw = width - inset * 2}
+	{@const vh = height - inset * 2}
 	<svg class="shape-preview" viewBox="0 0 {width} {height}" preserveAspectRatio="none">
-		{#if shape.type === 'circle'}
-			<circle cx={shape.cx * width} cy={(1 - shape.cy) * height} r={shape.radius * height} />
-		{:else if shape.type === 'roundedRect'}
-			<path d={rrPath(shape.cx, shape.cy, shape.halfW, shape.halfH, shape.cornerRadius, width, height)} />
-		{:else if shape.type === 'frame'}
-			<path class="inner" d={rrPath(shape.cx, shape.cy, shape.halfW, shape.halfH, shape.innerCornerRadius ?? 0, width, height)} />
-			<path class="outer" d={rrPath(shape.cx, shape.cy, shape.outerHalfW ?? 0.5, shape.outerHalfH ?? 0.5, shape.outerCornerRadius ?? 0, width, height)} />
-		{:else if shape.type === 'annulus'}
-			{@const px = shape.cx * width}
-			{@const py = (1 - shape.cy) * height}
-			<circle class="outer" cx={px} cy={py} r={shape.outerRadius * height} />
-			<circle class="inner" cx={px} cy={py} r={shape.innerRadius * height} />
-		{/if}
+		<g transform="translate({inset},{inset}) scale({vw / width},{vh / height})">
+			{#if shape.type === 'circle'}
+				<circle cx={shape.cx * width} cy={(1 - shape.cy) * height} r={shape.radius * height} />
+			{:else if shape.type === 'roundedRect'}
+				<path d={rrPath(shape.cx, shape.cy, shape.halfW, shape.halfH, shape.cornerRadius, width, height)} />
+			{:else if shape.type === 'frame'}
+				<path class="inner" d={rrPath(shape.cx, shape.cy, shape.halfW, shape.halfH, shape.innerCornerRadius ?? 0, width, height)} />
+				<path class="outer" d={rrPath(shape.cx, shape.cy, shape.outerHalfW ?? 0.5, shape.outerHalfH ?? 0.5, shape.outerCornerRadius ?? 0, width, height)} />
+			{:else if shape.type === 'annulus'}
+				{@const px = shape.cx * width}
+				{@const py = (1 - shape.cy) * height}
+				<circle class="outer" cx={px} cy={py} r={shape.outerRadius * height} />
+				<circle class="inner" cx={px} cy={py} r={shape.innerRadius * height} />
+			{/if}
+		</g>
 	</svg>
 {/if}
 

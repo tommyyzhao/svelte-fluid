@@ -8,6 +8,17 @@
 
 import type { ContainerShape } from './types.js';
 
+/**
+ * CPU-side mask data for svgPath shapes, used for rejection sampling
+ * during random splat spawning. The engine rasterizes the SVG path into
+ * this array and passes it through to containerMask().
+ */
+export interface MaskContext {
+	data: Uint8Array;
+	width: number;
+	height: number;
+}
+
 /** Deep equality for ContainerShape values. */
 export function containerShapeEqual(
 	a: ContainerShape | null | undefined,
@@ -38,6 +49,14 @@ export function containerShapeEqual(
 	if (a.type === 'annulus' && b.type === 'annulus') {
 		return a.cx === b.cx && a.cy === b.cy && a.innerRadius === b.innerRadius && a.outerRadius === b.outerRadius;
 	}
+	if (a.type === 'svgPath' && b.type === 'svgPath') {
+		return a.d === b.d &&
+			a.text === b.text &&
+			(a.font ?? '') === (b.font ?? '') &&
+			(a.fillRule ?? 'nonzero') === (b.fillRule ?? 'nonzero') &&
+			(a.maskResolution ?? 512) === (b.maskResolution ?? 512) &&
+			viewBoxEqual(a.viewBox, b.viewBox);
+	}
 	return false;
 }
 
@@ -45,16 +64,18 @@ export function containerShapeEqual(
  * Evaluate the container mask at a UV coordinate. Returns 0–1 where
  * 1 = fluid allowed, 0 = fluid zeroed. Mirrors the GLSL applyMaskShader.
  *
- * @param shape - The container shape definition
- * @param uvX   - Horizontal UV coordinate (0 = left, 1 = right)
- * @param uvY   - Vertical UV coordinate (0 = bottom, 1 = top)
- * @param aspect - Canvas width / height
+ * @param shape   - The container shape definition
+ * @param uvX     - Horizontal UV coordinate (0 = left, 1 = right)
+ * @param uvY     - Vertical UV coordinate (0 = bottom, 1 = top)
+ * @param aspect  - Canvas width / height
+ * @param maskCtx - CPU-side mask data for svgPath shapes (ignored for analytical shapes)
  */
 export function containerMask(
 	shape: ContainerShape,
 	uvX: number,
 	uvY: number,
-	aspect: number
+	aspect: number,
+	maskCtx?: MaskContext
 ): number {
 	switch (shape.type) {
 		case 'circle':
@@ -66,6 +87,8 @@ export function containerMask(
 			return roundedRectSDF(uvX, uvY, shape.cx, shape.cy, shape.halfW, shape.halfH, shape.cornerRadius, aspect);
 		case 'annulus':
 			return annulusMask(uvX, uvY, shape.cx, shape.cy, shape.innerRadius, shape.outerRadius, aspect);
+		case 'svgPath':
+			return svgPathMask(uvX, uvY, maskCtx);
 	}
 }
 
@@ -179,6 +202,44 @@ function annulusMask(
 	const d = Math.sqrt(px * px + py * py);
 	const sdf = Math.max(d - outerRadius, innerRadius - d);
 	return 1.0 - glslSmoothstep(-0.005, 0.005, sdf);
+}
+
+/**
+ * SVG path mask: sample the pre-rasterized mask texture at UV coordinates.
+ * Returns 0 if no maskCtx is available (reject all splats).
+ */
+function svgPathMask(uvX: number, uvY: number, maskCtx?: MaskContext): number {
+	if (!maskCtx) return 0;
+	const { data, width, height } = maskCtx;
+	// UV (0–1, bottom-to-top) → pixel coords. The mask was rasterized with
+	// a Y-flip so row 0 corresponds to uvY=1 (top).
+	const px = Math.floor(uvX * (width - 1));
+	const py = Math.floor((1 - uvY) * (height - 1));
+	const cx = Math.max(0, Math.min(width - 1, px));
+	const cy = Math.max(0, Math.min(height - 1, py));
+	return data[cy * width + cx] / 255;
+}
+
+/** Compare two optional viewBox tuples. Defaults to [0,0,100,100]. */
+function viewBoxEqual(
+	a: [number, number, number, number] | undefined,
+	b: [number, number, number, number] | undefined
+): boolean {
+	const va = a ?? [0, 0, 100, 100];
+	const vb = b ?? [0, 0, 100, 100];
+	return va[0] === vb[0] && va[1] === vb[1] && va[2] === vb[2] && va[3] === vb[3];
+}
+
+/**
+ * Compute area fraction from mask data for hdrMultiplier calculation.
+ * Counts pixels above threshold and returns ratio to total pixels.
+ */
+export function maskAreaFraction(maskCtx: MaskContext): number {
+	let count = 0;
+	for (let i = 0; i < maskCtx.data.length; i++) {
+		if (maskCtx.data[i] > 127) count++;
+	}
+	return count / maskCtx.data.length;
 }
 
 /** GLSL smoothstep: Hermite interpolation clamped to [0,1]. */

@@ -40,21 +40,27 @@ When props change at runtime, `engine.setConfig()` classifies each field:
 
 When adding a new prop, decide which bucket it belongs to and wire it accordingly.
 
+Additionally, `containerShape` with `type: 'svgPath'` triggers a **mask texture rebuild** (re-rasterize + texture re-upload + keyword toggle). This is a separate operation from the 4 buckets above.
+
 ## Container shapes
 
-SDFs are computed per-fragment in GLSL (`shaders.ts`) and mirrored in TypeScript (`container-shapes.ts`) for rejection sampling during random splat spawning. When adding a new shape type:
+Two approaches coexist:
+
+**Analytical shapes** (circle, frame, roundedRect, annulus): SDFs are computed per-fragment in GLSL (`shaders.ts`) and mirrored in TypeScript (`container-shapes.ts`) for rejection sampling during random splat spawning. When adding a new analytical shape:
 1. Add the variant to `ContainerShape` union in `types.ts`
 2. Add GLSL SDF in `shaders.ts` (inside `containerSDF` function)
 3. Add TypeScript SDF mirror in `container-shapes.ts`
 4. Update `containerShapeEqual` for the new variant
 5. Update `resolveConfig` in `FluidEngine.ts`
 
+**SVG path shapes** (`svgPath`): Rasterized to a mask texture via `OffscreenCanvas` + `Path2D` (ADR-0024). Uses a separate `applyMaskTextureProgram` and `CONTAINER_MASK_TEXTURE` keyword. CPU-side mask data is stored in `maskData` for rejection sampling. See `initMaskTexture()` in `FluidEngine.ts`.
+
 ## Demo page structure
 
-14 instances across 4 sections, all lazy:
+15 instances across 4 sections, all lazy:
 - **Presets** (5): LavaLamp, Plasma, InkInWater, FrozenSwirl, Aurora
 - **Configuration** (4): Default, Flat+soft, Bold splats, Slow+transparent — all have `splatOnHover`
-- **Container shapes** (4): Circle, Frame, Annulus, Rounded frame
+- **Container shapes** (5): Circle, Frame, Annulus, Rounded frame, SVG path
 - **Playground** (1): interactive with ControlPanel
 
 All grids use `repeat(2, 1fr)`. Presets has 5 cards (2+2+1 is acceptable).

@@ -75,12 +75,27 @@ export interface PresetSplat {
  * `outerRadius`. Both radii are normalised by canvas height (same as `circle`).
  * Everything inside the inner circle and outside the outer circle is zeroed.
  * Aspect correction is applied, matching the `circle` type.
+ *
+ * **`svgPath`** — fluid confined to the filled region of an SVG path string
+ * or Canvas 2D text. The shape is rasterized to a mask texture at
+ * `maskResolution` (default 512). Two rasterization modes:
+ *
+ * - **Path mode** (`d`): uses `Path2D(d)` with `viewBox` mapping
+ *   (default `[0, 0, 100, 100]`). Use `fillRule: 'evenodd'` for font
+ *   outlines with counters.
+ * - **Text mode** (`text`): uses `ctx.fillText()` with `font` (default
+ *   `'bold 72px sans-serif'`). The text is centered in the mask texture.
+ *   Great for fluid-filled letters without needing SVG path data.
+ *
+ * At least one of `d` or `text` must be provided. If both are given,
+ * `text` takes precedence. See ADR-0024.
  */
 export type ContainerShape =
 	| { type: 'circle'; cx: number; cy: number; radius: number }
 	| { type: 'frame'; cx: number; cy: number; halfW: number; halfH: number; innerCornerRadius?: number; outerHalfW?: number; outerHalfH?: number; outerCornerRadius?: number }
 	| { type: 'roundedRect'; cx: number; cy: number; halfW: number; halfH: number; cornerRadius: number }
-	| { type: 'annulus'; cx: number; cy: number; innerRadius: number; outerRadius: number };
+	| { type: 'annulus'; cx: number; cy: number; innerRadius: number; outerRadius: number }
+	| { type: 'svgPath'; d?: string; text?: string; font?: string; viewBox?: [number, number, number, number]; fillRule?: 'nonzero' | 'evenodd'; maskResolution?: number };
 
 /**
  * Public, camelCase fluid configuration. Every field is optional;

@@ -213,11 +213,12 @@
 		cfg.bloomResolution = Math.min(cfg.bloomResolution ?? 256, maxPx);
 		cfg.sunraysResolution = Math.min(cfg.sunraysResolution ?? 196, maxPx);
 
-		// Auto-suppress expensive post-processing on small canvases
-		// when the user hasn't explicitly opted in.
+		// Auto-suppress expensive post-processing on small canvases.
+		// Applies unconditionally — even presets that explicitly pass
+		// bloom={true} should not bloom on a tiny card.
 		if (maxPx < 600) {
-			if (bloom === undefined) cfg.bloom = false;
-			if (sunrays === undefined) cfg.sunrays = false;
+			cfg.bloom = false;
+			cfg.sunrays = false;
 		}
 
 		// Cap bloom mip-chain depth for small canvases. 8 iterations on

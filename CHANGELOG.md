@@ -13,6 +13,17 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **SVG path container shapes** — new `{ type: 'svgPath' }` variant for
+  `containerShape` confines fluid to arbitrary SVG paths or Canvas 2D
+  text. Rasterized to a mask texture via `OffscreenCanvas` + `Path2D`.
+  Supports `d` (SVG path data), `text` (Canvas2D fillText), `font`,
+  `viewBox`, `fillRule`, and `maskResolution` fields. See ADR-0024.
+- `SvgPathFluid` preset — fluid confined inside a 5-pointed star shape.
+- `/svelte-fluid` route — "SVELTE FLUID" as fluid-filled text with
+  `splatOnHover` interaction.
+- `/svg` test route — 4 SVG path test cases (star, heart, rect, evenodd).
+- 20 new tests for `svgPath` equality, CPU mask sampling, and
+  `maskAreaFraction` (126 total, up from 106).
 - `splatOnHover` prop — when true, moving the mouse over the canvas
   creates splats without requiring a click. The splat velocity follows
   the cursor movement. Hot-updatable (Bucket A).
@@ -41,6 +52,17 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Mask texture rasterized at canvas aspect ratio (not always square) —
+  fixes vertical squish on non-square canvases for all `svgPath` shapes.
+- SVG path mode uniform-scales the path to fit the mask rectangle,
+  preserving the path's own aspect ratio with centering.
+- Demo "Container shapes" section: 4 → 5 cards (added SVG path star).
+  Description updated to mention SVG paths alongside analytical shapes.
+- `buildSnippet` in playground `ControlPanel` now emits `randomSplat*`,
+  `initialDensity*`, and `splatOnHover` fields when non-default.
+- Bloom/sunrays auto-suppress on small canvases (<600px) now applies
+  unconditionally — presets that explicitly pass `bloom={true}` no
+  longer bypass the guard.
 - Demo page: removed invisible hero background (saved 1 WebGL context),
   reordered sections (presets first), fixed grid to 2 columns (no more
   3+1 asymmetry), moved shape presets to a "Container shapes" subsection
@@ -79,6 +101,12 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `hdrMultiplier` aspect correction for circle and annulus shapes —
+  area fraction now divides by aspect (`pi*r^2 / aspect`), fixing
+  over-bright bloom on wide canvases.
+- `ShapePreview` outer boundary visibility — 3px translate+scale inset
+  prevents frame shapes at `outerHalfW=0.5` from being clipped by the
+  card's `overflow: hidden`.
 - Default pointer color sentinel `b: 300` → `b: 0` (upstream heritage,
   never rendered, but out-of-range value cleaned up for public API).
 - Defensive optional chaining on `pointers[0]` in mouse handlers.
@@ -91,6 +119,11 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- ADR-0024: SVG path container shapes via mask texture — documents
+  design decision, mask rasterization pipeline, rejected alternatives
+  (JFA, analytical SDF, separate shader program).
+- `CLAUDE.md` updated with svgPath documentation, mask texture rebuild
+  bucket, and demo instance count (15).
 - ADR 0005 (hot-update buckets) updated with `initialDensityDissipation`,
   `initialDensityDissipationDuration`, `pointerInput`, and `presetSplats`
   classifications.

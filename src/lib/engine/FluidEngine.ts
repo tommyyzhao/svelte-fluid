@@ -63,7 +63,7 @@ import {
 import { type DitheringTexture, createDitheringTexture } from './dithering.js';
 import { type Pointer, createPointer, updatePointerDownData, updatePointerMoveData, updatePointerUpData } from './pointer.js';
 import { type Rng, generateColor, mulberry32, normalizeColor, randomSeed } from './rng.js';
-import { containerShapeEqual, containerMask } from './container-shapes.js';
+import { containerShapeEqual, containerMask, maskAreaFraction, type MaskContext } from './container-shapes.js';
 import * as S from './shaders.js';
 
 /* -------------------------------------------------------------------------- */
@@ -222,6 +222,13 @@ export class FluidEngine implements FluidHandle {
 	private displayMaterial!: Material;
 	private applyMaskProgram!: ProgramWrap;
 
+	// --- Mask texture for svgPath shapes ---
+	private maskTexture: WebGLTexture | null = null;
+	private maskData: Uint8Array | null = null;
+	private maskW = 0;
+	private maskH = 0;
+	private maskAreaFractionCache = 1.0;
+
 	// --- Framebuffers ---
 	private dye!: DoubleFBO;
 	private velocity!: DoubleFBO;
@@ -274,6 +281,7 @@ export class FluidEngine implements FluidHandle {
 
 		this.updateKeywords();
 		this.initFramebuffers();
+		this.initMaskTexture();
 		this.multipleSplats(this.randomSplatCount());
 
 		// Construct-only preset splats. Applied after the random initial
@@ -407,6 +415,7 @@ export class FluidEngine implements FluidHandle {
 		if (fbChanged) this.initFramebuffers();
 		if (bloomChanged) this.initBloomFramebuffers();
 		if (sunraysChanged) this.initSunraysFramebuffers();
+		if (shapeChanged) this.initMaskTexture();
 		if (kwChanged || shapeChanged) this.updateKeywords();
 		if (pointerInputChanged) {
 			if (b.POINTER_INPUT) {
@@ -450,6 +459,7 @@ export class FluidEngine implements FluidHandle {
 		this.ditheringTexture = createDitheringTexture(this.gl);
 		this.updateKeywords();
 		this.initFramebuffers();
+		this.initMaskTexture();
 		this.multipleSplats(this.randomSplatCount());
 		if (this.config.POINTER_INPUT && !this.pointerListenersInstalled) {
 			this.installPointerListeners();
@@ -489,6 +499,13 @@ export class FluidEngine implements FluidHandle {
 		if (this.ditheringTexture) {
 			this.ditheringTexture.dispose();
 			gl.deleteTexture(this.ditheringTexture.texture);
+		}
+
+		// Mask texture
+		if (this.maskTexture) {
+			gl.deleteTexture(this.maskTexture);
+			this.maskTexture = null;
+			this.maskData = null;
 		}
 
 		// Programs
@@ -782,13 +799,123 @@ export class FluidEngine implements FluidHandle {
 		);
 	}
 
-	/** Multiply a DoubleFBO's contents by the container shape SDF in place. */
+	/**
+	 * Rasterize the current svgPath container shape to a mask texture.
+	 * Called at construction (if shape is svgPath) and on shape change.
+	 * Uses OffscreenCanvas + Path2D for zero-dependency SVG rasterization.
+	 */
+	private initMaskTexture(): void {
+		const gl = this.gl;
+		const shape = this.config.CONTAINER_SHAPE;
+
+		// Dispose previous mask texture
+		if (this.maskTexture) {
+			gl.deleteTexture(this.maskTexture);
+			this.maskTexture = null;
+			this.maskData = null;
+		}
+
+		if (!shape || shape.type !== 'svgPath') return;
+
+		const baseDim = shape.maskResolution ?? 512;
+		const [vx, vy, vw, vh] = shape.viewBox ?? [0, 0, 100, 100];
+		const fillRule = shape.fillRule ?? 'nonzero';
+
+		// Rasterize at the canvas aspect ratio so the mask maps 1:1 to UV
+		// space. This avoids the vertical squish that would occur if a
+		// square mask were stretched over a non-square canvas.
+		const aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
+		const maskW = aspect >= 1 ? baseDim : Math.round(baseDim * aspect);
+		const maskH = aspect >= 1 ? Math.round(baseDim / aspect) : baseDim;
+
+		// OffscreenCanvas with Canvas2D fallback for older browsers
+		let ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+		if (typeof OffscreenCanvas !== 'undefined') {
+			ctx = new OffscreenCanvas(maskW, maskH).getContext('2d')!;
+		} else {
+			const el = document.createElement('canvas');
+			el.width = maskW;
+			el.height = maskH;
+			ctx = el.getContext('2d')!;
+		}
+		ctx.fillStyle = 'white';
+		if (shape.text) {
+			// Text mode: measure the text at a reference size, then scale
+			// to fill the canvas with padding.
+			const refSize = 100;
+			ctx.font = shape.font ?? `bold ${refSize}px sans-serif`;
+			const metrics = ctx.measureText(shape.text);
+			const textW = metrics.width;
+			const textH = refSize * 1.2;
+			const pad = 0.9;
+			const scale = Math.min((maskW * pad) / textW, (maskH * pad) / textH);
+			ctx.setTransform(scale, 0, 0, scale, maskW / 2, maskH / 2);
+			ctx.textAlign = 'center';
+			ctx.textBaseline = 'middle';
+			ctx.fillText(shape.text, 0, 0);
+		} else if (shape.d) {
+			// Path mode: map viewBox to canvas pixels, preserving the path's
+			// own aspect ratio by uniform-scaling to fit the mask rectangle.
+			const scaleX = maskW / vw;
+			const scaleY = maskH / vh;
+			const s = Math.min(scaleX, scaleY);
+			const offsetX = (maskW - vw * s) / 2;
+			const offsetY = (maskH - vh * s) / 2;
+			ctx.translate(offsetX, offsetY);
+			ctx.scale(s, s);
+			ctx.translate(-vx, -vy);
+			ctx.fill(new Path2D(shape.d), fillRule);
+		}
+
+		const imageData = ctx.getImageData(0, 0, maskW, maskH);
+		// Extract single channel (alpha from the white fill on transparent background)
+		const maskData = new Uint8Array(maskW * maskH);
+		for (let i = 0; i < maskW * maskH; i++) {
+			maskData[i] = imageData.data[i * 4 + 3];
+		}
+		this.maskData = maskData;
+		this.maskW = maskW;
+		this.maskH = maskH;
+		this.maskAreaFractionCache = maskAreaFraction({ data: maskData, width: maskW, height: maskH });
+
+		// Upload as GPU texture
+		const tex = gl.createTexture()!;
+		gl.bindTexture(gl.TEXTURE_2D, tex);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+		// Use R8/RED for WebGL2, LUMINANCE for WebGL1
+		if (this.ext.isWebGL2) {
+			const gl2 = gl as WebGL2RenderingContext;
+			gl2.texImage2D(gl2.TEXTURE_2D, 0, gl2.R8, maskW, maskH, 0, gl2.RED, gl2.UNSIGNED_BYTE, maskData);
+		} else {
+			gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, maskW, maskH, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, maskData);
+		}
+		this.maskTexture = tex;
+	}
+
+	/** Multiply a DoubleFBO's contents by the container shape mask in place. */
 	private applyMask(target: DoubleFBO): void {
 		const shape = this.config.CONTAINER_SHAPE;
 		if (!shape) return;
 		const gl = this.gl;
+
 		this.applyMaskProgram.bind();
 		gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
+
+		if (shape.type === 'svgPath') {
+			if (!this.maskTexture) return;
+			gl.uniform1i(this.applyMaskProgram.uniforms.uShapeType, 4);
+			gl.activeTexture(gl.TEXTURE1);
+			gl.bindTexture(gl.TEXTURE_2D, this.maskTexture);
+			gl.uniform1i(this.applyMaskProgram.uniforms.uMaskTexture, 1);
+			this.blit(target.write);
+			target.swap();
+			return;
+		}
+
 		gl.uniform1f(this.applyMaskProgram.uniforms.uCx, shape.cx);
 		gl.uniform1f(this.applyMaskProgram.uniforms.uCy, shape.cy);
 
@@ -917,8 +1044,9 @@ export class FluidEngine implements FluidHandle {
 				let x = evenSpacing ? (i + 0.5) / count : this.rng();
 				let y = Math.max(0, Math.min(1, spawnY + (this.rng() - 0.5) * spread));
 				if (shape) {
+					const mc = this.getMaskCtx();
 					let attempts = 10;
-					while (attempts > 0 && containerMask(shape, x, y, aspect) < 0.5) {
+					while (attempts > 0 && containerMask(shape, x, y, aspect, mc) < 0.5) {
 						if (!evenSpacing) x = this.rng();
 						y = Math.max(0, Math.min(1, spawnY + (this.rng() - 0.5) * spread));
 						attempts--;
@@ -929,8 +1057,9 @@ export class FluidEngine implements FluidHandle {
 				let splatDy = this.config.RANDOM_SPLAT_DY;
 				const swirl = this.config.RANDOM_SPLAT_SWIRL;
 				if (swirl !== 0) {
-					const cx = this.config.CONTAINER_SHAPE?.cx ?? 0.5;
-					const cy = this.config.CONTAINER_SHAPE?.cy ?? 0.5;
+					const s = this.config.CONTAINER_SHAPE;
+					const cx = (s && s.type !== 'svgPath') ? s.cx : 0.5;
+					const cy = (s && s.type !== 'svgPath') ? s.cy : 0.5;
 					splatDx = -(y - cy) * swirl;
 					splatDy = (x - cx) * swirl;
 				}
@@ -1123,35 +1252,44 @@ export class FluidEngine implements FluidHandle {
 		}
 		if (this.config.CONTAINER_SHAPE) {
 			const s = this.config.CONTAINER_SHAPE;
-			gl.uniform2f(this.displayMaterial.uniforms.uContainerCenter, s.cx, s.cy);
-			if (s.type === 'circle') {
-				gl.uniform1i(this.displayMaterial.uniforms.uContainerShapeType, 0);
-				gl.uniform1f(this.displayMaterial.uniforms.uContainerRadius, s.radius);
-				gl.uniform1f(
-					this.displayMaterial.uniforms.uContainerAspect,
-					width / height
-				);
-			} else if (s.type === 'frame') {
-				gl.uniform1i(this.displayMaterial.uniforms.uContainerShapeType, 1);
-				gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfW, s.halfW);
-				gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfH, s.halfH);
-				gl.uniform1f(this.displayMaterial.uniforms.uContainerInnerCornerRadius, s.innerCornerRadius ?? 0);
-				gl.uniform1f(this.displayMaterial.uniforms.uContainerOuterHalfW, s.outerHalfW ?? 0.5);
-				gl.uniform1f(this.displayMaterial.uniforms.uContainerOuterHalfH, s.outerHalfH ?? 0.5);
-				gl.uniform1f(this.displayMaterial.uniforms.uContainerOuterCornerRadius, s.outerCornerRadius ?? 0);
-			} else if (s.type === 'roundedRect') {
-				gl.uniform1i(this.displayMaterial.uniforms.uContainerShapeType, 2);
-				gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfW, s.halfW);
-				gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfH, s.halfH);
-				gl.uniform1f(this.displayMaterial.uniforms.uContainerInnerCornerRadius, s.cornerRadius);
-			} else if (s.type === 'annulus') {
-				gl.uniform1i(this.displayMaterial.uniforms.uContainerShapeType, 3);
-				gl.uniform1f(this.displayMaterial.uniforms.uContainerRadius, s.outerRadius);
-				gl.uniform1f(this.displayMaterial.uniforms.uContainerInnerRadius, s.innerRadius);
-				gl.uniform1f(
-					this.displayMaterial.uniforms.uContainerAspect,
-					width / height
-				);
+			if (s.type === 'svgPath') {
+				gl.uniform1i(this.displayMaterial.uniforms.uContainerShapeType, 4);
+				if (this.maskTexture) {
+					gl.activeTexture(gl.TEXTURE4);
+					gl.bindTexture(gl.TEXTURE_2D, this.maskTexture);
+					gl.uniform1i(this.displayMaterial.uniforms.uContainerMaskTexture, 4);
+				}
+			} else {
+				gl.uniform2f(this.displayMaterial.uniforms.uContainerCenter, s.cx, s.cy);
+				if (s.type === 'circle') {
+					gl.uniform1i(this.displayMaterial.uniforms.uContainerShapeType, 0);
+					gl.uniform1f(this.displayMaterial.uniforms.uContainerRadius, s.radius);
+					gl.uniform1f(
+						this.displayMaterial.uniforms.uContainerAspect,
+						width / height
+					);
+				} else if (s.type === 'frame') {
+					gl.uniform1i(this.displayMaterial.uniforms.uContainerShapeType, 1);
+					gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfW, s.halfW);
+					gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfH, s.halfH);
+					gl.uniform1f(this.displayMaterial.uniforms.uContainerInnerCornerRadius, s.innerCornerRadius ?? 0);
+					gl.uniform1f(this.displayMaterial.uniforms.uContainerOuterHalfW, s.outerHalfW ?? 0.5);
+					gl.uniform1f(this.displayMaterial.uniforms.uContainerOuterHalfH, s.outerHalfH ?? 0.5);
+					gl.uniform1f(this.displayMaterial.uniforms.uContainerOuterCornerRadius, s.outerCornerRadius ?? 0);
+				} else if (s.type === 'roundedRect') {
+					gl.uniform1i(this.displayMaterial.uniforms.uContainerShapeType, 2);
+					gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfW, s.halfW);
+					gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfH, s.halfH);
+					gl.uniform1f(this.displayMaterial.uniforms.uContainerInnerCornerRadius, s.cornerRadius);
+				} else if (s.type === 'annulus') {
+					gl.uniform1i(this.displayMaterial.uniforms.uContainerShapeType, 3);
+					gl.uniform1f(this.displayMaterial.uniforms.uContainerRadius, s.outerRadius);
+					gl.uniform1f(this.displayMaterial.uniforms.uContainerInnerRadius, s.innerRadius);
+					gl.uniform1f(
+						this.displayMaterial.uniforms.uContainerAspect,
+						width / height
+					);
+				}
 			}
 		}
 		this.blit(target);
@@ -1251,13 +1389,22 @@ export class FluidEngine implements FluidHandle {
 		this.splat(pointer.texcoordX, pointer.texcoordY, dx, dy, pointer.color);
 	}
 
+	/** Build a MaskContext for CPU-side mask sampling, or undefined if N/A. */
+	private getMaskCtx(): MaskContext | undefined {
+		if (!this.maskData) return undefined;
+		return { data: this.maskData, width: this.maskW, height: this.maskH };
+	}
+
 	private hdrMultiplier(): number {
 		const shape = this.config.CONTAINER_SHAPE;
 		if (!shape) return 10.0;
+		// Radii are height-normalized, so circular areas in UV space must be
+		// divided by the aspect ratio to account for the non-square UV domain.
+		const aspect = this.gl.drawingBufferWidth / this.gl.drawingBufferHeight;
 		// Approximate area fraction of the container vs full canvas
 		let areaFraction = 1.0;
 		if (shape.type === 'circle') {
-			areaFraction = Math.PI * shape.radius * shape.radius;
+			areaFraction = (Math.PI * shape.radius * shape.radius) / aspect;
 		} else if (shape.type === 'frame') {
 			const outerArea = (2 * (shape.outerHalfW ?? 0.5)) * (2 * (shape.outerHalfH ?? 0.5));
 			const innerArea = (2 * shape.halfW) * (2 * shape.halfH);
@@ -1265,7 +1412,9 @@ export class FluidEngine implements FluidHandle {
 		} else if (shape.type === 'roundedRect') {
 			areaFraction = (2 * shape.halfW) * (2 * shape.halfH);
 		} else if (shape.type === 'annulus') {
-			areaFraction = Math.PI * Math.max(0, shape.outerRadius ** 2 - shape.innerRadius ** 2);
+			areaFraction = (Math.PI * Math.max(0, shape.outerRadius ** 2 - shape.innerRadius ** 2)) / aspect;
+		} else if (shape.type === 'svgPath') {
+			areaFraction = this.maskAreaFractionCache;
 		}
 		// Scale the 10x base by area fraction, clamped to reasonable range
 		return Math.max(3.0, 10.0 * Math.sqrt(areaFraction));
@@ -1283,8 +1432,9 @@ export class FluidEngine implements FluidHandle {
 			let x = this.rng();
 			let y = this.rng();
 			if (shape) {
+				const mc = this.getMaskCtx();
 				let attempts = 10;
-				while (attempts > 0 && containerMask(shape, x, y, aspect) < 0.5) {
+				while (attempts > 0 && containerMask(shape, x, y, aspect, mc) < 0.5) {
 					x = this.rng();
 					y = this.rng();
 					attempts--;
