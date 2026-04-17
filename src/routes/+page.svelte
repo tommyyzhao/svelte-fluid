@@ -8,7 +8,8 @@
 		FrozenSwirl,
 		InkInWater,
 		LavaLamp,
-		Plasma
+		Plasma,
+		SvgPathFluid
 	} from '$lib/index.js';
 	import Card from './components/Card.svelte';
 	import ControlPanel from './components/ControlPanel.svelte';
@@ -218,8 +219,8 @@
 		<header class="section-header subsection-header">
 			<h3>Container shapes</h3>
 			<p>
-				An SDF mask confines the simulation to a region.
-				Four shape types are built in.
+				Masks confine the simulation to a region.
+				Four analytical shapes plus arbitrary SVG paths are built in.
 			</p>
 		</header>
 		<div class="grid-2col">
@@ -234,6 +235,9 @@
 			</Card>
 			<Card title="Rounded frame" description="Same frame with rounded inner corners via innerCornerRadius.">
 				<FrameFluid seed={808} lazy innerCornerRadius={0.06} aria-label="Rounded frame shape demo" />
+			</Card>
+			<Card title="SVG path" description="Fluid confined to an arbitrary SVG star shape via mask texture.">
+				<SvgPathFluid seed={1010} lazy aria-label="SVG path fluid shape demo" />
 			</Card>
 		</div>
 	</section>

@@ -2,9 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
 	containerShapeEqual,
 	containerMask,
+	maskAreaFraction,
 	glslSmoothstep,
 	roundedRectSDF
 } from '../container-shapes.js';
+import type { MaskContext } from '../container-shapes.js';
 import type { ContainerShape } from '../types.js';
 
 /* ------------------------------------------------------------------ */
@@ -689,5 +691,144 @@ describe('containerMask — annulus edge cases', () => {
 		expect(containerMask(zero, 1.0, 1.0, 1.0)).toBe(0);
 		// At center: distance=0, sdf = max(-0.3, 0.3) = 0.3 → 0
 		expect(containerMask(zero, 0.5, 0.5, 1.0)).toBe(0);
+	});
+});
+
+/* ------------------------------------------------------------------ */
+/*                  containerShapeEqual — svgPath                     */
+/* ------------------------------------------------------------------ */
+
+describe('containerShapeEqual — svgPath', () => {
+	const base: ContainerShape = { type: 'svgPath', d: 'M0,0 L100,0 L100,100 L0,100 Z' };
+
+	it('identical svgPaths are equal', () => {
+		expect(containerShapeEqual(base, { ...base })).toBe(true);
+	});
+
+	it('same reference is equal', () => {
+		expect(containerShapeEqual(base, base)).toBe(true);
+	});
+
+	it('different d strings are not equal', () => {
+		const other: ContainerShape = { type: 'svgPath', d: 'M10,10 L90,10 L90,90 L10,90 Z' };
+		expect(containerShapeEqual(base, other)).toBe(false);
+	});
+
+	it('different fillRule values are not equal', () => {
+		const a: ContainerShape = { type: 'svgPath', d: base.d, fillRule: 'nonzero' };
+		const b: ContainerShape = { type: 'svgPath', d: base.d, fillRule: 'evenodd' };
+		expect(containerShapeEqual(a, b)).toBe(false);
+	});
+
+	it('default fillRule equals explicit nonzero', () => {
+		const a: ContainerShape = { type: 'svgPath', d: base.d };
+		const b: ContainerShape = { type: 'svgPath', d: base.d, fillRule: 'nonzero' };
+		expect(containerShapeEqual(a, b)).toBe(true);
+	});
+
+	it('different viewBox values are not equal', () => {
+		const a: ContainerShape = { type: 'svgPath', d: base.d, viewBox: [0, 0, 100, 100] };
+		const b: ContainerShape = { type: 'svgPath', d: base.d, viewBox: [0, 0, 200, 200] };
+		expect(containerShapeEqual(a, b)).toBe(false);
+	});
+
+	it('default viewBox equals explicit [0,0,100,100]', () => {
+		const a: ContainerShape = { type: 'svgPath', d: base.d };
+		const b: ContainerShape = { type: 'svgPath', d: base.d, viewBox: [0, 0, 100, 100] };
+		expect(containerShapeEqual(a, b)).toBe(true);
+	});
+
+	it('different maskResolution values are not equal', () => {
+		const a: ContainerShape = { type: 'svgPath', d: base.d, maskResolution: 256 };
+		const b: ContainerShape = { type: 'svgPath', d: base.d, maskResolution: 512 };
+		expect(containerShapeEqual(a, b)).toBe(false);
+	});
+
+	it('default maskResolution equals explicit 512', () => {
+		const a: ContainerShape = { type: 'svgPath', d: base.d };
+		const b: ContainerShape = { type: 'svgPath', d: base.d, maskResolution: 512 };
+		expect(containerShapeEqual(a, b)).toBe(true);
+	});
+
+	it('svgPath !== circle', () => {
+		const c: ContainerShape = { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.4 };
+		expect(containerShapeEqual(base, c)).toBe(false);
+	});
+
+	it('null !== svgPath', () => {
+		expect(containerShapeEqual(null, base)).toBe(false);
+	});
+});
+
+/* ------------------------------------------------------------------ */
+/*                  containerMask — svgPath                           */
+/* ------------------------------------------------------------------ */
+
+describe('containerMask — svgPath', () => {
+	const shape: ContainerShape = { type: 'svgPath', d: 'M0,0 L100,0 L100,100 L0,100 Z' };
+
+	// 4x4 mask: top-left quadrant filled (white), rest black.
+	// Remember: maskData row 0 = uvY=1 (top), row 3 = uvY=0 (bottom)
+	// So "top-left quadrant filled" means rows 0-1, cols 0-1 = 255
+	const maskData = new Uint8Array([
+		255, 255, 0, 0,
+		255, 255, 0, 0,
+		0, 0, 0, 0,
+		0, 0, 0, 0
+	]);
+	const maskCtx: MaskContext = { data: maskData, width: 4, height: 4 };
+
+	it('returns 0 without maskCtx', () => {
+		expect(containerMask(shape, 0.5, 0.5, 1.0)).toBe(0);
+	});
+
+	it('returns 1 in the filled region (top-left in UV space)', () => {
+		// UV (0.1, 0.9) → pixel (0, 0) → top-left → 255
+		const val = containerMask(shape, 0.1, 0.9, 1.0, maskCtx);
+		expect(val).toBe(1);
+	});
+
+	it('returns 0 in the unfilled region (bottom-right in UV space)', () => {
+		// UV (0.9, 0.1) → pixel (2-3, 2-3) → bottom-right → 0
+		const val = containerMask(shape, 0.9, 0.1, 1.0, maskCtx);
+		expect(val).toBe(0);
+	});
+
+	it('ignores aspect parameter (mask is pre-rasterized)', () => {
+		const val1 = containerMask(shape, 0.1, 0.9, 1.0, maskCtx);
+		const val2 = containerMask(shape, 0.1, 0.9, 2.0, maskCtx);
+		expect(val1).toBe(val2);
+	});
+});
+
+/* ------------------------------------------------------------------ */
+/*                  maskAreaFraction                                   */
+/* ------------------------------------------------------------------ */
+
+describe('maskAreaFraction', () => {
+	it('returns 1.0 for fully filled mask', () => {
+		const data = new Uint8Array(16).fill(255);
+		expect(maskAreaFraction({ data, width: 4, height: 4 })).toBe(1.0);
+	});
+
+	it('returns 0.0 for fully empty mask', () => {
+		const data = new Uint8Array(16).fill(0);
+		expect(maskAreaFraction({ data, width: 4, height: 4 })).toBe(0.0);
+	});
+
+	it('returns 0.25 for quarter-filled mask', () => {
+		const data = new Uint8Array(16).fill(0);
+		data[0] = 255; data[1] = 255; data[4] = 255; data[5] = 255;
+		expect(maskAreaFraction({ data, width: 4, height: 4 })).toBe(0.25);
+	});
+
+	it('threshold is 127 (values at 127 are excluded)', () => {
+		const data = new Uint8Array(4).fill(127);
+		expect(maskAreaFraction({ data, width: 2, height: 2 })).toBe(0.0);
+	});
+
+	it('threshold is 127 (values at 128 are included)', () => {
+		const data = new Uint8Array(4).fill(128);
+		expect(maskAreaFraction({ data, width: 2, height: 2 })).toBe(1.0);
 	});
 });

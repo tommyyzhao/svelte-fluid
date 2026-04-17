@@ -143,6 +143,7 @@ export const displayShaderSource = `
     uniform float uContainerOuterHalfW;
     uniform float uContainerOuterHalfH;
     uniform float uContainerOuterCornerRadius;
+    uniform sampler2D uContainerMaskTexture;
 
     vec3 linearToGamma (vec3 color) {
         color = max(color, vec3(0));
@@ -237,6 +238,9 @@ export const displayShaderSource = `
             float d = length(cp);
             float sdf = max(d - uContainerRadius, uContainerInnerRadius - d);
             cmask = 1.0 - smoothstep(-0.005, 0.005, sdf);
+        } else if (uContainerShapeType == 4) {
+            // SVG path: sample pre-rasterized mask texture
+            cmask = texture2D(uContainerMaskTexture, vec2(vUv.x, 1.0 - vUv.y)).r;
         }
         c *= cmask;
         a *= cmask;
@@ -576,6 +580,7 @@ export const applyMaskShader = `
     uniform float uOuterHalfW;
     uniform float uOuterHalfH;
     uniform float uOuterCornerRadius;
+    uniform sampler2D uMaskTexture;
 
     void main () {
         vec4 val = texture2D(uTarget, vUv);
@@ -622,6 +627,9 @@ export const applyMaskShader = `
             float d = length(p);
             float sdf = max(d - uRadius, uInnerRadius - d);
             mask = 1.0 - smoothstep(-0.005, 0.005, sdf);
+        } else if (uShapeType == 4) {
+            // SVG path: sample pre-rasterized mask texture
+            mask = texture2D(uMaskTexture, vec2(vUv.x, 1.0 - vUv.y)).r;
         }
 
         gl_FragColor = val * mask;

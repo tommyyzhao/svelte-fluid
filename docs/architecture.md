@@ -81,11 +81,12 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 │                      correctDeltaX/Y                            │
 │  container-shapes.ts containerShapeEqual, containerMask (SDF),  │
 │                      roundedRectSDF, frameMask (inner+outer),   │
-│                      annulusMask, glslSmoothstep (TS↔GLSL)     │
+│                      annulusMask, svgPathMask, maskAreaFraction,│
+│                      MaskContext, glslSmoothstep (TS↔GLSL)     │
 │  types.ts            FluidConfig, ResolvedConfig, FluidHandle,  │
 │                      ContainerShape (circle | frame |           │
-│                      roundedRect | annulus), FBO, DoubleFBO,    │
-│                      ExtInfo                                    │
+│                      roundedRect | annulus | svgPath),          │
+│                      FBO, DoubleFBO, ExtInfo                    │
 │                      frame: innerCornerRadius, outerHalfW/H,    │
 │                      outerCornerRadius (all optional)           │
 └─────────────────────────────────────────────────────────────────┘

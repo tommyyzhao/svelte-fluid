@@ -6,12 +6,21 @@
 		splatRadius: 0.25,
 		splatForce: 6000,
 		densityDissipation: 1,
+		initialDensityDissipation: 1,
+		initialDensityDissipationDuration: 0,
 		velocityDissipation: 0.2,
 		pressure: 0.8,
 		bloomIntensity: 0.8,
 		sunraysWeight: 1,
 		randomSplatRate: 0,
+		randomSplatCount: 1,
+		randomSplatDx: 0,
+		randomSplatDy: 0,
+		randomSplatSpawnY: 0.5,
+		randomSplatEvenSpacing: false,
 		randomSplatSwirl: 0,
+		randomSplatSpread: 0.1,
+		splatOnHover: false,
 		shading: true,
 		bloom: true,
 		sunrays: true,
@@ -48,7 +57,16 @@
 		bloomIntensity = $bindable(D.bloomIntensity),
 		sunraysWeight = $bindable(D.sunraysWeight),
 		randomSplatRate = $bindable(D.randomSplatRate),
+		randomSplatCount = $bindable(D.randomSplatCount),
+		randomSplatDx = $bindable(D.randomSplatDx),
+		randomSplatDy = $bindable(D.randomSplatDy),
+		randomSplatSpawnY = $bindable(D.randomSplatSpawnY),
+		randomSplatEvenSpacing = $bindable(D.randomSplatEvenSpacing),
 		randomSplatSwirl = $bindable(D.randomSplatSwirl),
+		randomSplatSpread = $bindable(D.randomSplatSpread),
+		initialDensityDissipation = $bindable(D.initialDensityDissipation),
+		initialDensityDissipationDuration = $bindable(D.initialDensityDissipationDuration),
+		splatOnHover = $bindable(D.splatOnHover),
 		shading = $bindable(D.shading),
 		bloom = $bindable(D.bloom),
 		sunrays = $bindable(D.sunrays),
@@ -85,7 +103,16 @@
 		bloomIntensity?: number;
 		sunraysWeight?: number;
 		randomSplatRate?: number;
+		randomSplatCount?: number;
+		randomSplatDx?: number;
+		randomSplatDy?: number;
+		randomSplatSpawnY?: number;
+		randomSplatEvenSpacing?: boolean;
 		randomSplatSwirl?: number;
+		randomSplatSpread?: number;
+		initialDensityDissipation?: number;
+		initialDensityDissipationDuration?: number;
+		splatOnHover?: boolean;
 		shading?: boolean;
 		bloom?: boolean;
 		sunrays?: boolean;
@@ -127,7 +154,16 @@
 		bloomIntensity = D.bloomIntensity;
 		sunraysWeight = D.sunraysWeight;
 		randomSplatRate = D.randomSplatRate;
+		randomSplatCount = D.randomSplatCount;
+		randomSplatDx = D.randomSplatDx;
+		randomSplatDy = D.randomSplatDy;
+		randomSplatSpawnY = D.randomSplatSpawnY;
+		randomSplatEvenSpacing = D.randomSplatEvenSpacing;
 		randomSplatSwirl = D.randomSplatSwirl;
+		randomSplatSpread = D.randomSplatSpread;
+		initialDensityDissipation = D.initialDensityDissipation;
+		initialDensityDissipationDuration = D.initialDensityDissipationDuration;
+		splatOnHover = D.splatOnHover;
 		shading = D.shading;
 		bloom = D.bloom;
 		sunrays = D.sunrays;
@@ -181,7 +217,16 @@
 		fmt('bloomIntensity', bloomIntensity);
 		fmt('sunraysWeight', sunraysWeight);
 		fmt('randomSplatRate', randomSplatRate);
+		fmt('randomSplatCount', randomSplatCount);
+		fmt('randomSplatDx', randomSplatDx);
+		fmt('randomSplatDy', randomSplatDy);
+		fmt('randomSplatSpawnY', randomSplatSpawnY);
+		fmt('randomSplatEvenSpacing', randomSplatEvenSpacing);
 		fmt('randomSplatSwirl', randomSplatSwirl);
+		fmt('randomSplatSpread', randomSplatSpread);
+		fmt('initialDensityDissipation', initialDensityDissipation);
+		fmt('initialDensityDissipationDuration', initialDensityDissipationDuration);
+		fmt('splatOnHover', splatOnHover);
 		fmt('shading', shading);
 		fmt('bloom', bloom);
 		fmt('sunrays', sunrays);

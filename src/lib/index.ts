@@ -30,3 +30,4 @@ export { default as Aurora, type AuroraProps } from './presets/Aurora.svelte';
 export { default as CircularFluid, type CircularFluidProps } from './presets/CircularFluid.svelte';
 export { default as FrameFluid, type FrameFluidProps } from './presets/FrameFluid.svelte';
 export { default as AnnularFluid, type AnnularFluidProps } from './presets/AnnularFluid.svelte';
+export { default as SvgPathFluid, type SvgPathFluidProps } from './presets/SvgPathFluid.svelte';
