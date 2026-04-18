@@ -111,7 +111,12 @@ const DEFAULTS: ResolvedConfig = {
 	RANDOM_SPLAT_EVEN_SPACING: false,
 	RANDOM_SPLAT_SWIRL: 0,
 	RANDOM_SPLAT_SPREAD: 0.1,
-	CONTAINER_SHAPE: null
+	CONTAINER_SHAPE: null,
+	GLASS: false,
+	GLASS_THICKNESS: 0.04,
+	GLASS_REFRACTION: 0.4,
+	GLASS_REFLECTIVITY: 0.12,
+	GLASS_CHROMATIC: 0.15
 };
 function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): ResolvedConfig {
 	const out: ResolvedConfig = { ...base };
@@ -170,6 +175,11 @@ function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): Re
 	if (input.randomSplatSwirl !== undefined) out.RANDOM_SPLAT_SWIRL = input.randomSplatSwirl;
 	if (input.randomSplatSpread !== undefined) out.RANDOM_SPLAT_SPREAD = input.randomSplatSpread;
 	if (input.containerShape !== undefined) out.CONTAINER_SHAPE = input.containerShape ?? null;
+	if (input.glass !== undefined) out.GLASS = input.glass;
+	if (input.glassThickness !== undefined) out.GLASS_THICKNESS = input.glassThickness;
+	if (input.glassRefraction !== undefined) out.GLASS_REFRACTION = input.glassRefraction;
+	if (input.glassReflectivity !== undefined) out.GLASS_REFLECTIVITY = input.glassReflectivity;
+	if (input.glassChromatic !== undefined) out.GLASS_CHROMATIC = input.glassChromatic;
 	return out;
 }
 
@@ -221,6 +231,7 @@ export class FluidEngine implements FluidHandle {
 	private gradientSubtractProgram!: ProgramWrap;
 	private displayMaterial!: Material;
 	private applyMaskProgram!: ProgramWrap;
+	private glassProgram!: ProgramWrap;
 
 	// --- Mask texture for svgPath shapes ---
 	private maskTexture: WebGLTexture | null = null;
@@ -239,6 +250,7 @@ export class FluidEngine implements FluidHandle {
 	private bloomFramebuffers: FBO[] = [];
 	private sunrays!: FBO;
 	private sunraysTemp!: FBO;
+	private sceneFBO: FBO | null = null;
 	private ditheringTexture!: DitheringTexture;
 
 	// --- Runtime state ---
@@ -282,6 +294,7 @@ export class FluidEngine implements FluidHandle {
 		this.updateKeywords();
 		this.initFramebuffers();
 		this.initMaskTexture();
+		this.initGlassFramebuffer();
 		this.multipleSplats(this.randomSplatCount());
 
 		// Construct-only preset splats. Applied after the random initial
@@ -405,6 +418,7 @@ export class FluidEngine implements FluidHandle {
 		const sunraysChanged = a.SUNRAYS_RESOLUTION !== b.SUNRAYS_RESOLUTION;
 		const kwChanged = a.SHADING !== b.SHADING || a.BLOOM !== b.BLOOM || a.SUNRAYS !== b.SUNRAYS;
 		const shapeChanged = !containerShapeEqual(a.CONTAINER_SHAPE, b.CONTAINER_SHAPE);
+		const glassChanged = a.GLASS !== b.GLASS || shapeChanged;
 		const pointerInputChanged = a.POINTER_INPUT !== b.POINTER_INPUT;
 
 		this.config = b;
@@ -416,6 +430,7 @@ export class FluidEngine implements FluidHandle {
 		if (bloomChanged) this.initBloomFramebuffers();
 		if (sunraysChanged) this.initSunraysFramebuffers();
 		if (shapeChanged) this.initMaskTexture();
+		if (glassChanged) this.initGlassFramebuffer();
 		if (kwChanged || shapeChanged) this.updateKeywords();
 		if (pointerInputChanged) {
 			if (b.POINTER_INPUT) {
@@ -460,6 +475,7 @@ export class FluidEngine implements FluidHandle {
 		this.updateKeywords();
 		this.initFramebuffers();
 		this.initMaskTexture();
+		this.initGlassFramebuffer();
 		this.multipleSplats(this.randomSplatCount());
 		if (this.config.POINTER_INPUT && !this.pointerListenersInstalled) {
 			this.installPointerListeners();
@@ -495,6 +511,10 @@ export class FluidEngine implements FluidHandle {
 		this.bloomFramebuffers = [];
 		disposeFBO(gl, this.sunrays);
 		disposeFBO(gl, this.sunraysTemp);
+		if (this.sceneFBO) {
+			disposeFBO(gl, this.sceneFBO);
+			this.sceneFBO = null;
+		}
 
 		if (this.ditheringTexture) {
 			this.ditheringTexture.dispose();
@@ -527,7 +547,8 @@ export class FluidEngine implements FluidHandle {
 			this.vorticityProgram,
 			this.pressureProgram,
 			this.gradientSubtractProgram,
-			this.applyMaskProgram
+			this.applyMaskProgram,
+			this.glassProgram
 		];
 		for (const p of programs) gl.deleteProgram(p.program);
 		this.displayMaterial.dispose();
@@ -592,7 +613,8 @@ export class FluidEngine implements FluidHandle {
 			vorticity: compileShader(gl, gl.FRAGMENT_SHADER, S.vorticityShader),
 			pressure: compileShader(gl, gl.FRAGMENT_SHADER, S.pressureShader),
 			gradientSubtract: compileShader(gl, gl.FRAGMENT_SHADER, S.gradientSubtractShader),
-			applyMask: compileShader(gl, gl.FRAGMENT_SHADER, S.applyMaskShader)
+			applyMask: compileShader(gl, gl.FRAGMENT_SHADER, S.applyMaskShader),
+			glass: compileShader(gl, gl.FRAGMENT_SHADER, S.glassShaderSource)
 		};
 
 		for (const f of Object.values(fragments)) this.fragmentShaders.push(f);
@@ -636,6 +658,7 @@ export class FluidEngine implements FluidHandle {
 		}
 		this.displayMaterial = new Material(gl, this.baseVertexShader, S.displayShaderSource);
 		this.applyMaskProgram = makeProgram(gl, this.baseVertexShader, f.applyMask);
+		this.glassProgram = makeProgram(gl, this.baseVertexShader, f.glass);
 	}
 
 	private initFramebuffers(): void {
@@ -736,6 +759,7 @@ export class FluidEngine implements FluidHandle {
 
 		this.initBloomFramebuffers();
 		this.initSunraysFramebuffers();
+		this.initGlassFramebuffer();
 	}
 
 	private initBloomFramebuffers(): void {
@@ -796,6 +820,28 @@ export class FluidEngine implements FluidHandle {
 			r.format,
 			texType,
 			filtering
+		);
+	}
+
+	/**
+	 * Allocate or dispose the scene FBO used by the glass post-processing pass.
+	 * RGBA8 at canvas resolution — the display shader output is LDR gamma-space.
+	 */
+	private initGlassFramebuffer(): void {
+		const gl = this.gl;
+		if (this.sceneFBO) {
+			disposeFBO(gl, this.sceneFBO);
+			this.sceneFBO = null;
+		}
+		if (!this.config.GLASS || !this.config.CONTAINER_SHAPE) return;
+		this.sceneFBO = createFBO(
+			gl,
+			gl.drawingBufferWidth,
+			gl.drawingBufferHeight,
+			gl.RGBA,
+			gl.RGBA,
+			gl.UNSIGNED_BYTE,
+			gl.LINEAR
 		);
 	}
 
@@ -1195,6 +1241,10 @@ export class FluidEngine implements FluidHandle {
 			this.blur(this.sunrays, this.sunraysTemp, 1);
 		}
 
+		// When glass is active, route the scene through sceneFBO first
+		const useGlass = this.config.GLASS && this.config.CONTAINER_SHAPE && this.sceneFBO;
+		const displayTarget = useGlass ? this.sceneFBO! : target;
+
 		if (target == null || !this.config.TRANSPARENT) {
 			gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 			gl.enable(gl.BLEND);
@@ -1203,12 +1253,16 @@ export class FluidEngine implements FluidHandle {
 		}
 
 		if (!this.config.TRANSPARENT) {
-			this.drawColor(target, this.normalizedBackColor);
+			this.drawColor(displayTarget, this.normalizedBackColor);
 		}
 		if (target == null && this.config.TRANSPARENT) {
-			this.drawCheckerboard(target);
+			this.drawCheckerboard(displayTarget);
 		}
-		this.drawDisplay(target);
+		this.drawDisplay(displayTarget);
+
+		if (useGlass) {
+			this.drawGlass(target);
+		}
 	}
 
 	private drawColor(target: FBO | null, color: RGB): void {
@@ -1251,47 +1305,78 @@ export class FluidEngine implements FluidHandle {
 			gl.uniform1i(this.displayMaterial.uniforms.uSunrays, this.sunrays.attach(3));
 		}
 		if (this.config.CONTAINER_SHAPE) {
-			const s = this.config.CONTAINER_SHAPE;
-			if (s.type === 'svgPath') {
-				gl.uniform1i(this.displayMaterial.uniforms.uContainerShapeType, 4);
-				if (this.maskTexture) {
-					gl.activeTexture(gl.TEXTURE4);
-					gl.bindTexture(gl.TEXTURE_2D, this.maskTexture);
-					gl.uniform1i(this.displayMaterial.uniforms.uContainerMaskTexture, 4);
-				}
-			} else {
-				gl.uniform2f(this.displayMaterial.uniforms.uContainerCenter, s.cx, s.cy);
-				if (s.type === 'circle') {
-					gl.uniform1i(this.displayMaterial.uniforms.uContainerShapeType, 0);
-					gl.uniform1f(this.displayMaterial.uniforms.uContainerRadius, s.radius);
-					gl.uniform1f(
-						this.displayMaterial.uniforms.uContainerAspect,
-						width / height
-					);
-				} else if (s.type === 'frame') {
-					gl.uniform1i(this.displayMaterial.uniforms.uContainerShapeType, 1);
-					gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfW, s.halfW);
-					gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfH, s.halfH);
-					gl.uniform1f(this.displayMaterial.uniforms.uContainerInnerCornerRadius, s.innerCornerRadius ?? 0);
-					gl.uniform1f(this.displayMaterial.uniforms.uContainerOuterHalfW, s.outerHalfW ?? 0.5);
-					gl.uniform1f(this.displayMaterial.uniforms.uContainerOuterHalfH, s.outerHalfH ?? 0.5);
-					gl.uniform1f(this.displayMaterial.uniforms.uContainerOuterCornerRadius, s.outerCornerRadius ?? 0);
-				} else if (s.type === 'roundedRect') {
-					gl.uniform1i(this.displayMaterial.uniforms.uContainerShapeType, 2);
-					gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfW, s.halfW);
-					gl.uniform1f(this.displayMaterial.uniforms.uContainerHalfH, s.halfH);
-					gl.uniform1f(this.displayMaterial.uniforms.uContainerInnerCornerRadius, s.cornerRadius);
-				} else if (s.type === 'annulus') {
-					gl.uniform1i(this.displayMaterial.uniforms.uContainerShapeType, 3);
-					gl.uniform1f(this.displayMaterial.uniforms.uContainerRadius, s.outerRadius);
-					gl.uniform1f(this.displayMaterial.uniforms.uContainerInnerRadius, s.innerRadius);
-					gl.uniform1f(
-						this.displayMaterial.uniforms.uContainerAspect,
-						width / height
-					);
-				}
+			this.setContainerShapeUniforms(this.displayMaterial.uniforms, width, height, 4);
+		}
+		this.blit(target);
+	}
+
+	/**
+	 * Set container shape uniforms on a program. Shared by drawDisplay and drawGlass.
+	 * `maskUnit` is the texture unit to bind the svgPath mask texture to.
+	 */
+	private setContainerShapeUniforms(
+		uniforms: Record<string, WebGLUniformLocation | null>,
+		width: number,
+		height: number,
+		maskUnit: number
+	): void {
+		const gl = this.gl;
+		const s = this.config.CONTAINER_SHAPE;
+		if (!s) return;
+
+		if (s.type === 'svgPath') {
+			gl.uniform1i(uniforms.uContainerShapeType, 4);
+			if (this.maskTexture) {
+				gl.activeTexture(gl.TEXTURE0 + maskUnit);
+				gl.bindTexture(gl.TEXTURE_2D, this.maskTexture);
+				gl.uniform1i(uniforms.uContainerMaskTexture, maskUnit);
+			}
+		} else {
+			gl.uniform2f(uniforms.uContainerCenter, s.cx, s.cy);
+			if (s.type === 'circle') {
+				gl.uniform1i(uniforms.uContainerShapeType, 0);
+				gl.uniform1f(uniforms.uContainerRadius, s.radius);
+				gl.uniform1f(uniforms.uContainerAspect, width / height);
+			} else if (s.type === 'frame') {
+				gl.uniform1i(uniforms.uContainerShapeType, 1);
+				gl.uniform1f(uniforms.uContainerHalfW, s.halfW);
+				gl.uniform1f(uniforms.uContainerHalfH, s.halfH);
+				gl.uniform1f(uniforms.uContainerInnerCornerRadius, s.innerCornerRadius ?? 0);
+				gl.uniform1f(uniforms.uContainerOuterHalfW, s.outerHalfW ?? 0.5);
+				gl.uniform1f(uniforms.uContainerOuterHalfH, s.outerHalfH ?? 0.5);
+				gl.uniform1f(uniforms.uContainerOuterCornerRadius, s.outerCornerRadius ?? 0);
+			} else if (s.type === 'roundedRect') {
+				gl.uniform1i(uniforms.uContainerShapeType, 2);
+				gl.uniform1f(uniforms.uContainerHalfW, s.halfW);
+				gl.uniform1f(uniforms.uContainerHalfH, s.halfH);
+				gl.uniform1f(uniforms.uContainerInnerCornerRadius, s.cornerRadius);
+			} else if (s.type === 'annulus') {
+				gl.uniform1i(uniforms.uContainerShapeType, 3);
+				gl.uniform1f(uniforms.uContainerRadius, s.outerRadius);
+				gl.uniform1f(uniforms.uContainerInnerRadius, s.innerRadius);
+				gl.uniform1f(uniforms.uContainerAspect, width / height);
 			}
 		}
+	}
+
+	/** Glass post-processing: reads sceneFBO, applies refraction + specular, writes to target. */
+	private drawGlass(target: FBO | null): void {
+		const gl = this.gl;
+		const width = target == null ? gl.drawingBufferWidth : target.width;
+		const height = target == null ? gl.drawingBufferHeight : target.height;
+
+		gl.disable(gl.BLEND);
+		this.glassProgram.bind();
+
+		gl.uniform1i(this.glassProgram.uniforms.uScene, this.sceneFBO!.attach(0));
+		gl.uniform1f(this.glassProgram.uniforms.uGlassThickness, this.config.GLASS_THICKNESS);
+		gl.uniform1f(this.glassProgram.uniforms.uGlassRefraction, this.config.GLASS_REFRACTION);
+		gl.uniform1f(this.glassProgram.uniforms.uGlassReflectivity, this.config.GLASS_REFLECTIVITY);
+		gl.uniform1f(this.glassProgram.uniforms.uGlassChromatic, this.config.GLASS_CHROMATIC);
+
+		// Container shape uniforms — mask texture on unit 1 (unit 0 = sceneFBO)
+		this.setContainerShapeUniforms(this.glassProgram.uniforms, width, height, 1);
+
 		this.blit(target);
 	}
 

@@ -30,6 +30,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0022](./0022-apply-mask-performance-analysis.md) | applyMask performance analysis and optimization paths | Accepted |
 | [0023](./0023-frame-outer-boundary-and-shape-aware-spawning.md) | Rounded outer frame boundary and shape-aware splat spawning | Accepted |
 | [0024](./0024-svg-path-container-shapes.md) | SVG path container shapes via mask texture | Accepted |
+| [0025](./0025-glass-refraction-post-processing.md) | Glass refraction/reflection post-processing layer | Accepted |
 
 ## How to add a new ADR
 

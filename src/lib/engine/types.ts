@@ -265,6 +265,37 @@ export interface FluidConfig {
 	 * See {@link ContainerShape} for coordinate conventions.
 	 */
 	containerShape?: ContainerShape | null;
+	/**
+	 * Enable glass vessel effect on the container shape. Adds a
+	 * post-processing pass that simulates refraction and specular
+	 * highlights at the container boundary. Requires a `containerShape`
+	 * to be set — ignored when `containerShape` is null.
+	 * Default false. See ADR-0025.
+	 */
+	glass?: boolean;
+	/**
+	 * Glass wall thickness in UV units. Controls how wide the refraction
+	 * band appears at the container boundary. Default 0.04. Bucket A.
+	 */
+	glassThickness?: number;
+	/**
+	 * Refraction strength, 0–1. 0 = no distortion, 1 = heavy bending.
+	 * Mapped internally to IOR 1.0–2.0. Default 0.4. Bucket A.
+	 */
+	glassRefraction?: number;
+	/**
+	 * Specular reflectivity (Fresnel F0), 0–1. Controls the intensity
+	 * of specular highlights on the glass surface. 0 = matte,
+	 * 1 = mirror. Default 0.12. Bucket A.
+	 */
+	glassReflectivity?: number;
+	/**
+	 * Chromatic aberration strength, 0–1. Splits refraction into
+	 * separate R/G/B channels for a prismatic rainbow fringe.
+	 * 0 = monochrome refraction, 1 = strong color separation.
+	 * Default 0.15. Bucket A.
+	 */
+	glassChromatic?: number;
 }
 
 /**
@@ -313,6 +344,11 @@ export interface ResolvedConfig {
 	RANDOM_SPLAT_SWIRL: number;
 	RANDOM_SPLAT_SPREAD: number;
 	CONTAINER_SHAPE: ContainerShape | null;
+	GLASS: boolean;
+	GLASS_THICKNESS: number;
+	GLASS_REFRACTION: number;
+	GLASS_REFLECTIVITY: number;
+	GLASS_CHROMATIC: number;
 }
 
 /** Pixel format pair returned by `getSupportedFormat`. */
