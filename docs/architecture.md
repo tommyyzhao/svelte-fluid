@@ -132,7 +132,7 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
        `requestAnimationFrame(this.tick)`. The engine clock starts here
        (not earlier in construction) so `currentDensityDissipation()`
        measures elapsed time since the canvas began ticking.
-7. The RAF loop runs every frame: `update()` → `calcDeltaTime` → `updateColors` → `applyInputs` → `step` (if not paused) → `render(null)` → reschedule. The dye advection inside `step()` calls `currentDensityDissipation()` for the dissipation uniform (see ADR [`0016`](./decisions/0016-burn-in-density-dissipation.md)) so a burn-in ramp from `INITIAL_DENSITY_DISSIPATION` toward `DENSITY_DISSIPATION` is applied automatically without per-frame setConfig calls.
+7. The RAF loop runs every frame: `update()` → `calcDeltaTime` → `updateColors` → `applyInputs` → `step` (if not paused) → `render(null)` → reschedule. The dye advection inside `step()` calls `currentDensityDissipation()` for the dissipation uniform (see ADR [`0016`](./decisions/0016-burn-in-density-dissipation.md)) so a burn-in ramp from `INITIAL_DENSITY_DISSIPATION` toward `DENSITY_DISSIPATION` is applied automatically without per-frame setConfig calls. When `glass` is enabled, `render()` routes `drawDisplay` through a `sceneFBO` and adds a `drawGlass` post-processing pass with Snell's law refraction (hemisphere model for circles, rim model for other shapes). See ADR [`0025`](./decisions/0025-glass-refraction-post-processing.md).
 
 ### Resize
 

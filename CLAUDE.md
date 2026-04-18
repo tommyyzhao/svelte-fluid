@@ -33,7 +33,7 @@ Run `bun run prepack` before committing to verify publint.
 
 When props change at runtime, `engine.setConfig()` classifies each field:
 
-- **Bucket A** (hot scalars): written to `this.config.X`, picked up next frame. Includes all physics scalars, `pointerInput`, `splatOnHover`, `randomSplat*`, `containerShape`.
+- **Bucket A** (hot scalars): written to `this.config.X`, picked up next frame. Includes all physics scalars, `pointerInput`, `splatOnHover`, `randomSplat*`, `containerShape`, `glassThickness`, `glassRefraction`, `glassReflectivity`, `glassChromatic`.
 - **Bucket B** (keyword recompile): `shading`, `bloom`, `sunrays` → `updateKeywords()` recompiles the display shader.
 - **Bucket C** (FBO rebuild): `simResolution`, `dyeResolution`, `bloomResolution`, `bloomIterations`, `sunraysResolution` → `initFramebuffers()` / `initBloom()` / `initSunrays()`.
 - **Bucket D** (construct-only): `seed`, `initialSplatCount*`, `presetSplats` → ignored after construction.
@@ -41,6 +41,8 @@ When props change at runtime, `engine.setConfig()` classifies each field:
 When adding a new prop, decide which bucket it belongs to and wire it accordingly.
 
 Additionally, `containerShape` with `type: 'svgPath'` triggers a **mask texture rebuild** (re-rasterize + texture re-upload + keyword toggle). This is a separate operation from the 4 buckets above.
+
+The `glass` boolean triggers **sceneFBO alloc/dispose** via `initGlassFramebuffer()`. When glass is on, `drawDisplay` renders to `sceneFBO` (RGBA8, canvas resolution) and a `drawGlass` post-processing pass reads it with refraction + specular.
 
 ## Container shapes
 
@@ -57,13 +59,14 @@ Two approaches coexist:
 
 ## Demo page structure
 
-15 instances across 4 sections, all lazy:
+19 instances across 5 sections, all lazy:
 - **Presets** (5): LavaLamp, Plasma, InkInWater, FrozenSwirl, Aurora
 - **Configuration** (4): Default, Flat+soft, Bold splats, Slow+transparent — all have `splatOnHover`
 - **Container shapes** (5): Circle, Frame, Annulus, Rounded frame, SVG path
+- **Container effects** (4): Glass orb, Subtle lens, Glass ring, Diamond frame — all use `glass` prop
 - **Playground** (1): interactive with ControlPanel
 
-All grids use `repeat(2, 1fr)`. Presets has 5 cards (2+2+1 is acceptable).
+All grids use `repeat(2, 1fr)`.
 
 ## Conventions
 

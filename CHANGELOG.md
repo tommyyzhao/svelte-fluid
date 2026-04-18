@@ -24,6 +24,26 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 - `/svg` test route — 4 SVG path test cases (star, heart, rect, evenodd).
 - 20 new tests for `svgPath` equality, CPU mask sampling, and
   `maskAreaFraction` (126 total, up from 106).
+- **Glass refraction/reflection post-processing layer** — new `glass`
+  prop adds a post-processing pass that simulates a glass container over
+  the fluid. Two rendering models: **hemisphere orb** (circles) uses
+  Snell's law via GLSL `refract()` for physically correct lens distortion
+  across the entire surface; **rim model** (frame, roundedRect, annulus,
+  svgPath) applies refraction at the container boundary. See ADR-0025.
+  - `glass: boolean` (default false) — enables the glass pass. Allocates
+    a sceneFBO (RGBA8, canvas resolution) when true.
+  - `glassThickness: number` (default 0.04) — rim model band width in UV
+    units. Ignored by the orb model. Bucket A.
+  - `glassRefraction: number` (default 0.4, 0–1) — distortion strength.
+    Mapped to IOR 1.0–2.0. Bucket A.
+  - `glassReflectivity: number` (default 0.12, 0–1) — Fresnel F0 for
+    specular intensity. Bucket A.
+  - `glassChromatic: number` (default 0.15, 0–1) — chromatic aberration
+    strength. Splits R/G/B into separate refraction channels. Bucket A.
+  - Fluid-driven lighting: all specular and rim glow are modulated by
+    the refracted fluid brightness. No fluid = no highlights.
+  - New "Container effects" section on demo page with 4 cards: Crystal
+    orb, Soft lens, Portal ring, Glass frame.
 - `splatOnHover` prop — when true, moving the mouse over the canvas
   creates splats without requiring a click. The splat velocity follows
   the cursor movement. Hot-updatable (Bucket A).
@@ -63,6 +83,10 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 - Bloom/sunrays auto-suppress on small canvases (<600px) now applies
   unconditionally — presets that explicitly pass `bloom={true}` no
   longer bypass the guard.
+- Demo page: 15 → 19 instances (added 4 "Container effects" cards).
+  Container shapes description reverted from 6 → 5 cards.
+- `FluidEngine.drawDisplay()` container shape uniform-setting extracted
+  to `setContainerShapeUniforms()` helper, shared with `drawGlass()`.
 - Demo page: removed invisible hero background (saved 1 WebGL context),
   reordered sections (presets first), fixed grid to 2 columns (no more
   3+1 asymmetry), moved shape presets to a "Container shapes" subsection
@@ -119,6 +143,12 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- ADR-0025: Glass refraction/reflection post-processing layer —
+  documents the hemisphere orb model, rim model, chromatic aberration,
+  fluid-driven lighting, Snell's law refraction, and rejected
+  alternatives.
+- `CLAUDE.md` updated with glass bucket docs (`glassChromatic`),
+  `glass` sceneFBO lifecycle, demo instance count (19).
 - ADR-0024: SVG path container shapes via mask texture — documents
   design decision, mask rasterization pipeline, rejected alternatives
   (JFA, analytical SDF, separate shader program).

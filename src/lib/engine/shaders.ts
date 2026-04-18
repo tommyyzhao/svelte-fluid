@@ -250,6 +250,219 @@ export const displayShaderSource = `
     }
 `;
 
+export const glassShaderSource = `
+    precision highp float;
+    precision highp sampler2D;
+
+    varying vec2 vUv;
+    uniform sampler2D uScene;
+
+    // Glass parameters
+    uniform float uGlassThickness;
+    uniform float uGlassRefraction;
+    uniform float uGlassReflectivity;
+    uniform float uGlassChromatic;
+
+    // Container shape uniforms (shared with display shader)
+    uniform int uContainerShapeType;
+    uniform vec2 uContainerCenter;
+    uniform float uContainerRadius;
+    uniform float uContainerAspect;
+    uniform float uContainerHalfW;
+    uniform float uContainerHalfH;
+    uniform float uContainerInnerCornerRadius;
+    uniform float uContainerInnerRadius;
+    uniform float uContainerOuterHalfW;
+    uniform float uContainerOuterHalfH;
+    uniform float uContainerOuterCornerRadius;
+    uniform sampler2D uContainerMaskTexture;
+
+    // Rounded box SDF: negative inside, positive outside
+    float roundedBoxSDF(vec2 p, vec2 halfSize, float cr) {
+        vec2 d = abs(p) - halfSize + cr;
+        return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - cr;
+    }
+
+    // Signed distance for non-circle shapes (rim model only)
+    float containerSDF(vec2 uv) {
+        if (uContainerShapeType == 1) {
+            // Frame: fluid between inner and outer rects
+            vec2 p = uv - uContainerCenter;
+            float innerDist = roundedBoxSDF(p,
+                vec2(uContainerHalfW, uContainerHalfH),
+                uContainerInnerCornerRadius);
+            float outerDist = roundedBoxSDF(p,
+                vec2(uContainerOuterHalfW, uContainerOuterHalfH),
+                uContainerOuterCornerRadius);
+            return max(-innerDist, outerDist);
+        } else if (uContainerShapeType == 2) {
+            // Rounded rect
+            vec2 p = uv - uContainerCenter;
+            return roundedBoxSDF(p,
+                vec2(uContainerHalfW, uContainerHalfH),
+                uContainerInnerCornerRadius);
+        } else if (uContainerShapeType == 3) {
+            // Annulus
+            vec2 p = vec2((uv.x - uContainerCenter.x) * uContainerAspect,
+                           uv.y - uContainerCenter.y);
+            float d = length(p);
+            return max(d - uContainerRadius, uContainerInnerRadius - d);
+        } else if (uContainerShapeType == 4) {
+            // SVG path: narrow gradient from LINEAR filtering at boundary
+            float m = texture2D(uContainerMaskTexture, vec2(uv.x, 1.0 - uv.y)).r;
+            return 0.5 - m;
+        }
+        return 1.0;
+    }
+
+    // Normal via central differences (rim model only)
+    vec2 containerNormal(vec2 uv) {
+        float eps = 0.002;
+        float dx = containerSDF(uv + vec2(eps, 0.0)) - containerSDF(uv - vec2(eps, 0.0));
+        float dy = containerSDF(uv + vec2(0.0, eps)) - containerSDF(uv - vec2(0.0, eps));
+        vec2 g = vec2(dx, dy);
+        float len = length(g);
+        return len > 0.0001 ? g / len : vec2(0.0);
+    }
+
+    void main () {
+        vec4 scene = texture2D(uScene, vUv);
+
+        vec3 lightDir = normalize(vec3(0.3, 0.7, 0.6));
+        vec3 viewDir = vec3(0.0, 0.0, 1.0);
+        vec3 halfVec = normalize(lightDir + viewDir);
+
+        float ior = 1.0 + uGlassRefraction;
+        float eta = 1.0 / ior;
+
+        if (uContainerShapeType == 0) {
+            // ======== HEMISPHERE ORB MODEL (circles) ========
+            // Full-surface glass dome: Snell's law refraction, Fresnel,
+            // focused specular, chromatic aberration, rim glow.
+            vec2 p = vec2((vUv.x - uContainerCenter.x) * uContainerAspect,
+                           vUv.y - uContainerCenter.y);
+            float d = length(p);
+
+            if (d >= uContainerRadius) {
+                gl_FragColor = scene;
+                return;
+            }
+
+            // Normalized position on unit disk and hemisphere normal
+            vec2 pn = p / uContainerRadius;
+            float r2 = dot(pn, pn);
+            // Clamp to avoid NaN at the extreme boundary
+            float r2c = min(r2, 0.99);
+            float nz = sqrt(1.0 - r2c);
+            vec3 N = vec3(pn, nz);
+
+            float cosI = nz;
+
+            // Fresnel across the entire dome surface
+            float fresnel = uGlassReflectivity
+                + (1.0 - uGlassReflectivity) * pow(1.0 - cosI, 5.0);
+
+            // Snell's law refraction with chromatic aberration.
+            // Spread is large enough to produce visible color separation.
+            vec3 I = vec3(0.0, 0.0, -1.0);
+            float spread = uGlassChromatic * 0.15;
+            vec3 Tr = refract(I, N, eta * (1.0 + spread));
+            vec3 Tg = refract(I, N, eta);
+            vec3 Tb = refract(I, N, eta * (1.0 - spread));
+
+            // Scale refraction to produce visible lens distortion.
+            // Larger multiplier = stronger magnification/compression.
+            float scale = uContainerRadius * 0.5;
+            vec2 afix = vec2(1.0 / uContainerAspect, 1.0);
+
+            vec2 uvR = clamp(vUv + Tr.xy * scale * afix, 0.0, 1.0);
+            vec2 uvG = clamp(vUv + Tg.xy * scale * afix, 0.0, 1.0);
+            vec2 uvB = clamp(vUv + Tb.xy * scale * afix, 0.0, 1.0);
+
+            vec3 refracted = vec3(
+                texture2D(uScene, uvR).r,
+                texture2D(uScene, uvG).g,
+                texture2D(uScene, uvB).b
+            );
+
+            // Light from the fluid that the glass surface can catch.
+            // No fluid = no light = no highlights (no phantom outline).
+            float fluidLight = dot(refracted, vec3(0.299, 0.587, 0.114));
+
+            // Focused specular (bright point on dome where light reflects)
+            float specFocused = pow(max(dot(N, halfVec), 0.0), 128.0);
+
+            // Broad rim specular (visible shine along the glass wall)
+            float rimFactor = 1.0 - cosI; // 0 at center, 1 at rim
+            float specBroad = pow(max(dot(N, halfVec), 0.0), 8.0)
+                * smoothstep(0.3, 0.9, rimFactor);
+
+            float spec = (specFocused + specBroad * 0.35)
+                * fresnel * fluidLight;
+
+            // Rim glow: caustic light at the glass wall, driven by fluid
+            float rimGlow = smoothstep(0.4, 0.95, rimFactor)
+                * 0.25 * fresnel * fluidLight;
+
+            // Fresnel-darkened refraction + fluid-driven highlights
+            vec3 glassColor = refracted * (1.0 - fresnel * 0.25)
+                + vec3(spec + rimGlow);
+
+            // Narrow anti-aliasing fade at the very boundary only.
+            // The refracted UVs pull from inside the circle (valid fluid),
+            // so the glass effect should extend all the way to the rim —
+            // that's where the fishbowl wall is most visible.
+            float nr = sqrt(r2);
+            float edgeFade = 1.0 - smoothstep(0.99, 1.0, nr);
+            gl_FragColor = vec4(mix(scene.rgb, glassColor, edgeFade), scene.a);
+
+        } else {
+            // ======== RIM MODEL (frame, roundedRect, annulus, svgPath) ========
+            // Glass band at the container boundary with chromatic aberration.
+            float sdf = containerSDF(vUv);
+            float glassMask = 1.0 - smoothstep(0.0, uGlassThickness, abs(sdf));
+
+            if (glassMask < 0.001) {
+                gl_FragColor = scene;
+                return;
+            }
+
+            vec2 n2d = containerNormal(vUv);
+            float nz = sqrt(max(0.0, 1.0 - dot(n2d, n2d)));
+            vec3 N = vec3(n2d, nz);
+
+            float cosTheta = clamp(abs(sdf) / uGlassThickness, 0.0, 1.0);
+            float fresnel = uGlassReflectivity
+                + (1.0 - uGlassReflectivity) * pow(1.0 - cosTheta, 5.0);
+
+            // Chromatic rim refraction (red least, blue most displaced)
+            float spread = uGlassChromatic * 0.5;
+            float strBase = (ior - 1.0) * glassMask * 0.08;
+
+            vec2 uvR = clamp(vUv - n2d * strBase * (1.0 - spread), 0.0, 1.0);
+            vec2 uvG = clamp(vUv - n2d * strBase, 0.0, 1.0);
+            vec2 uvB = clamp(vUv - n2d * strBase * (1.0 + spread), 0.0, 1.0);
+
+            vec3 refracted = vec3(
+                texture2D(uScene, uvR).r,
+                texture2D(uScene, uvG).g,
+                texture2D(uScene, uvB).b
+            );
+
+            // Light from the fluid — no fluid = no highlights
+            float fluidLight = dot(refracted, vec3(0.299, 0.587, 0.114));
+
+            // Specular + rim glow, driven by fluid brightness
+            float spec = pow(max(dot(N, halfVec), 0.0), 64.0)
+                * glassMask * fresnel * fluidLight;
+            float rimGlow = glassMask * fresnel * 0.15 * fluidLight;
+
+            vec3 glassColor = refracted + vec3(spec + rimGlow);
+            gl_FragColor = vec4(mix(scene.rgb, glassColor, glassMask), scene.a);
+        }
+    }
+`;
+
 export const bloomPrefilterShader = `
     precision mediump float;
     precision mediump sampler2D;

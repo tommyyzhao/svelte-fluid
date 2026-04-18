@@ -242,6 +242,121 @@
 		</div>
 	</section>
 
+	<section>
+		<header class="section-header">
+			<h2>Container effects</h2>
+			<p>
+				The <code>glass</code> prop adds a post-processing layer.
+				Circles get a hemisphere dome with Snell's law refraction;
+				other shapes get rim refraction at the boundary.
+			</p>
+		</header>
+		<div class="grid-2col">
+			<Card title="Crystal orb" description="Hemisphere dome with chromatic aberration. The fluid magnifies at center and bends at the rim.">
+				<Fluid
+					seed={1111}
+					lazy
+					glass
+					glassRefraction={0.7}
+					glassReflectivity={0.15}
+					glassChromatic={0.5}
+					containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
+					backColor={{ r: 4, g: 2, b: 12 }}
+					curl={35}
+					densityDissipation={0.15}
+					velocityDissipation={0.06}
+					splatRadius={0.38}
+					splatForce={5000}
+					shading
+					bloom
+					sunrays={false}
+					initialSplatCount={12}
+					randomSplatRate={1.2}
+					randomSplatSpawnY={0.5}
+					randomSplatSpread={0.8}
+					randomSplatSwirl={500}
+					aria-label="Crystal orb effect demo"
+				/>
+			</Card>
+			<Card title="Soft lens" description="Subtle dome refraction with gentle Fresnel. Glass you feel more than see.">
+				<Fluid
+					seed={1212}
+					lazy
+					glass
+					glassRefraction={0.25}
+					glassReflectivity={0.06}
+					glassChromatic={0.1}
+					containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
+					backColor={{ r: 0, g: 0, b: 0 }}
+					curl={30}
+					densityDissipation={1}
+					velocityDissipation={0.2}
+					splatRadius={0.25}
+					splatForce={6000}
+					shading
+					bloom
+					sunrays
+					initialSplatCount={15}
+					aria-label="Soft lens effect demo"
+				/>
+			</Card>
+			<Card title="Portal ring" description="Chromatic rim refraction on an annulus. Rainbow fringes at both edges.">
+				<Fluid
+					seed={1313}
+					lazy
+					glass
+					glassThickness={0.05}
+					glassRefraction={0.6}
+					glassReflectivity={0.15}
+					glassChromatic={0.7}
+					containerShape={{ type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.42 }}
+					backColor={{ r: 2, g: 4, b: 14 }}
+					curl={40}
+					densityDissipation={0.3}
+					velocityDissipation={0.1}
+					splatRadius={0.3}
+					splatForce={5000}
+					shading
+					bloom
+					sunrays={false}
+					initialSplatCount={10}
+					randomSplatRate={1.5}
+					randomSplatSpawnY={0.5}
+					randomSplatSpread={0.6}
+					randomSplatSwirl={400}
+					aria-label="Portal ring glass effect demo"
+				/>
+			</Card>
+			<Card title="Glass frame" description="Rim refraction along a rounded picture frame. Chromatic fringes at the walls.">
+				<Fluid
+					seed={1414}
+					lazy
+					glass
+					glassThickness={0.06}
+					glassRefraction={0.5}
+					glassReflectivity={0.18}
+					glassChromatic={0.4}
+					containerShape={{ type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.22, halfH: 0.22, innerCornerRadius: 0.06, outerHalfW: 0.48, outerHalfH: 0.48, outerCornerRadius: 0.04 }}
+					backColor={{ r: 6, g: 3, b: 16 }}
+					curl={25}
+					densityDissipation={0.5}
+					velocityDissipation={0.15}
+					splatRadius={0.35}
+					splatForce={6000}
+					shading
+					bloom
+					bloomIntensity={1.0}
+					sunrays={false}
+					initialSplatCount={10}
+					randomSplatRate={1.0}
+					randomSplatSpawnY={0.5}
+					randomSplatSpread={1.5}
+					aria-label="Glass frame effect demo"
+				/>
+			</Card>
+		</div>
+	</section>
+
 	<section class="playground-section">
 		<header class="section-header">
 			<h2>Playground</h2>
