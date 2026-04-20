@@ -11,9 +11,19 @@
 		Plasma,
 		SvgPathFluid
 	} from '$lib/index.js';
+	import type { ContainerShape } from '$lib/engine/types.js';
 	import Card from './components/Card.svelte';
 	import ControlPanel from './components/ControlPanel.svelte';
 	import ShapePreview from './components/ShapePreview.svelte';
+
+	function wordShape(text: string): ContainerShape {
+		return {
+			type: 'svgPath',
+			text,
+			font: 'bold 100px "Helvetica Neue", Arial, sans-serif',
+			maskResolution: 512
+		};
+	}
 
 	// Live-bound config for the controls instance.
 	let curl = $state(30);
@@ -51,6 +61,11 @@
 	let containerOuterHalfH = $state(0.45);
 	let containerOuterCornerRadius = $state(0.0);
 	let showShapePreview = $state(false);
+	let glass = $state(false);
+	let glassThickness = $state(0.04);
+	let glassRefraction = $state(0.4);
+	let glassReflectivity = $state(0.12);
+	let glassChromatic = $state(0.15);
 	let canvasWidth = $state(0);
 	let canvasHeight = $state(0);
 
@@ -63,6 +78,13 @@
 	});
 
 	let backColor = $derived({ r: backColorR, g: backColorG, b: backColorB });
+
+	// Glass requires a container shape; auto-set to circle when toggled on without one.
+	$effect(() => {
+		if (glass && containerShapeType === 'none') {
+			containerShapeType = 'circle';
+		}
+	});
 
 	type FluidRef = { handle: { randomSplats: (n: number) => void } } | undefined;
 	let controlsRef = $state<FluidRef>(undefined);
@@ -90,7 +112,54 @@
 
 <main>
 	<header>
-		<h1>svelte-fluid</h1>
+		<div class="hero-title" role="heading" aria-level="1" aria-label="svelte-fluid">
+			<div class="hero-word">
+				<Fluid
+					seed={42}
+					containerShape={wordShape('SVELTE')}
+					splatOnHover
+					densityDissipation={0.01}
+					velocityDissipation={0.01}
+					curl={20}
+					splatRadius={0.3}
+					splatForce={5000}
+					shading
+					colorful
+					bloom={false}
+					sunrays={false}
+					backColor={{ r: 0, g: 0, b: 0 }}
+					initialSplatCount={8}
+					randomSplatRate={4}
+					randomSplatCount={2}
+					randomSplatSpread={2}
+					randomSplatSwirl={200}
+					aria-label="SVELTE"
+				/>
+			</div>
+			<div class="hero-word">
+				<Fluid
+					seed={99}
+					containerShape={wordShape('FLUID')}
+					splatOnHover
+					densityDissipation={0.01}
+					velocityDissipation={0.01}
+					curl={20}
+					splatRadius={0.3}
+					splatForce={5000}
+					shading
+					colorful
+					bloom={false}
+					sunrays={false}
+					backColor={{ r: 0, g: 0, b: 0 }}
+					initialSplatCount={8}
+					randomSplatRate={4}
+					randomSplatCount={2}
+					randomSplatSpread={2}
+					randomSplatSwirl={200}
+					aria-label="FLUID"
+				/>
+			</div>
+		</div>
 		<p class="tagline">
 			WebGL fluid simulation as a Svelte 5 component. Multi-instance,
 			resize-stable, deterministic seeding.
@@ -390,6 +459,11 @@
 				{randomSplatRate}
 				{randomSplatSwirl}
 				{transparent}
+				{glass}
+				{glassThickness}
+				{glassRefraction}
+				{glassReflectivity}
+				{glassChromatic}
 				backColor={backColor}
 				containerShape={containerShape}
 				initialSplatCount={15}
@@ -433,6 +507,11 @@
 			bind:containerOuterHalfW
 			bind:containerOuterHalfH
 			bind:containerOuterCornerRadius
+			bind:glass
+			bind:glassThickness
+			bind:glassRefraction
+			bind:glassReflectivity
+			bind:glassChromatic
 			bind:showShapePreview
 			onRandomSplats={() => controlsRef?.handle.randomSplats(10)}
 		/>
@@ -481,11 +560,15 @@
 	header {
 		text-align: center;
 	}
-	h1 {
+	.hero-title {
+		display: flex;
+		justify-content: center;
+		gap: 0;
 		margin: 0 0 8px;
-		font-size: 2.6rem;
-		letter-spacing: -0.02em;
-		color: #fff;
+	}
+	.hero-word {
+		width: min(45vw, 300px);
+		aspect-ratio: 3 / 1;
 	}
 	.tagline {
 		margin: 0 0 12px;

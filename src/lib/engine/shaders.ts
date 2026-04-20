@@ -262,6 +262,8 @@ export const glassShaderSource = `
     uniform float uGlassRefraction;
     uniform float uGlassReflectivity;
     uniform float uGlassChromatic;
+    uniform vec2 uLightScreenPos;
+    uniform float uTransparent;
 
     // Container shape uniforms (shared with display shader)
     uniform int uContainerShapeType;
@@ -328,7 +330,7 @@ export const glassShaderSource = `
     void main () {
         vec4 scene = texture2D(uScene, vUv);
 
-        vec3 lightDir = normalize(vec3(0.3, 0.7, 0.6));
+        vec3 lightDir = normalize(vec3(2.0 * (uLightScreenPos.x - 0.5), 2.0 * (uLightScreenPos.y - 0.5), 0.6));
         vec3 viewDir = vec3(0.0, 0.0, 1.0);
         vec3 halfVec = normalize(lightDir + viewDir);
 
@@ -344,7 +346,7 @@ export const glassShaderSource = `
             float d = length(p);
 
             if (d >= uContainerRadius) {
-                gl_FragColor = scene;
+                gl_FragColor = uTransparent > 0.5 ? vec4(0.0) : scene;
                 return;
             }
 
@@ -414,7 +416,8 @@ export const glassShaderSource = `
             // that's where the fishbowl wall is most visible.
             float nr = sqrt(r2);
             float edgeFade = 1.0 - smoothstep(0.99, 1.0, nr);
-            gl_FragColor = vec4(mix(scene.rgb, glassColor, edgeFade), scene.a);
+            float alpha = uTransparent > 0.5 ? edgeFade : scene.a;
+            gl_FragColor = vec4(mix(scene.rgb, glassColor, edgeFade), alpha);
 
         } else {
             // ======== RIM MODEL (frame, roundedRect, annulus, svgPath) ========
@@ -423,7 +426,9 @@ export const glassShaderSource = `
             float glassMask = 1.0 - smoothstep(0.0, uGlassThickness, abs(sdf));
 
             if (glassMask < 0.001) {
-                gl_FragColor = scene;
+                // Outside the container boundary: transparent in transparent mode
+                // Inside (fluid area): pass through scene content
+                gl_FragColor = (uTransparent > 0.5 && sdf > 0.0) ? vec4(0.0) : scene;
                 return;
             }
 
@@ -458,7 +463,9 @@ export const glassShaderSource = `
             float rimGlow = glassMask * fresnel * 0.15 * fluidLight;
 
             vec3 glassColor = refracted + vec3(spec + rimGlow);
-            gl_FragColor = vec4(mix(scene.rgb, glassColor, glassMask), scene.a);
+            // In transparent mode: opaque inside the shape, fade out outside
+            float alpha = uTransparent > 0.5 ? (sdf < 0.0 ? 1.0 : glassMask) : scene.a;
+            gl_FragColor = vec4(mix(scene.rgb, glassColor, glassMask), alpha);
         }
     }
 `;

@@ -18,17 +18,21 @@
 			seed={42}
 			containerShape={wordShape('SVELTE')}
 			splatOnHover
-			densityDissipation={0.08}
-			velocityDissipation={0.05}
+			densityDissipation={0.01}
+			velocityDissipation={0.01}
 			curl={20}
 			splatRadius={0.3}
-			splatForce={3000}
+			splatForce={5000}
 			shading
 			colorful
 			bloom={false}
 			sunrays={false}
 			backColor={{ r: 0, g: 0, b: 0 }}
-			initialSplatCount={0}
+			initialSplatCount={8}
+			randomSplatRate={4}
+			randomSplatCount={2}
+			randomSplatSpread={2}
+			randomSplatSwirl={200}
 			aria-label="SVELTE"
 		/>
 	</div>
@@ -37,17 +41,21 @@
 			seed={99}
 			containerShape={wordShape('FLUID')}
 			splatOnHover
-			densityDissipation={0.08}
-			velocityDissipation={0.05}
+			densityDissipation={0.01}
+			velocityDissipation={0.01}
 			curl={20}
 			splatRadius={0.3}
-			splatForce={3000}
+			splatForce={5000}
 			shading
 			colorful
 			bloom={false}
 			sunrays={false}
 			backColor={{ r: 0, g: 0, b: 0 }}
-			initialSplatCount={0}
+			initialSplatCount={8}
+			randomSplatRate={4}
+			randomSplatCount={2}
+			randomSplatSpread={2}
+			randomSplatSwirl={200}
 			aria-label="FLUID"
 		/>
 	</div>
@@ -67,5 +75,15 @@
 	.word-wrap {
 		width: min(90vw, 900px);
 		aspect-ratio: 3 / 1;
+	}
+	@media (min-width: 768px) {
+		.page {
+			flex-direction: row;
+			gap: 0;
+		}
+		.word-wrap {
+			width: 50vw;
+			max-width: 550px;
+		}
 	}
 </style>

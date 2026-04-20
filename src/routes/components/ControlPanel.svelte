@@ -44,7 +44,12 @@
 		containerOuterRadius: 0.40,
 		containerOuterHalfW: 0.45,
 		containerOuterHalfH: 0.45,
-		containerOuterCornerRadius: 0
+		containerOuterCornerRadius: 0,
+		glass: false,
+		glassThickness: 0.04,
+		glassRefraction: 0.4,
+		glassReflectivity: 0.12,
+		glassChromatic: 0.15
 	} as const;
 
 	let {
@@ -91,6 +96,11 @@
 		containerOuterHalfW = $bindable(D.containerOuterHalfW),
 		containerOuterHalfH = $bindable(D.containerOuterHalfH),
 		containerOuterCornerRadius = $bindable(D.containerOuterCornerRadius),
+		glass = $bindable(D.glass),
+		glassThickness = $bindable(D.glassThickness),
+		glassRefraction = $bindable(D.glassRefraction),
+		glassReflectivity = $bindable(D.glassReflectivity),
+		glassChromatic = $bindable(D.glassChromatic),
 		showShapePreview = $bindable(false),
 		onRandomSplats
 	}: {
@@ -137,6 +147,11 @@
 		containerOuterHalfW?: number;
 		containerOuterHalfH?: number;
 		containerOuterCornerRadius?: number;
+		glass?: boolean;
+		glassThickness?: number;
+		glassRefraction?: number;
+		glassReflectivity?: number;
+		glassChromatic?: number;
 		showShapePreview?: boolean;
 		onRandomSplats?: () => void;
 	} = $props();
@@ -188,6 +203,11 @@
 		containerOuterHalfW = D.containerOuterHalfW;
 		containerOuterHalfH = D.containerOuterHalfH;
 		containerOuterCornerRadius = D.containerOuterCornerRadius;
+		glass = D.glass;
+		glassThickness = D.glassThickness;
+		glassRefraction = D.glassRefraction;
+		glassReflectivity = D.glassReflectivity;
+		glassChromatic = D.glassChromatic;
 		showShapePreview = false;
 	}
 
@@ -238,6 +258,11 @@
 			lines.push(`  backColor={{ r: ${backColorR}, g: ${backColorG}, b: ${backColorB} }}`);
 		}
 		fmt('transparent', transparent);
+		fmt('glass', glass);
+		fmt('glassThickness', glassThickness);
+		fmt('glassRefraction', glassRefraction);
+		fmt('glassReflectivity', glassReflectivity);
+		fmt('glassChromatic', glassChromatic);
 		if (containerShapeType !== 'none') {
 			const n = (v: number) => Number(v.toFixed(3));
 			if (containerShapeType === 'circle') {
@@ -441,6 +466,29 @@
 		{/if}
 		{#if containerShapeType !== 'none'}
 			<label class="check"><input type="checkbox" bind:checked={showShapePreview} /> show shape outline</label>
+		{/if}
+	</section>
+
+	<section>
+		<h4>Glass effect</h4>
+		<label class="check"><input type="checkbox" bind:checked={glass} /> glass</label>
+		{#if glass}
+			<label>
+				<span>glassThickness <em>{glassThickness.toFixed(3)}</em></span>
+				<input type="range" min="0" max="0.15" step="0.005" bind:value={glassThickness} />
+			</label>
+			<label>
+				<span>glassRefraction <em>{glassRefraction.toFixed(2)}</em></span>
+				<input type="range" min="0" max="1" step="0.05" bind:value={glassRefraction} />
+			</label>
+			<label>
+				<span>glassReflectivity <em>{glassReflectivity.toFixed(2)}</em></span>
+				<input type="range" min="0" max="1" step="0.05" bind:value={glassReflectivity} />
+			</label>
+			<label>
+				<span>glassChromatic <em>{glassChromatic.toFixed(2)}</em></span>
+				<input type="range" min="0" max="1" step="0.05" bind:value={glassChromatic} />
+			</label>
 		{/if}
 	</section>
 
