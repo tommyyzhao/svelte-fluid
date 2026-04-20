@@ -1255,7 +1255,7 @@ export class FluidEngine implements FluidHandle {
 		if (!this.config.TRANSPARENT) {
 			this.drawColor(displayTarget, this.normalizedBackColor);
 		}
-		if (target == null && this.config.TRANSPARENT) {
+		if (this.config.TRANSPARENT && (target == null || useGlass)) {
 			this.drawCheckerboard(displayTarget);
 		}
 		this.drawDisplay(displayTarget);
@@ -1373,6 +1373,14 @@ export class FluidEngine implements FluidHandle {
 		gl.uniform1f(this.glassProgram.uniforms.uGlassRefraction, this.config.GLASS_REFRACTION);
 		gl.uniform1f(this.glassProgram.uniforms.uGlassReflectivity, this.config.GLASS_REFLECTIVITY);
 		gl.uniform1f(this.glassProgram.uniforms.uGlassChromatic, this.config.GLASS_CHROMATIC);
+		gl.uniform1f(this.glassProgram.uniforms.uTransparent, this.config.TRANSPARENT ? 1.0 : 0.0);
+
+		const pointer = this.pointers[0];
+		gl.uniform2f(
+			this.glassProgram.uniforms.uLightScreenPos,
+			pointer.texcoordX,
+			pointer.texcoordY
+		);
 
 		// Container shape uniforms — mask texture on unit 1 (unit 0 = sceneFBO)
 		this.setContainerShapeUniforms(this.glassProgram.uniforms, width, height, 1);
