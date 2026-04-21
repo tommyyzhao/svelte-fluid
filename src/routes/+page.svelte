@@ -105,7 +105,7 @@
 
 <svelte:head>
 	<title>svelte-fluid — WebGL fluid simulation as a Svelte 5 component</title>
-	<meta name="description" content="Drop-in WebGL fluid simulation for Svelte 5. Multi-instance, resize-stable, deterministic seeding, eight presets. MIT licensed." />
+	<meta name="description" content="Drop-in WebGL fluid simulation for Svelte 5. Multi-instance, resize-stable, deterministic seeding, nine presets. MIT licensed." />
 	<meta property="og:title" content="svelte-fluid" />
 	<meta property="og:description" content="WebGL fluid simulation as a Svelte 5 component. Multi-instance, resize-stable, eight hand-tuned presets." />
 </svelte:head>
@@ -208,19 +208,19 @@
 			</p>
 		</header>
 		<div class="grid-2col">
-			<Card title="Lava Lamp" description="Warm blobs drifting lazily on a silver background.">
+			<Card title="Lava Lamp" description="Warm blobs drifting lazily on a silver background." snippet={'<LavaLamp />'}>
 				<LavaLamp seed={101} lazy aria-label="LavaLamp preset" />
 			</Card>
-			<Card title="Plasma" description="Persistent full-spectrum energy field.">
+			<Card title="Plasma" description="Persistent full-spectrum energy field." snippet={'<Plasma />'}>
 				<Plasma seed={202} lazy aria-label="Plasma preset" />
 			</Card>
-			<Card title="Ink in Water" description="Blue dye blooming on a pale background.">
+			<Card title="Ink in Water" description="Blue dye blooming on a pale background." snippet={'<InkInWater />'}>
 				<InkInWater seed={303} lazy aria-label="Ink in Water preset" />
 			</Card>
-			<Card title="Frozen Swirl" description="A single icy whirlpool that spins itself out.">
+			<Card title="Frozen Swirl" description="A single icy whirlpool that spins itself out." snippet={'<FrozenSwirl />'}>
 				<FrozenSwirl seed={404} lazy aria-label="Frozen Swirl preset" />
 			</Card>
-			<Card title="Aurora" description="Northern-lights ribbons drifting laterally.">
+			<Card title="Aurora" description="Northern-lights ribbons drifting laterally." snippet={'<Aurora />'}>
 				<Aurora seed={505} lazy aria-label="Aurora preset" />
 			</Card>
 		</div>
@@ -235,7 +235,7 @@
 			</p>
 		</header>
 		<div class="grid-2col">
-			<Card title="Default" description="Out-of-the-box look with bloom, sunrays, and shading.">
+			<Card title="Default" description="Out-of-the-box look with bloom, sunrays, and shading." snippet={'<Fluid />'}>
 				<Fluid
 					seed={1234}
 					initialSplatCount={12}
@@ -245,7 +245,7 @@
 				/>
 			</Card>
 
-			<Card title="Flat + soft" description="Bloom off, low curl, faster dye fade.">
+			<Card title="Flat + soft" description="Bloom off, low curl, faster dye fade." snippet={`<Fluid\n  bloom={false}\n  curl={5}\n  densityDissipation={0.4}\n/>`}>
 				<Fluid
 					seed={5678}
 					bloom={false}
@@ -258,7 +258,7 @@
 				/>
 			</Card>
 
-			<Card title="Bold splats" description="Shading off, oversized splats, high force.">
+			<Card title="Bold splats" description="Shading off, oversized splats, high force." snippet={`<Fluid\n  shading={false}\n  splatRadius={0.8}\n  splatForce={9000}\n/>`}>
 				<Fluid
 					seed={9012}
 					shading={false}
@@ -271,7 +271,7 @@
 				/>
 			</Card>
 
-			<Card title="Slow + transparent" description="Low velocity dissipation on a transparent canvas.">
+			<Card title="Slow + transparent" description="Low velocity dissipation on a transparent canvas." snippet={`<Fluid\n  velocityDissipation={0.05}\n  densityDissipation={0.5}\n  transparent\n/>`}>
 				<Fluid
 					seed={3456}
 					velocityDissipation={0.05}
@@ -293,19 +293,19 @@
 			</p>
 		</header>
 		<div class="grid-2col">
-			<Card title="Circle" description="Plasma confined inside a circular boundary.">
+			<Card title="Circle" description="Plasma confined inside a circular boundary." snippet={`<Fluid\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5, radius: 0.45\n  }}\n/>`}>
 				<CircularFluid seed={606} lazy aria-label="Circular fluid shape demo" />
 			</Card>
-			<Card title="Frame" description="Fluid around a rectangular inner cutout.">
+			<Card title="Frame" description="Fluid around a rectangular inner cutout." snippet={`<Fluid\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.2, halfH: 0.2\n  }}\n/>`}>
 				<FrameFluid seed={707} lazy aria-label="Frame fluid shape demo" />
 			</Card>
-			<Card title="Annulus" description="Ring-vortex fluid between two concentric circles.">
+			<Card title="Annulus" description="Ring-vortex fluid between two concentric circles." snippet={`<Fluid\n  containerShape={{\n    type: 'annulus',\n    cx: 0.5, cy: 0.5,\n    innerRadius: 0.15, outerRadius: 0.4\n  }}\n/>`}>
 				<AnnularFluid seed={909} lazy aria-label="Annular fluid shape demo" />
 			</Card>
-			<Card title="Rounded frame" description="Same frame with rounded inner corners via innerCornerRadius.">
+			<Card title="Rounded frame" description="Same frame with rounded inner corners via innerCornerRadius." snippet={`<Fluid\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.2, halfH: 0.2,\n    innerCornerRadius: 0.06\n  }}\n/>`}>
 				<FrameFluid seed={808} lazy innerCornerRadius={0.06} aria-label="Rounded frame shape demo" />
 			</Card>
-			<Card title="SVG path" description="Fluid confined to an arbitrary SVG star shape via mask texture.">
+			<Card title="SVG path" description="Fluid confined to an arbitrary SVG star shape via mask texture." snippet={`<Fluid\n  containerShape={{\n    type: 'svgPath',\n    d: 'M50 5 L61 40 L98 40 ...'\n  }}\n/>`}>
 				<SvgPathFluid seed={1010} lazy aria-label="SVG path fluid shape demo" />
 			</Card>
 		</div>
@@ -321,7 +321,7 @@
 			</p>
 		</header>
 		<div class="grid-2col">
-			<Card title="Crystal orb" description="Hemisphere dome with chromatic aberration. The fluid magnifies at center and bends at the rim.">
+			<Card title="Crystal orb" description="Hemisphere dome with chromatic aberration. The fluid magnifies at center and bends at the rim." snippet={`<Fluid\n  glass\n  glassRefraction={0.7}\n  glassChromatic={0.5}\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5, radius: 0.45\n  }}\n/>`}>
 				<Fluid
 					seed={1111}
 					lazy
@@ -347,7 +347,7 @@
 					aria-label="Crystal orb effect demo"
 				/>
 			</Card>
-			<Card title="Soft lens" description="Subtle dome refraction with gentle Fresnel. Glass you feel more than see.">
+			<Card title="Soft lens" description="Subtle dome refraction with gentle Fresnel. Glass you feel more than see." snippet={`<Fluid\n  glass\n  glassRefraction={0.25}\n  glassChromatic={0.1}\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5, radius: 0.45\n  }}\n/>`}>
 				<Fluid
 					seed={1212}
 					lazy
@@ -369,7 +369,7 @@
 					aria-label="Soft lens effect demo"
 				/>
 			</Card>
-			<Card title="Portal ring" description="Chromatic rim refraction on an annulus. Rainbow fringes at both edges.">
+			<Card title="Portal ring" description="Chromatic rim refraction on an annulus. Rainbow fringes at both edges." snippet={`<Fluid\n  glass\n  glassThickness={0.05}\n  glassRefraction={0.6}\n  glassChromatic={0.7}\n  containerShape={{\n    type: 'annulus',\n    cx: 0.5, cy: 0.5,\n    innerRadius: 0.15, outerRadius: 0.42\n  }}\n/>`}>
 				<Fluid
 					seed={1313}
 					lazy
@@ -396,7 +396,7 @@
 					aria-label="Portal ring glass effect demo"
 				/>
 			</Card>
-			<Card title="Glass frame" description="Rim refraction along a rounded picture frame. Chromatic fringes at the walls.">
+			<Card title="Glass frame" description="Rim refraction along a rounded picture frame. Chromatic fringes at the walls." snippet={`<Fluid\n  glass\n  glassThickness={0.06}\n  glassRefraction={0.5}\n  glassChromatic={0.4}\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.22, halfH: 0.22,\n    innerCornerRadius: 0.06\n  }}\n/>`}>
 				<Fluid
 					seed={1414}
 					lazy
