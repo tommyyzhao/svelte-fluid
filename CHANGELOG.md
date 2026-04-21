@@ -11,6 +11,10 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_(nothing yet)_
+
+## [0.1.0] — Unreleased
+
 ### Added
 
 - **SVG path container shapes** — new `{ type: 'svgPath' }` variant for
@@ -44,6 +48,18 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
     the refracted fluid brightness. No fluid = no highlights.
   - New "Container effects" section on demo page with 4 cards: Crystal
     orb, Soft lens, Portal ring, Glass frame.
+- **Mouse-tracked specular** — glass specular highlight follows the
+  cursor via `uLightScreenPos` uniform. Always-on when glass is active.
+- **Glass + transparent mode** — fixed checkerboard routing so `glass`
+  and `transparent` work together. Glass shader outputs correct alpha
+  per model (edgeFade for orb, glassMask/sdf for rim).
+- Playground **glass controls** — ControlPanel gains a "Glass effect"
+  section with `glass` toggle and sliders for thickness, refraction,
+  reflectivity, chromatic. Auto-sets containerShape to circle when
+  glass is toggled on without a shape.
+- **Fluid-filled hero title** — home page `<h1>` replaced with two
+  Fluid instances rendering "SVELTE" and "FLUID" as svgPath text
+  containers with vigorous random splats.
 - `splatOnHover` prop — when true, moving the mouse over the canvas
   creates splats without requiring a click. The splat velocity follows
   the cursor movement. Hot-updatable (Bucket A).
@@ -83,8 +99,9 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 - Bloom/sunrays auto-suppress on small canvases (<600px) now applies
   unconditionally — presets that explicitly pass `bloom={true}` no
   longer bypass the guard.
-- Demo page: 15 → 19 instances (added 4 "Container effects" cards).
-  Container shapes description reverted from 6 → 5 cards.
+- Demo page: 15 → 21 instances (added 4 "Container effects" cards,
+  2 fluid hero title instances). Container shapes description reverted
+  from 6 → 5 cards.
 - `FluidEngine.drawDisplay()` container shape uniform-setting extracted
   to `setContainerShapeUniforms()` helper, shared with `drawGlass()`.
 - Demo page: removed invisible hero background (saved 1 WebGL context),
@@ -169,10 +186,6 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 - `Aurora.svelte` header documents the intentional `sunraysWeight: 1.4`
   trade-off (above the safe ceiling derived in the learnings doc) and
   how to fork to a more restrained version.
-
-## [0.1.0] — Unreleased
-
-Initial release. See the project README for the feature inventory.
 
 [Unreleased]: https://github.com/tommyyzhao/svelte-fluid/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/tommyyzhao/svelte-fluid/releases/tag/v0.1.0

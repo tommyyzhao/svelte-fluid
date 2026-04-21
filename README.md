@@ -1,5 +1,7 @@
 [![CI](https://github.com/tommyyzhao/svelte-fluid/actions/workflows/ci.yml/badge.svg)](https://github.com/tommyyzhao/svelte-fluid/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/svelte-fluid)](https://www.npmjs.com/package/svelte-fluid)
+[![npm downloads](https://img.shields.io/npm/dm/svelte-fluid)](https://www.npmjs.com/package/svelte-fluid)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/svelte-fluid)](https://bundlephobia.com/package/svelte-fluid)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 # svelte-fluid
@@ -388,6 +390,12 @@ bun run check    # svelte-check
 bun run package  # produces dist/ with svelte-package
 bun run build    # builds the SvelteKit demo site
 ```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, architecture
+rules, and common workflows. Please open an issue before starting large
+changes.
 
 ## Acknowledgments
 

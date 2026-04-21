@@ -63,11 +63,16 @@
 	"keywords": [
 		"svelte",
 		"svelte5",
+		"svelte-component",
 		"webgl",
 		"fluid",
 		"simulation",
 		"canvas",
 		"shader",
-		"navier-stokes"
+		"navier-stokes",
+		"animation",
+		"background",
+		"glsl",
+		"interactive"
 	]
 }
