@@ -60,6 +60,9 @@ _(nothing yet)_
 - **Fluid-filled hero title** — home page `<h1>` replaced with two
   Fluid instances rendering "SVELTE" and "FLUID" as svgPath text
   containers with vigorous random splats.
+- **Code snippets on demo cards** — Card component gains a `snippet`
+  prop with `</>` toggle and Copy button. All 18 demo cards wired with
+  copy-pasteable code showing the minimal props to reproduce each effect.
 - `splatOnHover` prop — when true, moving the mouse over the canvas
   creates splats without requiring a click. The splat velocity follows
   the cursor movement. Hot-updatable (Bucket A).
