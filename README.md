@@ -22,8 +22,9 @@ simulation. svelte-fluid is purpose-built for Svelte 5:
 - **True component API** — `<Fluid />` with 40+ typed props, live reactive updates, and full cleanup on unmount
 - **Multiple independent instances** per page — no shared GL state
 - **Deterministic seeding** — same `seed` reproduces the same splat pattern across resizes
-- **8 presets** — drop-in `<LavaLamp />`, `<Aurora />`, `<CircularFluid />`, etc.
-- **4 container shapes** — circle, frame, roundedRect, annulus via SDF masking
+- **9 presets** — drop-in `<LavaLamp />`, `<Aurora />`, `<CircularFluid />`, `<SvgPathFluid />`, etc.
+- **5 container shapes** — circle, frame, roundedRect, annulus, and arbitrary SVG paths / text via mask texture
+- **Glass post-processing** — refraction, specular highlights, and chromatic aberration on any container shape
 - **Lazy loading + auto-pause** — defer engine creation until viewport entry
 - **Imperative API** — `splat()` and `randomSplats()` via `bind:this`
 
@@ -142,10 +143,20 @@ config from the upstream project.
 | `randomSplatDx` | `number` | `0` | x velocity for continuous splats (Bucket A) |
 | `randomSplatDy` | `number` | `0` | y velocity for continuous splats (Bucket A) |
 | `randomSplatSpawnY` | `number` | `0.5` | normalized y position for continuous splats (0–1, clamped) (Bucket A) |
+| `randomSplatEvenSpacing` | `boolean` | `false` | distribute continuous splats evenly across x axis |
+| `randomSplatSwirl` | `number` | `0` | tangential velocity relative to center; positive = CCW |
+| `randomSplatSpread` | `number` | `0.1` | vertical spread of spawn positions; 2.0 = full canvas |
 | `pointerInput` | `boolean` | `true` | hot; toggles canvas + window listeners |
 | `splatOnHover` | `boolean` | `false` | hot; splat on mousemove without click |
+| `containerShape` | `ContainerShape` | `null` | confine fluid to a shape; see [Container shapes](#container-shapes) |
+| `glass` | `boolean` | `false` | glass post-processing; requires `containerShape`; see [Glass effect](#glass-effect) |
+| `glassThickness` | `number` | `0.04` | glass wall width in UV units (rim model only) |
+| `glassRefraction` | `number` | `0.4` | refraction strength 0–1; mapped to IOR 1.0–2.0 |
+| `glassReflectivity` | `number` | `0.12` | specular intensity (Fresnel F0) 0–1 |
+| `glassChromatic` | `number` | `0.15` | chromatic aberration strength 0–1 |
 | `presetSplats` | `PresetSplat[]` | — | construct-only; declarative initial scene (see [Presets](#presets)) |
 | `lazy` | `boolean` | `false` | construct-only; defer engine creation until container enters viewport |
+| `autoPause` | `boolean` | `true` | pause when not visible (IntersectionObserver + visibilitychange) |
 
 The component also forwards any standard `<canvas>` attributes
 (`class`, `style`, `aria-label`, …) onto the underlying canvas via
@@ -153,7 +164,7 @@ The component also forwards any standard `<canvas>` attributes
 
 ## Presets
 
-Eight opinionated wrapper components ship alongside `<Fluid />`. Each one
+Nine opinionated wrapper components ship alongside `<Fluid />`. Each one
 hard-codes a physics + visual configuration and (for most of them) a
 hand-crafted set of opening splats so you can drop them in without any
 tuning:
@@ -168,6 +179,7 @@ tuning:
 | `<CircularFluid />` | Vivid plasma ball physically confined inside a circle |
 | `<FrameFluid />` | Colorful fluid swirling around a rectangular inner cutout |
 | `<AnnularFluid />` | Ring-vortex fluid confined between two concentric circles |
+| `<SvgPathFluid />` | Fluid confined to an SVG star shape via mask texture |
 
 ```svelte
 <script lang="ts">
@@ -255,6 +267,64 @@ The clock starts when the engine begins ticking (post-mount, post
 first ResizeObserver fire), so the burn-in survives `setConfig`
 updates and matches the user's perception of "since the canvas
 appeared".
+
+## Container shapes
+
+Confine the fluid to a geometric region with `containerShape`. The
+simulation physically enforces the boundary — velocity is zeroed outside
+and dye is masked after advection.
+
+```svelte
+<!-- Circle -->
+<Fluid containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }} />
+
+<!-- Frame (fluid fills the border region around a rectangular cutout) -->
+<Fluid containerShape={{ type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.25, halfH: 0.25 }} />
+
+<!-- Rounded rectangle -->
+<Fluid containerShape={{ type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.35, halfH: 0.25, cornerRadius: 0.05 }} />
+
+<!-- Annulus (ring between two circles) -->
+<Fluid containerShape={{ type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.4 }} />
+
+<!-- SVG path -->
+<Fluid containerShape={{ type: 'svgPath', d: 'M50 5 L61 40 L98 40 L68 62 L79 97 L50 75 L21 97 L32 62 L2 40 L39 40 Z' }} />
+
+<!-- Text (fluid-filled letters) -->
+<Fluid containerShape={{ type: 'svgPath', text: 'HELLO', font: 'bold 72px sans-serif' }} />
+```
+
+Coordinates are normalized: `cx`/`cy` in [0, 1] (left-to-right,
+bottom-to-top). `radius` is normalized by canvas height. The `svgPath`
+type rasterizes to a mask texture via `OffscreenCanvas` and supports
+both SVG path data (`d`) and Canvas 2D text (`text`).
+
+## Glass effect
+
+Add a glass post-processing layer to any container shape with `glass`.
+Circles get a hemisphere dome with Snell's law refraction; all other
+shapes get rim refraction at the boundary.
+
+```svelte
+<!-- Glass orb with chromatic aberration -->
+<Fluid
+  containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.4 }}
+  glass
+  glassRefraction={0.6}
+  glassChromatic={0.3}
+/>
+
+<!-- Subtle glass frame -->
+<Fluid
+  containerShape={{ type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.3, halfH: 0.2 }}
+  glass
+  glassThickness={0.06}
+  glassReflectivity={0.08}
+/>
+```
+
+The specular highlight tracks the mouse cursor automatically. All
+highlights are driven by the fluid brightness — no fluid, no highlights.
 
 ## Resize behavior
 
