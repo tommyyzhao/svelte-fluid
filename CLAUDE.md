@@ -59,13 +59,14 @@ Two approaches coexist:
 
 ## Demo page structure
 
-21 instances across 6 sections:
+23 instances across 7 sections:
+- **Background** (1): `<FluidBackground>` wrapping the entire page, cursor-only splats
 - **Hero title** (2): Fluid-filled "SVELTE" + "FLUID" text (svgPath containers, vigorous random splats)
 - **Presets** (5): LavaLamp, Plasma, InkInWater, FrozenSwirl, Aurora — all lazy
 - **Configuration** (4): Default, Flat+soft, Bold splats, Slow+transparent — all have `splatOnHover`, lazy
-- **Container shapes** (5): Circle, Frame, Annulus, Rounded frame, SVG path — lazy
+- **Container shapes** (6): Circle, Frame, Annulus, Rounded rect, Rounded frame, SVG path — all lazy, `splatOnHover`
 - **Container effects** (4): Glass orb, Subtle lens, Glass ring, Diamond frame — all use `glass` prop, lazy
-- **Playground** (1): interactive with ControlPanel (now includes glass controls)
+- **Playground** (1): interactive with ControlPanel (includes glass controls)
 
 All grids use `repeat(2, 1fr)`.
 

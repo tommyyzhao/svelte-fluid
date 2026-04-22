@@ -26,7 +26,7 @@
 	/** Props consumed by `<CircularFluid />`. */
 	export type CircularFluidProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'aria-label'
+		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label'
 	>;
 </script>
 
@@ -41,7 +41,8 @@
 		style,
 		seed,
 		lazy,
-		'aria-label': ariaLabel
+		'aria-label': ariaLabel,
+		splatOnHover
 	}: CircularFluidProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
@@ -83,6 +84,7 @@
 	{style}
 	{seed}
 	{lazy}
+	{splatOnHover}
 	aria-label={ariaLabel}
 	containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
 	curl={35}

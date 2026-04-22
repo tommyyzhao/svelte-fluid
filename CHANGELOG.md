@@ -11,7 +11,30 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_(nothing yet)_
+### Added
+
+- **`<FluidBackground>` component** — full-viewport fluid canvas that sits
+  behind page content with automatic DOM element exclusion. Accepts an
+  `exclude` CSS selector prop; matched elements become "holes" the fluid
+  physically cannot enter. Background-optimized defaults (`simResolution: 64`,
+  `dyeResolution: 512`, `initialSplatCount: 0`). See ADR-0026.
+- **`/background-fluid` demo route** — prototype page demonstrating
+  FluidBackground with 6 feature cards, 5 embedded preset demos, and
+  a "How it works" explainer. All cards are excluded from the fluid.
+- **Rounded rect shape card** on the main demo page — new "Rounded rect"
+  card in the Container shapes section, using `containerShape: { type:
+  'roundedRect' }`. Shapes section now has 6 cards (was 5) for symmetric
+  2-column layout.
+- **`splatOnHover` prop on shape presets** — `CircularFluid`, `FrameFluid`,
+  `AnnularFluid`, and `SvgPathFluid` now accept and forward `splatOnHover`.
+- **FluidBackground wrapped main demo page** — the main `/` route uses
+  `<FluidBackground>` as a page-level background behind all content.
+- ADR-0026: FluidBackground component with DOM exclusion zones.
+
+### Changed
+
+- Container shapes section description updated: "Five analytical shapes
+  plus arbitrary SVG paths" (was "Four").
 
 ## [0.1.0] — Unreleased
 
