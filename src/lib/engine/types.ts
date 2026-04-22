@@ -296,6 +296,32 @@ export interface FluidConfig {
 	 * Default 0.15. Bucket A.
 	 */
 	glassChromatic?: number;
+	/**
+	 * Enable reveal mode. The fluid acts as an opacity mask: where dye
+	 * exists the canvas becomes transparent, revealing content behind it.
+	 * Where there is no dye, the canvas is opaque with `revealCoverColor`.
+	 * Incompatible with `glass` (reveal takes precedence). See ADR-0027.
+	 * Default false. Bucket B (keyword recompile).
+	 */
+	reveal?: boolean;
+	/**
+	 * Cover color in **0–255 RGB** (CSS-style, like `backColor`). This is
+	 * the opaque color shown where the fluid has not yet revealed content.
+	 * Default `{ r: 0, g: 0, b: 0 }` (black). Bucket A.
+	 */
+	revealCoverColor?: RGB;
+	/**
+	 * Multiplier on dye intensity before the power curve. Higher values
+	 * make areas reveal more easily (less dye needed). Default 0.12.
+	 * Bucket A.
+	 */
+	revealSensitivity?: number;
+	/**
+	 * Power exponent for the reveal alpha curve. Lower values create a
+	 * steeper threshold (more binary reveal), higher values create a
+	 * softer gradient. Default 0.1. Bucket A.
+	 */
+	revealCurve?: number;
 }
 
 /**
@@ -349,6 +375,10 @@ export interface ResolvedConfig {
 	GLASS_REFRACTION: number;
 	GLASS_REFLECTIVITY: number;
 	GLASS_CHROMATIC: number;
+	REVEAL: boolean;
+	REVEAL_COVER_COLOR: RGB;
+	REVEAL_SENSITIVITY: number;
+	REVEAL_CURVE: number;
 }
 
 /** Pixel format pair returned by `getSupportedFormat`. */

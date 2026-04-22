@@ -117,6 +117,10 @@
 		glassRefraction,
 		glassReflectivity,
 		glassChromatic,
+		reveal,
+		revealCoverColor,
+		revealSensitivity,
+		revealCurve,
 		lazy = false,
 		autoPause = true,
 		...rest
@@ -196,6 +200,10 @@
 			glassRefraction,
 			glassReflectivity,
 			glassChromatic,
+			reveal,
+			revealCoverColor,
+			revealSensitivity,
+			revealCurve,
 			pointerInput,
 			splatOnHover,
 			seed: stableSeed,
@@ -385,7 +393,7 @@
 	style:height={height != null ? `${height}px` : undefined}
 	{style}
 >
-	<canvas bind:this={canvasEl} {...rest}></canvas>
+	<canvas bind:this={canvasEl} style:background={transparent || reveal ? 'transparent' : undefined} {...rest}></canvas>
 </div>
 
 <style>

@@ -145,6 +145,12 @@ export const displayShaderSource = `
     uniform float uContainerOuterCornerRadius;
     uniform sampler2D uContainerMaskTexture;
 
+#ifdef REVEAL
+    uniform vec3 uRevealCoverColor;
+    uniform float uRevealSensitivity;
+    uniform float uRevealCurve;
+#endif
+
     vec3 linearToGamma (vec3 color) {
         color = max(color, vec3(0));
         return max(1.055 * pow(color, vec3(0.416666667)) - 0.055, vec3(0));
@@ -190,9 +196,9 @@ export const displayShaderSource = `
     #endif
 
         float a = max(c.r, max(c.g, c.b));
+        float cmask = 1.0;
 
     #ifdef CONTAINER_MASK
-        float cmask = 1.0;
         if (uContainerShapeType == 0) {
             vec2 cp = vec2((vUv.x - uContainerCenter.x) * uContainerAspect,
                            vUv.y - uContainerCenter.y);
@@ -246,7 +252,13 @@ export const displayShaderSource = `
         a *= cmask;
     #endif
 
+    #ifdef REVEAL
+        float revealAmount = clamp(pow(clamp(a * uRevealSensitivity, 0.0, 1.0), uRevealCurve), 0.0, 1.0);
+        float coverAlpha = (1.0 - revealAmount) * cmask;
+        gl_FragColor = vec4(uRevealCoverColor * coverAlpha, coverAlpha);
+    #else
         gl_FragColor = vec4(c, a);
+    #endif
     }
 `;
 
