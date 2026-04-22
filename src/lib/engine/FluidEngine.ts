@@ -116,7 +116,11 @@ const DEFAULTS: ResolvedConfig = {
 	GLASS_THICKNESS: 0.04,
 	GLASS_REFRACTION: 0.4,
 	GLASS_REFLECTIVITY: 0.12,
-	GLASS_CHROMATIC: 0.15
+	GLASS_CHROMATIC: 0.15,
+	REVEAL: false,
+	REVEAL_COVER_COLOR: { r: 0, g: 0, b: 0 },
+	REVEAL_SENSITIVITY: 0.12,
+	REVEAL_CURVE: 0.1
 };
 function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): ResolvedConfig {
 	const out: ResolvedConfig = { ...base };
@@ -180,6 +184,10 @@ function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): Re
 	if (input.glassRefraction !== undefined) out.GLASS_REFRACTION = input.glassRefraction;
 	if (input.glassReflectivity !== undefined) out.GLASS_REFLECTIVITY = input.glassReflectivity;
 	if (input.glassChromatic !== undefined) out.GLASS_CHROMATIC = input.glassChromatic;
+	if (input.reveal !== undefined) out.REVEAL = input.reveal;
+	if (input.revealCoverColor !== undefined) out.REVEAL_COVER_COLOR = normalizeColor(input.revealCoverColor);
+	if (input.revealSensitivity !== undefined) out.REVEAL_SENSITIVITY = input.revealSensitivity;
+	if (input.revealCurve !== undefined) out.REVEAL_CURVE = input.revealCurve;
 	return out;
 }
 
@@ -419,6 +427,7 @@ export class FluidEngine implements FluidHandle {
 		const kwChanged = a.SHADING !== b.SHADING || a.BLOOM !== b.BLOOM || a.SUNRAYS !== b.SUNRAYS;
 		const shapeChanged = !containerShapeEqual(a.CONTAINER_SHAPE, b.CONTAINER_SHAPE);
 		const glassChanged = a.GLASS !== b.GLASS || shapeChanged;
+		const revealChanged = a.REVEAL !== b.REVEAL;
 		const pointerInputChanged = a.POINTER_INPUT !== b.POINTER_INPUT;
 
 		this.config = b;
@@ -431,7 +440,7 @@ export class FluidEngine implements FluidHandle {
 		if (sunraysChanged) this.initSunraysFramebuffers();
 		if (shapeChanged) this.initMaskTexture();
 		if (glassChanged) this.initGlassFramebuffer();
-		if (kwChanged || shapeChanged) this.updateKeywords();
+		if (kwChanged || shapeChanged || revealChanged) this.updateKeywords();
 		if (pointerInputChanged) {
 			if (b.POINTER_INPUT) {
 				this.installPointerListeners();
@@ -1005,6 +1014,7 @@ export class FluidEngine implements FluidHandle {
 		if (this.config.BLOOM) keywords.push('BLOOM');
 		if (this.config.SUNRAYS) keywords.push('SUNRAYS');
 		if (this.config.CONTAINER_SHAPE) keywords.push('CONTAINER_MASK');
+		if (this.config.REVEAL) keywords.push('REVEAL');
 		this.displayMaterial.setKeywords(keywords);
 	}
 
@@ -1241,6 +1251,13 @@ export class FluidEngine implements FluidHandle {
 			this.blur(this.sunrays, this.sunraysTemp, 1);
 		}
 
+		// Reveal mode: premultiplied alpha output, no background, no glass
+		if (this.config.REVEAL) {
+			gl.disable(gl.BLEND);
+			this.drawDisplay(target);
+			return;
+		}
+
 		// When glass is active, route the scene through sceneFBO first
 		const useGlass = this.config.GLASS && this.config.CONTAINER_SHAPE && this.sceneFBO;
 		const displayTarget = useGlass ? this.sceneFBO! : target;
@@ -1255,8 +1272,14 @@ export class FluidEngine implements FluidHandle {
 		if (!this.config.TRANSPARENT) {
 			this.drawColor(displayTarget, this.normalizedBackColor);
 		}
-		if (this.config.TRANSPARENT && (target == null || useGlass)) {
-			this.drawCheckerboard(displayTarget);
+		if (this.config.TRANSPARENT) {
+			// Clear to transparent so the canvas composites cleanly with
+			// whatever is behind it in the DOM stacking context.
+			if (displayTarget == null) {
+				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+			}
+			gl.clearColor(0, 0, 0, 0);
+			gl.clear(gl.COLOR_BUFFER_BIT);
 		}
 		this.drawDisplay(displayTarget);
 
@@ -1306,6 +1329,12 @@ export class FluidEngine implements FluidHandle {
 		}
 		if (this.config.CONTAINER_SHAPE) {
 			this.setContainerShapeUniforms(this.displayMaterial.uniforms, width, height, 4);
+		}
+		if (this.config.REVEAL) {
+			const cc = this.config.REVEAL_COVER_COLOR;
+			gl.uniform3f(this.displayMaterial.uniforms.uRevealCoverColor, cc.r, cc.g, cc.b);
+			gl.uniform1f(this.displayMaterial.uniforms.uRevealSensitivity, this.config.REVEAL_SENSITIVITY);
+			gl.uniform1f(this.displayMaterial.uniforms.uRevealCurve, this.config.REVEAL_CURVE);
 		}
 		this.blit(target);
 	}

@@ -13,6 +13,22 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`<FluidReveal>` component** — fluid simulation as an opacity mask over
+  slotted content. Cursor movement injects dye which the `REVEAL` display
+  shader converts to transparency, revealing children underneath. Props:
+  `coverColor`, `sensitivity`, `curve`, `fadeBack`, `fadeSpeed`, `autoReveal`,
+  `autoRevealSpeed`, `lazy`, `autoPause`. See ADR-0027.
+- **`reveal` display mode** (engine-level) — new `REVEAL` keyword in the
+  display shader outputs premultiplied `vec4(coverColor * alpha, alpha)`.
+  New config fields: `reveal` (Bucket B), `revealCoverColor`,
+  `revealSensitivity`, `revealCurve` (all Bucket A).
+- **`/fluid-reveal/` demo route** — 5 test instances: default reveal, custom
+  cover color, auto-reveal animation, soft edges, circular reveal zone.
+- **Reveal section on main demo page** — 4 cards (scratch-to-reveal, permanent
+  reveal, auto-reveal, soft reveal) with code snippets. All lazy.
+- ADR-0027: FluidReveal — fluid as opacity mask.
+- 9 new tests for reveal alpha curve math and cover color normalization
+  (`src/lib/engine/__tests__/reveal.test.ts`).
 - **`<FluidBackground>` component** — full-viewport fluid canvas that sits
   behind page content with automatic DOM element exclusion. Accepts an
   `exclude` CSS selector prop; matched elements become "holes" the fluid
@@ -33,6 +49,15 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`transparent` mode now truly transparent** — replaced the checkerboard
+  background draw with `gl.clear()` to `(0,0,0,0)`. Canvas CSS background
+  is automatically set to `transparent` when `transparent` or `reveal` is
+  active. This enables proper alpha compositing with the page.
+- **Hero title uses `transparent` mode** — "SVELTE FLUID" text now composites
+  directly over the FluidBackground with no opaque rectangle.
+- **Demo page pointer-events** — `<main>` set to `pointer-events: none` so
+  background fluid splats work across the full page. Interactive elements
+  (cards, links, code blocks, playground) re-enable pointer-events.
 - Container shapes section description updated: "Five analytical shapes
   plus arbitrary SVG paths" (was "Four").
 

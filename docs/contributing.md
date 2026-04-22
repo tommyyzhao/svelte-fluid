@@ -153,7 +153,7 @@ bun run build       # builds the demo
 If you touched anything in `src/lib/engine/`, also do these manual
 checks in a real browser:
 
-- [ ] All 21 demo instances render fluid correctly
+- [ ] All 31 demo instances render fluid correctly
 - [ ] Drag inside each instance — pointer input is isolated
 - [ ] Resize the browser window — every instance reinits with the
   same initial splat pattern

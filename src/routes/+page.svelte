@@ -5,6 +5,7 @@
 		CircularFluid,
 		Fluid,
 		FluidBackground,
+		FluidReveal,
 		FrameFluid,
 		FrozenSwirl,
 		InkInWater,
@@ -135,6 +136,7 @@
 					seed={42}
 					containerShape={wordShape('SVELTE')}
 					splatOnHover
+					transparent
 					densityDissipation={0.01}
 					velocityDissipation={0.01}
 					curl={20}
@@ -144,7 +146,6 @@
 					colorful
 					bloom={false}
 					sunrays={false}
-					backColor={{ r: 0, g: 0, b: 0 }}
 					initialSplatCount={8}
 					randomSplatRate={4}
 					randomSplatCount={2}
@@ -158,6 +159,7 @@
 					seed={99}
 					containerShape={wordShape('FLUID')}
 					splatOnHover
+					transparent
 					densityDissipation={0.01}
 					velocityDissipation={0.01}
 					curl={20}
@@ -167,7 +169,6 @@
 					colorful
 					bloom={false}
 					sunrays={false}
-					backColor={{ r: 0, g: 0, b: 0 }}
 					initialSplatCount={8}
 					randomSplatRate={4}
 					randomSplatCount={2}
@@ -465,6 +466,74 @@
 		</div>
 	</section>
 
+	<section>
+		<header class="section-header">
+			<h2>Reveal</h2>
+			<p>
+				<code>&lt;FluidReveal&gt;</code> uses the simulation as an opacity mask.
+				Cursor movement reveals content behind the fluid cover.
+			</p>
+		</header>
+		<div class="grid-2col">
+			<Card title="Scratch to reveal" description="Move your cursor to uncover the gradient. The reveal fades back over time." snippet={`<FluidReveal>\n  <div class="my-content">\n    Hidden content here\n  </div>\n</FluidReveal>`}>
+				<FluidReveal lazy>
+					<div class="reveal-content reveal-gradient">
+						<span class="reveal-label">Revealed!</span>
+					</div>
+				</FluidReveal>
+			</Card>
+			<Card title="Permanent reveal" description="Set fadeBack={false} for a scratch-card effect. Once revealed, content stays visible." snippet={`<FluidReveal\n  fadeBack={false}\n  coverColor={{ r: 20, g: 30, b: 60 }}\n  splatRadius={0.5}\n>\n  <div>...</div>\n</FluidReveal>`}>
+				<FluidReveal
+					lazy
+					fadeBack={false}
+					coverColor={{ r: 20, g: 30, b: 60 }}
+					splatRadius={0.5}
+				>
+					<div class="reveal-content reveal-mosaic">
+						{#each Array(9) as _, i}
+							<div class="mosaic-tile" style:background="hsl({i * 40}, 65%, 55%)"></div>
+						{/each}
+					</div>
+				</FluidReveal>
+			</Card>
+			<Card title="Auto-reveal" description="Lissajous animation reveals content before interaction. Touch or click to take control." snippet={`<FluidReveal\n  autoReveal\n  autoRevealSpeed={0.8}\n  fadeBack={false}\n>\n  <div>...</div>\n</FluidReveal>`}>
+				<FluidReveal
+					lazy
+					autoReveal
+					autoRevealSpeed={0.8}
+					coverColor={{ r: 10, g: 10, b: 30 }}
+					fadeBack={false}
+					sensitivity={0.15}
+				>
+					<div class="reveal-content reveal-stars">
+						<span class="reveal-label">Auto Reveal</span>
+						{#each Array(12) as _, i}
+							<div
+								class="star"
+								style:background="hsl({i * 30}, 70%, 60%)"
+								style:left="{10 + (i % 4) * 25}%"
+								style:top="{15 + Math.floor(i / 4) * 30}%"
+							></div>
+						{/each}
+					</div>
+				</FluidReveal>
+			</Card>
+			<Card title="Soft reveal" description="Higher curve values create softer, more gradual reveal edges." snippet={`<FluidReveal\n  curve={0.5}\n  sensitivity={0.2}\n  coverColor={{ r: 40, g: 10, b: 40 }}\n  splatRadius={0.6}\n>\n  <div>...</div>\n</FluidReveal>`}>
+				<FluidReveal
+					lazy
+					curve={0.5}
+					sensitivity={0.2}
+					coverColor={{ r: 40, g: 10, b: 40 }}
+					splatRadius={0.6}
+				>
+					<div class="reveal-content reveal-gradient-2">
+						<span class="reveal-label">Soft Edges</span>
+					</div>
+				</FluidReveal>
+			</Card>
+		</div>
+	</section>
+
 	<section class="playground-section">
 		<header class="section-header">
 			<h2>Playground</h2>
@@ -595,7 +664,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 48px;
-		pointer-events: auto;
+		pointer-events: none;
 	}
 
 	header {
@@ -610,6 +679,7 @@
 	.hero-word {
 		width: min(45vw, 300px);
 		aspect-ratio: 3 / 1;
+		pointer-events: auto;
 	}
 	.tagline {
 		margin: 0 0 12px;
@@ -622,6 +692,7 @@
 		justify-content: center;
 		flex-wrap: wrap;
 		font-size: 0.88rem;
+		pointer-events: auto;
 	}
 	.header-links a {
 		color: #cce6ff;
@@ -644,6 +715,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 12px;
+		pointer-events: auto;
 	}
 	.get-started h2 {
 		margin: 0 0 4px;
@@ -680,6 +752,7 @@
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
 		gap: 18px;
+		pointer-events: auto;
 	}
 
 	@media (max-width: 600px) {
@@ -727,6 +800,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 14px;
+		pointer-events: auto;
 	}
 	.playground {
 		display: grid;
@@ -785,5 +859,52 @@
 	}
 	.credit a {
 		color: #888;
+	}
+
+	/* ---- Reveal section ---- */
+	.reveal-content {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		position: relative;
+	}
+	.reveal-label {
+		font-size: 1.4rem;
+		font-weight: 700;
+		color: #fff;
+		text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+		z-index: 1;
+	}
+	.reveal-gradient {
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		border-radius: 12px;
+	}
+	.reveal-gradient-2 {
+		background: linear-gradient(135deg, #f093fb 0%, #f5576c 50%, #4facfe 100%);
+		border-radius: 12px;
+	}
+	.reveal-mosaic {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 6px;
+		padding: 10px;
+		background: #1a1a2e;
+		border-radius: 12px;
+	}
+	.mosaic-tile {
+		aspect-ratio: 1;
+		border-radius: 6px;
+	}
+	.reveal-stars {
+		background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+		border-radius: 12px;
+	}
+	.star {
+		position: absolute;
+		width: 16px;
+		height: 16px;
+		border-radius: 50%;
 	}
 </style>

@@ -9,6 +9,9 @@ export type { FluidProps } from './Fluid.svelte';
 export { default as FluidBackground } from './FluidBackground.svelte';
 export type { FluidBackgroundProps } from './FluidBackground.svelte';
 
+export { default as FluidReveal } from './FluidReveal.svelte';
+export type { FluidRevealProps } from './FluidReveal.svelte';
+
 export { FluidEngine, type FluidEngineOptions } from './engine/FluidEngine.js';
 export type {
 	FluidConfig,

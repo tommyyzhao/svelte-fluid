@@ -33,8 +33,8 @@ Run `bun run prepack` before committing to verify publint.
 
 When props change at runtime, `engine.setConfig()` classifies each field:
 
-- **Bucket A** (hot scalars): written to `this.config.X`, picked up next frame. Includes all physics scalars, `pointerInput`, `splatOnHover`, `randomSplat*`, `containerShape`, `glassThickness`, `glassRefraction`, `glassReflectivity`, `glassChromatic`.
-- **Bucket B** (keyword recompile): `shading`, `bloom`, `sunrays` → `updateKeywords()` recompiles the display shader.
+- **Bucket A** (hot scalars): written to `this.config.X`, picked up next frame. Includes all physics scalars, `pointerInput`, `splatOnHover`, `randomSplat*`, `containerShape`, `glassThickness`, `glassRefraction`, `glassReflectivity`, `glassChromatic`, `revealCoverColor`, `revealSensitivity`, `revealCurve`.
+- **Bucket B** (keyword recompile): `shading`, `bloom`, `sunrays`, `reveal` → `updateKeywords()` recompiles the display shader.
 - **Bucket C** (FBO rebuild): `simResolution`, `dyeResolution`, `bloomResolution`, `bloomIterations`, `sunraysResolution` → `initFramebuffers()` / `initBloom()` / `initSunrays()`.
 - **Bucket D** (construct-only): `seed`, `initialSplatCount*`, `presetSplats` → ignored after construction.
 
@@ -43,6 +43,8 @@ When adding a new prop, decide which bucket it belongs to and wire it accordingl
 Additionally, `containerShape` with `type: 'svgPath'` triggers a **mask texture rebuild** (re-rasterize + texture re-upload + keyword toggle). This is a separate operation from the 4 buckets above.
 
 The `glass` boolean triggers **sceneFBO alloc/dispose** via `initGlassFramebuffer()`. When glass is on, `drawDisplay` renders to `sceneFBO` (RGBA8, canvas resolution) and a `drawGlass` post-processing pass reads it with refraction + specular.
+
+The `reveal` boolean triggers a **`REVEAL` keyword** in the display shader. When active, the shader outputs premultiplied `vec4(coverColor * coverAlpha, coverAlpha)` instead of `vec4(c, a)`. Dye intensity controls transparency — more dye = more transparent = content revealed. `render()` skips backColor, checkerboard, and glass when REVEAL is active. See ADR-0027.
 
 ## Container shapes
 
@@ -59,16 +61,18 @@ Two approaches coexist:
 
 ## Demo page structure
 
-23 instances across 7 sections:
+27 instances across 8 sections:
 - **Background** (1): `<FluidBackground>` wrapping the entire page, cursor-only splats
 - **Hero title** (2): Fluid-filled "SVELTE" + "FLUID" text (svgPath containers, vigorous random splats)
 - **Presets** (5): LavaLamp, Plasma, InkInWater, FrozenSwirl, Aurora — all lazy
 - **Configuration** (4): Default, Flat+soft, Bold splats, Slow+transparent — all have `splatOnHover`, lazy
 - **Container shapes** (6): Circle, Frame, Annulus, Rounded rect, Rounded frame, SVG path — all lazy, `splatOnHover`
 - **Container effects** (4): Glass orb, Subtle lens, Glass ring, Diamond frame — all use `glass` prop, lazy
+- **Reveal** (4): Scratch-to-reveal, Permanent reveal, Auto-reveal, Soft reveal — all use `<FluidReveal>`
 - **Playground** (1): interactive with ControlPanel (includes glass controls)
 
 All grids use `repeat(2, 1fr)`.
+Extra routes: `/background-fluid`, `/fluid-reveal/`, `/svelte-fluid`, `/svg`
 
 ## Conventions
 
