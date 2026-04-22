@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import FluidBackground from '$lib/FluidBackground.svelte';
 	import LavaLamp from '$lib/presets/LavaLamp.svelte';
 	import Plasma from '$lib/presets/Plasma.svelte';
@@ -106,7 +107,7 @@
 
 		<footer class="footer">
 			<p>
-				<a href="/">Back to main demo</a>
+				<a href="{base}/">Back to main demo</a>
 			</p>
 		</footer>
 	</main>
