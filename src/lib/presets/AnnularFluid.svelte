@@ -19,7 +19,7 @@
 	/** Props consumed by `<AnnularFluid />`. */
 	export type AnnularFluidProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'aria-label'
+		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label'
 	>;
 </script>
 
@@ -34,7 +34,8 @@
 		style,
 		seed,
 		lazy,
-		'aria-label': ariaLabel
+		'aria-label': ariaLabel,
+		splatOnHover
 	}: AnnularFluidProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
@@ -72,6 +73,7 @@
 	{style}
 	{seed}
 	{lazy}
+	{splatOnHover}
 	aria-label={ariaLabel}
 	containerShape={{ type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.45 }}
 	curl={35}

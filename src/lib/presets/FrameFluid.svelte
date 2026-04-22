@@ -19,7 +19,7 @@
 	/** Props consumed by `<FrameFluid />`. */
 	export type FrameFluidProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'aria-label'
+		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label'
 	> & { innerCornerRadius?: number };
 </script>
 
@@ -35,7 +35,8 @@
 		seed,
 		lazy,
 		'aria-label': ariaLabel,
-		innerCornerRadius
+		innerCornerRadius,
+		splatOnHover
 	}: FrameFluidProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
@@ -73,6 +74,7 @@
 	{style}
 	{seed}
 	{lazy}
+	{splatOnHover}
 	aria-label={ariaLabel}
 	containerShape={{ type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.25, halfH: 0.25, innerCornerRadius }}
 	curl={30}

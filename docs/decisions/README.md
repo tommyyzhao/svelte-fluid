@@ -31,6 +31,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0023](./0023-frame-outer-boundary-and-shape-aware-spawning.md) | Rounded outer frame boundary and shape-aware splat spawning | Accepted |
 | [0024](./0024-svg-path-container-shapes.md) | SVG path container shapes via mask texture | Accepted |
 | [0025](./0025-glass-refraction-post-processing.md) | Glass refraction/reflection post-processing layer | Accepted |
+| [0026](./0026-background-fluid-component.md) | FluidBackground component with DOM exclusion zones | Accepted |
 
 ## How to add a new ADR
 

@@ -4,6 +4,7 @@
 		Aurora,
 		CircularFluid,
 		Fluid,
+		FluidBackground,
 		FrameFluid,
 		FrozenSwirl,
 		InkInWater,
@@ -110,6 +111,22 @@
 	<meta property="og:description" content="WebGL fluid simulation as a Svelte 5 component. Multi-instance, resize-stable, eight hand-tuned presets." />
 </svelte:head>
 
+<FluidBackground
+	exclude=".card, .get-started, .playground-canvas, .panel"
+	excludeRadius={12}
+	splatOnHover
+	colorful
+	shading
+	bloom
+	bloomIterations={4}
+	bloomIntensity={0.5}
+	sunrays={false}
+	densityDissipation={0.4}
+	velocityDissipation={0.3}
+	curl={50}
+	splatRadius={0.05}
+	splatForce={3000}
+>
 <main>
 	<header>
 		<div class="hero-title" role="heading" aria-level="1" aria-label="svelte-fluid">
@@ -289,24 +306,46 @@
 			<h3>Container shapes</h3>
 			<p>
 				Masks confine the simulation to a region.
-				Four analytical shapes plus arbitrary SVG paths are built in.
+				Five analytical shapes plus arbitrary SVG paths are built in.
 			</p>
 		</header>
 		<div class="grid-2col">
 			<Card title="Circle" description="Plasma confined inside a circular boundary." snippet={`<Fluid\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5, radius: 0.45\n  }}\n/>`}>
-				<CircularFluid seed={606} lazy aria-label="Circular fluid shape demo" />
+				<CircularFluid seed={606} lazy splatOnHover aria-label="Circular fluid shape demo" />
 			</Card>
 			<Card title="Frame" description="Fluid around a rectangular inner cutout." snippet={`<Fluid\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.2, halfH: 0.2\n  }}\n/>`}>
-				<FrameFluid seed={707} lazy aria-label="Frame fluid shape demo" />
+				<FrameFluid seed={707} lazy splatOnHover aria-label="Frame fluid shape demo" />
 			</Card>
 			<Card title="Annulus" description="Ring-vortex fluid between two concentric circles." snippet={`<Fluid\n  containerShape={{\n    type: 'annulus',\n    cx: 0.5, cy: 0.5,\n    innerRadius: 0.15, outerRadius: 0.4\n  }}\n/>`}>
-				<AnnularFluid seed={909} lazy aria-label="Annular fluid shape demo" />
+				<AnnularFluid seed={909} lazy splatOnHover aria-label="Annular fluid shape demo" />
 			</Card>
-			<Card title="Rounded frame" description="Same frame with rounded inner corners via innerCornerRadius." snippet={`<Fluid\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.2, halfH: 0.2,\n    innerCornerRadius: 0.06\n  }}\n/>`}>
-				<FrameFluid seed={808} lazy innerCornerRadius={0.06} aria-label="Rounded frame shape demo" />
+			<Card title="Rounded rect" description="Fluid confined inside a rectangle with smooth rounded corners." snippet={`<Fluid\n  containerShape={{\n    type: 'roundedRect',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.35, halfH: 0.35,\n    cornerRadius: 0.08\n  }}\n/>`}>
+				<Fluid
+					seed={808}
+					lazy
+					splatOnHover
+					containerShape={{ type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.35, halfH: 0.35, cornerRadius: 0.08 }}
+					curl={30}
+					densityDissipation={0.2}
+					velocityDissipation={0.1}
+					splatRadius={0.3}
+					splatForce={5000}
+					shading
+					bloom
+					sunrays={false}
+					initialSplatCount={10}
+					randomSplatRate={0.5}
+					randomSplatCount={2}
+					randomSplatSpread={1.5}
+					backColor={{ r: 4, g: 2, b: 12 }}
+					aria-label="Rounded rect fluid shape demo"
+				/>
+			</Card>
+			<Card title="Rounded frame" description="Frame with rounded inner corners via innerCornerRadius." snippet={`<Fluid\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.2, halfH: 0.2,\n    innerCornerRadius: 0.06\n  }}\n/>`}>
+				<FrameFluid seed={818} lazy splatOnHover innerCornerRadius={0.06} aria-label="Rounded frame shape demo" />
 			</Card>
 			<Card title="SVG path" description="Fluid confined to an arbitrary SVG star shape via mask texture." snippet={`<Fluid\n  containerShape={{\n    type: 'svgPath',\n    d: 'M50 5 L61 40 L98 40 ...'\n  }}\n/>`}>
-				<SvgPathFluid seed={1010} lazy aria-label="SVG path fluid shape demo" />
+				<SvgPathFluid seed={1010} lazy splatOnHover aria-label="SVG path fluid shape demo" />
 			</Card>
 		</div>
 	</section>
@@ -545,6 +584,7 @@
 		</p>
 	</footer>
 </main>
+</FluidBackground>
 
 <style>
 	main {
@@ -555,6 +595,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 48px;
+		pointer-events: auto;
 	}
 
 	header {
