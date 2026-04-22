@@ -1,10 +1,10 @@
-# Session Handoff — 2026-04-21 (session 4)
+# Session Handoff — 2026-04-22 (session 5)
 
 ## Project
 
 svelte-fluid — WebGL Navier-Stokes fluid simulation as a Svelte 5 component library. MIT licensed, derived from PavelDoGreat/WebGL-Fluid-Simulation.
 
-Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: 3409340
+Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: 796b17b
 
 ## Current state
 
@@ -13,33 +13,27 @@ Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: 34093
 - 5 container shapes: circle, frame (with inner+outer rounding), roundedRect, annulus, svgPath (mask texture)
 - Glass post-processing layer with two models: hemisphere orb (circles) and rim (all others)
 - Mouse-tracked specular: glass highlight follows cursor (always-on when glass active)
-- Glass + transparent mode compatible
-- 26 ADRs, 6 learning docs, architecture.md, porting-notes.md, contributing.md
-- 21 demo instances on the demo page (2 hero title + 5 presets + 4 config + 5 shapes + 4 effects + 1 playground)
+- FluidBackground component: full-viewport fluid with DOM exclusion zones via CSS selector
+- 27 ADRs, 6 learning docs, architecture.md, porting-notes.md, contributing.md
+- 23 demo instances on the main page (1 background + 2 hero title + 5 presets + 4 config + 6 shapes + 4 effects + 1 playground)
 - Every demo card has a `</>` toggle showing copy-pasteable code snippet
-- 2 extra routes: `/svelte-fluid` (fluid-filled text demo), `/svg` (SVG path test cases)
+- 3 extra routes: `/background-fluid` (FluidBackground demo), `/svelte-fluid` (fluid-filled text), `/svg` (SVG path test cases)
 - CI runs tests + type-check + publint + build on every push. GitHub Pages auto-deploys.
-- 10 GitHub topics set. README has CI, npm, downloads, bundle size, and license badges.
-- Root `CONTRIBUTING.md` redirects to `docs/contributing.md`.
 - Package ready for `npm publish --access public --provenance`.
 
 ## What this session built
 
-1. **Mouse-tracked specular highlight** (`shaders.ts:265,333`, `FluidEngine.ts:1377-1382`): Replaced hardcoded `vec3(0.3, 0.7, 0.6)` light direction with `uLightScreenPos` uniform driven by `pointers[0].texcoordX/Y`. Always-on when glass is active, zero perf cost.
+1. **`<FluidBackground>` component** (`src/lib/FluidBackground.svelte`): Full-viewport fluid canvas behind page content with automatic DOM exclusion. Accepts `exclude` CSS selector — matched elements become "holes" the fluid physically cannot enter. Uses evenodd SVG path via existing `svgPath` container shape (zero engine changes). Throttled mask rebuilds (80ms), MutationObserver for dynamic DOM, background-optimized defaults (`simResolution: 64`, `dyeResolution: 512`, `initialSplatCount: 0`). Exported from package.
 
-2. **Glass + transparent mode fix** (`FluidEngine.ts:1258`, `shaders.ts:349,419,431,467`): Checkerboard condition now fires when glass is active: `this.config.TRANSPARENT && (target == null || useGlass)`. Glass shader receives `uTransparent` uniform and outputs correct alpha per model.
+2. **`/background-fluid` demo route** (`src/routes/background-fluid/+page.svelte`): Prototype page using FluidBackground with 6 feature cards + 5 embedded preset demos (LavaLamp, Plasma, InkInWater, FrozenSwirl, Aurora). Turbulent cursor-only fluid background (`curl: 50`, `velocityDissipation: 0.3`). Cards excluded via `exclude=".card, .preset-card"`.
 
-3. **Playground glass controls** (`ControlPanel.svelte`, `+page.svelte`): "Glass effect" section with toggle + 4 sliders. `buildSnippet()` and `reset()` updated. Auto-sets `containerShapeType` to `'circle'` when glass toggled on without a shape.
+3. **FluidBackground on main demo page** (`src/routes/+page.svelte`): Wrapped the entire main page with `<FluidBackground exclude=".card, .get-started, .playground-canvas, .panel">`. Cursor-only splats in the margins. All interactive content has `pointer-events: auto`.
 
-4. **Fluid-filled hero title** (`+page.svelte`): Plain `<h1>` replaced with two Fluid instances rendering "SVELTE" + "FLUID" as svgPath text containers. Vigorous random splats, low dissipation, splatOnHover. Heading semantics via `role="heading" aria-level="1"`.
+4. **Rounded rect shape card** (`+page.svelte`): New "Rounded rect" card in Container shapes section using `containerShape: { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.35, halfH: 0.35, cornerRadius: 0.08 }`. Shapes section now has 6 cards (was 5) for symmetric 2-column layout.
 
-5. **`/svelte-fluid` route overhaul** (`svelte-fluid/+page.svelte`): Single-line tablet layout (row at >= 768px). Vigorous config: densityDissipation 0.01, velocityDissipation 0.01, splatForce 5000, initialSplatCount 8, randomSplatRate 4, randomSplatCount 2, randomSplatSpread 2, randomSplatSwirl 200.
+5. **`splatOnHover` on shape presets** (`CircularFluid.svelte`, `FrameFluid.svelte`, `AnnularFluid.svelte`, `SvgPathFluid.svelte`): All 4 shape preset components now accept and forward the `splatOnHover` prop. All shape demo cards on the main page use it.
 
-6. **Code snippets on every demo card** (`Card.svelte`, `+page.svelte`): Card component gained `snippet` prop with `</>` toggle and Copy button. All 18 demo cards wired: presets show one-liners, config cards show key props, shapes show containerShape objects, glass effects show full glass + containerShape invocations.
-
-7. **README updated for publish** (`README.md`): Feature counts corrected (9 presets, 5 shapes), props table gained 10 missing entries (containerShape, glass*, randomSplat*, autoPause), new Container shapes and Glass effect sections with code examples, Contributing section.
-
-8. **Pre-publish polish** (`package.json`, `CONTRIBUTING.md`, `CHANGELOG.md`, `docs/contributing.md`): npm downloads + bundle size badges, 13 keywords (was 8), root CONTRIBUTING.md, CHANGELOG 0.1.0 fleshed out, stale instance counts fixed, 10 GitHub topics added, homepage points to demo site.
+6. **ADR-0026** (`docs/decisions/0026-background-fluid-component.md`): Documents the evenodd SVG path approach, coordinate mapping (viewBox matches viewport CSS pixels, Y-flip via mask shader), throttling strategy, performance analysis, pointer-events pattern, and alternatives considered.
 
 ## Key files
 
@@ -47,17 +41,18 @@ Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: 34093
 |------|------|
 | src/lib/engine/FluidEngine.ts (~1600 LOC) | The engine: WebGL state, physics step, render, dispose, mask texture, glass pass, splatOnHover |
 | src/lib/Fluid.svelte (~400 LOC) | Svelte wrapper: DOM, ResizeObserver, adaptive resolution, lazy/autoPause |
+| src/lib/FluidBackground.svelte (~180 LOC) | Full-viewport fluid background with DOM exclusion via CSS selector |
 | src/lib/engine/gl-utils.ts | WebGL utilities: Material class, FBO create/resize/dispose, shader compile |
 | src/lib/engine/shaders.ts | All GLSL shader sources (22 shaders + glass shader + container mask branches) |
 | src/lib/engine/types.ts | FluidConfig (incl. glass + svgPath), ContainerShape (5 variants), FluidHandle |
 | src/lib/engine/container-shapes.ts | TypeScript SDF mirrors, MaskContext, containerMask(), maskAreaFraction() |
-| src/lib/presets/*.svelte (9 files) | Preset wrapper components (incl. SvgPathFluid) |
-| src/routes/+page.svelte | Demo page with 21 instances, code snippets on every card |
+| src/lib/presets/*.svelte (9 files) | Preset wrapper components (shape presets now accept splatOnHover) |
+| src/routes/+page.svelte | Demo page with 23 instances, FluidBackground wrapper, code snippets on every card |
+| src/routes/background-fluid/+page.svelte | FluidBackground demo with feature cards + embedded presets |
 | src/routes/components/Card.svelte | Demo card with optional snippet toggle + Copy button |
 | src/routes/components/ControlPanel.svelte | Playground control panel with buildSnippet + glass controls |
-| src/routes/svelte-fluid/+page.svelte | Fluid-filled "SVELTE FLUID" text demo (one-line tablet layout) |
 | docs/architecture.md | Start here for understanding the system |
-| docs/decisions/README.md | Index of 26 ADRs |
+| docs/decisions/README.md | Index of 27 ADRs |
 
 ## What needs attention next
 
@@ -71,17 +66,18 @@ Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: 34093
 
 ### Known issues
 
-4. **21 demo instances** — exceeds browser's ~16 WebGL context limit. Lazy loading mitigates but fast scrolling can still hit the cap. The 2 hero title instances are always-visible (not lazy).
-5. **Black void between sections** — lazy canvases tear down to black against black page background. A placeholder/skeleton for torn-down cards would fix this.
+4. **23 demo instances + background** — exceeds browser's ~16 WebGL context limit. Lazy loading mitigates but fast scrolling can still hit the cap. The 2 hero title instances + 1 background are always-visible (not lazy).
+5. **Presets section has 5 items** — odd count in 2-column grid (Aurora sits alone). Consider adding a 6th preset for symmetry.
 6. **`glassThickness` unused for circles** — hemisphere model covers the full surface. Document this or repurpose the prop.
+7. **FluidBackground cursor interaction on main demo** — `pointer-events: auto` on `main` means cursor splats only work in the narrow side margins outside the 1100px content area. Consider whether this is sufficient or if a more granular pointer-events approach is warranted.
 
 ### Follow-ups
 
-7. **Test gaps** — no WebGL context loss tests, no engine unit tests, no splat/disposal tests. Glass has zero automated tests (shader logic untestable without WebGL).
-8. **SDF texture upgrade** — for higher-quality svgPath glass, generate an SDF texture via EDT instead of binary mask + LINEAR filtering.
-9. **Named glass presets** — `glass="crystal"`, `glass="frosted"`, `glass="orb"` for better DX.
-10. **Interior tint** — glass color tint that deepens toward center (longer optical path).
+8. **Test gaps** — no WebGL context loss tests, no engine unit tests, no splat/disposal tests. Glass and FluidBackground have zero automated tests.
+9. **SDF texture upgrade** — for higher-quality svgPath glass, generate an SDF texture via EDT instead of binary mask + LINEAR filtering.
+10. **Named glass presets** — `glass="crystal"`, `glass="frosted"`, `glass="orb"` for better DX.
 11. **Animated specular drift** — slow sinusoidal light direction wobble when cursor is idle. Nearly free (one sin/cos per frame).
+12. **FluidBackground worker offload** — move mask rasterization (Canvas2D + getImageData) to a Web Worker for zero-jank scroll updates.
 
 ## Architecture quick-reference
 
@@ -97,8 +93,9 @@ Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: 34093
   - **Rim** (all others): SDF boundary band, central-difference normals, chromatic rim refraction.
   - **Mouse-tracked specular**: `uLightScreenPos` uniform from `pointers[0]`, always-on.
   - **Transparent mode**: `uTransparent` uniform controls alpha output per model.
+- FluidBackground: evenodd SVG path mask. Outer rect = viewport, inner rounded-rect holes = excluded elements. 80ms throttled rebuilds on scroll/resize/mutation. Zero engine changes — reuses svgPath container shape pipeline.
 - Both use the same `CONTAINER_MASK` keyword for display shader compilation.
 - Material class caches compiled shader variants by sorted keyword string key.
 - Context loss/restore: handled via webglcontextlost/webglcontextrestored events. dispose() does NOT call loseContext().
 - `splatOnHover`: handleMouseMove auto-inits pointer on first hover, handleMouseLeave resets.
-- Demo page: 21 instances (2 hero title + 5 presets + 4 config w/ splatOnHover + 5 shapes + 4 effects + 1 playground). Every card has a `</>` code snippet toggle. Playground has glass controls with auto-shape.
+- Demo page: 23 instances (1 background + 2 hero title + 5 presets + 4 config w/ splatOnHover + 6 shapes w/ splatOnHover + 4 effects + 1 playground). Every card has a `</>` code snippet toggle. Playground has glass controls with auto-shape.
