@@ -135,6 +135,13 @@
 	const stableAutoPause = untrack(() => autoPause);
 	let isVisible = !stableLazy;
 
+	// Context slot management for lazy mode. Browsers cap WebGL contexts
+	// at ~16 per tab — calling loseContext() after dispose frees the slot
+	// so other instances can use it. We save the extension ref because
+	// getExtension() returns null on an already-lost context.
+	let savedLoseExt: WEBGL_lose_context | undefined;
+	let pendingRestore = false;
+
 	/**
 	 * Stable seed: generated once per mount, reused across every
 	 * teardown/rebuild so resizing produces the same initial splat pattern.
@@ -212,12 +219,54 @@
 	}
 
 	function teardown() {
+		// For lazy instances, grab the lose-context extension while the
+		// context is still alive so we can release the slot afterward.
+		if (stableLazy && canvasEl && !savedLoseExt) {
+			const gl =
+				(canvasEl.getContext('webgl2') as WebGL2RenderingContext | null) ??
+				(canvasEl.getContext('webgl') as WebGLRenderingContext | null);
+			if (gl && !gl.isContextLost()) {
+				savedLoseExt = gl.getExtension('WEBGL_lose_context') ?? undefined;
+			}
+		}
 		engine?.dispose();
 		engine = undefined;
+		// Release the context slot so other lazy instances can use it.
+		// preventDefault on contextlost is required — without it the browser
+		// won't allow restoreContext() later (per WEBGL_lose_context spec).
+		if (stableLazy && savedLoseExt && canvasEl) {
+			canvasEl.addEventListener(
+				'webglcontextlost',
+				(e) => e.preventDefault(),
+				{ once: true }
+			);
+			savedLoseExt.loseContext();
+		}
 	}
 
 	function instantiate() {
 		if (!canvasEl || cssW === 0 || cssH === 0 || !isVisible) return;
+		if (pendingRestore) return;
+
+		// If the context was lost by a previous lazy teardown, restore it
+		// before creating a new engine. restoreContext() is async — wait
+		// for webglcontextrestored before proceeding.
+		if (savedLoseExt) {
+			pendingRestore = true;
+			const ext = savedLoseExt;
+			savedLoseExt = undefined;
+			canvasEl.addEventListener(
+				'webglcontextrestored',
+				() => {
+					pendingRestore = false;
+					reconcile();
+				},
+				{ once: true }
+			);
+			ext.restoreContext();
+			return;
+		}
+
 		const dpr = window.devicePixelRatio || 1;
 		canvasEl.width = Math.max(1, Math.floor(cssW * dpr));
 		canvasEl.height = Math.max(1, Math.floor(cssH * dpr));
@@ -370,6 +419,7 @@
 			}
 			clearTimeout(resizeDebounce);
 			resizeDebounce = undefined;
+			pendingRestore = false;
 			teardown();
 		};
 	});

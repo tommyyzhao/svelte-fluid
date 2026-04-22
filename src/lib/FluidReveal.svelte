@@ -107,23 +107,57 @@
 		class: className,
 		style,
 		children,
-		// Reveal-friendly defaults (consumer can override)
+		// Reveal-friendly defaults (consumer can override).
+		// curl=0 + high velocityDissipation produces smooth, laminar dye
+		// spread without turbulent swirls — matching the reference impl.
 		densityDissipation: densityDissipationProp,
 		splatRadius = 0.4,
-		splatOnHover = true,
+		splatOnHover = false,
 		initialSplatCount = 0,
 		bloom = false,
 		sunrays = false,
 		shading = false,
-		velocityDissipation = 0.3,
-		curl = 15,
-		pointerInput = true,
+		velocityDissipation = 3,
+		curl = 0,
+		pointerInput = false,
 		backColor = { r: 0, g: 0, b: 0 },
 		...fluidProps
 	}: FluidRevealProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
 	let canvasWrapperEl: HTMLDivElement | undefined = $state(undefined);
+
+	// ---- Pointer-driven reveal splats ----
+	// We handle pointer events ourselves (pointerInput=false on the engine)
+	// so every splat uses a uniform gray color. Random per-splat colors from
+	// generateColor() create uneven intensity → visible dye patterns in the
+	// reveal mask. Uniform channels keep max(r,g,b) spatially consistent.
+	const REVEAL_DYE: RGB = { r: 0.15, g: 0.15, b: 0.15 };
+	const SPLAT_FORCE = 6000;
+	let prevPtrX = -1;
+	let prevPtrY = -1;
+
+	function handlePointerMove(e: PointerEvent) {
+		const rect = canvasWrapperEl?.getBoundingClientRect();
+		if (!rect || !inner) return;
+		const x = (e.clientX - rect.left) / rect.width;
+		const y = (e.clientY - rect.top) / rect.height;
+		if (prevPtrX < 0) {
+			prevPtrX = x;
+			prevPtrY = y;
+			return;
+		}
+		const dx = (x - prevPtrX) * SPLAT_FORCE;
+		const dy = (y - prevPtrY) * SPLAT_FORCE;
+		prevPtrX = x;
+		prevPtrY = y;
+		inner.handle.splat(x, y, dx, dy, REVEAL_DYE);
+	}
+
+	function handlePointerLeave() {
+		prevPtrX = -1;
+		prevPtrY = -1;
+	}
 
 	// ---- Auto-reveal animation ----
 	let autoRevealRaf: number | undefined;
@@ -180,9 +214,12 @@
 	onMount(() => {
 		if (autoReveal) startAutoReveal();
 
-		// Stop auto-reveal on first user interaction
 		const wrapper = canvasWrapperEl;
 		if (wrapper) {
+			// Pointer-driven reveal splats
+			wrapper.addEventListener('pointermove', handlePointerMove);
+			wrapper.addEventListener('pointerleave', handlePointerLeave);
+			// Stop auto-reveal on first user interaction
 			wrapper.addEventListener('pointerdown', handleInteraction);
 			wrapper.addEventListener('touchstart', handleInteraction, { passive: true });
 		}
@@ -190,6 +227,8 @@
 		return () => {
 			if (autoRevealRaf != null) cancelAnimationFrame(autoRevealRaf);
 			if (wrapper) {
+				wrapper.removeEventListener('pointermove', handlePointerMove);
+				wrapper.removeEventListener('pointerleave', handlePointerLeave);
 				wrapper.removeEventListener('pointerdown', handleInteraction);
 				wrapper.removeEventListener('touchstart', handleInteraction);
 			}
@@ -246,10 +285,14 @@
 	.svelte-fluid-reveal {
 		position: relative;
 		overflow: hidden;
+		width: 100%;
+		height: 100%;
 	}
 	.svelte-fluid-reveal__content {
 		position: relative;
 		z-index: 0;
+		width: 100%;
+		height: 100%;
 	}
 	.svelte-fluid-reveal__canvas {
 		position: absolute;

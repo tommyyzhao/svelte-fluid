@@ -217,7 +217,9 @@ wall-clock time.
 - **WebGL context limit.** Browsers cap simultaneous contexts at ~8–16 per tab.
   Beyond that the oldest context is silently lost. Mitigated by three layers:
   `autoPause` (default on, stops RAF when off-screen), `lazy` (full teardown on
-  scroll-out), and context loss/restore handlers (automatic reinit). See ADR
+  scroll-out with `loseContext()` to release the context slot, restored via
+  `WEBGL_lose_context.restoreContext()` + `webglcontextrestored` event on
+  rebuild), and context loss/restore handlers (automatic reinit). See ADR
   [`0019`](./decisions/0019-auto-pause-and-context-loss-recovery.md).
 - **No live state preservation across resize.** Resizing means brand-new fluid;
   the old simulation state is gone. The seed makes the *initial* splats stable

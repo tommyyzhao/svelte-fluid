@@ -13,6 +13,44 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`/ascend-fluid` demo route** — standalone replication of the Ascend-Fluid
+  reference reveal implementation. Completely decoupled from FluidEngine — its
+  own raw WebGL fluid sim with the reference's exact shaders, physics pipeline
+  (no curl, multiplicative dissipation), display shader (`vec4(1-C, 1-a)`),
+  and tsParticles background. Serves as a reference benchmark for FluidReveal.
+
+### Fixed
+
+- **FluidReveal CSS sizing** — `.svelte-fluid-reveal` and its content div now
+  set `width: 100%; height: 100%` so the component fills its parent container.
+  Previously collapsed to content intrinsic height, making most reveal cards
+  appear empty or tiny.
+- **Lazy teardown releases WebGL context slots** (`Fluid.svelte`) — after
+  `engine.dispose()`, lazy instances now call `loseContext()` via the
+  `WEBGL_lose_context` extension to free the browser's context slot (~16 cap).
+  A temporary `webglcontextlost` listener calls `preventDefault()` (required
+  by spec for later `restoreContext()`). On rebuild, `instantiate()` detects
+  the saved extension, calls `restoreContext()`, and waits for the
+  `webglcontextrestored` event before creating a new engine. Previously,
+  disposed-but-not-lost contexts consumed all slots, causing the Reveal
+  section (and any section near the bottom) to lose contexts.
+
+### Changed
+
+- **FluidReveal physics defaults** — tuned to match the Ascend-Fluid reference
+  for clean, laminar reveals without turbulent swirls:
+  - `curl`: 15 → **0** (no vorticity injection)
+  - `velocityDissipation`: 0.3 → **3** (≈95% retention/frame, matches reference)
+  - `pointerInput`: true → **false** (engine pointer handling disabled)
+  - `splatOnHover`: true → **false** (handled manually now)
+- **FluidReveal manual pointer handling** — component now tracks pointer events
+  itself and calls `handle.splat()` with a uniform gray dye color
+  `{ r: 0.15, g: 0.15, b: 0.15 }`. This replaces the engine's random-color
+  `generateColor()`, ensuring `max(r,g,b)` produces spatially consistent alpha
+  in the reveal mask.
+
+### Previously added
+
 - **`<FluidReveal>` component** — fluid simulation as an opacity mask over
   slotted content. Cursor movement injects dye which the `REVEAL` display
   shader converts to transparency, revealing children underneath. Props:
