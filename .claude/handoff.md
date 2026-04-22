@@ -1,10 +1,10 @@
-# Session Handoff — 2026-04-22 (session 6)
+# Session Handoff — 2026-04-22 (session 7)
 
 ## Project
 
 svelte-fluid — WebGL Navier-Stokes fluid simulation as a Svelte 5 component library. MIT licensed, derived from PavelDoGreat/WebGL-Fluid-Simulation.
 
-Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: 4af3b3a
+Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: 03d858f
 
 ## Current state
 
@@ -14,96 +14,127 @@ Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: 4af3b
 - Glass post-processing layer with two models: hemisphere orb (circles) and rim (all others)
 - Mouse-tracked specular: glass highlight follows cursor (always-on when glass active)
 - FluidBackground component: full-viewport fluid with DOM exclusion zones via CSS selector
-- FluidReveal component: fluid as opacity mask over slotted content with auto-reveal animation
+- FluidReveal component: fluid as opacity mask over slotted content (see "what needs attention next" — revision planned)
+- `/ascend-fluid` route: standalone reference replication, completely decoupled from FluidEngine
 - 28 ADRs, 6 learning docs, architecture.md, porting-notes.md, contributing.md
-- 31 demo instances on the main page (1 background + 2 hero title + 5 presets + 4 config + 6 shapes + 4 effects + 4 reveal + 1 playground + 4 section headers with text)
+- 31 demo instances on the main page
 - Every demo card has a `</>` toggle showing copy-pasteable code snippet
-- 4 extra routes: `/background-fluid`, `/fluid-reveal/`, `/svelte-fluid`, `/svg`
+- 5 extra routes: `/background-fluid`, `/fluid-reveal/`, `/svelte-fluid`, `/svg`, `/ascend-fluid`
 - CI runs tests + type-check + publint + build on every push. GitHub Pages auto-deploys.
 - Package ready for `npm publish --access public --provenance`.
 
 ## What this session built
 
-1. **`<FluidReveal>` component** (`src/lib/FluidReveal.svelte`): Fluid simulation as opacity mask over slotted content. Cursor movement injects dye → REVEAL display shader converts dye intensity to premultiplied alpha → content below becomes visible. Props: `coverColor` (0-255 RGB), `sensitivity` (dye multiplier), `curve` (power exponent), `fadeBack` (boolean convenience for dissipation), `fadeSpeed` (explicit dissipation override), `autoReveal` (Lissajous pre-interaction animation), `autoRevealSpeed`, `lazy`, `autoPause`. Wraps `<Fluid>` like FluidBackground does. Exported from package.
+1. **FluidReveal CSS sizing fix** (`FluidReveal.svelte`): Added `width: 100%; height: 100%` to `.svelte-fluid-reveal` and `.svelte-fluid-reveal__content`. Without this, the component collapsed to content intrinsic height instead of filling its parent container (e.g., the Card's 240px slot). The mosaic card partially worked because its grid tiles had intrinsic height; the other 3 cards appeared empty.
 
-2. **`REVEAL` engine display mode** (`FluidEngine.ts`, `shaders.ts`, `types.ts`): New `REVEAL` keyword in display shader. Config fields: `reveal` (Bucket B — keyword recompile), `revealCoverColor`/`revealSensitivity`/`revealCurve` (Bucket A — hot uniforms). Render path: skips backColor, checkerboard, glass; disables blend; outputs premultiplied `vec4(coverColor * coverAlpha, coverAlpha)`. CONTAINER_MASK interaction: `coverAlpha *= cmask` so outside shape = transparent, inside = cover with reveal.
+2. **Lazy teardown releases WebGL context slots** (`Fluid.svelte`): Added `loseContext()` via `WEBGL_lose_context` extension after `engine.dispose()` during lazy teardown. Before this fix, all 27 canvases kept their context slots even when disposed, exhausting the browser's ~16 cap and causing the Reveal section (near the page bottom) to lose contexts. Implementation details:
+   - `teardown()`: captures the extension ref while context is alive, disposes engine, adds a one-time `webglcontextlost` listener calling `preventDefault()` (required by spec for later restore), then calls `loseContext()`.
+   - `instantiate()`: if `savedLoseExt` exists, calls `restoreContext()`, listens for `webglcontextrestored` event, then retries via `reconcile()`.
+   - Active contexts dropped from 22 to ~8 (only visible instances).
 
-3. **True transparent mode** (`FluidEngine.ts`, `Fluid.svelte`): Replaced checkerboard draw with `gl.clear(0,0,0,0)` when `transparent: true`. Canvas CSS `background` automatically set to `transparent` when `transparent` or `reveal` is active (inline style override in Fluid.svelte). Enables proper alpha compositing with the page.
+3. **FluidReveal physics tuning** (`FluidReveal.svelte`): Changed defaults to match Ascend-Fluid reference for clean, laminar reveals:
+   - `curl`: 15 → 0 (no vorticity injection — eliminated turbulent swirls)
+   - `velocityDissipation`: 0.3 → 3 (≈95% retention/frame, matches reference's multiplicative 0.9)
+   - `pointerInput`: true → false (engine pointer handling disabled)
+   - `splatOnHover`: true → false (handled manually)
 
-4. **Hero title transparency** (`+page.svelte`): "SVELTE FLUID" text instances now use `transparent` mode — fluid-filled letters composite directly over the FluidBackground with no opaque rectangle.
+4. **FluidReveal manual pointer handling** (`FluidReveal.svelte`): Component now tracks `pointermove` and `pointerleave` events itself and calls `handle.splat()` with uniform gray `{ r: 0.15, g: 0.15, b: 0.15 }`. This replaces the engine's random-color `generateColor()`, ensuring `max(r,g,b)` produces spatially consistent alpha in the reveal mask.
 
-5. **Demo page pointer-events fix** (`+page.svelte`): `<main>` set to `pointer-events: none` so FluidBackground splats work across the full page. Only interactive elements re-enable: `.hero-word`, `.header-links`, `.get-started`, `.grid-2col`, `.playground-section`.
+5. **`/ascend-fluid` standalone route** (`src/routes/ascend-fluid/+page.svelte`): Direct port of Ascend-Fluid's reveal effect. Zero dependency on FluidEngine — its own raw WebGL fluid sim. Includes:
+   - Same 6 shaders as reference (vertex, advection, divergence, pressure, gradient subtraction, splat, display)
+   - Same physics: no curl, multiplicative dissipation (0.995 density, 0.9 velocity), 10 pressure iterations
+   - Same display shader: `vec4(1-C, 1-a)` with `a = pow(0.1 * max_channel, 0.1)`
+   - Same auto-animation (Lissajous pattern before first interaction)
+   - tsParticles loaded from CDN with the reference's color palette
+   - Text + gradient content behind the fluid canvas
 
-6. **`/fluid-reveal/` demo route** (`src/routes/fluid-reveal/+page.svelte`): 5 test instances: default (black cover, fade-back), custom cover color + permanent reveal, auto-reveal animation, soft reveal (high curve), circular container shape reveal zone.
+6. **CHANGELOG + architecture.md updates**: Documented all changes. Architecture.md now describes the `loseContext()` mechanism in the lazy teardown section.
 
-7. **Reveal section on main demo page** (`+page.svelte`): 4 cards with code snippets: "Scratch to reveal", "Permanent reveal", "Auto-reveal", "Soft reveal". All lazy.
+## Critical insight from this session
 
-8. **ADR-0027** (`docs/decisions/0027-fluid-reveal-mode.md`): Documents reveal shader math, premultiplied alpha, CONTAINER_MASK interaction, render path, auto-reveal as component-level, glass incompatibility.
+**The FluidReveal implementation needs a deeper revision.** Building the standalone `/ascend-fluid` route revealed that our FluidEngine is fundamentally different from the reference in ways that can't be fixed by tuning parameters:
 
-9. **9 new tests** (`src/lib/engine/__tests__/reveal.test.ts`): Alpha curve math mirror (zero/high/clamped dye, sensitivity/curve controls, linear behavior, premultiplied invariant), cover color normalization.
+| Aspect | Reference (Ascend-Fluid) | Our FluidEngine |
+|--------|--------------------------|-----------------|
+| Dissipation formula | Multiplicative: `result *= dissipation` | Divisor: `result /= (1 + dissipation * dt)` |
+| Physics pipeline | splat → divergence → pressure → grad subtract → advect | Same + curl + vorticity steps |
+| Pressure iterations | 10 | 20 (configurable) |
+| Pointer velocity | Raw pixel deltas (`5 * pixelDelta`) | Normalized + SPLAT_FORCE + aspect correction |
+| Splat color | Single fixed color for all splats | Random HSV per interaction via `generateColor()` |
+| Display shader | One shader, always reveal mode | Complex #ifdef branches (SHADING, BLOOM, etc.) |
+| Canvas DPR | 1:1 with CSS (`canvas.width = clientWidth`) | Scaled by `devicePixelRatio` |
 
-10. **Review fixes**: Auto-reveal race condition (retries if inner ref not bound), FluidRevealProps added lazy/autoPause, densityDissipation destructured to prevent spread override, main page reveal cards use lazy.
+**The user's plan for next session:** Revise the canonical `<FluidReveal>` component and the demo page Reveal presets to align with the reference. The `/ascend-fluid` route serves as the benchmark.
 
 ## Key files
 
 | File | Role |
 |------|------|
 | src/lib/engine/FluidEngine.ts (~1620 LOC) | The engine: WebGL state, physics step, render, dispose, mask texture, glass pass, reveal path, splatOnHover |
-| src/lib/Fluid.svelte (~410 LOC) | Svelte wrapper: DOM, ResizeObserver, adaptive resolution, lazy/autoPause, transparent canvas bg |
-| src/lib/FluidReveal.svelte (~260 LOC) | Fluid as opacity mask: CSS layering, convenience props, auto-reveal Lissajous, handle forwarding |
+| src/lib/Fluid.svelte (~420 LOC) | Svelte wrapper: DOM, ResizeObserver, adaptive resolution, lazy/autoPause, context slot management |
+| src/lib/FluidReveal.svelte (~300 LOC) | Fluid as opacity mask: CSS layering, manual pointer handling, convenience props, auto-reveal Lissajous |
 | src/lib/FluidBackground.svelte (~180 LOC) | Full-viewport fluid background with DOM exclusion via CSS selector |
 | src/lib/engine/gl-utils.ts | WebGL utilities: Material class (keyword shader variants), FBO create/resize/dispose, shader compile |
 | src/lib/engine/shaders.ts | All GLSL shader sources (22 shaders + glass shader + REVEAL branch + container mask branches) |
 | src/lib/engine/types.ts | FluidConfig (incl. glass + svgPath + reveal), ContainerShape (5 variants), FluidHandle |
+| src/lib/engine/pointer.ts | Pointer state, updatePointerDownData/MoveData, aspect-corrected deltas |
 | src/lib/engine/container-shapes.ts | TypeScript SDF mirrors, MaskContext, containerMask(), maskAreaFraction() |
-| src/lib/presets/*.svelte (9 files) | Preset wrapper components (shape presets accept splatOnHover) |
+| src/routes/ascend-fluid/+page.svelte (~500 LOC) | Standalone reference replication — raw WebGL, no FluidEngine |
 | src/routes/+page.svelte | Demo page with 31 instances, FluidBackground wrapper, code snippets on every card |
-| src/routes/fluid-reveal/+page.svelte | FluidReveal demo with 5 test instances |
-| src/routes/components/Card.svelte | Demo card with optional snippet toggle + Copy button |
 | docs/architecture.md | Start here for understanding the system |
 
 ## What needs attention next
 
+### Immediate (user-requested)
+
+1. **Revise `<FluidReveal>` to match `/ascend-fluid` reference** — The canonical FluidReveal component still uses our FluidEngine with parameter tuning. The `/ascend-fluid` standalone route proves that the reference's minimal solver produces cleaner results. Options:
+   a) Build a lightweight, purpose-built reveal solver (separate from FluidEngine) that uses multiplicative dissipation, no curl, raw pixel velocity, fixed splat color
+   b) Or refactor FluidEngine to support a "reveal mode" that switches to the reference's physics
+   c) The user will decide the approach next session
+
+2. **Revise demo page Reveal section** — The 4 reveal cards should use the revised FluidReveal and look as clean as `/ascend-fluid`.
+
+3. **Investigate cursor y-inversion on presets** — User reports splats spawn with inverted y-direction/position on preset cards. Investigation found pointer code looks correct (texcoord-based deltas with proper y-flip), but the bug needs visual debugging. Possible causes: DPR rounding in `scaleByPixelRatio`, aspect ratio correction in `correctDeltaY`, or an issue specific to certain canvas sizes.
+
 ### Planned features
 
-1. **npm publish** — package is ready. Run `npm publish --access public --provenance`. Create a GitHub release with tag `v0.1.0` afterward.
+4. **npm publish** — Package is ready. Run `npm publish --access public --provenance`. Create a GitHub release with tag `v0.1.0`.
 
-2. **6th preset ("Tempest")** — chaotic storm swirl on dark background. Fills the "turbulent decay" gap: `curl: 35`, `densityDissipation: 0.3`, `velocityDissipation: 0.5`, cool purple/blue/teal palette. Would make presets section symmetric (6 cards).
+5. **6th preset ("Tempest")** — Chaotic storm swirl on dark background. Fills the "turbulent decay" gap.
 
-3. **Test gaps** — Priority 1: dispose() cleanup (mock GL, ~20-30 cases), setConfig() bucket transitions (~30-40 cases), context loss/restore (~15-20 cases). Priority 2: FluidBackground DOM exclusion, glass post-processing. Recommended approach: mock GL for state machines, headless-gl for integration if warranted.
+6. **Test gaps** — Priority 1: dispose() cleanup, setConfig() bucket transitions, context loss/restore. Priority 2: FluidBackground DOM exclusion, glass post-processing.
 
-4. **Changesets setup** — `@changesets/cli` for automated CHANGELOG + npm publish + GitHub releases. The #1 operational gap for ongoing maintenance.
+7. **Changesets setup** — `@changesets/cli` for automated CHANGELOG + npm publish + GitHub releases.
 
 ### Known issues
 
-5. **31 demo instances + background** — exceeds browser's ~16 WebGL context limit. Lazy loading mitigates but fast scrolling can still hit the cap. The 2 hero title instances + 1 background are always-visible (not lazy).
-6. **FluidReveal pointer-events limitation** — canvas sits above content for alpha compositing, so interactive elements (buttons, links) in children can't receive clicks. Documented in JSDoc. Workaround: `pointerInput={false}` + manual `handle.splat()`. Proper fix requires event forwarding architecture.
-7. **`glassThickness` unused for circles** — hemisphere model covers the full surface.
-8. **Presets section has 5 items** — odd count in 2-column grid (Aurora sits alone). The Tempest preset would fix this.
+8. **31 demo instances + background** — Exceeds browser's ~16 WebGL context limit. The loseContext() fix in lazy teardown now properly releases slots, but fast scrolling can still briefly exceed the cap.
+9. **FluidReveal pointer-events limitation** — Canvas sits above content; interactive elements can't receive clicks. Documented in JSDoc.
+10. **`glassThickness` unused for circles** — Hemisphere model covers the full surface.
+11. **Presets section has 5 items** — Odd count in 2-column grid. Tempest preset would fix this.
 
 ### Follow-ups
 
-9. **Visual tuning of glass defaults** — parameters were tuned analytically, not by eye.
-10. **Named glass presets** — `glass="crystal"`, `glass="frosted"`, `glass="orb"` for better DX.
-11. **Animated specular drift** — slow sinusoidal light direction wobble when cursor is idle.
-12. **FluidBackground worker offload** — move mask rasterization to a Web Worker.
-13. **SDF texture upgrade** — for svgPath glass, generate SDF texture via EDT instead of binary mask.
-14. **FluidReveal interactive content** — proper event forwarding so revealed buttons/links work.
+12. **Visual tuning of glass defaults** — Parameters were tuned analytically, not by eye.
+13. **Named glass presets** — `glass="crystal"`, `glass="frosted"`, `glass="orb"`.
+14. **Animated specular drift** — Slow sinusoidal light direction wobble when cursor is idle.
+15. **FluidReveal interactive content** — Proper event forwarding so revealed buttons/links work.
 
 ## Architecture quick-reference
 
 - Engine is per-instance, no module-level mutable state. Each canvas gets its own WebGL context.
 - Fluid.svelte applies adaptive resolution in instantiate() before constructing the engine — caps textures to canvas pixel size, suppresses expensive effects on small canvases.
 - Resize: teardown immediately (blank canvas), debounce rebuild by 150ms.
+- Lazy teardown: dispose engine + loseContext() (releases browser context slot). Rebuild: restoreContext() + wait for webglcontextrestored event + create new engine. The engine's dispose() itself does NOT call loseContext() (invariant) — the Svelte component manages it.
 - setConfig() has 4 buckets: A (scalars incl. splatOnHover, glass params, reveal params — picked up next frame), B (keyword recompile — shading, bloom, sunrays, reveal), C (FBO rebuild), D (construct-only). Additionally, svgPath shape changes trigger mask texture rebuild, `glass` toggle triggers sceneFBO alloc/dispose, and `reveal` toggle triggers keyword recompile.
 - Container shapes: two approaches coexist:
   - **Analytical** (circle/frame/roundedRect/annulus): SDF computed per-fragment in shaders, mirrored in TypeScript for rejection sampling.
   - **Mask texture** (svgPath): rasterized via OffscreenCanvas at canvas aspect ratio, uploaded as R8/LUMINANCE texture.
 - Glass post-processing: two models (hemisphere orb for circles, rim for others). Mouse-tracked specular, transparent mode support.
 - Reveal mode: REVEAL keyword in display shader. Premultiplied alpha output `vec4(cover * alpha, alpha)`. Render path skips backColor/checkerboard/glass. CONTAINER_MASK interaction: `coverAlpha *= cmask` (outside shape = transparent). Auto-reveal is component-level Lissajous via handle.splat().
-- Transparent mode: `gl.clear(0,0,0,0)` replaces checkerboard. Canvas CSS background = transparent. Enables proper alpha compositing with page.
+- FluidReveal now handles pointer events itself (pointerInput=false on engine), injecting uniform-color splats to avoid dye pattern artifacts.
+- Transparent mode: `gl.clear(0,0,0,0)` replaces checkerboard. Canvas CSS background = transparent.
 - FluidBackground: evenodd SVG path mask. Outer rect = viewport, inner rounded-rect holes = excluded elements. 80ms throttled rebuilds.
-- FluidReveal: wraps `<Fluid>` with CSS layering (content z:0, canvas z:1). Convenience props map to engine config. Auto-reveal is a RAF loop calling handle.splat() with Lissajous coordinates.
 - Material class caches compiled shader variants by sorted keyword string key.
-- Context loss/restore: handled via webglcontextlost/webglcontextrestored events. dispose() does NOT call loseContext().
+- Context loss/restore: handled via webglcontextlost/webglcontextrestored events in the engine. dispose() does NOT call loseContext() — the Svelte component does it separately for lazy instances.
 - Demo page: `<main>` has `pointer-events: none`; interactive elements re-enable individually so FluidBackground splats work across full page width.
