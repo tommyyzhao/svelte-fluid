@@ -16,9 +16,15 @@
 	} = $props();
 
 	let showCode = $state(false);
+	let copyState = $state<'idle' | 'copied'>('idle');
+	let copyTimer: ReturnType<typeof setTimeout> | undefined;
 
 	function copySnippet() {
-		if (snippet) navigator.clipboard.writeText(snippet);
+		if (!snippet) return;
+		navigator.clipboard.writeText(snippet);
+		copyState = 'copied';
+		clearTimeout(copyTimer);
+		copyTimer = setTimeout(() => (copyState = 'idle'), 1800);
 	}
 </script>
 
@@ -54,7 +60,9 @@
 		{#if snippet && showCode}
 			<div class="snippet-wrap">
 				<pre><code>{snippet}</code></pre>
-				<button class="copy-btn" onclick={copySnippet}>Copy</button>
+				<button class="copy-btn" onclick={copySnippet} aria-live="polite">
+					{#if copyState === 'copied'}Copied!{:else}Copy{/if}
+				</button>
 			</div>
 		{/if}
 	</figcaption>

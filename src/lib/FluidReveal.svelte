@@ -28,6 +28,16 @@
 		 */
 		curve?: number;
 		/**
+		 * Solid color of the reveal cover layer (visible before scratching).
+		 * RGB components in 0–1 linear range. Default white `{ r: 1, g: 1, b: 1 }`.
+		 */
+		coverColor?: RGB;
+		/**
+		 * Accent color of the reveal fringe (visible at scratch edges).
+		 * RGB components in 0–1 linear range. Default blue `{ r: 0.2, g: 0.35, b: 0.7 }`.
+		 */
+		accentColor?: RGB;
+		/**
 		 * Whether revealed areas gradually fade back to covered.
 		 * `true` → multiplicative dissipation 0.995 (slow fade-back).
 		 * `false` → multiplicative dissipation 1.0 (permanent reveal).
@@ -114,6 +124,8 @@
 		curl = 0,
 		pointerInput = false,
 		backColor = { r: 0, g: 0, b: 0 },
+		coverColor,
+		accentColor,
 		...fluidProps
 	}: FluidRevealProps = $props();
 
@@ -121,9 +133,19 @@
 	let canvasWrapperEl: HTMLDivElement | undefined = $state(undefined);
 
 	// ---- Pointer-driven reveal splats ----
-	// Non-uniform dye color: display shader inverts to (1-r, 1-g, 1-b),
-	// producing iridescent blue-tinted fringes at reveal edges.
-	const REVEAL_DYE: RGB = { r: 0.95, g: 0.84, b: 0.68 };
+	// Dye color = coverColor - accentColor. The display shader outputs
+	// coverColor - c, so at full dye the fringe matches the accent color.
+	const DEFAULT_COVER: RGB = { r: 1, g: 1, b: 1 };
+	const DEFAULT_ACCENT: RGB = { r: 0.05, g: 0.16, b: 0.32 };
+	let revealDye = $derived.by(() => {
+		const cv = coverColor ?? DEFAULT_COVER;
+		const ac = accentColor ?? DEFAULT_ACCENT;
+		return {
+			r: Math.max(0, Math.min(1, cv.r - ac.r)),
+			g: Math.max(0, Math.min(1, cv.g - ac.g)),
+			b: Math.max(0, Math.min(1, cv.b - ac.b))
+		};
+	});
 	const SPLAT_FORCE = 6000;
 	let prevPtrX = -1;
 	let prevPtrY = -1;
@@ -143,7 +165,7 @@
 		const dy = (y - prevPtrY) * SPLAT_FORCE;
 		prevPtrX = x;
 		prevPtrY = y;
-		inner.handle.splat(x, y, dx, dy, REVEAL_DYE);
+		inner.handle.splat(x, y, dx, dy, revealDye);
 	}
 
 	function handlePointerLeave() {
@@ -255,6 +277,7 @@
 			reveal={true}
 			revealSensitivity={sensitivity}
 			revealCurve={curve}
+			revealCoverColor={coverColor}
 			densityDissipation={dissipation}
 			{splatRadius}
 			{splatOnHover}

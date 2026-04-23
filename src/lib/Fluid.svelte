@@ -120,6 +120,7 @@
 		reveal,
 		revealSensitivity,
 		revealCurve,
+		revealCoverColor,
 		lazy = false,
 		autoPause = true,
 		...rest
@@ -209,6 +210,7 @@
 			reveal,
 			revealSensitivity,
 			revealCurve,
+			revealCoverColor,
 			pointerInput,
 			splatOnHover,
 			seed: stableSeed,

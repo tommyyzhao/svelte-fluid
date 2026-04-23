@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import {
 		AnnularFluid,
 		Aurora,
@@ -15,7 +15,7 @@
 		SvgPathFluid,
 		ToroidalTempest
 	} from '$lib/index.js';
-	import type { ContainerShape } from '$lib/engine/types.js';
+	import type { ContainerShape, FluidHandle } from '$lib/engine/types.js';
 	import Card from './components/Card.svelte';
 	import ControlPanel, { D } from './components/ControlPanel.svelte';
 	import ShapePreview from './components/ShapePreview.svelte';
@@ -78,8 +78,8 @@
 	let revealAutoReveal = $state(D.revealAutoReveal);
 	let revealAutoRevealSpeed = $state(D.revealAutoRevealSpeed);
 	let revealContent = $state<'text' | 'mosaic'>('text');
-	let revealColor1 = $state('#667eea');
-	let revealColor2 = $state('#764ba2');
+	let revealCoverColor = $state(D.revealCoverColor);
+	let revealAccentColor = $state(D.revealAccentColor);
 	let splatOnHover = $state(D.splatOnHover);
 	let randomSplatCount = $state(D.randomSplatCount);
 	let randomSplatSpread = $state(D.randomSplatSpread);
@@ -93,7 +93,11 @@
 	let canvasHeight = $state(0);
 	let loadedPreset = $state('');
 
+	// svgPath shapes loaded via Customize — cleared when the user picks a shape manually.
+	let customContainerShape = $state<ContainerShape | null>(null);
+
 	let containerShape = $derived.by(() => {
+		if (customContainerShape) return customContainerShape;
 		if (containerShapeType === 'circle') return { type: 'circle' as const, cx: containerCx, cy: containerCy, radius: containerRadius };
 		if (containerShapeType === 'frame') return { type: 'frame' as const, cx: containerCx, cy: containerCy, halfW: containerHalfW, halfH: containerHalfH, innerCornerRadius: containerInnerCornerRadius, outerHalfW: containerOuterHalfW, outerHalfH: containerOuterHalfH, outerCornerRadius: containerOuterCornerRadius };
 		if (containerShapeType === 'roundedRect') return { type: 'roundedRect' as const, cx: containerCx, cy: containerCy, halfW: containerHalfW, halfH: containerHalfH, cornerRadius: containerCornerRadius };
@@ -103,14 +107,46 @@
 
 	let backColor = $derived({ r: backColorR, g: backColorG, b: backColorB });
 
+	function hexToRgb01(hex: string) {
+		const n = parseInt(hex.slice(1), 16);
+		return { r: ((n >> 16) & 255) / 255, g: ((n >> 8) & 255) / 255, b: (n & 255) / 255 };
+	}
+	let revealCoverRgb = $derived(hexToRgb01(revealCoverColor));
+	let revealAccentRgb = $derived(hexToRgb01(revealAccentColor));
+
 	$effect(() => {
 		if (glass && containerShapeType === 'none') {
 			containerShapeType = 'circle';
 		}
 	});
 
-	type FluidRef = { handle: { randomSplats: (n: number) => void } } | undefined;
-	let controlsRef = $state<FluidRef>(undefined);
+	// Clear svgPath override when the user picks a shape from the dropdown.
+	$effect(() => {
+		containerShapeType; // track
+		if (customContainerShape) customContainerShape = null;
+	});
+
+	// Snapshot fluid physics when switching to Reveal mode, restore on switch back.
+	let fluidSnapshot: { curl: number; velocityDissipation: number; splatRadius: number; bloom: boolean; sunrays: boolean; shading: boolean } | null = null;
+	let prevMode = 'fluid';
+	$effect(() => {
+		const mode = playgroundMode;
+		untrack(() => {
+			if (mode === prevMode) return;
+			const oldMode = prevMode;
+			prevMode = mode;
+			if (mode === 'reveal' && oldMode === 'fluid') {
+				fluidSnapshot = { curl, velocityDissipation, splatRadius, bloom, sunrays, shading };
+				curl = 0; velocityDissipation = 0.9; splatRadius = 0.2;
+				bloom = false; sunrays = false; shading = false;
+			} else if (mode === 'fluid' && oldMode === 'reveal' && fluidSnapshot) {
+				({ curl, velocityDissipation, splatRadius, bloom, sunrays, shading } = fluidSnapshot);
+				fluidSnapshot = null;
+			}
+		});
+	});
+
+	let controlsRef = $state<{ handle: FluidHandle } | undefined>(undefined);
 
 	// ---- "Customize" / loadConfig ----
 	type PlaygroundConfig = Record<string, unknown>;
@@ -142,6 +178,9 @@
 		revealSensitivity = D.revealSensitivity; revealCurve = D.revealCurve;
 		revealFadeBack = D.revealFadeBack; revealAutoReveal = D.revealAutoReveal;
 		revealAutoRevealSpeed = D.revealAutoRevealSpeed;
+		revealCoverColor = D.revealCoverColor;
+		revealAccentColor = D.revealAccentColor;
+		customContainerShape = null;
 		showShapePreview = false; loadedPreset = '';
 	}
 
@@ -149,7 +188,14 @@
 		// Reset everything to defaults first, then apply overrides.
 		resetAllDefaults();
 		loadedPreset = name;
-		playgroundMode = 'fluid';
+		const targetMode = (config.playgroundMode as 'fluid' | 'reveal') ?? 'fluid';
+		playgroundMode = targetMode;
+		prevMode = targetMode; // prevent snapshot $effect from firing
+		if (targetMode === 'reveal') {
+			fluidSnapshot = null;
+			curl = 0; velocityDissipation = 0.9; splatRadius = 0.2;
+			bloom = false; sunrays = false; shading = false;
+		}
 		if (config.curl !== undefined) curl = config.curl as number;
 		if (config.splatRadius !== undefined) splatRadius = config.splatRadius as number;
 		if (config.splatForce !== undefined) splatForce = config.splatForce as number;
@@ -184,7 +230,9 @@
 		const bc = config.backColor as { r: number; g: number; b: number } | undefined;
 		if (bc) { backColorR = bc.r; backColorG = bc.g; backColorB = bc.b; }
 		const cs = config.containerShape as ContainerShape | undefined;
-		if (cs && cs.type !== 'svgPath') {
+		if (cs && cs.type === 'svgPath') {
+			customContainerShape = cs;
+		} else if (cs) {
 			containerShapeType = cs.type;
 			if ('cx' in cs) containerCx = cs.cx ?? D.containerCx;
 			if ('cy' in cs) containerCy = cs.cy ?? D.containerCy;
@@ -203,6 +251,11 @@
 				containerOuterRadius = cs.outerRadius;
 			}
 		}
+		if (config.revealSensitivity !== undefined) revealSensitivity = config.revealSensitivity as number;
+		if (config.revealCurve !== undefined) revealCurve = config.revealCurve as number;
+		if (config.revealFadeBack !== undefined) revealFadeBack = config.revealFadeBack as boolean;
+		if (config.revealAutoReveal !== undefined) revealAutoReveal = config.revealAutoReveal as boolean;
+		if (config.revealAutoRevealSpeed !== undefined) revealAutoRevealSpeed = config.revealAutoRevealSpeed as number;
 		document.getElementById('playground')?.scrollIntoView({ behavior: 'smooth' });
 	}
 
@@ -415,7 +468,41 @@
 			splatRadius: 0.25, splatForce: 5000, shading: true, bloom: true, sunrays: true,
 			randomSplatRate: 2.5, randomSplatCount: 2,
 			backColor: { r: 0, g: 0, b: 0 }
-		}
+		},
+		Default: {},
+		Circle: { containerShape: { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }, splatOnHover: true },
+		Frame: { containerShape: { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.2 }, splatOnHover: true },
+		Annulus: { containerShape: { type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.4 }, splatOnHover: true },
+		'Rounded frame': { containerShape: { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.2, innerCornerRadius: 0.06 }, splatOnHover: true },
+		'Portal ring': {
+			containerShape: { type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.42 },
+			glass: true, glassThickness: 0.05, glassRefraction: 0.6, glassReflectivity: 0.15, glassChromatic: 0.7,
+			backColor: { r: 2, g: 4, b: 14 }, curl: 40, densityDissipation: 0.3, velocityDissipation: 0.1,
+			splatRadius: 0.3, splatForce: 5000, shading: true, bloom: true, sunrays: false,
+			randomSplatRate: 1.5, randomSplatSpread: 0.6, randomSplatSwirl: 400
+		},
+		'Glass frame': {
+			containerShape: { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.22, halfH: 0.22, innerCornerRadius: 0.06, outerHalfW: 0.48, outerHalfH: 0.48, outerCornerRadius: 0.04 },
+			glass: true, glassThickness: 0.06, glassRefraction: 0.5, glassReflectivity: 0.18, glassChromatic: 0.4,
+			backColor: { r: 6, g: 3, b: 16 }, curl: 25, densityDissipation: 0.25, velocityDissipation: 0.1,
+			splatRadius: 0.35, splatForce: 5000, shading: true, bloom: true, bloomIntensity: 1.0, sunrays: false,
+			randomSplatRate: 3.0, randomSplatCount: 2, randomSplatSpread: 1.5, randomSplatSwirl: 350
+		},
+		'SVG path': {
+			containerShape: { type: 'svgPath', d: 'M55 2 L30 42 L48 42 L25 70 L50 98 L75 58 L57 58 L80 30 Z' },
+			curl: 30, densityDissipation: 0.2, velocityDissipation: 0.1,
+			splatRadius: 0.3, splatForce: 5000, shading: true, bloom: true, sunrays: false,
+			randomSplatRate: 0.5, randomSplatCount: 2, randomSplatSpread: 2.0, randomSplatSwirl: 400,
+			backColor: { r: 4, g: 2, b: 12 }, splatOnHover: true
+		},
+		'Text glyph': {
+			containerShape: { type: 'svgPath', text: '&', font: 'bold 200px Georgia, serif', fillRule: 'evenodd' },
+			splatOnHover: true
+		},
+		'Scratch to reveal': { playgroundMode: 'reveal' },
+		'Permanent reveal': { playgroundMode: 'reveal', revealFadeBack: false },
+		'Auto-reveal': { playgroundMode: 'reveal', revealAutoReveal: true, revealAutoRevealSpeed: 0.8, revealFadeBack: false, revealSensitivity: 0.15 },
+		'Soft reveal': { playgroundMode: 'reveal', revealCurve: 0.5, revealSensitivity: 0.2, splatRadius: 0.3 }
 	};
 
 	const SCRIPT_OPEN = '<' + 'script lang="ts">';
@@ -427,6 +514,9 @@
 		'',
 		'<div style="height: 100vh"><LavaLamp /></div>'
 	].join('\n');
+
+	let showBgCode = $state(false);
+	const bgSnippet = `<FluidBackground\n  exclude=".card, .get-started, .playground-canvas, .panel"\n  excludeRadius={12}\n  splatOnHover\n  colorful\n  shading\n  bloom\n  bloomIterations={4}\n  bloomIntensity={0.5}\n  sunrays={false}\n  densityDissipation={0.4}\n  velocityDissipation={0.3}\n  curl={50}\n  splatRadius={0.05}\n  splatForce={3000}\n>\n  <!-- page content -->\n</FluidBackground>`;
 </script>
 
 <svelte:head>
@@ -453,6 +543,21 @@
 	splatForce={3000}
 >
 <main>
+	<div class="bg-code-wrapper">
+		<button
+			class="bg-code-toggle"
+			class:active={showBgCode}
+			onclick={() => (showBgCode = !showBgCode)}
+			aria-label="Show FluidBackground code"
+			title="FluidBackground code"
+		>&lt;/&gt;</button>
+		{#if showBgCode}
+			<div class="bg-code-panel">
+				<pre><code>{bgSnippet}</code></pre>
+				<button class="bg-copy-btn" onclick={() => navigator.clipboard.writeText(bgSnippet)}>Copy</button>
+			</div>
+		{/if}
+	</div>
 	<header>
 		<div class="hero-title" role="heading" aria-level="1" aria-label="svelte-fluid">
 			<div class="hero-word">
@@ -580,7 +685,7 @@
 			</p>
 		</header>
 		<div class="grid-2col">
-			<Card title="Default" description="Out-of-the-box look with bloom, sunrays, and shading." snippet={'<Fluid />'}>
+			<Card title="Default" description="Out-of-the-box look with bloom, sunrays, and shading." onCustomize={() => loadConfig(PRESET_CONFIGS['Default'], 'Default')} snippet={'<Fluid />'}>
 				<Fluid
 					seed={1234}
 					initialSplatCount={12}
@@ -638,19 +743,19 @@
 			</p>
 		</header>
 		<div class="grid-2col">
-			<Card title="Circle" description="Fluid swirling inside a circular boundary." snippet={`<Fluid\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5, radius: 0.45\n  }}\n/>`}>
+			<Card title="Circle" description="Fluid swirling inside a circular boundary." onCustomize={() => loadConfig(PRESET_CONFIGS['Circle'], 'Circle')} snippet={`<Fluid\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5, radius: 0.45\n  }}\n/>`}>
 				<CircularFluid seed={606} lazy splatOnHover aria-label="Circular fluid shape demo" />
 			</Card>
-			<Card title="Frame" description="Fluid around a rectangular inner cutout." snippet={`<Fluid\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.2, halfH: 0.2\n  }}\n/>`}>
+			<Card title="Frame" description="Fluid around a rectangular inner cutout." onCustomize={() => loadConfig(PRESET_CONFIGS['Frame'], 'Frame')} snippet={`<Fluid\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.2, halfH: 0.2\n  }}\n/>`}>
 				<FrameFluid seed={707} lazy splatOnHover aria-label="Frame fluid shape demo" />
 			</Card>
-			<Card title="Annulus" description="Ring-vortex fluid between two concentric circles." snippet={`<Fluid\n  containerShape={{\n    type: 'annulus',\n    cx: 0.5, cy: 0.5,\n    innerRadius: 0.15, outerRadius: 0.4\n  }}\n/>`}>
+			<Card title="Annulus" description="Ring-vortex fluid between two concentric circles." onCustomize={() => loadConfig(PRESET_CONFIGS['Annulus'], 'Annulus')} snippet={`<Fluid\n  containerShape={{\n    type: 'annulus',\n    cx: 0.5, cy: 0.5,\n    innerRadius: 0.15, outerRadius: 0.4\n  }}\n/>`}>
 				<AnnularFluid seed={909} lazy splatOnHover aria-label="Annular fluid shape demo" />
 			</Card>
-			<Card title="Rounded frame" description="Frame with rounded inner corners via innerCornerRadius." snippet={`<Fluid\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.2, halfH: 0.2,\n    innerCornerRadius: 0.06\n  }}\n/>`}>
+			<Card title="Rounded frame" description="Frame with rounded inner corners via innerCornerRadius." onCustomize={() => loadConfig(PRESET_CONFIGS['Rounded frame'], 'Rounded frame')} snippet={`<Fluid\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.2, halfH: 0.2,\n    innerCornerRadius: 0.06\n  }}\n/>`}>
 				<FrameFluid seed={818} lazy splatOnHover innerCornerRadius={0.06} aria-label="Rounded frame shape demo" />
 			</Card>
-			<Card title="SVG path" description="Fluid shaped by an arbitrary SVG path — a lightning bolt." snippet={`<Fluid\n  containerShape={{\n    type: 'svgPath',\n    d: 'M55 2 L30 42 L48 42 L25 70 ...'\n  }}\n/>`}>
+			<Card title="SVG path" description="Fluid shaped by an arbitrary SVG path — a lightning bolt." onCustomize={() => loadConfig(PRESET_CONFIGS['SVG path'], 'SVG path')} snippet={`<Fluid\n  containerShape={{\n    type: 'svgPath',\n    d: 'M55 2 L30 42 L48 42 L25 70 ...'\n  }}\n/>`}>
 				<Fluid
 					seed={808}
 					lazy
@@ -673,7 +778,7 @@
 					aria-label="SVG path fluid shape demo"
 				/>
 			</Card>
-			<Card title="Text glyph" description="Fluid shaped by a bold ampersand via Canvas 2D text rasterization." snippet={`<Fluid\n  containerShape={{\n    type: 'svgPath',\n    text: '&',\n    font: 'bold 200px Georgia, serif',\n    fillRule: 'evenodd'\n  }}\n/>`}>
+			<Card title="Text glyph" description="Fluid shaped by a bold ampersand via Canvas 2D text rasterization." onCustomize={() => loadConfig(PRESET_CONFIGS['Text glyph'], 'Text glyph')} snippet={`<Fluid\n  containerShape={{\n    type: 'svgPath',\n    text: '&',\n    font: 'bold 200px Georgia, serif',\n    fillRule: 'evenodd'\n  }}\n/>`}>
 				<SvgPathFluid seed={1010} lazy splatOnHover aria-label="Text glyph fluid shape demo" />
 			</Card>
 		</div>
@@ -743,7 +848,7 @@
 					aria-label="Soft lens effect demo"
 				/>
 			</Card>
-			<Card title="Portal ring" description="Chromatic rim refraction on an annulus. Rainbow fringes at both edges." snippet={`<Fluid\n  glass\n  glassThickness={0.05}\n  glassRefraction={0.6}\n  glassChromatic={0.7}\n  containerShape={{\n    type: 'annulus',\n    cx: 0.5, cy: 0.5,\n    innerRadius: 0.15, outerRadius: 0.42\n  }}\n/>`}>
+			<Card title="Portal ring" description="Chromatic rim refraction on an annulus. Rainbow fringes at both edges." onCustomize={() => loadConfig(PRESET_CONFIGS['Portal ring'], 'Portal ring')} snippet={`<Fluid\n  glass\n  glassThickness={0.05}\n  glassRefraction={0.6}\n  glassChromatic={0.7}\n  containerShape={{\n    type: 'annulus',\n    cx: 0.5, cy: 0.5,\n    innerRadius: 0.15, outerRadius: 0.42\n  }}\n/>`}>
 				<Fluid
 					seed={1313}
 					lazy
@@ -770,7 +875,7 @@
 					aria-label="Portal ring glass effect demo"
 				/>
 			</Card>
-			<Card title="Glass frame" description="Rim refraction along a rounded picture frame. Chromatic fringes at the walls." snippet={`<Fluid\n  glass\n  glassThickness={0.06}\n  glassRefraction={0.5}\n  glassChromatic={0.4}\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.22, halfH: 0.22,\n    innerCornerRadius: 0.06\n  }}\n/>`}>
+			<Card title="Glass frame" description="Rim refraction along a rounded picture frame. Chromatic fringes at the walls." onCustomize={() => loadConfig(PRESET_CONFIGS['Glass frame'], 'Glass frame')} snippet={`<Fluid\n  glass\n  glassThickness={0.06}\n  glassRefraction={0.5}\n  glassChromatic={0.4}\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.22, halfH: 0.22,\n    innerCornerRadius: 0.06\n  }}\n/>`}>
 				<Fluid
 					seed={1414}
 					lazy
@@ -811,14 +916,14 @@
 			</p>
 		</header>
 		<div class="grid-2col">
-			<Card title="Scratch to reveal" description="Move your cursor to uncover the gradient. Sharp iridescent edges fade back over time." snippet={`<FluidReveal>\n  <div style="width: 100%; height: 100%;\n    background: linear-gradient(\n      135deg, #667eea 0%, #764ba2 100%);\n    display: flex; align-items: center;\n    justify-content: center;\n    border-radius: 12px;">\n    <span>Revealed!</span>\n  </div>\n</FluidReveal>`}>
+			<Card title="Scratch to reveal" description="Move your cursor to uncover the gradient. Sharp iridescent edges fade back over time." onCustomize={() => loadConfig(PRESET_CONFIGS['Scratch to reveal'], 'Scratch to reveal')} snippet={`<FluidReveal>\n  <div style="width: 100%; height: 100%;\n    background: linear-gradient(\n      135deg, #667eea 0%, #764ba2 100%);\n    display: flex; align-items: center;\n    justify-content: center;\n    border-radius: 12px;">\n    <span>Revealed!</span>\n  </div>\n</FluidReveal>`}>
 				<FluidReveal lazy>
 					<div class="reveal-content reveal-gradient">
 						<span class="reveal-label">Revealed!</span>
 					</div>
 				</FluidReveal>
 			</Card>
-			<Card title="Permanent reveal" description="Set fadeBack={false} for a scratch-card effect. Once revealed, content stays visible." snippet={`<FluidReveal fadeBack={false}>\n  <div style="display: grid;\n    grid-template-columns: repeat(3, 1fr);\n    gap: 6px; padding: 10px;\n    width: 100%; height: 100%;\n    background: #1a1a2e;\n    border-radius: 12px;">\n    {#each Array(9) as _, i}\n      <div style="aspect-ratio: 1;\n        border-radius: 6px;\n        background: hsl({i * 40}, 65%, 55%)" />\n    {/each}\n  </div>\n</FluidReveal>`}>
+			<Card title="Permanent reveal" description="Set fadeBack={false} for a scratch-card effect. Once revealed, content stays visible." onCustomize={() => loadConfig(PRESET_CONFIGS['Permanent reveal'], 'Permanent reveal')} snippet={`<FluidReveal fadeBack={false}>\n  <div style="display: grid;\n    grid-template-columns: repeat(3, 1fr);\n    gap: 6px; padding: 10px;\n    width: 100%; height: 100%;\n    background: #1a1a2e;\n    border-radius: 12px;">\n    {#each Array(9) as _, i}\n      <div style="aspect-ratio: 1;\n        border-radius: 6px;\n        background: hsl({i * 40}, 65%, 55%)" />\n    {/each}\n  </div>\n</FluidReveal>`}>
 				<FluidReveal
 					lazy
 					fadeBack={false}
@@ -830,7 +935,7 @@
 					</div>
 				</FluidReveal>
 			</Card>
-			<Card title="Auto-reveal" description="Lissajous animation reveals content before interaction. Touch or click to take control." snippet={`<FluidReveal\n  autoReveal\n  autoRevealSpeed={0.8}\n  fadeBack={false}\n  sensitivity={0.15}\n>\n  <div style="width: 100%; height: 100%;\n    background: linear-gradient(\n      135deg, #0f0c29, #302b63, #24243e);\n    display: flex; align-items: center;\n    justify-content: center;\n    border-radius: 12px; position: relative;">\n    <span>Auto Reveal</span>\n    <!-- colored dots positioned absolutely -->\n  </div>\n</FluidReveal>`}>
+			<Card title="Auto-reveal" description="Lissajous animation reveals content before interaction. Touch or click to take control." onCustomize={() => loadConfig(PRESET_CONFIGS['Auto-reveal'], 'Auto-reveal')} snippet={`<FluidReveal\n  autoReveal\n  autoRevealSpeed={0.8}\n  fadeBack={false}\n  sensitivity={0.15}\n>\n  <div style="width: 100%; height: 100%;\n    background: linear-gradient(\n      135deg, #0f0c29, #302b63, #24243e);\n    display: flex; align-items: center;\n    justify-content: center;\n    border-radius: 12px; position: relative;">\n    <span>Auto Reveal</span>\n    <!-- colored dots positioned absolutely -->\n  </div>\n</FluidReveal>`}>
 				<FluidReveal
 					lazy
 					autoReveal
@@ -851,7 +956,7 @@
 					</div>
 				</FluidReveal>
 			</Card>
-			<Card title="Soft reveal" description="Higher curve values create softer, more gradual reveal edges." snippet={`<FluidReveal\n  curve={0.5}\n  sensitivity={0.2}\n  splatRadius={0.3}\n>\n  <div style="width: 100%; height: 100%;\n    background: linear-gradient(\n      135deg, #f093fb 0%,\n      #f5576c 50%, #4facfe 100%);\n    display: flex; align-items: center;\n    justify-content: center;\n    border-radius: 12px;">\n    <span>Soft Edges</span>\n  </div>\n</FluidReveal>`}>
+			<Card title="Soft reveal" description="Higher curve values create softer, more gradual reveal edges." onCustomize={() => loadConfig(PRESET_CONFIGS['Soft reveal'], 'Soft reveal')} snippet={`<FluidReveal\n  curve={0.5}\n  sensitivity={0.2}\n  splatRadius={0.3}\n>\n  <div style="width: 100%; height: 100%;\n    background: linear-gradient(\n      135deg, #f093fb 0%,\n      #f5576c 50%, #4facfe 100%);\n    display: flex; align-items: center;\n    justify-content: center;\n    border-radius: 12px;">\n    <span>Soft Edges</span>\n  </div>\n</FluidReveal>`}>
 				<FluidReveal
 					lazy
 					curve={0.5}
@@ -884,6 +989,8 @@
 					fadeBack={revealFadeBack}
 					autoReveal={revealAutoReveal}
 					autoRevealSpeed={revealAutoRevealSpeed}
+					coverColor={revealCoverRgb}
+					accentColor={revealAccentRgb}
 					{splatRadius}
 					{curl}
 					velocityDissipation={velocityDissipation}
@@ -895,7 +1002,7 @@
 							{/each}
 						</div>
 					{:else}
-						<div class="playground-reveal-content" style="background: linear-gradient(135deg, {revealColor1} 0%, {revealColor2} 100%);">
+						<div class="playground-reveal-content reveal-gradient">
 							<span class="playground-reveal-label">Hello World</span>
 						</div>
 					{/if}
@@ -982,8 +1089,8 @@
 			bind:revealAutoReveal
 			bind:revealAutoRevealSpeed
 			bind:revealContent
-			bind:revealColor1
-			bind:revealColor2
+			bind:revealCoverColor
+			bind:revealAccentColor
 			bind:backColorR
 			bind:backColorG
 			bind:backColorB
@@ -1053,6 +1160,65 @@
 		flex-direction: column;
 		gap: 48px;
 		pointer-events: none;
+	}
+
+	.bg-code-wrapper {
+		position: fixed;
+		top: 14px;
+		right: 14px;
+		z-index: 100;
+		pointer-events: auto;
+	}
+	.bg-code-toggle {
+		padding: 4px 10px;
+		font-family: monospace;
+		font-size: 0.8rem;
+		background: rgba(20, 20, 22, 0.85);
+		border: 1px solid #333;
+		border-radius: 6px;
+		color: #666;
+		cursor: pointer;
+		transition: all 120ms;
+	}
+	.bg-code-toggle:hover,
+	.bg-code-toggle.active {
+		color: #cce6ff;
+		border-color: #555;
+	}
+	.bg-code-panel {
+		position: absolute;
+		top: calc(100% + 6px);
+		right: 0;
+		width: 340px;
+		max-height: 360px;
+		overflow: auto;
+		background: #0d0d0d;
+		border: 1px solid #222;
+		border-radius: 8px;
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+	}
+	.bg-code-panel pre {
+		margin: 0;
+		padding: 10px 12px;
+		font-size: 0.72rem;
+		line-height: 1.5;
+		color: #b0c4de;
+	}
+	.bg-copy-btn {
+		position: absolute;
+		top: 6px;
+		right: 6px;
+		padding: 2px 8px;
+		font-size: 0.65rem;
+		background: #222;
+		border: 1px solid #333;
+		border-radius: 3px;
+		color: #888;
+		cursor: pointer;
+	}
+	.bg-copy-btn:hover {
+		color: #fff;
+		border-color: #555;
 	}
 
 	header {

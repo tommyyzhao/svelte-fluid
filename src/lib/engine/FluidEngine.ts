@@ -119,7 +119,8 @@ const DEFAULTS: ResolvedConfig = {
 	GLASS_CHROMATIC: 0.15,
 	REVEAL: false,
 	REVEAL_SENSITIVITY: 0.1,
-	REVEAL_CURVE: 0.1
+	REVEAL_CURVE: 0.1,
+	REVEAL_COVER_COLOR: { r: 1, g: 1, b: 1 }
 };
 function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): ResolvedConfig {
 	const out: ResolvedConfig = { ...base };
@@ -187,6 +188,7 @@ function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): Re
 
 	if (input.revealSensitivity !== undefined) out.REVEAL_SENSITIVITY = input.revealSensitivity;
 	if (input.revealCurve !== undefined) out.REVEAL_CURVE = input.revealCurve;
+	if (input.revealCoverColor !== undefined) out.REVEAL_COVER_COLOR = input.revealCoverColor;
 	return out;
 }
 
@@ -1336,6 +1338,8 @@ export class FluidEngine implements FluidHandle {
 		if (this.config.REVEAL) {
 			gl.uniform1f(this.displayMaterial.uniforms.uRevealSensitivity, this.config.REVEAL_SENSITIVITY);
 			gl.uniform1f(this.displayMaterial.uniforms.uRevealCurve, this.config.REVEAL_CURVE);
+			const cc = this.config.REVEAL_COVER_COLOR;
+			gl.uniform3f(this.displayMaterial.uniforms.uRevealCoverColor, cc.r, cc.g, cc.b);
 		}
 		this.blit(target);
 	}

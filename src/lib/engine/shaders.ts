@@ -149,6 +149,7 @@ export const displayShaderSource = `
 
     uniform float uRevealSensitivity;
     uniform float uRevealCurve;
+    uniform vec3 uRevealCoverColor;
 #endif
 
     vec3 linearToGamma (vec3 color) {
@@ -255,10 +256,7 @@ export const displayShaderSource = `
     #ifdef REVEAL
         float revealAmount = clamp(pow(clamp(a * uRevealSensitivity, 0.0, 1.0), uRevealCurve), 0.0, 1.0);
         float alpha = (1.0 - revealAmount) * cmask;
-        // Non-premultiplied inverted dye: bright fringe where dye is faint,
-        // transparent where dye is dense. Browser premultipliedAlpha clamps
-        // RGB to alpha, producing the reference's sharp iridescent edge.
-        gl_FragColor = vec4(1.0 - c, alpha);
+        gl_FragColor = vec4(max(uRevealCoverColor - c, vec3(0.0)), alpha);
     #else
         gl_FragColor = vec4(c, a);
     #endif
