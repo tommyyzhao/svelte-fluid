@@ -1,87 +1,93 @@
-# Session Handoff — 2026-04-23 (session 9)
+# Session Handoff — 2026-04-23 (session 10)
 
 ## Project
 
 svelte-fluid — WebGL Navier-Stokes fluid simulation as a Svelte 5 component library. MIT licensed, derived from PavelDoGreat/WebGL-Fluid-Simulation.
 
-Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: ccfb57d
+Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: faddc47
 
 ## Current state
 
 - 134 tests, all passing. 0 type errors. Build + publint clean.
-- 10 presets: LavaLamp (glass+roundedRect), Plasma (inward jets, rectangular), InkInWater (dark water+bloom), FrozenSwirl (circle), Aurora, ToroidalTempest (annulus+high-velocity ring), CircularFluid, FrameFluid, AnnularFluid, SvgPathFluid (ampersand glyph)
+- 10 presets: LavaLamp, Plasma, InkInWater, FrozenSwirl, Aurora, ToroidalTempest, CircularFluid, FrameFluid, AnnularFluid, SvgPathFluid
 - 5 container shapes: circle, frame, roundedRect, annulus, svgPath (mask texture)
-- Glass post-processing: hemisphere dome (circles, with rim effects via glassThickness) and rim model (all others)
-- FluidReveal: multiplicative dissipation, inverted-dye display shader, iridescent fringes
+- Glass post-processing: hemisphere dome (circles) and rim model (all others)
+- FluidReveal: multiplicative dissipation, customizable cover/accent colors (ADR-0029), iridescent fringes
 - FluidBackground: full-viewport fluid with DOM exclusion zones
 - 29 ADRs, 6 learning docs, architecture.md, porting-notes.md, contributing.md
 - ~28 demo instances on the main page (27 cards + FluidBackground)
-- Every demo card has a `</>` code toggle + "Customize" button (presets, configs, glass cards)
-- Playground with Fluid/Reveal mode toggle, accordion ControlPanel, URL hash state sharing
+- Every demo card has `</>` code toggle + "Customize" button
+- Playground with Fluid/Reveal mode toggle, accordion ControlPanel, URL hash state, `</>` code preview
+- Floating `</>` button for FluidBackground code snippet
 - 4 extra routes: `/background-fluid`, `/fluid-reveal/`, `/svelte-fluid`, `/svg`
 - CI runs tests + type-check + publint + build on every push. GitHub Pages auto-deploys.
 - Package ready for `npm publish --access public --provenance`.
 
 ## What this session built
 
-1. **Plasma reverted to original design** — removed annulus container, restored 8 inward compass-point jets on rectangular canvas with `randomSplatRate={0.4}`, no container shape.
+1. **Reveal cover/accent color props** (ADR-0029):
+   - `revealCoverColor: RGB` added to FluidConfig (Bucket A). Shader changed from `1.0 - c` to `max(uRevealCoverColor - c, vec3(0.0))`. Default white → pixel-identical behavior.
+   - `FluidReveal.coverColor` and `FluidReveal.accentColor` props. Dye injection derived as `max(cover - accent, 0)` per channel. No engine uniform for accent — it lives entirely in FluidReveal.
+   - `Fluid.svelte` updated to destructure and forward `revealCoverColor` in props + `buildConfig()`.
 
-2. **ToroidalTempest preset** (`src/lib/presets/ToroidalTempest.svelte`) — 6th visual preset based on old Plasma's annulus ring but with V=300 tangential velocity (5× higher), curl=50, bloomIntensity=1.8, 2s re-injection interval. Exported from `src/lib/index.ts`.
+2. **Customize on ALL demo cards** — every card now has Customize + PRESET_CONFIGS:
+   - Config cards: Default
+   - Container shapes: Circle, Frame, Annulus, Rounded frame, SVG path, Text glyph
+   - Glass effects: Portal ring, Glass frame
+   - Reveal cards: Scratch to reveal, Permanent reveal, Auto-reveal, Soft reveal
+   - `loadConfig()` updated to handle `playgroundMode: 'reveal'` (applies reveal physics defaults, skips snapshot $effect via `prevMode` sync).
+   - `customContainerShape` state enables svgPath shapes in playground (cleared on dropdown change).
 
-3. **Playground completely redesigned** (`src/routes/components/ControlPanel.svelte`, `src/routes/+page.svelte`):
-   - **Fluid/Reveal mode toggle** — pill buttons at top of ControlPanel. Fluid mode shows `<Fluid>` canvas; Reveal mode swaps to `<FluidReveal>` wrapping sample content with `{#key revealAutoReveal}` for autoReveal remount.
-   - **Accordion ControlPanel** — 7 collapsible sections with blue "N changed" badges. Pinned quick-controls bar (curl, splatRadius, densityDissipation, bloom, glass, shape picker). Reveal mode shows separate streamlined controls.
-   - **"Customize" buttons** on all preset, config, and glass effect cards. `loadConfig()` resets all defaults first via `resetAllDefaults()`, then applies config overrides, then scrolls to playground.
-   - **URL hash state** — `#pg=<base64 JSON>` with short keys. Covers all physics, glass, container shape, reveal params. "Share" button copies URL. `history.replaceState` debounced 300ms.
-   - **Reveal content controls** — accent color picker, "Gradient + Text" / "Tile Mosaic" content selector.
-   - **Code output** — `buildSnippet()` generates `<Fluid>` or `<FluidReveal>` based on mode.
+3. **Physics snapshot on Reveal mode switch**:
+   - Switching to Reveal: snapshots curl/velocityDissipation/splatRadius/bloom/sunrays/shading, applies reveal defaults (curl=0, vd=0.9, sr=0.2, bloom/sunrays/shading off).
+   - Switching back to Fluid: restores snapshot.
+   - Uses `untrack()` to prevent circular $effect dependencies.
 
-4. **Card component updated** (`src/routes/components/Card.svelte`) — added optional `onCustomize` callback, "Customize" button with hover styling.
+4. **`</>` code preview redesign**:
+   - ControlPanel: "Copy code" button replaced with `</>` toggle showing inline code panel + Copy button (same pattern as Card component).
+   - FluidBackground: floating `</>` button (fixed top-right) with expandable code panel showing exact FluidBackground props.
 
-5. **Code snippets updated** — all 6 preset cards show full `<Fluid>` equivalent props. All 4 reveal cards include exact CSS gradient stops and FluidReveal props.
-
-6. **Audit and fixes** — Sonnet review council found 27 issues. Fixed: loadConfig dirty state bleed (#8), dead HASH_KEYS array (#4), incomplete URL serialization (#5), stale preset count (#11), incomplete PRESET_CONFIGS (#7/#24/#26), shape badge counting (#12), reset mode (#13), glass hint as button (#19), config cards missing Customize (#16), magic numbers in loadConfig (#18), inline font-size (#25).
-
-## Planned fixes for NEXT session
-
-**IMPORTANT**: Read `.claude/planned-fixes.md` for the full implementation plan. Delete that file after completing all items.
-
-Key items from the plan:
-1. **Reveal content controls** — single accent color (gradient is always `accent → transparent`), rename labels ("Underlying Content", "Gradient + Text", "Tile Mosaic")
-2. **Reveal physics defaults** — switching to Reveal mode should snap to FluidReveal defaults (curl=0, velocityDissipation=0.9, splatRadius=0.2), store/restore Fluid physics on mode switch
-3. **`</>` code preview** as inline dropdown (like Cards) instead of "Copy code" button
-4. **FluidBackground code preview** — `</>` button in top-right showing FluidBackground usage
-5. **Customize on ALL remaining cards** — container shape cards, reveal cards (switches to Reveal mode)
-6. **Share button "Copied!" feedback**
-7. **Language audit** — "Even spacing", "Show shape outline", no leaked bucket terminology
+5. **UX polish**:
+   - Share button "Copied!" feedback (1.8s flash).
+   - Card copy button "Copied!" feedback.
+   - Label audit: "Even spacing", "Show shape outline".
+   - Underlying content section simplified (type dropdown only, colors invariant).
+   - Reveal playground default curve changed to 0.25.
+   - `controlsRef` typed with proper `FluidHandle` import.
+   - `planned-fixes.md` deleted (all items completed).
 
 ## Key files
 
 | File | Role |
 |------|------|
 | src/lib/engine/FluidEngine.ts (~1620 LOC) | The engine: WebGL state, physics step, render, dispose, mask texture, glass pass, reveal path, multiplicative dissipation |
-| src/lib/Fluid.svelte (~420 LOC) | Svelte wrapper: DOM, ResizeObserver, adaptive resolution, lazy/autoPause, context slot management |
-| src/lib/FluidReveal.svelte (~270 LOC) | Fluid as opacity mask: inverted-dye display, manual pointer handling, auto-reveal Lissajous |
+| src/lib/Fluid.svelte (~420 LOC) | Svelte wrapper: DOM, ResizeObserver, adaptive resolution, lazy/autoPause, context slot management. Destructures ALL FluidConfig props including revealCoverColor. |
+| src/lib/FluidReveal.svelte (~300 LOC) | Fluid as opacity mask: coverColor/accentColor props, derived dye injection color, manual pointer handling, auto-reveal Lissajous |
 | src/lib/FluidBackground.svelte (~180 LOC) | Full-viewport fluid background with DOM exclusion via CSS selector |
 | src/lib/engine/gl-utils.ts | WebGL utilities: Material class (keyword shader variants), FBO create/resize/dispose, shader compile |
-| src/lib/engine/shaders.ts | All GLSL: advection (with uMultiplicative), display (with REVEAL inverted-dye), glass (hemisphere rim + rim model), container mask |
-| src/lib/engine/types.ts | FluidConfig (no coverColor), ResolvedConfig, ContainerShape (5 variants), FluidHandle |
-| src/lib/presets/ToroidalTempest.svelte | Annulus ring, V=300 tangential splats, periodic re-injection |
-| src/routes/+page.svelte (~1050 LOC) | Demo page: ~28 instances, FluidBackground wrapper, playground state, loadConfig, URL hash, PRESET_CONFIGS |
-| src/routes/components/ControlPanel.svelte (~850 LOC) | Playground controls: mode toggle, accordion sections with badges, quick controls, code generation |
-| src/routes/components/Card.svelte | Demo card: canvas slot, caption, `</>` code toggle, Customize button |
-| docs/architecture.md | Start here for understanding the system |
+| src/lib/engine/shaders.ts | All GLSL: advection (with uMultiplicative), display (with REVEAL coverColor), glass, container mask |
+| src/lib/engine/types.ts | FluidConfig (with revealCoverColor), ResolvedConfig, ContainerShape (5 variants), FluidHandle |
+| src/routes/+page.svelte (~1100 LOC) | Demo page: ~28 instances, FluidBackground wrapper, playground state, loadConfig (with reveal mode support), URL hash, PRESET_CONFIGS, customContainerShape |
+| src/routes/components/ControlPanel.svelte (~1100 LOC) | Playground controls: mode toggle, accordion sections with badges, quick controls, code generation, cover/accent color pickers |
+| src/routes/components/Card.svelte | Demo card: canvas slot, caption, `</>` code toggle, Customize button, "Copied!" feedback |
+| docs/decisions/0029-reveal-cover-accent-colors.md | ADR for cover/accent color architecture |
+| docs/architecture.md | System design — Bucket A now lists revealSensitivity, revealCurve, revealCoverColor |
 
 ## What needs attention next
 
-### Immediate (from planned-fixes.md — delete after completing)
+### User-reported playground issues (DO NOT FIX — document only)
 
-1. **Reveal content & color controls** — single accent color, `accent → transparent` gradient, labels renamed, physics snap to FluidReveal defaults on mode switch
-2. **Customize on ALL cards** — container shape cards, reveal cards (with mode switch)
-3. **Code preview as `</>` dropdown** — consistent pattern with Cards, replaces "Copy code" button
-4. **FluidBackground code preview** — floating `</>` in top-right
-5. **Share button feedback** — "Copied!" flash
-6. **Language audit** — label improvements throughout ControlPanel
+1. **Shape "none" label** — should say "Rectangle" or "Full canvas" instead of "none". The default shape is the full rectangular canvas, not "no shape."
+
+2. **Glass + "none" shape → auto-circle is wrong** — when enabling glass from the default shape, the `$effect` switches containerShapeType to `'circle'` (hemisphere dome). The user expects either: (a) glass applied to the rectangle (rim refraction around the canvas edge), or (b) switch to `'roundedRect'` instead of `'circle'`. Investigate whether glass-on-full-canvas is feasible. If not, default to roundedRect. The offending code is the `$effect` at +page.svelte line ~109: `if (glass && containerShapeType === 'none') containerShapeType = 'circle'`.
+
+3. **initialDensityDissipation / initialDensityDissipationDuration controls do nothing visible** — these are construct-only (Bucket D) params that affect the first N seconds after engine creation. Changing them at runtime via setConfig has no effect because the engine's internal timer has already elapsed. To make them previewable: consider adding a "restart simulation" button, or re-creating the engine when these change, or moving them to a separate "Initial Conditions" section with a restart action.
+
+4. **initialDensityDissipationDuration naming is unclear** — the relationship: `densityDissipation` is the steady-state value; `initialDensityDissipation` is the starting value; `initialDensityDissipationDuration` is how many seconds to linearly interpolate from initial → steady-state. Consider renaming to something like `dissipationRampDuration` or adding inline help text explaining the ramp.
+
+5. **densityDissipation placement** — currently in the quick-controls bar at the top. User expects it in the "Physics" accordion section alongside velocityDissipation, pressure, etc. Consider moving it to Physics and replacing the quick-controls slot with something else (or keeping it in both places).
+
+6. **"colorful" label is not self-explanatory** — the prop cycles pointer color over time (HSV rotation). Consider renaming the label to "Cycle colors" or adding a tooltip/description.
 
 ### Planned features
 
@@ -100,7 +106,6 @@ Key items from the plan:
 13. **Named glass presets** — `glass="crystal"`, `glass="frosted"`, `glass="orb"`.
 14. **Animated specular drift** — Slow sinusoidal light direction wobble when cursor is idle.
 15. **FluidReveal interactive content** — Proper event forwarding so revealed buttons/links work.
-16. **Card Copy button feedback** — "Copied!" flash (finding #15 from audit).
 
 ## Architecture quick-reference
 
@@ -108,15 +113,15 @@ Key items from the plan:
 - Fluid.svelte applies adaptive resolution in instantiate() before constructing the engine — caps textures to canvas pixel size, suppresses expensive effects on small canvases.
 - Resize: teardown immediately (blank canvas), debounce rebuild by 150ms.
 - Lazy teardown: dispose engine + loseContext() (releases browser context slot). Rebuild: restoreContext() + wait for webglcontextrestored event + create new engine.
-- setConfig() has 4 buckets: A (scalars incl. splatOnHover, glass params, revealSensitivity, revealCurve — picked up next frame), B (keyword recompile — shading, bloom, sunrays, reveal), C (FBO rebuild), D (construct-only). Additionally, svgPath shape changes trigger mask texture rebuild, `glass` toggle triggers sceneFBO alloc/dispose, and `reveal` toggle triggers keyword recompile.
+- setConfig() has 4 buckets: A (scalars incl. splatOnHover, glass params, revealSensitivity, revealCurve, revealCoverColor — picked up next frame), B (keyword recompile — shading, bloom, sunrays, reveal), C (FBO rebuild), D (construct-only). Additionally, svgPath shape changes trigger mask texture rebuild, `glass` toggle triggers sceneFBO alloc/dispose, and `reveal` toggle triggers keyword recompile.
 - Container shapes: two approaches coexist:
   - **Analytical** (circle/frame/roundedRect/annulus): SDF computed per-fragment in shaders, mirrored in TypeScript for rejection sampling.
   - **Mask texture** (svgPath): rasterized via OffscreenCanvas at canvas aspect ratio, uploaded as R8/LUMINANCE texture. Text mode uses actualBoundingBox metrics for sizing.
 - Glass post-processing: two models. **Hemisphere** (circles): full-surface dome with Snell's law; `glassThickness` boosts rim refraction, specular, and glow. **Rim** (all others): refraction band at container boundary.
-- Reveal mode: `REVEAL` keyword in display shader outputs `vec4(1.0 - c, alpha)` — inverted dye, non-premultiplied. Advection switches to multiplicative dissipation (`result *= dissipation`) via `uMultiplicative` uniform. Render path skips backColor/checkerboard/glass. Curl+vorticity skipped when CURL=0. FluidReveal handles pointer events itself, injecting warm non-uniform dye `{0.95, 0.84, 0.68}`.
+- Reveal mode: `REVEAL` keyword in display shader outputs `max(uRevealCoverColor - c, vec3(0.0))` with non-premultiplied alpha. Advection switches to multiplicative dissipation via `uMultiplicative` uniform. Render path skips backColor/checkerboard/glass when REVEAL is active. FluidReveal derives dye injection color as `max(coverColor - accentColor, 0)`.
 - Transparent mode: `gl.clear(0,0,0,0)` replaces checkerboard. Canvas CSS background = transparent.
 - FluidBackground: evenodd SVG path mask. Outer rect = viewport, inner rounded-rect holes = excluded elements.
 - Material class caches compiled shader variants by sorted keyword string key.
 - Context loss/restore: handled via webglcontextlost/webglcontextrestored events. dispose() does NOT call loseContext() — the Svelte component does it separately for lazy instances.
 - Demo page: `<main>` has `pointer-events: none`; interactive elements re-enable individually so FluidBackground splats work across full page width.
-- Playground: `loadConfig()` calls `resetAllDefaults()` first, then applies overrides from `PRESET_CONFIGS`. URL hash uses compact short keys (`cu`=curl, `sr`=splatRadius, etc.) serialized as base64 JSON.
+- Playground: `loadConfig()` calls `resetAllDefaults()` first, then applies overrides from `PRESET_CONFIGS`. For reveal configs, sets `prevMode = targetMode` to skip the physics snapshot $effect. URL hash uses compact short keys serialized as base64 JSON.
