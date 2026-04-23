@@ -318,6 +318,12 @@ export interface FluidConfig {
 	 * softer gradient. Default 0.1. Bucket A.
 	 */
 	revealCurve?: number;
+	/**
+	 * Solid color of the reveal cover layer (visible before scratching).
+	 * RGB components in 0–1 linear range. Default `{ r: 1, g: 1, b: 1 }`
+	 * (white). Bucket A.
+	 */
+	revealCoverColor?: RGB;
 }
 
 /**
@@ -374,6 +380,7 @@ export interface ResolvedConfig {
 	REVEAL: boolean;
 	REVEAL_SENSITIVITY: number;
 	REVEAL_CURVE: number;
+	REVEAL_COVER_COLOR: RGB;
 }
 
 /** Pixel format pair returned by `getSupportedFormat`. */

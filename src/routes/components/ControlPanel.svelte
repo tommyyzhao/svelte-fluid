@@ -24,8 +24,8 @@
 		revealFadeBack: boolean; revealAutoReveal: boolean; revealAutoRevealSpeed: number;
 		playgroundMode: 'fluid' | 'reveal';
 		revealContent: 'text' | 'mosaic';
-		revealColor1: string;
-		revealColor2: string;
+		revealCoverColor: string;
+		revealAccentColor: string;
 	} = {
 		curl: 30,
 		splatRadius: 0.25,
@@ -77,14 +77,14 @@
 		glassChromatic: 0.15,
 		reveal: false,
 		revealSensitivity: 0.1,
-		revealCurve: 0.1,
+		revealCurve: 0.25,
 		revealFadeBack: true,
 		revealAutoReveal: false,
 		revealAutoRevealSpeed: 1.0,
 		playgroundMode: 'fluid',
 		revealContent: 'text',
-		revealColor1: '#667eea',
-		revealColor2: '#764ba2'
+		revealCoverColor: '#ffffff',
+		revealAccentColor: '#0d2952'
 	};
 </script>
 
@@ -146,8 +146,8 @@
 		revealAutoRevealSpeed = $bindable(D.revealAutoRevealSpeed),
 		playgroundMode = $bindable(D.playgroundMode),
 		revealContent = $bindable(D.revealContent),
-		revealColor1 = $bindable(D.revealColor1),
-		revealColor2 = $bindable(D.revealColor2),
+		revealCoverColor = $bindable(D.revealCoverColor),
+		revealAccentColor = $bindable(D.revealAccentColor),
 		showShapePreview = $bindable(false),
 		loadedPreset = '',
 		onRandomSplats,
@@ -209,8 +209,8 @@
 		revealAutoRevealSpeed?: number;
 		playgroundMode?: 'fluid' | 'reveal';
 		revealContent?: 'text' | 'mosaic';
-		revealColor1?: string;
-		revealColor2?: string;
+		revealCoverColor?: string;
+		revealAccentColor?: string;
 		showShapePreview?: boolean;
 		loadedPreset?: string;
 		onRandomSplats?: () => void;
@@ -281,8 +281,11 @@
 		[revealAutoRevealSpeed, D.revealAutoRevealSpeed]
 	]));
 
+	let showCode = $state(false);
 	let copyState = $state<'idle' | 'copied' | 'error'>('idle');
 	let copyTimer: ReturnType<typeof setTimeout> | undefined;
+	let shareState = $state<'idle' | 'copied'>('idle');
+	let shareTimer: ReturnType<typeof setTimeout> | undefined;
 
 	function reset() {
 		curl = D.curl;
@@ -340,8 +343,8 @@
 		revealAutoReveal = D.revealAutoReveal;
 		revealAutoRevealSpeed = D.revealAutoRevealSpeed;
 		revealContent = D.revealContent;
-		revealColor1 = D.revealColor1;
-		revealColor2 = D.revealColor2;
+		revealCoverColor = D.revealCoverColor;
+		revealAccentColor = D.revealAccentColor;
 		playgroundMode = D.playgroundMode;
 		showShapePreview = false;
 	}
@@ -576,7 +579,7 @@
 					<span>randomSplatDy <em>{randomSplatDy}</em></span>
 					<input type="range" min="-1000" max="1000" step="50" bind:value={randomSplatDy} />
 				</label>
-				<label class="check"><input type="checkbox" bind:checked={randomSplatEvenSpacing} /> evenSpacing</label>
+				<label class="check"><input type="checkbox" bind:checked={randomSplatEvenSpacing} /> Even spacing</label>
 			</section>
 		{/if}
 
@@ -721,7 +724,7 @@
 					</label>
 				{/if}
 				{#if containerShapeType !== 'none'}
-					<label class="check"><input type="checkbox" bind:checked={showShapePreview} /> show outline</label>
+					<label class="check"><input type="checkbox" bind:checked={showShapePreview} /> Show shape outline</label>
 				{/if}
 			</section>
 		{/if}
@@ -758,27 +761,22 @@
 	{:else}
 		<!-- Reveal mode controls -->
 		<section>
-			<h4>Content</h4>
-			<label>
-				<span>Type</span>
-				<select bind:value={revealContent}>
-					<option value="text">Text</option>
-					<option value="mosaic">Mosaic</option>
-				</select>
-			</label>
-			{#if revealContent === 'text'}
-				<label>
-					<span>Color 1</span>
-					<input type="color" bind:value={revealColor1} />
-				</label>
-				<label>
-					<span>Color 2</span>
-					<input type="color" bind:value={revealColor2} />
-				</label>
-			{/if}
+			<h4>Underlying Content</h4>
+			<select bind:value={revealContent}>
+				<option value="text">Gradient + Text</option>
+				<option value="mosaic">Tile Mosaic</option>
+			</select>
 		</section>
 		<section>
 			<h4>Reveal</h4>
+			<label>
+				<span>Cover color</span>
+				<input type="color" bind:value={revealCoverColor} />
+			</label>
+			<label>
+				<span>Accent color</span>
+				<input type="color" bind:value={revealAccentColor} />
+			</label>
 			<label>
 				<span>sensitivity <em>{revealSensitivity.toFixed(2)}</em></span>
 				<input type="range" min="0.01" max="1" step="0.01" bind:value={revealSensitivity} />
@@ -821,15 +819,27 @@
 		<div class="action-row">
 			<button
 				type="button"
-				class="secondary"
+				class="code-toggle"
+				class:active={showCode}
+				onclick={() => (showCode = !showCode)}
+				aria-label="Toggle code preview">&lt;/&gt;</button>
+			<button type="button" class="secondary" onclick={() => { onShare?.(); shareState = 'copied'; clearTimeout(shareTimer); shareTimer = setTimeout(() => (shareState = 'idle'), 1800); }} aria-live="polite">
+				{#if shareState === 'copied'}Copied!{:else}Share{/if}
+			</button>
+		</div>
+	</div>
+	{#if showCode}
+		<div class="code-preview">
+			<pre><code>{buildSnippet()}</code></pre>
+			<button
+				class="copy-btn"
 				onclick={copySnippet}
 				aria-live="polite"
 			>
-				{#if copyState === 'copied'}Copied!{:else if copyState === 'error'}Failed{:else}Copy code{/if}
+				{#if copyState === 'copied'}Copied!{:else if copyState === 'error'}Failed{:else}Copy{/if}
 			</button>
-			<button type="button" class="secondary" onclick={() => onShare?.()}>Share</button>
 		</div>
-	</div>
+	{/if}
 </aside>
 
 <style>
@@ -1055,5 +1065,52 @@
 	button.secondary:hover {
 		background: #232326;
 		color: #fff;
+	}
+	.code-toggle {
+		padding: 8px 12px;
+		font-family: monospace;
+		font-size: 0.82rem;
+		background: transparent;
+		border: 1px solid #333;
+		border-radius: 8px;
+		color: #666;
+		cursor: pointer;
+		transition: all 120ms;
+	}
+	.code-toggle:hover,
+	.code-toggle.active {
+		color: #cce6ff;
+		border-color: #555;
+	}
+	.code-preview {
+		position: relative;
+		margin-top: 2px;
+	}
+	.code-preview pre {
+		margin: 0;
+		padding: 10px 12px;
+		background: #0d0d0d;
+		border: 1px solid #222;
+		border-radius: 6px;
+		overflow-x: auto;
+		font-size: 0.72rem;
+		line-height: 1.5;
+		color: #b0c4de;
+	}
+	.copy-btn {
+		position: absolute;
+		top: 6px;
+		right: 6px;
+		padding: 2px 8px !important;
+		font-size: 0.65rem !important;
+		background: #222 !important;
+		border: 1px solid #333 !important;
+		border-radius: 3px !important;
+		color: #888 !important;
+		cursor: pointer;
+	}
+	.copy-btn:hover {
+		color: #fff !important;
+		border-color: #555 !important;
 	}
 </style>
