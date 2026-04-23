@@ -13,41 +13,77 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **`/ascend-fluid` demo route** — standalone replication of the Ascend-Fluid
-  reference reveal implementation. Completely decoupled from FluidEngine — its
-  own raw WebGL fluid sim with the reference's exact shaders, physics pipeline
-  (no curl, multiplicative dissipation), display shader (`vec4(1-C, 1-a)`),
-  and tsParticles background. Serves as a reference benchmark for FluidReveal.
+- **Multiplicative dissipation for reveal mode** (ADR-0028) — advection shader
+  now supports `uniform float uMultiplicative`. When `reveal=true`, the engine
+  sets it to 1.0, switching from `result / (1 + dissipation * dt)` to
+  `dissipation * result`, matching the Ascend-Fluid reference physics.
+- **Hemisphere rim effects via `glassThickness`** — the circle glass model now
+  uses `uGlassThickness` to boost refraction displacement, rim specular, and
+  rim glow at the dome edge. Previously `glassThickness` was unused for circles.
+- **Curl skip optimization** — `step()` skips curl + vorticity compute passes
+  when `CURL === 0`, saving 2 draw calls per frame for reveal and flat configs.
 
 ### Fixed
 
+- **FluidReveal y-coordinate inversion** — the manual pointer handler passed
+  DOM-space y (0=top) to `engine.splat()` which expects GL-space y (0=bottom).
+  Splats now appear where the cursor actually is.
 - **FluidReveal CSS sizing** — `.svelte-fluid-reveal` and its content div now
   set `width: 100%; height: 100%` so the component fills its parent container.
-  Previously collapsed to content intrinsic height, making most reveal cards
-  appear empty or tiny.
 - **Lazy teardown releases WebGL context slots** (`Fluid.svelte`) — after
   `engine.dispose()`, lazy instances now call `loseContext()` via the
   `WEBGL_lose_context` extension to free the browser's context slot (~16 cap).
-  A temporary `webglcontextlost` listener calls `preventDefault()` (required
-  by spec for later `restoreContext()`). On rebuild, `instantiate()` detects
-  the saved extension, calls `restoreContext()`, and waits for the
-  `webglcontextrestored` event before creating a new engine. Previously,
-  disposed-but-not-lost contexts consumed all slots, causing the Reveal
-  section (and any section near the bottom) to lose contexts.
+- **Text-mode mask sizing** — `initMaskTexture()` text height now uses
+  `actualBoundingBoxAscent + actualBoundingBoxDescent` instead of a hardcoded
+  `refSize * 1.2`, fixing glyph clipping at large font sizes.
 
 ### Changed
 
-- **FluidReveal physics defaults** — tuned to match the Ascend-Fluid reference
-  for clean, laminar reveals without turbulent swirls:
-  - `curl`: 15 → **0** (no vorticity injection)
-  - `velocityDissipation`: 0.3 → **3** (≈95% retention/frame, matches reference)
-  - `pointerInput`: true → **false** (engine pointer handling disabled)
-  - `splatOnHover`: true → **false** (handled manually now)
-- **FluidReveal manual pointer handling** — component now tracks pointer events
-  itself and calls `handle.splat()` with a uniform gray dye color
-  `{ r: 0.15, g: 0.15, b: 0.15 }`. This replaces the engine's random-color
-  `generateColor()`, ensuring `max(r,g,b)` produces spatially consistent alpha
-  in the reveal mask.
+- **FluidReveal display shader** — output changed from premultiplied flat
+  cover color `vec4(coverColor * alpha, alpha)` to non-premultiplied inverted
+  dye `vec4(1.0 - c, alpha)`. Produces sharp iridescent fringes at reveal
+  edges matching the Ascend-Fluid reference.
+- **FluidReveal physics defaults** — fully revised for multiplicative mode:
+  - `sensitivity`: 0.12 → **0.1** (matches reference `pow(0.1 * a, 0.1)`)
+  - `velocityDissipation`: 3 → **0.9** (multiplicative: 90% retention/frame)
+  - `splatRadius`: 0.4 → **0.2** (tighter reveal strokes)
+  - `REVEAL_DYE`: `{0.15, 0.15, 0.15}` → `{0.95, 0.84, 0.68}` (non-uniform
+    warm dye creates blue-tinted iridescent fringes when inverted)
+  - `fadeBack` dissipation: 0.97 → **0.995** (multiplicative slow fade)
+  - permanent dissipation: 0 → **1.0** (multiplicative no-fade)
+- **`coverColor` prop removed** from `FluidRevealProps`, `FluidConfig`,
+  `ResolvedConfig`, and the display shader uniform. The inverted-dye approach
+  replaces it.
+- **`revealSensitivity` default**: 0.12 → **0.1** (engine + component).
+- **Preset modernization** — all presets now use container shapes and
+  latest features:
+  - **LavaLamp**: added `roundedRect` container + `glass` (rim refraction)
+  - **Plasma**: changed to `annulus` container, 8 tangential ring splats with
+    periodic re-injection (2.5s interval with positional jitter),
+    `velocityDissipation: 0.02`
+  - **InkInWater**: full rewrite — dark water background, volumetric bloom,
+    shading, 5 chromatically varied ink droplets, physics tuned for
+    realistic ink-in-water behavior
+  - **FrozenSwirl**: added `circle` container
+  - **SvgPathFluid**: changed from star path to bold ampersand "&" glyph
+    using text-mode rasterization with `fillRule: 'evenodd'`
+- **Demo page Container shapes** — swapped Rounded frame / Rounded rect order;
+  replaced Rounded rect with SVG path lightning bolt; renamed SVG star card
+  to "Text glyph".
+- **Demo page Container effects** — Crystal orb gets `glassThickness={0.08}`;
+  Soft lens gets faster splats (`rate: 2.5`, `count: 2`, lower dissipation);
+  Glass frame gets much faster splats (`rate: 3.0`, `count: 2`,
+  `randomSplatSwirl={350}`).
+- **Semantic language audit** — replaced "plasma", "energy field", "tokamak",
+  "confined/confinement" with accurate fluid terminology across all presets,
+  demo cards, types.ts JSDoc, README, CHANGELOG, ADRs, and learnings docs.
+
+### Removed
+
+- **`/ascend-fluid` route** (~650 LOC) — standalone reference implementation,
+  obsolete now that FluidReveal matches its physics.
+- **`coverColor` / `revealCoverColor`** — prop, config field, engine default,
+  resolveConfig mapping, shader uniform, and all demo page usage.
 
 ### Previously added
 
@@ -108,7 +144,7 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
   text. Rasterized to a mask texture via `OffscreenCanvas` + `Path2D`.
   Supports `d` (SVG path data), `text` (Canvas2D fillText), `font`,
   `viewBox`, `fillRule`, and `maskResolution` fields. See ADR-0024.
-- `SvgPathFluid` preset — fluid confined inside a 5-pointed star shape.
+- `SvgPathFluid` preset — fluid shaped by a mask texture (originally a star, now an ampersand glyph).
 - `/svelte-fluid` route — "SVELTE FLUID" as fluid-filled text with
   `splatOnHover` interaction.
 - `/svg` test route — 4 SVG path test cases (star, heart, rect, evenodd).

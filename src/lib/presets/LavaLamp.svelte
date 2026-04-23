@@ -1,10 +1,11 @@
 <!--
   svelte-fluid — LavaLamp preset
 
-  Visual intent: warm, slow-rising blobs on a light-silver canvas that
-  persist forever. Density is locked to zero in steady state so the
+  Visual intent: warm, slow-rising blobs inside a glass vessel on a
+  light-silver canvas. Density is locked to zero in steady state so the
   blobs never fade; velocity dissipation is tiny so the lazy buoyant
-  motion meanders rather than freezing.
+  motion meanders rather than freezing. A roundedRect container with
+  glass refraction sells the physical metaphor of a real lamp body.
 
   How the brightness is tuned:
   - **No bloom and no sunrays.** The display brightness tracks the dye
@@ -113,6 +114,11 @@
 	{seed}
 	{lazy}
 	aria-label={ariaLabel}
+	containerShape={{ type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.38, halfH: 0.45, cornerRadius: 0.15 }}
+	glass
+	glassRefraction={0.3}
+	glassReflectivity={0.08}
+	glassChromatic={0.1}
 	curl={5}
 	densityDissipation={0}
 	initialDensityDissipation={0.25}

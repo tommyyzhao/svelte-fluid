@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeColor } from '../rng.js';
 
 /* ------------------------------------------------------------------ */
 /*                     Reveal alpha curve math                         */
@@ -12,19 +11,19 @@ describe('reveal alpha curve (shader math mirror)', () => {
 	}
 
 	it('zero dye intensity → zero reveal', () => {
-		expect(revealAmount(0, 0.12, 0.1)).toBe(0);
+		expect(revealAmount(0, 0.1, 0.1)).toBe(0);
 	});
 
 	it('high dye intensity with default params → strong reveal', () => {
-		const r = revealAmount(1.0, 0.12, 0.1);
-		// pow(0.12, 0.1) ≈ 0.81
+		const r = revealAmount(1.0, 0.1, 0.1);
+		// pow(0.1, 0.1) ≈ 0.79
 		expect(r).toBeGreaterThan(0.7);
 		expect(r).toBeLessThan(1.0);
 	});
 
 	it('dye above 1/sensitivity clamps to full reveal', () => {
-		const r = revealAmount(10.0, 0.12, 0.1);
-		// a * sensitivity = 1.2, clamped to 1.0, pow(1.0, 0.1) = 1.0
+		const r = revealAmount(10.0, 0.1, 0.1);
+		// a * sensitivity = 1.0, pow(1.0, 0.1) = 1.0
 		expect(r).toBe(1.0);
 	});
 
@@ -35,8 +34,8 @@ describe('reveal alpha curve (shader math mirror)', () => {
 	});
 
 	it('lower curve creates steeper threshold', () => {
-		const steep = revealAmount(0.3, 0.12, 0.05);
-		const soft = revealAmount(0.3, 0.12, 0.5);
+		const steep = revealAmount(0.3, 0.1, 0.05);
+		const soft = revealAmount(0.3, 0.1, 0.5);
 		expect(steep).toBeGreaterThan(soft);
 	});
 
@@ -45,32 +44,23 @@ describe('reveal alpha curve (shader math mirror)', () => {
 		expect(r).toBeCloseTo(0.5, 5);
 	});
 
-	it('premultiplied output satisfies R,G,B <= A invariant', () => {
-		const coverColor = { r: 0.1, g: 0.2, b: 0.3 };
-		const r = revealAmount(0.5, 0.12, 0.1);
-		const coverAlpha = 1.0 - r;
-		expect(coverColor.r * coverAlpha).toBeLessThanOrEqual(coverAlpha);
-		expect(coverColor.g * coverAlpha).toBeLessThanOrEqual(coverAlpha);
-		expect(coverColor.b * coverAlpha).toBeLessThanOrEqual(coverAlpha);
-	});
-});
-
-/* ------------------------------------------------------------------ */
-/*             Cover color normalization (0-255 → 0-1)                 */
-/* ------------------------------------------------------------------ */
-
-describe('revealCoverColor normalization', () => {
-	it('normalizes mid-range values', () => {
-		const c = normalizeColor({ r: 20, g: 30, b: 60 });
-		expect(c.r).toBeCloseTo(0.078, 2);
-		expect(c.g).toBeCloseTo(0.118, 2);
-		expect(c.b).toBeCloseTo(0.235, 2);
+	it('display output uses inverted dye color for iridescent fringe', () => {
+		// GLSL: gl_FragColor = vec4(1.0 - c, alpha)
+		// At the fringe, low dye → inverted color is near-white
+		const dyeR = 0.1, dyeG = 0.08, dyeB = 0.05;
+		expect(1.0 - dyeR).toBeCloseTo(0.9, 5);
+		expect(1.0 - dyeG).toBeCloseTo(0.92, 5);
+		expect(1.0 - dyeB).toBeCloseTo(0.95, 5);
+		// Different channels → color variation (blue-ish tint) = iridescence
+		expect(1.0 - dyeB).toBeGreaterThan(1.0 - dyeR);
 	});
 
-	it('preserves black as zero', () => {
-		const c = normalizeColor({ r: 0, g: 0, b: 0 });
-		expect(c.r).toBe(0);
-		expect(c.g).toBe(0);
-		expect(c.b).toBe(0);
+	it('non-uniform dye creates channel separation at edges', () => {
+		// Reference-matching dye: { r: 0.95, g: 0.84, b: 0.68 }
+		// Inverted fringe color should be blue-ish (B > G > R)
+		const dye = { r: 0.95, g: 0.84, b: 0.68 };
+		const fringe = { r: 1 - dye.r, g: 1 - dye.g, b: 1 - dye.b };
+		expect(fringe.b).toBeGreaterThan(fringe.g);
+		expect(fringe.g).toBeGreaterThan(fringe.r);
 	});
 });

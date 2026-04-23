@@ -173,15 +173,15 @@ tuning:
 
 | Component | Look |
 | --- | --- |
-| `<LavaLamp />` | Slow warm blobs rising in a dim purple ambience |
-| `<Plasma />` | Persistent full-spectrum energy field |
-| `<InkInWater />` | Dark blue dye blooming on a pale background |
-| `<FrozenSwirl />` | A single icy whirlpool that spins itself out |
+| `<LavaLamp />` | Warm blobs in a glass vessel with rim refraction |
+| `<Plasma />` | Full-spectrum fluid circulating in a toroidal ring |
+| `<InkInWater />` | India ink sinking through dark water with volumetric bloom |
+| `<FrozenSwirl />` | An icy whirlpool frozen inside a circular vessel |
 | `<Aurora />` | Green, magenta, and pale-blue ribbons drifting like northern lights |
-| `<CircularFluid />` | Vivid plasma ball physically confined inside a circle |
+| `<CircularFluid />` | Vivid swirling fluid contained inside a circle |
 | `<FrameFluid />` | Colorful fluid swirling around a rectangular inner cutout |
-| `<AnnularFluid />` | Ring-vortex fluid confined between two concentric circles |
-| `<SvgPathFluid />` | Fluid confined to an SVG star shape via mask texture |
+| `<AnnularFluid />` | Ring-vortex fluid between two concentric circles |
+| `<SvgPathFluid />` | Fluid shaped by an ampersand glyph via mask texture |
 
 ```svelte
 <script lang="ts">

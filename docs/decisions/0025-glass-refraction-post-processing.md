@@ -37,7 +37,7 @@ Add a **separate post-processing pass** after `drawDisplay`:
      smoothly across the full dome.
 
    - **Rim model** (frame, roundedRect, annulus, svgPath): Models the container
-     walls as glass tubes. The effect is confined to a narrow band at the
+     walls as glass tubes. The effect is limited to a narrow band at the
      boundary via `glassMask = 1 - smoothstep(0, thickness, abs(sdf))`. Normals
      are derived from the 2D SDF gradient via central differences. Refraction
      offsets UVs along the gradient direction. This is the correct model for

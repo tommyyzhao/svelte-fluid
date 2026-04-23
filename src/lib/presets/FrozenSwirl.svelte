@@ -1,9 +1,10 @@
 <!--
   svelte-fluid — FrozenSwirl preset
 
-  Visual intent: a single dramatic icy whirlpool that spins itself out
-  and comes to rest. High velocity dissipation freezes the motion fast,
-  leaving a permanent crystalline curl on a deep navy backdrop.
+  Visual intent: a single dramatic icy whirlpool contained in a circular
+  vessel that spins itself out and comes to rest. High velocity
+  dissipation freezes the motion fast, leaving a permanent crystalline
+  curl on a deep navy backdrop.
 
   Trade-offs:
   - `velocityDissipation: 1.0` is aggressive — the simulation comes to a
@@ -69,6 +70,7 @@
 	{seed}
 	{lazy}
 	aria-label={ariaLabel}
+	containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
 	curl={50}
 	densityDissipation={0}
 	velocityDissipation={1.0}

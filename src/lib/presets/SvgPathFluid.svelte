@@ -1,13 +1,12 @@
 <!--
   svelte-fluid — SvgPathFluid preset
 
-  Visual intent: fluid physically confined inside an SVG star shape,
-  demonstrating arbitrary path-based container shapes. The star is
-  rasterized to a mask texture via Canvas 2D Path2D, and the simulation
-  enforces the boundary the same way it does for analytical shapes.
+  Visual intent: fluid flowing inside a bold ampersand "&"
+  glyph, demonstrating text-mode container shapes. The letter is
+  rasterized to a mask texture via Canvas 2D fillText, with evenodd
+  fill rule so the counter (hole) in the glyph stays transparent.
 
-  The star has 5 points, centered in a 100x100 viewBox. Random splats
-  spawn via rejection sampling against the CPU-side mask copy.
+  Random splats spawn via rejection sampling against the CPU-side mask.
 -->
 
 <script lang="ts" module>
@@ -37,9 +36,8 @@
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
 
-	// 5-pointed star centered at (50, 50) with outer radius 45, inner radius 20.
-	// Authored in a 100x100 coordinate space matching the default viewBox.
-	const STAR_PATH = 'M50,5 L61.8,37.6 L97.6,37.6 L68.8,58.8 L79.4,91.4 L50,72 L20.6,91.4 L31.2,58.8 L2.4,37.6 L38.2,37.6 Z';
+	const LETTER = '&';
+	const FONT = 'bold 200px Georgia, serif';
 
 	export const handle: FluidHandle = {
 		splat: (x, y, dx, dy, color) => inner?.handle.splat(x, y, dx, dy, color),
@@ -60,7 +58,7 @@
 	{lazy}
 	{splatOnHover}
 	aria-label={ariaLabel}
-	containerShape={{ type: 'svgPath', d: STAR_PATH }}
+	containerShape={{ type: 'svgPath', text: LETTER, font: FONT, fillRule: 'evenodd' }}
 	curl={30}
 	densityDissipation={0.3}
 	velocityDissipation={0.1}
@@ -77,4 +75,5 @@
 	randomSplatRate={0.8}
 	randomSplatCount={1}
 	randomSplatSpread={2.0}
+	randomSplatSwirl={400}
 />

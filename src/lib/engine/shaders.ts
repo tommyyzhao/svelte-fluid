@@ -146,7 +146,7 @@ export const displayShaderSource = `
     uniform sampler2D uContainerMaskTexture;
 
 #ifdef REVEAL
-    uniform vec3 uRevealCoverColor;
+
     uniform float uRevealSensitivity;
     uniform float uRevealCurve;
 #endif
@@ -254,8 +254,11 @@ export const displayShaderSource = `
 
     #ifdef REVEAL
         float revealAmount = clamp(pow(clamp(a * uRevealSensitivity, 0.0, 1.0), uRevealCurve), 0.0, 1.0);
-        float coverAlpha = (1.0 - revealAmount) * cmask;
-        gl_FragColor = vec4(uRevealCoverColor * coverAlpha, coverAlpha);
+        float alpha = (1.0 - revealAmount) * cmask;
+        // Non-premultiplied inverted dye: bright fringe where dye is faint,
+        // transparent where dye is dense. Browser premultipliedAlpha clamps
+        // RGB to alpha, producing the reference's sharp iridescent edge.
+        gl_FragColor = vec4(1.0 - c, alpha);
     #else
         gl_FragColor = vec4(c, a);
     #endif
@@ -385,8 +388,12 @@ export const glassShaderSource = `
             vec3 Tb = refract(I, N, eta * (1.0 - spread));
 
             // Scale refraction to produce visible lens distortion.
-            // Larger multiplier = stronger magnification/compression.
-            float scale = uContainerRadius * 0.5;
+            // Base magnification is uniform across the dome. glassThickness
+            // adds extra refraction at the rim (thicker glass = stronger
+            // rim band) without changing the center distortion.
+            float rimFactor = 1.0 - cosI; // 0 at center, 1 at rim
+            float rimBoost = smoothstep(0.3, 0.95, rimFactor) * uGlassThickness * 5.0;
+            float scale = uContainerRadius * 0.5 * (1.0 + rimBoost);
             vec2 afix = vec2(1.0 / uContainerAspect, 1.0);
 
             vec2 uvR = clamp(vUv + Tr.xy * scale * afix, 0.0, 1.0);
@@ -407,16 +414,16 @@ export const glassShaderSource = `
             float specFocused = pow(max(dot(N, halfVec), 0.0), 128.0);
 
             // Broad rim specular (visible shine along the glass wall)
-            float rimFactor = 1.0 - cosI; // 0 at center, 1 at rim
+            float thicknessFactor = 1.0 + uGlassThickness * 8.0;
             float specBroad = pow(max(dot(N, halfVec), 0.0), 8.0)
                 * smoothstep(0.3, 0.9, rimFactor);
 
-            float spec = (specFocused + specBroad * 0.35)
+            float spec = (specFocused + specBroad * 0.35 * thicknessFactor)
                 * fresnel * fluidLight;
 
             // Rim glow: caustic light at the glass wall, driven by fluid
             float rimGlow = smoothstep(0.4, 0.95, rimFactor)
-                * 0.25 * fresnel * fluidLight;
+                * (0.25 + uGlassThickness * 3.0) * fresnel * fluidLight;
 
             // Fresnel-darkened refraction + fluid-driven highlights
             vec3 glassColor = refracted * (1.0 - fresnel * 0.25)
@@ -625,6 +632,7 @@ export const advectionShader = `
     uniform vec2 dyeTexelSize;
     uniform float dt;
     uniform float dissipation;
+    uniform float uMultiplicative;
 
     vec4 bilerp (sampler2D sam, vec2 uv, vec2 tsize) {
         vec2 st = uv / tsize - 0.5;
@@ -648,8 +656,12 @@ export const advectionShader = `
         vec2 coord = vUv - dt * texture2D(uVelocity, vUv).xy * texelSize;
         vec4 result = texture2D(uSource, coord);
     #endif
-        float decay = 1.0 + dissipation * dt;
-        gl_FragColor = clamp(result / decay, -1000.0, 1000.0);
+        if (uMultiplicative > 0.5) {
+            gl_FragColor = clamp(dissipation * result, -1000.0, 1000.0);
+        } else {
+            float decay = 1.0 + dissipation * dt;
+            gl_FragColor = clamp(result / decay, -1000.0, 1000.0);
+        }
     }
 `;
 

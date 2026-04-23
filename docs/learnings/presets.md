@@ -453,9 +453,9 @@ Jets must be positioned in UV space accounting for the canvas aspect ratio. The 
 - Safe for aspect ratios up to ~2.3:1
 - On ultra-wide canvases, horizontal jets may land outside and get zeroed by the mask — acceptable
 
-## Dye concentration in confined containers
+## Dye concentration in bounded containers
 
-The engine's random-splat path applies a **10× HDR multiplier** to all random splat colors (both `generateColor()` and `randomSplatColor`). On a full canvas, this creates vivid bloom highlights. In a confined container (~35% of canvas area), the same energy concentrates into fewer pixels, quickly oversaturating the dye.
+The engine's random-splat path applies a **10× HDR multiplier** to all random splat colors (both `generateColor()` and `randomSplatColor`). On a full canvas, this creates vivid bloom highlights. In a bounded container (~35% of canvas area), the same dye concentrates into fewer pixels, quickly oversaturating the dye.
 
 Mitigations for `CircularFluid`:
 - Preset splat colors use moderate values (0.5–1.1) instead of Plasma's HDR (1.5–2.2)
@@ -466,7 +466,7 @@ This is now handled by `hdrMultiplier()` in `FluidEngine.ts`, which scales the 1
 
 ## Frame shape: rectangular inner cutout via box SDF
 
-**What it is:** A second `ContainerShape` variant: `{ type: 'frame'; cx; cy; halfW; halfH }`. Fluid flows everywhere except inside a rectangular cutout — like a picture frame. This is the inverse of `circle` where fluid is confined inside.
+**What it is:** A second `ContainerShape` variant: `{ type: 'frame'; cx; cy; halfW; halfH }`. Fluid flows everywhere except inside a rectangular cutout — like a picture frame. This is the inverse of `circle` where fluid is contained inside.
 
 **SDF math:** Chebyshev box distance in UV space. `d = max(abs(x-cx)-halfW, abs(y-cy)-halfH)`. Inside the box d<0 (mask=0, no fluid); outside d>0 (mask=1, fluid flows). No aspect correction needed because the rectangle is specified in UV coordinates.
 
@@ -482,7 +482,7 @@ Fixed-interval spawning of random splat bursts creates a metronome effect that l
 
 ## Tangential velocity via randomSplatSwirl
 
-For container-confined presets, per-splat tangential velocity creates natural rotational flow that prevents the fluid from pooling at the center. The formula is `dx = -(y - cy) * swirl`, `dy = (x - cx) * swirl`, where `(cx, cy)` is the container center. Positive swirl = CCW, negative = CW.
+For container-bounded presets, per-splat tangential velocity creates natural rotational flow that prevents the fluid from pooling at the center. The formula is `dx = -(y - cy) * swirl`, `dy = (x - cx) * swirl`, where `(cx, cy)` is the container center. Positive swirl = CCW, negative = CW.
 
 CircularFluid uses `swirl: 500` (aggressive, drives a visible vortex), FrameFluid uses `swirl: 300` (gentler -- complex geometry with corners needs less force to maintain visual motion).
 

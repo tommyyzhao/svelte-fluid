@@ -33,7 +33,7 @@ Run `bun run prepack` before committing to verify publint.
 
 When props change at runtime, `engine.setConfig()` classifies each field:
 
-- **Bucket A** (hot scalars): written to `this.config.X`, picked up next frame. Includes all physics scalars, `pointerInput`, `splatOnHover`, `randomSplat*`, `containerShape`, `glassThickness`, `glassRefraction`, `glassReflectivity`, `glassChromatic`, `revealCoverColor`, `revealSensitivity`, `revealCurve`.
+- **Bucket A** (hot scalars): written to `this.config.X`, picked up next frame. Includes all physics scalars, `pointerInput`, `splatOnHover`, `randomSplat*`, `containerShape`, `glassThickness`, `glassRefraction`, `glassReflectivity`, `glassChromatic`, `revealSensitivity`, `revealCurve`.
 - **Bucket B** (keyword recompile): `shading`, `bloom`, `sunrays`, `reveal` → `updateKeywords()` recompiles the display shader.
 - **Bucket C** (FBO rebuild): `simResolution`, `dyeResolution`, `bloomResolution`, `bloomIterations`, `sunraysResolution` → `initFramebuffers()` / `initBloom()` / `initSunrays()`.
 - **Bucket D** (construct-only): `seed`, `initialSplatCount*`, `presetSplats` → ignored after construction.
@@ -44,7 +44,7 @@ Additionally, `containerShape` with `type: 'svgPath'` triggers a **mask texture 
 
 The `glass` boolean triggers **sceneFBO alloc/dispose** via `initGlassFramebuffer()`. When glass is on, `drawDisplay` renders to `sceneFBO` (RGBA8, canvas resolution) and a `drawGlass` post-processing pass reads it with refraction + specular.
 
-The `reveal` boolean triggers a **`REVEAL` keyword** in the display shader. When active, the shader outputs premultiplied `vec4(coverColor * coverAlpha, coverAlpha)` instead of `vec4(c, a)`. Dye intensity controls transparency — more dye = more transparent = content revealed. `render()` skips backColor, checkerboard, and glass when REVEAL is active. See ADR-0027.
+The `reveal` boolean triggers a **`REVEAL` keyword** in the display shader. When active, the shader outputs `vec4(1.0 - c, alpha)` — inverted dye color with non-premultiplied alpha, matching the Ascend-Fluid reference. This produces iridescent fringes at reveal edges. The advection shader switches to multiplicative dissipation (`result *= dissipation`). `render()` skips backColor, checkerboard, and glass when REVEAL is active. See ADR-0027/0028.
 
 ## Container shapes
 

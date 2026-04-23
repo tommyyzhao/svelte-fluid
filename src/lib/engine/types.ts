@@ -46,17 +46,16 @@ export interface PresetSplat {
 }
 
 /**
- * Describes the shape of a fluid container. The simulation physically
- * confines fluid within the shape — velocity has zero normal component
- * at the wall and dye cannot escape — rather than merely clipping the
- * rendered output.
+ * Describes the shape of a fluid container. The simulation keeps fluid
+ * within the shape — velocity has zero normal component at the wall and
+ * dye cannot escape — rather than merely clipping the rendered output.
  *
  * Coordinates follow the same convention as splat positions:
  * `cx`/`cy` ∈ [0, 1] (left→right, bottom→top). `radius` is normalised
  * by canvas height: `radius: 0.45` gives a physical radius of 45% of
  * the canvas height, which fits comfortably inside landscape canvases.
  *
- * **`circle`** — fluid confined inside a circle. Everything outside is zeroed.
+ * **`circle`** — fluid contained inside a circle. Everything outside is zeroed.
  *
  * **`frame`** — fluid flows everywhere *except* inside a rectangular cutout.
  * `halfW`/`halfH` are in UV space (0–1), so `halfW: 0.2` means the inner
@@ -67,17 +66,17 @@ export interface PresetSplat {
  * (defaults to full canvas when omitted). Both boundaries are fluid-conforming.
  *
  * **`roundedRect`** — like `frame` but with rounded corners, and the fluid
- * is confined *inside* the rounded rectangle rather than outside it.
+ * stays *inside* the rounded rectangle rather than outside it.
  * `halfW`/`halfH` define the rectangle extents in UV space (same as `frame`),
  * and `cornerRadius` (also in UV space) controls how rounded the corners are.
  *
- * **`annulus`** — fluid confined to a circular ring between `innerRadius` and
- * `outerRadius`. Both radii are normalised by canvas height (same as `circle`).
- * Everything inside the inner circle and outside the outer circle is zeroed.
- * Aspect correction is applied, matching the `circle` type.
+ * **`annulus`** — fluid contained within a circular ring between `innerRadius`
+ * and `outerRadius`. Both radii are normalised by canvas height (same as
+ * `circle`). Everything inside the inner circle and outside the outer circle
+ * is zeroed. Aspect correction is applied, matching the `circle` type.
  *
- * **`svgPath`** — fluid confined to the filled region of an SVG path string
- * or Canvas 2D text. The shape is rasterized to a mask texture at
+ * **`svgPath`** — fluid contained within the filled region of an SVG path
+ * string or Canvas 2D text. The shape is rasterized to a mask texture at
  * `maskResolution` (default 512). Two rasterization modes:
  *
  * - **Path mode** (`d`): uses `Path2D(d)` with `viewBox` mapping
@@ -116,7 +115,7 @@ export interface FluidConfig {
 	 * Useful when you want a vivid persistent scene
 	 * (`densityDissipation: 0`) but the opening splats are bright enough
 	 * to overwhelm the canvas — set a temporary higher dissipation that
-	 * "burns in" the initial energy before locking to zero.
+	 * "burns in" the initial dye before locking to zero.
 	 *
 	 * Default: same as `densityDissipation` (no ramp).
 	 */
@@ -274,8 +273,10 @@ export interface FluidConfig {
 	 */
 	glass?: boolean;
 	/**
-	 * Glass wall thickness in UV units. Controls how wide the refraction
-	 * band appears at the container boundary. Default 0.04. Bucket A.
+	 * Glass wall thickness in UV units. For non-circle shapes, controls
+	 * how wide the refraction band is at the boundary. For circles,
+	 * boosts refraction, specular, and glow toward the rim of the
+	 * hemisphere dome. Default 0.04. Bucket A.
 	 */
 	glassThickness?: number;
 	/**
@@ -299,20 +300,15 @@ export interface FluidConfig {
 	/**
 	 * Enable reveal mode. The fluid acts as an opacity mask: where dye
 	 * exists the canvas becomes transparent, revealing content behind it.
-	 * Where there is no dye, the canvas is opaque with `revealCoverColor`.
-	 * Incompatible with `glass` (reveal takes precedence). See ADR-0027.
+	 * Where there is no dye, the canvas shows an opaque white cover.
+	 * The display shader outputs inverted dye color `(1 - C)` which
+	 * produces iridescent fringes at reveal edges. See ADR-0027/0028.
 	 * Default false. Bucket B (keyword recompile).
 	 */
 	reveal?: boolean;
 	/**
-	 * Cover color in **0–255 RGB** (CSS-style, like `backColor`). This is
-	 * the opaque color shown where the fluid has not yet revealed content.
-	 * Default `{ r: 0, g: 0, b: 0 }` (black). Bucket A.
-	 */
-	revealCoverColor?: RGB;
-	/**
 	 * Multiplier on dye intensity before the power curve. Higher values
-	 * make areas reveal more easily (less dye needed). Default 0.12.
+	 * make areas reveal more easily (less dye needed). Default 0.1.
 	 * Bucket A.
 	 */
 	revealSensitivity?: number;
@@ -376,7 +372,6 @@ export interface ResolvedConfig {
 	GLASS_REFLECTIVITY: number;
 	GLASS_CHROMATIC: number;
 	REVEAL: boolean;
-	REVEAL_COVER_COLOR: RGB;
 	REVEAL_SENSITIVITY: number;
 	REVEAL_CURVE: number;
 }
