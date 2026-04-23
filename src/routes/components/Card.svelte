@@ -5,11 +5,13 @@
 		title,
 		description,
 		snippet,
+		onCustomize,
 		children
 	}: {
 		title: string;
 		description?: string;
 		snippet?: string;
+		onCustomize?: () => void;
 		children: Snippet;
 	} = $props();
 
@@ -30,14 +32,24 @@
 					<p>{description}</p>
 				{/if}
 			</div>
-			{#if snippet}
-				<button
-					class="code-toggle"
-					class:active={showCode}
-					onclick={() => (showCode = !showCode)}
-					aria-label="Toggle code snippet">&lt;/&gt;</button
-				>
-			{/if}
+			<div class="caption-actions">
+				{#if onCustomize}
+					<button
+						class="customize-btn"
+						onclick={onCustomize}
+						aria-label="Open in playground"
+						title="Open in playground"
+					>Customize</button>
+				{/if}
+				{#if snippet}
+					<button
+						class="code-toggle"
+						class:active={showCode}
+						onclick={() => (showCode = !showCode)}
+						aria-label="Toggle code snippet">&lt;/&gt;</button
+					>
+				{/if}
+			</div>
 		</div>
 		{#if snippet && showCode}
 			<div class="snippet-wrap">
@@ -74,6 +86,11 @@
 		align-items: flex-start;
 		gap: 8px;
 	}
+	.caption-actions {
+		display: flex;
+		gap: 4px;
+		flex-shrink: 0;
+	}
 	h3 {
 		margin: 0 0 4px;
 		font-size: 0.95rem;
@@ -86,8 +103,21 @@
 		color: #888;
 		line-height: 1.4;
 	}
+	.customize-btn {
+		padding: 2px 8px;
+		font-size: 0.7rem;
+		background: #1c2a3a;
+		border: 1px solid #2a4a6a;
+		border-radius: 4px;
+		color: #8bc;
+		cursor: pointer;
+		transition: all 120ms;
+	}
+	.customize-btn:hover {
+		background: #243a52;
+		color: #cfe;
+	}
 	.code-toggle {
-		flex-shrink: 0;
 		padding: 2px 8px;
 		font-size: 0.75rem;
 		font-family: monospace;

@@ -37,3 +37,4 @@ export { default as CircularFluid, type CircularFluidProps } from './presets/Cir
 export { default as FrameFluid, type FrameFluidProps } from './presets/FrameFluid.svelte';
 export { default as AnnularFluid, type AnnularFluidProps } from './presets/AnnularFluid.svelte';
 export { default as SvgPathFluid, type SvgPathFluidProps } from './presets/SvgPathFluid.svelte';
+export { default as ToroidalTempest, type ToroidalTempestProps } from './presets/ToroidalTempest.svelte';

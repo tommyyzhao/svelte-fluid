@@ -13,6 +13,64 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`<ToroidalTempest>` preset** — 6th visual preset. Full-spectrum storm
+  circulating in an annular ring with high-velocity (V=300) tangential splats,
+  curl=50, periodic re-injection every 2s. Fills the odd-count gap in the
+  2-column preset grid.
+- **Playground Fluid/Reveal mode toggle** — pill toggle switches between
+  `<Fluid>` canvas and `<FluidReveal>` wrapping actual sample content
+  (gradient+text or tile mosaic). Reveal mode shows the real scratch-to-reveal
+  interaction with content underneath.
+- **Accordion ControlPanel** — 7 collapsible sections (Physics, Random Splats,
+  Visuals, Resolution, Background, Container Shape, Glass) with blue "N changed"
+  badges on each header. Pinned quick-controls bar always shows curl,
+  splatRadius, densityDissipation, bloom, glass, shape picker.
+- **"Customize" button on demo cards** — every preset, config, and glass effect
+  card has a Customize button that loads its config into the playground and
+  scrolls to it. Uses `loadConfig()` which resets to defaults first, then
+  applies overrides.
+- **URL hash state** — playground state serialized to `#pg=<base64 JSON>` via
+  `history.replaceState` (debounced 300ms). Covers all physics, glass sub-params,
+  container shape sub-params, reveal settings. "Share" button copies URL.
+  Back button works as undo.
+- **Reveal playground color picker** — accent color picker for the gradient
+  behind the reveal mask.
+- **Code snippets show full `<Fluid>` equivalents** — every preset card snippet
+  now shows both the preset shorthand and the equivalent `<Fluid>` configuration
+  with all physics props.
+- **Reveal snippets include exact CSS** — all 4 reveal card snippets include
+  gradient stops, layout styles, and FluidReveal props.
+
+### Fixed
+
+- **Playground reveal mode was broken** — toggling `reveal={true}` on `<Fluid>`
+  showed transparency to the page background with nothing to reveal. Now uses
+  actual `<FluidReveal>` wrapping sample content.
+- **`loadConfig` dirty state bleed** — loading a preset config left previous
+  state (e.g., randomSplatRate, glass settings) from prior customization.
+  Now calls `resetAllDefaults()` before applying overrides.
+- **`buildRevealSnippet` wrong defaults** — compared against hardcoded
+  FluidReveal defaults instead of the playground's `D.*` defaults, producing
+  misleading code output with spurious "changed" props.
+- **`reset()` didn't reset playground mode** — clicking Reset in Reveal mode
+  reset all sliders but stayed in Reveal mode. Now resets to Fluid mode.
+- **Shape badge only counted type change** — now counts sub-param changes
+  (cx, cy, radius, innerRadius, outerRadius) in the badge number.
+- **Glass accordion hint was passive text** — "Enable glass in quick controls
+  above" is now a clickable button that sets `glass = true`.
+- **Stale preset count copy** — "Eight presets" updated to "six visual presets
+  and four shape presets" in page copy and og:description.
+
+### Changed
+
+- **Plasma preset reverted** to original rectangular canvas design — 8 inward
+  compass-point jets converging at center, `randomSplatRate={0.4}`, no container
+  shape. The annulus ring design moved to ToroidalTempest.
+- **PRESET_CONFIGS enriched** — added `initialDensityDissipation`,
+  `initialDensityDissipationDuration` to LavaLamp/Plasma/ToroidalTempest;
+  `randomSplatSpread`/`randomSplatSwirl` to Crystal orb;
+  `randomSplatCount` to Soft lens.
+
 - **Multiplicative dissipation for reveal mode** (ADR-0028) — advection shader
   now supports `uniform float uMultiplicative`. When `reveal=true`, the engine
   sets it to 1.0, switching from `result / (1 + dissipation * dt)` to
