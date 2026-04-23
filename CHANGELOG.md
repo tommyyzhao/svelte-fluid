@@ -33,8 +33,29 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
   `history.replaceState` (debounced 300ms). Covers all physics, glass sub-params,
   container shape sub-params, reveal settings. "Share" button copies URL.
   Back button works as undo.
-- **Reveal playground color picker** — accent color picker for the gradient
-  behind the reveal mask.
+- **`revealCoverColor` prop** (`FluidConfig`, `FluidReveal.coverColor`) —
+  customizable cover color for the reveal layer. The display shader replaces
+  the hardcoded `1.0` with `uRevealCoverColor`, preserving identical default
+  behavior (white). Bucket A.
+- **`FluidReveal.accentColor` prop** — controls the iridescent fringe color at
+  scratch edges. Derived as `coverColor - accentColor` → dye injection color,
+  so the shader's `max(coverColor - c, 0)` naturally produces the accent at
+  full dye. No engine uniform needed; lives entirely in FluidReveal.
+- **Customize on all remaining cards** — Default, Circle, Frame, Annulus,
+  Rounded frame, SVG path, Text glyph, Portal ring, Glass frame, and all 4
+  Reveal cards now have Customize buttons + `PRESET_CONFIGS` entries. Reveal
+  cards switch playground to Reveal mode.
+- **`</>` code preview toggle** — replaces "Copy code" button in ControlPanel
+  with a `</>` toggle showing an inline code panel with Copy button. Floating
+  `</>` button in page top-right shows FluidBackground usage snippet.
+- **Share button "Copied!" feedback** — 1.8s flash after clicking Share.
+- **Card copy button "Copied!" feedback** — same pattern on all demo cards.
+- **Physics snapshot on mode switch** — switching to Reveal mode snapshots
+  curl/velocityDissipation/splatRadius/bloom/sunrays/shading and applies
+  reveal defaults; switching back restores the snapshot.
+- **SVG path Customize support** — `customContainerShape` state in playground
+  allows svgPath shapes loaded via Customize, cleared when user picks a
+  shape from the dropdown.
 - **Code snippets show full `<Fluid>` equivalents** — every preset card snippet
   now shows both the preset shorthand and the equivalent `<Fluid>` configuration
   with all physics props.
@@ -60,6 +81,10 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
   above" is now a clickable button that sets `glass = true`.
 - **Stale preset count copy** — "Eight presets" updated to "six visual presets
   and four shape presets" in page copy and og:description.
+- **Label audit** — "evenSpacing" → "Even spacing", "show outline" →
+  "Show shape outline".
+- **`controlsRef` typed properly** — uses `FluidHandle` import instead of
+  inline type.
 
 ### Changed
 

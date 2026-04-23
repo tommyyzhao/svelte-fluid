@@ -163,7 +163,8 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 2. `buildConfig()` collects current values.
 3. `engine.setConfig(cfg)` walks the four buckets:
    - **A** scalars/booleans → write to `this.config.X`, picked up next frame.
-     Includes `randomSplatSwirl`, `randomSplatEvenSpacing`, `randomSplatSpread`.
+     Includes `randomSplatSwirl`, `randomSplatEvenSpacing`, `randomSplatSpread`,
+     `revealSensitivity`, `revealCurve`, `revealCoverColor`.
    - **B** SHADING/BLOOM/SUNRAYS → `updateKeywords()` recompiles display shader
    - **C** SIM/DYE/BLOOM/SUNRAYS resolution → `init*Framebuffers()` rebuilds FBOs
    - **A** also includes `pointerInput` (installs/removes canvas+window
