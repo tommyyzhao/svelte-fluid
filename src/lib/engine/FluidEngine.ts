@@ -118,8 +118,7 @@ const DEFAULTS: ResolvedConfig = {
 	GLASS_REFLECTIVITY: 0.12,
 	GLASS_CHROMATIC: 0.15,
 	REVEAL: false,
-	REVEAL_COVER_COLOR: { r: 0, g: 0, b: 0 },
-	REVEAL_SENSITIVITY: 0.12,
+	REVEAL_SENSITIVITY: 0.1,
 	REVEAL_CURVE: 0.1
 };
 function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): ResolvedConfig {
@@ -185,7 +184,7 @@ function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): Re
 	if (input.glassReflectivity !== undefined) out.GLASS_REFLECTIVITY = input.glassReflectivity;
 	if (input.glassChromatic !== undefined) out.GLASS_CHROMATIC = input.glassChromatic;
 	if (input.reveal !== undefined) out.REVEAL = input.reveal;
-	if (input.revealCoverColor !== undefined) out.REVEAL_COVER_COLOR = normalizeColor(input.revealCoverColor);
+
 	if (input.revealSensitivity !== undefined) out.REVEAL_SENSITIVITY = input.revealSensitivity;
 	if (input.revealCurve !== undefined) out.REVEAL_CURVE = input.revealCurve;
 	return out;
@@ -895,13 +894,11 @@ export class FluidEngine implements FluidHandle {
 		}
 		ctx.fillStyle = 'white';
 		if (shape.text) {
-			// Text mode: measure the text at a reference size, then scale
-			// to fill the canvas with padding.
-			const refSize = 100;
-			ctx.font = shape.font ?? `bold ${refSize}px sans-serif`;
+			// Text mode: measure the text, then scale to fill the mask.
+			ctx.font = shape.font ?? 'bold 72px sans-serif';
 			const metrics = ctx.measureText(shape.text);
 			const textW = metrics.width;
-			const textH = refSize * 1.2;
+			const textH = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
 			const pad = 0.9;
 			const scale = Math.min((maskW * pad) / textW, (maskH * pad) / textH);
 			ctx.setTransform(scale, 0, 0, scale, maskW / 2, maskH / 2);
@@ -1128,27 +1125,29 @@ export class FluidEngine implements FluidHandle {
 		const gl = this.gl;
 		gl.disable(gl.BLEND);
 
-		this.curlProgram.bind();
-		gl.uniform2f(
-			this.curlProgram.uniforms.texelSize,
-			this.velocity.texelSizeX,
-			this.velocity.texelSizeY
-		);
-		gl.uniform1i(this.curlProgram.uniforms.uVelocity, this.velocity.read.attach(0));
-		this.blit(this.curlFBO);
+		if (this.config.CURL > 0) {
+			this.curlProgram.bind();
+			gl.uniform2f(
+				this.curlProgram.uniforms.texelSize,
+				this.velocity.texelSizeX,
+				this.velocity.texelSizeY
+			);
+			gl.uniform1i(this.curlProgram.uniforms.uVelocity, this.velocity.read.attach(0));
+			this.blit(this.curlFBO);
 
-		this.vorticityProgram.bind();
-		gl.uniform2f(
-			this.vorticityProgram.uniforms.texelSize,
-			this.velocity.texelSizeX,
-			this.velocity.texelSizeY
-		);
-		gl.uniform1i(this.vorticityProgram.uniforms.uVelocity, this.velocity.read.attach(0));
-		gl.uniform1i(this.vorticityProgram.uniforms.uCurl, this.curlFBO.attach(1));
-		gl.uniform1f(this.vorticityProgram.uniforms.curl, this.config.CURL);
-		gl.uniform1f(this.vorticityProgram.uniforms.dt, dt);
-		this.blit(this.velocity.write);
-		this.velocity.swap();
+			this.vorticityProgram.bind();
+			gl.uniform2f(
+				this.vorticityProgram.uniforms.texelSize,
+				this.velocity.texelSizeX,
+				this.velocity.texelSizeY
+			);
+			gl.uniform1i(this.vorticityProgram.uniforms.uVelocity, this.velocity.read.attach(0));
+			gl.uniform1i(this.vorticityProgram.uniforms.uCurl, this.curlFBO.attach(1));
+			gl.uniform1f(this.vorticityProgram.uniforms.curl, this.config.CURL);
+			gl.uniform1f(this.vorticityProgram.uniforms.dt, dt);
+			this.blit(this.velocity.write);
+			this.velocity.swap();
+		}
 
 		this.divergenceProgram.bind();
 		gl.uniform2f(
@@ -1196,6 +1195,10 @@ export class FluidEngine implements FluidHandle {
 		this.velocity.swap();
 
 		this.advectionProgram.bind();
+		gl.uniform1f(
+			this.advectionProgram.uniforms.uMultiplicative,
+			this.config.REVEAL ? 1.0 : 0.0
+		);
 		gl.uniform2f(
 			this.advectionProgram.uniforms.texelSize,
 			this.velocity.texelSizeX,
@@ -1331,8 +1334,6 @@ export class FluidEngine implements FluidHandle {
 			this.setContainerShapeUniforms(this.displayMaterial.uniforms, width, height, 4);
 		}
 		if (this.config.REVEAL) {
-			const cc = this.config.REVEAL_COVER_COLOR;
-			gl.uniform3f(this.displayMaterial.uniforms.uRevealCoverColor, cc.r, cc.g, cc.b);
 			gl.uniform1f(this.displayMaterial.uniforms.uRevealSensitivity, this.config.REVEAL_SENSITIVITY);
 			gl.uniform1f(this.displayMaterial.uniforms.uRevealCurve, this.config.REVEAL_CURVE);
 		}

@@ -26,7 +26,7 @@ When `evenSpacing` is active, only `y` is re-sampled.
 ## Consequences
 
 - Frame shapes can now have fully rounded outer edges with fluid physically
-  confined inside them — same quality as circle/annulus.
+  contained inside them — same quality as circle/annulus.
 - The `cornerRadius` → `innerCornerRadius` rename is a breaking API change.
 - Thin annuli and small frames waste far fewer splats.
 - ~5.6% of splats may be silently dropped for shapes with small valid area

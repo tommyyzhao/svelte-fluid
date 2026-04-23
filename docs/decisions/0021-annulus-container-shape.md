@@ -6,7 +6,7 @@
 ## Context
 
 The shaped container system (ADR [0018](./0018-shaped-containers-mask-penalisation.md))
-supports circle, frame, and roundedRect. The annulus — fluid confined to
+supports circle, frame, and roundedRect. The annulus — fluid contained within
 a ring between two concentric circles — is the natural next shape. It
 enables ring-vortex visual effects and fills the gap between "fluid
 inside a circle" and "fluid outside a rectangle".

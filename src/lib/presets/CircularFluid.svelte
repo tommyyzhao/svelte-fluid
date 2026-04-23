@@ -1,7 +1,7 @@
 <!--
   svelte-fluid — CircularFluid preset
 
-  Visual intent: a vivid plasma ball physically confined inside a circle.
+  Visual intent: vivid swirling fluid contained inside a circle.
   The simulation enforces the circular boundary — velocity is zeroed
   outside after every physics pass and dye is masked after advection,
   so fluid accumulates and swirls strictly within the circle.

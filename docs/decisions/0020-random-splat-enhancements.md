@@ -7,13 +7,13 @@
 
 Presets with container shapes (CircularFluid, FrameFluid) needed richer continuous animation than the existing `randomSplatRate` + `randomSplatCount` system could provide. Three gaps:
 
-1. **Directionless splats.** Random splats had random velocity, causing fluid to pool in the center of confined containers instead of circulating. Container presets needed per-splat tangential velocity to drive rotational flow.
+1. **Directionless splats.** Random splats had random velocity, causing fluid to pool in the center of bounded containers instead of circulating. Container presets needed per-splat tangential velocity to drive rotational flow.
 
 2. **Narrow spawn band.** The default spawn distribution clustered splats around the canvas vertical center. For frame shapes, this band fell inside the masked cutout, so most random splats were immediately zeroed by the mask and produced no visible effect.
 
-3. **Metronome timing.** Fixed-interval burst spawning sounded artificial and created visible pulsing patterns, especially in confined containers where the fluid response to each burst was more concentrated.
+3. **Metronome timing.** Fixed-interval burst spawning sounded artificial and created visible pulsing patterns, especially in bounded containers where the fluid response to each burst was more concentrated.
 
-Additionally, the 10x HDR color multiplier applied to all random splats caused oversaturation in confined containers where the same energy concentrated into fewer pixels.
+Additionally, the 10x HDR color multiplier applied to all random splats caused oversaturation in bounded containers where the same dye concentrated into fewer pixels.
 
 ## Decision
 
@@ -27,7 +27,7 @@ Four new Bucket A config parameters, plus an HDR scaling function:
 
 - **Jittered timing**: The interval between random splat bursts is now `baseInterval * (0.5 + rng())`, giving +/-50% jitter for organic rhythm. Uses the seeded RNG so timing is still deterministic per seed.
 
-- **`hdrMultiplier()` method**: Scales the 10x HDR base by `sqrt(containerArea)` for each shape type, clamped at 3x minimum. Prevents oversaturation in confined containers (e.g., circle at radius 0.45 has area ~0.35 of canvas, so multiplier is ~5.9x instead of 10x).
+- **`hdrMultiplier()` method**: Scales the 10x HDR base by `sqrt(containerArea)` for each shape type, clamped at 3x minimum. Prevents oversaturation in bounded containers (e.g., circle at radius 0.45 has area ~0.35 of canvas, so multiplier is ~5.9x instead of 10x).
 
 All four config params are Bucket A (hot-updatable, picked up next frame). No shader recompile or FBO rebuild needed.
 

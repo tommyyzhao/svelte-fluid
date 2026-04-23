@@ -17,14 +17,8 @@
 
 	export interface FluidRevealProps extends FluidConfig {
 		/**
-		 * Cover color in **0–255 RGB** (CSS-style). This is the opaque
-		 * color shown where the fluid has not yet revealed content.
-		 * Default `{ r: 0, g: 0, b: 0 }` (black).
-		 */
-		coverColor?: RGB;
-		/**
 		 * How easily areas reveal. Multiplier on dye intensity before
-		 * the power curve. Higher = less dye needed. Default 0.12.
+		 * the power curve. Higher = less dye needed. Default 0.1.
 		 */
 		sensitivity?: number;
 		/**
@@ -35,16 +29,16 @@
 		curve?: number;
 		/**
 		 * Whether revealed areas gradually fade back to covered.
-		 * `true` → `densityDissipation: 0.97` (slow fade-back).
-		 * `false` → `densityDissipation: 0` (permanent reveal).
+		 * `true` → multiplicative dissipation 0.995 (slow fade-back).
+		 * `false` → multiplicative dissipation 1.0 (permanent reveal).
 		 * Overridden by `fadeSpeed` if both are provided.
 		 * Default `true`.
 		 */
 		fadeBack?: boolean;
 		/**
-		 * Explicit density dissipation value for fade-back speed.
-		 * 0 = permanent reveal, 1 = instant fade-back. Takes precedence
-		 * over `fadeBack` when provided.
+		 * Explicit density dissipation value (multiplicative).
+		 * 1.0 = permanent reveal, 0.99 = slow fade-back, 0.9 = fast fade.
+		 * Takes precedence over `fadeBack` when provided.
 		 */
 		fadeSpeed?: number;
 		/**
@@ -93,8 +87,7 @@
 	import Fluid from './Fluid.svelte';
 
 	let {
-		coverColor = { r: 0, g: 0, b: 0 },
-		sensitivity = 0.12,
+		sensitivity = 0.1,
 		curve = 0.1,
 		fadeBack = true,
 		fadeSpeed,
@@ -108,16 +101,16 @@
 		style,
 		children,
 		// Reveal-friendly defaults (consumer can override).
-		// curl=0 + high velocityDissipation produces smooth, laminar dye
-		// spread without turbulent swirls — matching the reference impl.
+		// curl=0 skips vorticity passes; multiplicative dissipation
+		// (activated by reveal=true) matches the reference physics.
 		densityDissipation: densityDissipationProp,
-		splatRadius = 0.4,
+		splatRadius = 0.2,
 		splatOnHover = false,
 		initialSplatCount = 0,
 		bloom = false,
 		sunrays = false,
 		shading = false,
-		velocityDissipation = 3,
+		velocityDissipation = 0.9,
 		curl = 0,
 		pointerInput = false,
 		backColor = { r: 0, g: 0, b: 0 },
@@ -128,11 +121,9 @@
 	let canvasWrapperEl: HTMLDivElement | undefined = $state(undefined);
 
 	// ---- Pointer-driven reveal splats ----
-	// We handle pointer events ourselves (pointerInput=false on the engine)
-	// so every splat uses a uniform gray color. Random per-splat colors from
-	// generateColor() create uneven intensity → visible dye patterns in the
-	// reveal mask. Uniform channels keep max(r,g,b) spatially consistent.
-	const REVEAL_DYE: RGB = { r: 0.15, g: 0.15, b: 0.15 };
+	// Non-uniform dye color: display shader inverts to (1-r, 1-g, 1-b),
+	// producing iridescent blue-tinted fringes at reveal edges.
+	const REVEAL_DYE: RGB = { r: 0.95, g: 0.84, b: 0.68 };
 	const SPLAT_FORCE = 6000;
 	let prevPtrX = -1;
 	let prevPtrY = -1;
@@ -141,7 +132,8 @@
 		const rect = canvasWrapperEl?.getBoundingClientRect();
 		if (!rect || !inner) return;
 		const x = (e.clientX - rect.left) / rect.width;
-		const y = (e.clientY - rect.top) / rect.height;
+		// Flip to GL space (0 = bottom, 1 = top) — engine.splat() expects this.
+		const y = 1.0 - (e.clientY - rect.top) / rect.height;
 		if (prevPtrX < 0) {
 			prevPtrX = x;
 			prevPtrY = y;
@@ -200,15 +192,16 @@
 		}
 	}
 
-	// Precedence: fadeSpeed > densityDissipation prop > fadeBack default
+	// Multiplicative dissipation: 1.0 = no fade, 0.995 = slow fade.
+	// Precedence: fadeSpeed > densityDissipation prop > fadeBack default.
 	const dissipation = $derived(
 		fadeSpeed !== undefined
 			? fadeSpeed
 			: densityDissipationProp !== undefined
 				? densityDissipationProp
 				: fadeBack
-					? 0.97
-					: 0
+					? 0.995
+					: 1.0
 	);
 
 	onMount(() => {
@@ -260,7 +253,6 @@
 		<Fluid
 			bind:this={inner}
 			reveal={true}
-			revealCoverColor={coverColor}
 			revealSensitivity={sensitivity}
 			revealCurve={curve}
 			densityDissipation={dissipation}

@@ -13,7 +13,7 @@
 	<p class="subtitle">Fluid simulation as an opacity mask. Move your cursor to reveal content below.</p>
 
 	<section>
-		<h2>Default (black cover, fade-back)</h2>
+		<h2>Default (fade-back)</h2>
 		<div class="demo-row">
 			<FluidReveal class="demo-card">
 				<div class="content gradient-content">
@@ -25,12 +25,10 @@
 	</section>
 
 	<section>
-		<h2>Custom cover color + permanent reveal</h2>
+		<h2>Permanent reveal</h2>
 		<div class="demo-row">
 			<FluidReveal
-				coverColor={{ r: 20, g: 30, b: 60 }}
 				fadeBack={false}
-				splatRadius={0.5}
 				class="demo-card"
 			>
 				<div class="content image-content">
@@ -56,7 +54,6 @@
 			<FluidReveal
 				autoReveal
 				autoRevealSpeed={0.8}
-				coverColor={{ r: 10, g: 10, b: 30 }}
 				fadeBack={false}
 				sensitivity={0.15}
 				class="demo-card"
@@ -80,8 +77,7 @@
 			<FluidReveal
 				curve={0.5}
 				sensitivity={0.2}
-				coverColor={{ r: 40, g: 10, b: 40 }}
-				splatRadius={0.6}
+				splatRadius={0.3}
 				class="demo-card"
 			>
 				<div class="content gradient-content-2">
@@ -97,7 +93,6 @@
 		<div class="demo-row">
 			<FluidReveal
 				containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.4 }}
-				coverColor={{ r: 15, g: 15, b: 35 }}
 				fadeBack={false}
 				class="demo-card"
 			>

@@ -1,7 +1,7 @@
 <!--
   svelte-fluid — AnnularFluid preset
 
-  Visual intent: a ring-vortex of fluid confined between two concentric
+  Visual intent: a ring-vortex of fluid contained between two concentric
   circles. The simulation enforces the annular boundary — velocity and
   dye are zeroed inside the inner circle and outside the outer circle
   after every physics pass.

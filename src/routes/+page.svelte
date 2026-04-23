@@ -226,16 +226,16 @@
 			</p>
 		</header>
 		<div class="grid-2col">
-			<Card title="Lava Lamp" description="Warm blobs drifting lazily on a silver background." snippet={'<LavaLamp />'}>
+			<Card title="Lava Lamp" description="Warm blobs in a glass vessel with rim refraction." snippet={'<LavaLamp />'}>
 				<LavaLamp seed={101} lazy aria-label="LavaLamp preset" />
 			</Card>
-			<Card title="Plasma" description="Persistent full-spectrum energy field." snippet={'<Plasma />'}>
+			<Card title="Plasma" description="Full-spectrum fluid circulating in a toroidal ring." snippet={'<Plasma />'}>
 				<Plasma seed={202} lazy aria-label="Plasma preset" />
 			</Card>
-			<Card title="Ink in Water" description="Blue dye blooming on a pale background." snippet={'<InkInWater />'}>
+			<Card title="Ink in Water" description="India ink sinking through dark water with volumetric bloom." snippet={'<InkInWater />'}>
 				<InkInWater seed={303} lazy aria-label="Ink in Water preset" />
 			</Card>
-			<Card title="Frozen Swirl" description="A single icy whirlpool that spins itself out." snippet={'<FrozenSwirl />'}>
+			<Card title="Frozen Swirl" description="An icy whirlpool frozen inside a circular vessel." snippet={'<FrozenSwirl />'}>
 				<FrozenSwirl seed={404} lazy aria-label="Frozen Swirl preset" />
 			</Card>
 			<Card title="Aurora" description="Northern-lights ribbons drifting laterally." snippet={'<Aurora />'}>
@@ -311,7 +311,7 @@
 			</p>
 		</header>
 		<div class="grid-2col">
-			<Card title="Circle" description="Plasma confined inside a circular boundary." snippet={`<Fluid\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5, radius: 0.45\n  }}\n/>`}>
+			<Card title="Circle" description="Fluid swirling inside a circular boundary." snippet={`<Fluid\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5, radius: 0.45\n  }}\n/>`}>
 				<CircularFluid seed={606} lazy splatOnHover aria-label="Circular fluid shape demo" />
 			</Card>
 			<Card title="Frame" description="Fluid around a rectangular inner cutout." snippet={`<Fluid\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.2, halfH: 0.2\n  }}\n/>`}>
@@ -320,12 +320,15 @@
 			<Card title="Annulus" description="Ring-vortex fluid between two concentric circles." snippet={`<Fluid\n  containerShape={{\n    type: 'annulus',\n    cx: 0.5, cy: 0.5,\n    innerRadius: 0.15, outerRadius: 0.4\n  }}\n/>`}>
 				<AnnularFluid seed={909} lazy splatOnHover aria-label="Annular fluid shape demo" />
 			</Card>
-			<Card title="Rounded rect" description="Fluid confined inside a rectangle with smooth rounded corners." snippet={`<Fluid\n  containerShape={{\n    type: 'roundedRect',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.35, halfH: 0.35,\n    cornerRadius: 0.08\n  }}\n/>`}>
+			<Card title="Rounded frame" description="Frame with rounded inner corners via innerCornerRadius." snippet={`<Fluid\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.2, halfH: 0.2,\n    innerCornerRadius: 0.06\n  }}\n/>`}>
+				<FrameFluid seed={818} lazy splatOnHover innerCornerRadius={0.06} aria-label="Rounded frame shape demo" />
+			</Card>
+			<Card title="SVG path" description="Fluid shaped by an arbitrary SVG path — a lightning bolt." snippet={`<Fluid\n  containerShape={{\n    type: 'svgPath',\n    d: 'M55 2 L30 42 L48 42 L25 70 ...'\n  }}\n/>`}>
 				<Fluid
 					seed={808}
 					lazy
 					splatOnHover
-					containerShape={{ type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.35, halfH: 0.35, cornerRadius: 0.08 }}
+					containerShape={{ type: 'svgPath', d: 'M55 2 L30 42 L48 42 L25 70 L50 98 L75 58 L57 58 L80 30 Z' }}
 					curl={30}
 					densityDissipation={0.2}
 					velocityDissipation={0.1}
@@ -337,16 +340,14 @@
 					initialSplatCount={10}
 					randomSplatRate={0.5}
 					randomSplatCount={2}
-					randomSplatSpread={1.5}
+					randomSplatSpread={2.0}
+					randomSplatSwirl={400}
 					backColor={{ r: 4, g: 2, b: 12 }}
-					aria-label="Rounded rect fluid shape demo"
+					aria-label="SVG path fluid shape demo"
 				/>
 			</Card>
-			<Card title="Rounded frame" description="Frame with rounded inner corners via innerCornerRadius." snippet={`<Fluid\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.2, halfH: 0.2,\n    innerCornerRadius: 0.06\n  }}\n/>`}>
-				<FrameFluid seed={818} lazy splatOnHover innerCornerRadius={0.06} aria-label="Rounded frame shape demo" />
-			</Card>
-			<Card title="SVG path" description="Fluid confined to an arbitrary SVG star shape via mask texture." snippet={`<Fluid\n  containerShape={{\n    type: 'svgPath',\n    d: 'M50 5 L61 40 L98 40 ...'\n  }}\n/>`}>
-				<SvgPathFluid seed={1010} lazy splatOnHover aria-label="SVG path fluid shape demo" />
+			<Card title="Text glyph" description="Fluid shaped by a bold ampersand via Canvas 2D text rasterization." snippet={`<Fluid\n  containerShape={{\n    type: 'svgPath',\n    text: '&',\n    font: 'bold 200px Georgia, serif',\n    fillRule: 'evenodd'\n  }}\n/>`}>
+				<SvgPathFluid seed={1010} lazy splatOnHover aria-label="Text glyph fluid shape demo" />
 			</Card>
 		</div>
 	</section>
@@ -369,6 +370,7 @@
 					glassRefraction={0.7}
 					glassReflectivity={0.15}
 					glassChromatic={0.5}
+					glassThickness={0.08}
 					containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
 					backColor={{ r: 4, g: 2, b: 12 }}
 					curl={35}
@@ -398,14 +400,19 @@
 					containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
 					backColor={{ r: 0, g: 0, b: 0 }}
 					curl={30}
-					densityDissipation={1}
-					velocityDissipation={0.2}
+					densityDissipation={0.4}
+					velocityDissipation={0.12}
 					splatRadius={0.25}
-					splatForce={6000}
+					splatForce={5000}
 					shading
 					bloom
 					sunrays
 					initialSplatCount={15}
+					randomSplatRate={2.5}
+					randomSplatCount={2}
+					randomSplatSpawnY={0.5}
+					randomSplatSpread={0.8}
+					randomSplatSwirl={400}
 					aria-label="Soft lens effect demo"
 				/>
 			</Card>
@@ -448,18 +455,20 @@
 					containerShape={{ type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.22, halfH: 0.22, innerCornerRadius: 0.06, outerHalfW: 0.48, outerHalfH: 0.48, outerCornerRadius: 0.04 }}
 					backColor={{ r: 6, g: 3, b: 16 }}
 					curl={25}
-					densityDissipation={0.5}
-					velocityDissipation={0.15}
+					densityDissipation={0.25}
+					velocityDissipation={0.1}
 					splatRadius={0.35}
-					splatForce={6000}
+					splatForce={5000}
 					shading
 					bloom
 					bloomIntensity={1.0}
 					sunrays={false}
 					initialSplatCount={10}
-					randomSplatRate={1.0}
+					randomSplatRate={3.0}
+					randomSplatCount={2}
 					randomSplatSpawnY={0.5}
 					randomSplatSpread={1.5}
+					randomSplatSwirl={350}
 					aria-label="Glass frame effect demo"
 				/>
 			</Card>
@@ -475,19 +484,17 @@
 			</p>
 		</header>
 		<div class="grid-2col">
-			<Card title="Scratch to reveal" description="Move your cursor to uncover the gradient. The reveal fades back over time." snippet={`<FluidReveal>\n  <div class="my-content">\n    Hidden content here\n  </div>\n</FluidReveal>`}>
+			<Card title="Scratch to reveal" description="Move your cursor to uncover the gradient. Sharp iridescent edges fade back over time." snippet={`<FluidReveal>\n  <div class="my-content">\n    Hidden content here\n  </div>\n</FluidReveal>`}>
 				<FluidReveal lazy>
 					<div class="reveal-content reveal-gradient">
 						<span class="reveal-label">Revealed!</span>
 					</div>
 				</FluidReveal>
 			</Card>
-			<Card title="Permanent reveal" description="Set fadeBack={false} for a scratch-card effect. Once revealed, content stays visible." snippet={`<FluidReveal\n  fadeBack={false}\n  coverColor={{ r: 20, g: 30, b: 60 }}\n  splatRadius={0.5}\n>\n  <div>...</div>\n</FluidReveal>`}>
+			<Card title="Permanent reveal" description="Set fadeBack={false} for a scratch-card effect. Once revealed, content stays visible." snippet={`<FluidReveal\n  fadeBack={false}\n>\n  <div>...</div>\n</FluidReveal>`}>
 				<FluidReveal
 					lazy
 					fadeBack={false}
-					coverColor={{ r: 20, g: 30, b: 60 }}
-					splatRadius={0.5}
 				>
 					<div class="reveal-content reveal-mosaic">
 						{#each Array(9) as _, i}
@@ -501,7 +508,6 @@
 					lazy
 					autoReveal
 					autoRevealSpeed={0.8}
-					coverColor={{ r: 10, g: 10, b: 30 }}
 					fadeBack={false}
 					sensitivity={0.15}
 				>
@@ -518,13 +524,12 @@
 					</div>
 				</FluidReveal>
 			</Card>
-			<Card title="Soft reveal" description="Higher curve values create softer, more gradual reveal edges." snippet={`<FluidReveal\n  curve={0.5}\n  sensitivity={0.2}\n  coverColor={{ r: 40, g: 10, b: 40 }}\n  splatRadius={0.6}\n>\n  <div>...</div>\n</FluidReveal>`}>
+			<Card title="Soft reveal" description="Higher curve values create softer, more gradual reveal edges." snippet={`<FluidReveal\n  curve={0.5}\n  sensitivity={0.2}\n  splatRadius={0.3}\n>\n  <div>...</div>\n</FluidReveal>`}>
 				<FluidReveal
 					lazy
 					curve={0.5}
 					sensitivity={0.2}
-					coverColor={{ r: 40, g: 10, b: 40 }}
-					splatRadius={0.6}
+					splatRadius={0.3}
 				>
 					<div class="reveal-content reveal-gradient-2">
 						<span class="reveal-label">Soft Edges</span>
