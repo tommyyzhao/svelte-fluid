@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import {
 		AnnularFluid,
 		Aurora,
@@ -11,11 +12,12 @@
 		InkInWater,
 		LavaLamp,
 		Plasma,
-		SvgPathFluid
+		SvgPathFluid,
+		ToroidalTempest
 	} from '$lib/index.js';
 	import type { ContainerShape } from '$lib/engine/types.js';
 	import Card from './components/Card.svelte';
-	import ControlPanel from './components/ControlPanel.svelte';
+	import ControlPanel, { D } from './components/ControlPanel.svelte';
 	import ShapePreview from './components/ShapePreview.svelte';
 
 	function wordShape(text: string): ContainerShape {
@@ -27,49 +29,69 @@
 		};
 	}
 
-	// Live-bound config for the controls instance.
-	let curl = $state(30);
-	let splatRadius = $state(0.25);
-	let splatForce = $state(6000);
-	let densityDissipation = $state(1);
-	let velocityDissipation = $state(0.2);
-	let pressure = $state(0.8);
-	let bloomIntensity = $state(0.8);
-	let sunraysWeight = $state(1);
-	let shading = $state(true);
-	let bloom = $state(true);
-	let sunrays = $state(true);
-	let colorful = $state(true);
-	let paused = $state(false);
-	let dyeResolution = $state(1024);
-	let simResolution = $state(128);
-	let randomSplatRate = $state(0);
-	let randomSplatSwirl = $state(0);
-	let backColorR = $state(0);
-	let backColorG = $state(0);
-	let backColorB = $state(0);
-	let transparent = $state(false);
-	let containerShapeType = $state<'none' | 'circle' | 'frame' | 'roundedRect' | 'annulus'>('none');
-	let containerCx = $state(0.5);
-	let containerCy = $state(0.5);
-	let containerRadius = $state(0.45);
-	let containerHalfW = $state(0.25);
-	let containerHalfH = $state(0.25);
-	let containerCornerRadius = $state(0.05);
-	let containerInnerCornerRadius = $state(0.05);
-	let containerInnerRadius = $state(0.15);
-	let containerOuterRadius = $state(0.40);
-	let containerOuterHalfW = $state(0.45);
-	let containerOuterHalfH = $state(0.45);
-	let containerOuterCornerRadius = $state(0.0);
+	// ---- Playground state ----
+	let playgroundMode = $state<'fluid' | 'reveal'>('fluid');
+	let curl = $state(D.curl);
+	let splatRadius = $state(D.splatRadius);
+	let splatForce = $state(D.splatForce);
+	let densityDissipation = $state(D.densityDissipation);
+	let velocityDissipation = $state(D.velocityDissipation);
+	let pressure = $state(D.pressure);
+	let bloomIntensity = $state(D.bloomIntensity);
+	let sunraysWeight = $state(D.sunraysWeight);
+	let shading = $state(D.shading);
+	let bloom = $state(D.bloom);
+	let sunrays = $state(D.sunrays);
+	let colorful = $state(D.colorful);
+	let paused = $state(D.paused);
+	let dyeResolution = $state(D.dyeResolution);
+	let simResolution = $state(D.simResolution);
+	let randomSplatRate = $state(D.randomSplatRate);
+	let randomSplatSwirl = $state(D.randomSplatSwirl);
+	let backColorR = $state(D.backColorR);
+	let backColorG = $state(D.backColorG);
+	let backColorB = $state(D.backColorB);
+	let transparent = $state(D.transparent);
+	let containerShapeType = $state<'none' | 'circle' | 'frame' | 'roundedRect' | 'annulus'>(D.containerShapeType);
+	let containerCx = $state(D.containerCx);
+	let containerCy = $state(D.containerCy);
+	let containerRadius = $state(D.containerRadius);
+	let containerHalfW = $state(D.containerHalfW);
+	let containerHalfH = $state(D.containerHalfH);
+	let containerCornerRadius = $state(D.containerCornerRadius);
+	let containerInnerCornerRadius = $state(D.containerInnerCornerRadius);
+	let containerInnerRadius = $state(D.containerInnerRadius);
+	let containerOuterRadius = $state(D.containerOuterRadius);
+	let containerOuterHalfW = $state(D.containerOuterHalfW);
+	let containerOuterHalfH = $state(D.containerOuterHalfH);
+	let containerOuterCornerRadius = $state(D.containerOuterCornerRadius);
 	let showShapePreview = $state(false);
-	let glass = $state(false);
-	let glassThickness = $state(0.04);
-	let glassRefraction = $state(0.4);
-	let glassReflectivity = $state(0.12);
-	let glassChromatic = $state(0.15);
+	let glass = $state(D.glass);
+	let glassThickness = $state(D.glassThickness);
+	let glassRefraction = $state(D.glassRefraction);
+	let glassReflectivity = $state(D.glassReflectivity);
+	let glassChromatic = $state(D.glassChromatic);
+	let reveal = $state(D.reveal);
+	let revealSensitivity = $state(D.revealSensitivity);
+	let revealCurve = $state(D.revealCurve);
+	let revealFadeBack = $state(D.revealFadeBack);
+	let revealAutoReveal = $state(D.revealAutoReveal);
+	let revealAutoRevealSpeed = $state(D.revealAutoRevealSpeed);
+	let revealContent = $state<'text' | 'mosaic'>('text');
+	let revealColor1 = $state('#667eea');
+	let revealColor2 = $state('#764ba2');
+	let splatOnHover = $state(D.splatOnHover);
+	let randomSplatCount = $state(D.randomSplatCount);
+	let randomSplatSpread = $state(D.randomSplatSpread);
+	let randomSplatSpawnY = $state(D.randomSplatSpawnY);
+	let randomSplatDx = $state(D.randomSplatDx);
+	let randomSplatDy = $state(D.randomSplatDy);
+	let randomSplatEvenSpacing = $state(D.randomSplatEvenSpacing);
+	let initialDensityDissipation = $state(D.initialDensityDissipation);
+	let initialDensityDissipationDuration = $state(D.initialDensityDissipationDuration);
 	let canvasWidth = $state(0);
 	let canvasHeight = $state(0);
+	let loadedPreset = $state('');
 
 	let containerShape = $derived.by(() => {
 		if (containerShapeType === 'circle') return { type: 'circle' as const, cx: containerCx, cy: containerCy, radius: containerRadius };
@@ -81,7 +103,6 @@
 
 	let backColor = $derived({ r: backColorR, g: backColorG, b: backColorB });
 
-	// Glass requires a container shape; auto-set to circle when toggled on without one.
 	$effect(() => {
 		if (glass && containerShapeType === 'none') {
 			containerShapeType = 'circle';
@@ -91,9 +112,312 @@
 	type FluidRef = { handle: { randomSplats: (n: number) => void } } | undefined;
 	let controlsRef = $state<FluidRef>(undefined);
 
-	// Code snippet shown in the get-started block. Built from string
-	// concatenation so the Svelte HTML parser does not see a literal
-	// closing tag inside this top-level scripting context.
+	// ---- "Customize" / loadConfig ----
+	type PlaygroundConfig = Record<string, unknown>;
+
+	function resetAllDefaults() {
+		playgroundMode = D.playgroundMode;
+		curl = D.curl; splatRadius = D.splatRadius; splatForce = D.splatForce;
+		densityDissipation = D.densityDissipation; velocityDissipation = D.velocityDissipation;
+		pressure = D.pressure; bloomIntensity = D.bloomIntensity; sunraysWeight = D.sunraysWeight;
+		shading = D.shading; bloom = D.bloom; sunrays = D.sunrays; colorful = D.colorful;
+		paused = D.paused; randomSplatRate = D.randomSplatRate; randomSplatCount = D.randomSplatCount;
+		randomSplatSwirl = D.randomSplatSwirl; randomSplatSpread = D.randomSplatSpread;
+		randomSplatSpawnY = D.randomSplatSpawnY; randomSplatDx = D.randomSplatDx;
+		randomSplatDy = D.randomSplatDy; randomSplatEvenSpacing = D.randomSplatEvenSpacing;
+		splatOnHover = D.splatOnHover; initialDensityDissipation = D.initialDensityDissipation;
+		initialDensityDissipationDuration = D.initialDensityDissipationDuration;
+		transparent = D.transparent; glass = D.glass; glassThickness = D.glassThickness;
+		glassRefraction = D.glassRefraction; glassReflectivity = D.glassReflectivity;
+		glassChromatic = D.glassChromatic; dyeResolution = D.dyeResolution;
+		simResolution = D.simResolution; backColorR = D.backColorR; backColorG = D.backColorG;
+		backColorB = D.backColorB; containerShapeType = D.containerShapeType;
+		containerCx = D.containerCx; containerCy = D.containerCy; containerRadius = D.containerRadius;
+		containerHalfW = D.containerHalfW; containerHalfH = D.containerHalfH;
+		containerCornerRadius = D.containerCornerRadius;
+		containerInnerCornerRadius = D.containerInnerCornerRadius;
+		containerInnerRadius = D.containerInnerRadius; containerOuterRadius = D.containerOuterRadius;
+		containerOuterHalfW = D.containerOuterHalfW; containerOuterHalfH = D.containerOuterHalfH;
+		containerOuterCornerRadius = D.containerOuterCornerRadius;
+		revealSensitivity = D.revealSensitivity; revealCurve = D.revealCurve;
+		revealFadeBack = D.revealFadeBack; revealAutoReveal = D.revealAutoReveal;
+		revealAutoRevealSpeed = D.revealAutoRevealSpeed;
+		showShapePreview = false; loadedPreset = '';
+	}
+
+	function loadConfig(config: PlaygroundConfig, name: string) {
+		// Reset everything to defaults first, then apply overrides.
+		resetAllDefaults();
+		loadedPreset = name;
+		playgroundMode = 'fluid';
+		if (config.curl !== undefined) curl = config.curl as number;
+		if (config.splatRadius !== undefined) splatRadius = config.splatRadius as number;
+		if (config.splatForce !== undefined) splatForce = config.splatForce as number;
+		if (config.densityDissipation !== undefined) densityDissipation = config.densityDissipation as number;
+		if (config.velocityDissipation !== undefined) velocityDissipation = config.velocityDissipation as number;
+		if (config.pressure !== undefined) pressure = config.pressure as number;
+		if (config.bloomIntensity !== undefined) bloomIntensity = config.bloomIntensity as number;
+		if (config.sunraysWeight !== undefined) sunraysWeight = config.sunraysWeight as number;
+		if (config.shading !== undefined) shading = config.shading as boolean;
+		if (config.bloom !== undefined) bloom = config.bloom as boolean;
+		if (config.sunrays !== undefined) sunrays = config.sunrays as boolean;
+		if (config.colorful !== undefined) colorful = config.colorful as boolean;
+		if (config.randomSplatRate !== undefined) randomSplatRate = config.randomSplatRate as number;
+		if (config.randomSplatCount !== undefined) randomSplatCount = config.randomSplatCount as number;
+		if (config.randomSplatSwirl !== undefined) randomSplatSwirl = config.randomSplatSwirl as number;
+		if (config.randomSplatSpread !== undefined) randomSplatSpread = config.randomSplatSpread as number;
+		if (config.randomSplatSpawnY !== undefined) randomSplatSpawnY = config.randomSplatSpawnY as number;
+		if (config.randomSplatDx !== undefined) randomSplatDx = config.randomSplatDx as number;
+		if (config.randomSplatDy !== undefined) randomSplatDy = config.randomSplatDy as number;
+		if (config.randomSplatEvenSpacing !== undefined) randomSplatEvenSpacing = config.randomSplatEvenSpacing as boolean;
+		if (config.splatOnHover !== undefined) splatOnHover = config.splatOnHover as boolean;
+		if (config.initialDensityDissipation !== undefined) initialDensityDissipation = config.initialDensityDissipation as number;
+		if (config.initialDensityDissipationDuration !== undefined) initialDensityDissipationDuration = config.initialDensityDissipationDuration as number;
+		if (config.transparent !== undefined) transparent = config.transparent as boolean;
+		if (config.glass !== undefined) glass = config.glass as boolean;
+		if (config.glassThickness !== undefined) glassThickness = config.glassThickness as number;
+		if (config.glassRefraction !== undefined) glassRefraction = config.glassRefraction as number;
+		if (config.glassReflectivity !== undefined) glassReflectivity = config.glassReflectivity as number;
+		if (config.glassChromatic !== undefined) glassChromatic = config.glassChromatic as number;
+		if (config.dyeResolution !== undefined) dyeResolution = config.dyeResolution as number;
+		if (config.simResolution !== undefined) simResolution = config.simResolution as number;
+		const bc = config.backColor as { r: number; g: number; b: number } | undefined;
+		if (bc) { backColorR = bc.r; backColorG = bc.g; backColorB = bc.b; }
+		const cs = config.containerShape as ContainerShape | undefined;
+		if (cs && cs.type !== 'svgPath') {
+			containerShapeType = cs.type;
+			if ('cx' in cs) containerCx = cs.cx ?? D.containerCx;
+			if ('cy' in cs) containerCy = cs.cy ?? D.containerCy;
+			if (cs.type === 'circle' && 'radius' in cs) containerRadius = cs.radius;
+			if ((cs.type === 'frame' || cs.type === 'roundedRect') && 'halfW' in cs) containerHalfW = cs.halfW;
+			if ((cs.type === 'frame' || cs.type === 'roundedRect') && 'halfH' in cs) containerHalfH = cs.halfH;
+			if (cs.type === 'roundedRect' && 'cornerRadius' in cs) containerCornerRadius = cs.cornerRadius ?? D.containerCornerRadius;
+			if (cs.type === 'frame') {
+				containerInnerCornerRadius = cs.innerCornerRadius ?? D.containerInnerCornerRadius;
+				containerOuterHalfW = cs.outerHalfW ?? D.containerOuterHalfW;
+				containerOuterHalfH = cs.outerHalfH ?? D.containerOuterHalfH;
+				containerOuterCornerRadius = cs.outerCornerRadius ?? D.containerOuterCornerRadius;
+			}
+			if (cs.type === 'annulus') {
+				containerInnerRadius = cs.innerRadius;
+				containerOuterRadius = cs.outerRadius;
+			}
+		}
+		document.getElementById('playground')?.scrollIntoView({ behavior: 'smooth' });
+	}
+
+	// ---- URL hash state ----
+	// Compact keys keep URLs short. Only non-default values are serialized.
+	function serializeState(): string {
+		const s: Record<string, unknown> = {};
+		const a = (k: string, v: unknown, d: unknown) => { if (v !== d) s[k] = v; };
+		a('m', playgroundMode, 'fluid');
+		a('cu', curl, D.curl); a('sr', splatRadius, D.splatRadius);
+		a('sf', splatForce, D.splatForce); a('dd', densityDissipation, D.densityDissipation);
+		a('vd', velocityDissipation, D.velocityDissipation); a('pr', pressure, D.pressure);
+		a('bi', bloomIntensity, D.bloomIntensity); a('sw', sunraysWeight, D.sunraysWeight);
+		a('sh', shading, D.shading); a('bl', bloom, D.bloom);
+		a('sn', sunrays, D.sunrays); a('cf', colorful, D.colorful);
+		a('gl', glass, D.glass); a('tr', transparent, D.transparent);
+		a('cs', containerShapeType, D.containerShapeType);
+		a('br', backColorR, D.backColorR); a('bg', backColorG, D.backColorG);
+		a('bb', backColorB, D.backColorB);
+		a('rr', randomSplatRate, D.randomSplatRate); a('rn', randomSplatCount, D.randomSplatCount);
+		a('rw', randomSplatSwirl, D.randomSplatSwirl); a('rp', randomSplatSpread, D.randomSplatSpread);
+		a('ry', randomSplatSpawnY, D.randomSplatSpawnY);
+		a('oh', splatOnHover, D.splatOnHover);
+		a('id', initialDensityDissipation, D.initialDensityDissipation);
+		a('it', initialDensityDissipationDuration, D.initialDensityDissipationDuration);
+		a('gt', glassThickness, D.glassThickness); a('gf', glassRefraction, D.glassRefraction);
+		a('gy', glassReflectivity, D.glassReflectivity); a('gc', glassChromatic, D.glassChromatic);
+		a('rs', revealSensitivity, D.revealSensitivity); a('rc', revealCurve, D.revealCurve);
+		a('fb', revealFadeBack, D.revealFadeBack); a('ar', revealAutoReveal, D.revealAutoReveal);
+		// Container shape sub-params (only if shape is active)
+		if (containerShapeType === 'circle') {
+			a('cx', containerCx, D.containerCx); a('cy', containerCy, D.containerCy);
+			a('rd', containerRadius, D.containerRadius);
+		} else if (containerShapeType === 'annulus') {
+			a('cx', containerCx, D.containerCx); a('cy', containerCy, D.containerCy);
+			a('ir', containerInnerRadius, D.containerInnerRadius);
+			a('or', containerOuterRadius, D.containerOuterRadius);
+		} else if (containerShapeType === 'roundedRect') {
+			a('cx', containerCx, D.containerCx); a('cy', containerCy, D.containerCy);
+			a('hw', containerHalfW, D.containerHalfW); a('hh', containerHalfH, D.containerHalfH);
+			a('cr', containerCornerRadius, D.containerCornerRadius);
+		} else if (containerShapeType === 'frame') {
+			a('cx', containerCx, D.containerCx); a('cy', containerCy, D.containerCy);
+			a('hw', containerHalfW, D.containerHalfW); a('hh', containerHalfH, D.containerHalfH);
+			a('ic', containerInnerCornerRadius, D.containerInnerCornerRadius);
+			a('ow', containerOuterHalfW, D.containerOuterHalfW);
+			a('oh2', containerOuterHalfH, D.containerOuterHalfH);
+			a('oc', containerOuterCornerRadius, D.containerOuterCornerRadius);
+		}
+		if (Object.keys(s).length === 0) return '';
+		return btoa(JSON.stringify(s));
+	}
+
+	function deserializeState(hash: string) {
+		try {
+			const s = JSON.parse(atob(hash)) as Record<string, unknown>;
+			const g = (k: string) => s[k];
+			if (s.m) playgroundMode = s.m as 'fluid' | 'reveal';
+			if (g('cu') !== undefined) curl = g('cu') as number;
+			if (g('sr') !== undefined) splatRadius = g('sr') as number;
+			if (g('sf') !== undefined) splatForce = g('sf') as number;
+			if (g('dd') !== undefined) densityDissipation = g('dd') as number;
+			if (g('vd') !== undefined) velocityDissipation = g('vd') as number;
+			if (g('pr') !== undefined) pressure = g('pr') as number;
+			if (g('bi') !== undefined) bloomIntensity = g('bi') as number;
+			if (g('sw') !== undefined) sunraysWeight = g('sw') as number;
+			if (g('sh') !== undefined) shading = g('sh') as boolean;
+			if (g('bl') !== undefined) bloom = g('bl') as boolean;
+			if (g('sn') !== undefined) sunrays = g('sn') as boolean;
+			if (g('cf') !== undefined) colorful = g('cf') as boolean;
+			if (g('gl') !== undefined) glass = g('gl') as boolean;
+			if (g('tr') !== undefined) transparent = g('tr') as boolean;
+			if (g('cs') !== undefined) containerShapeType = g('cs') as typeof containerShapeType;
+			if (g('br') !== undefined) backColorR = g('br') as number;
+			if (g('bg') !== undefined) backColorG = g('bg') as number;
+			if (g('bb') !== undefined) backColorB = g('bb') as number;
+			if (g('rr') !== undefined) randomSplatRate = g('rr') as number;
+			if (g('rn') !== undefined) randomSplatCount = g('rn') as number;
+			if (g('rw') !== undefined) randomSplatSwirl = g('rw') as number;
+			if (g('rp') !== undefined) randomSplatSpread = g('rp') as number;
+			if (g('ry') !== undefined) randomSplatSpawnY = g('ry') as number;
+			if (g('oh') !== undefined) splatOnHover = g('oh') as boolean;
+			if (g('id') !== undefined) initialDensityDissipation = g('id') as number;
+			if (g('it') !== undefined) initialDensityDissipationDuration = g('it') as number;
+			if (g('gt') !== undefined) glassThickness = g('gt') as number;
+			if (g('gf') !== undefined) glassRefraction = g('gf') as number;
+			if (g('gy') !== undefined) glassReflectivity = g('gy') as number;
+			if (g('gc') !== undefined) glassChromatic = g('gc') as number;
+			if (g('rs') !== undefined) revealSensitivity = g('rs') as number;
+			if (g('rc') !== undefined) revealCurve = g('rc') as number;
+			if (g('fb') !== undefined) revealFadeBack = g('fb') as boolean;
+			if (g('ar') !== undefined) revealAutoReveal = g('ar') as boolean;
+			if (g('cx') !== undefined) containerCx = g('cx') as number;
+			if (g('cy') !== undefined) containerCy = g('cy') as number;
+			if (g('rd') !== undefined) containerRadius = g('rd') as number;
+			if (g('ir') !== undefined) containerInnerRadius = g('ir') as number;
+			if (g('or') !== undefined) containerOuterRadius = g('or') as number;
+			if (g('hw') !== undefined) containerHalfW = g('hw') as number;
+			if (g('hh') !== undefined) containerHalfH = g('hh') as number;
+			if (g('cr') !== undefined) containerCornerRadius = g('cr') as number;
+			if (g('ic') !== undefined) containerInnerCornerRadius = g('ic') as number;
+			if (g('ow') !== undefined) containerOuterHalfW = g('ow') as number;
+			if (g('oh2') !== undefined) containerOuterHalfH = g('oh2') as number;
+			if (g('oc') !== undefined) containerOuterCornerRadius = g('oc') as number;
+			loadedPreset = 'Shared config';
+			document.getElementById('playground')?.scrollIntoView({ behavior: 'smooth' });
+		} catch { /* ignore malformed hashes */ }
+	}
+
+	// Push state to URL on changes (debounced).
+	let hashTimer: ReturnType<typeof setTimeout> | undefined;
+	$effect(() => {
+		void [playgroundMode, curl, splatRadius, splatForce, densityDissipation,
+			velocityDissipation, pressure, bloomIntensity, sunraysWeight, shading,
+			bloom, sunrays, colorful, glass, transparent, containerShapeType,
+			backColorR, backColorG, backColorB, randomSplatRate, randomSplatCount,
+			randomSplatSwirl, randomSplatSpread, splatOnHover, glassThickness,
+			glassRefraction, glassReflectivity, glassChromatic, containerCx, containerCy,
+			containerRadius, containerInnerRadius, containerOuterRadius,
+			revealSensitivity, revealCurve, revealFadeBack, revealAutoReveal];
+		clearTimeout(hashTimer);
+		hashTimer = setTimeout(() => {
+			const s = serializeState();
+			const newHash = s ? `#pg=${s}` : '';
+			if (window.location.hash !== newHash) {
+				history.replaceState(null, '', newHash || window.location.pathname);
+			}
+		}, 300);
+	});
+
+	function shareUrl() {
+		const s = serializeState();
+		const url = `${window.location.origin}${window.location.pathname}${s ? '#pg=' + s : ''}`;
+		navigator.clipboard.writeText(url);
+	}
+
+	onMount(() => {
+		const hash = window.location.hash;
+		if (hash.startsWith('#pg=')) {
+			deserializeState(hash.slice(4));
+		}
+	});
+
+	// ---- Preset configs for "Customize" buttons ----
+	const PRESET_CONFIGS: Record<string, PlaygroundConfig> = {
+		LavaLamp: {
+			containerShape: { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.38, halfH: 0.45, cornerRadius: 0.15 },
+			glass: true, glassRefraction: 0.3, glassReflectivity: 0.08, glassChromatic: 0.1,
+			curl: 5, densityDissipation: 0, initialDensityDissipation: 0.25,
+			initialDensityDissipationDuration: 1.0, velocityDissipation: 0, splatRadius: 0.75,
+			splatForce: 2200, shading: true, colorful: false, bloom: false, sunrays: false,
+			backColor: { r: 222, g: 218, b: 215 }
+		},
+		Plasma: {
+			curl: 40, densityDissipation: 0.12, initialDensityDissipation: 0.6,
+			initialDensityDissipationDuration: 2.0, velocityDissipation: 0.08, splatRadius: 0.35,
+			splatForce: 5000, shading: true, colorful: true, bloom: true, bloomIntensity: 1.5,
+			sunrays: true, sunraysWeight: 0.5, randomSplatRate: 0.4, randomSplatCount: 4,
+			randomSplatSpawnY: 0.5, backColor: { r: 4, g: 2, b: 12 }
+		},
+		'Ink in Water': {
+			curl: 8, densityDissipation: 0.3, velocityDissipation: 0.15, pressure: 0.85,
+			splatRadius: 0.12, splatForce: 800, shading: true, colorful: false,
+			bloom: true, bloomIntensity: 0.6, sunrays: false, randomSplatRate: 0.2,
+			backColor: { r: 6, g: 8, b: 20 }
+		},
+		'Frozen Swirl': {
+			containerShape: { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 },
+			curl: 50, densityDissipation: 0, velocityDissipation: 1.0, pressure: 0.95,
+			splatRadius: 0.5, splatForce: 8000, shading: true, colorful: false,
+			bloom: true, bloomIntensity: 1.0, sunrays: false,
+			backColor: { r: 4, g: 8, b: 24 }
+		},
+		Aurora: {
+			curl: 40, densityDissipation: 0, velocityDissipation: 0.3, pressure: 0.85,
+			splatRadius: 0.4, splatForce: 6000, shading: true, colorful: false,
+			bloom: true, bloomIntensity: 1.5, sunrays: true, sunraysWeight: 1.4,
+			backColor: { r: 2, g: 4, b: 18 }
+		},
+		'Toroidal Tempest': {
+			containerShape: { type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.42 },
+			curl: 50, densityDissipation: 0.25, initialDensityDissipation: 0.6,
+			initialDensityDissipationDuration: 2.0, velocityDissipation: 0.02,
+			splatRadius: 0.4, splatForce: 6000, shading: true, colorful: true,
+			bloom: true, bloomIntensity: 1.8, sunrays: true, sunraysWeight: 0.6,
+			backColor: { r: 2, g: 2, b: 10 }
+		},
+		'Crystal orb': {
+			containerShape: { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 },
+			glass: true, glassRefraction: 0.7, glassReflectivity: 0.15,
+			glassChromatic: 0.5, glassThickness: 0.08,
+			curl: 35, densityDissipation: 0.15, velocityDissipation: 0.06,
+			splatRadius: 0.38, splatForce: 5000, shading: true, bloom: true, sunrays: false,
+			randomSplatRate: 1.2, randomSplatSpread: 0.8, randomSplatSwirl: 500,
+			backColor: { r: 4, g: 2, b: 12 }
+		},
+		'Flat + soft': {
+			bloom: false, curl: 5, densityDissipation: 0.4
+		},
+		'Bold splats': {
+			shading: false, splatRadius: 0.8, splatForce: 9000
+		},
+		'Slow + transparent': {
+			velocityDissipation: 0.05, densityDissipation: 0.5, transparent: true
+		},
+		'Soft lens': {
+			containerShape: { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 },
+			glass: true, glassRefraction: 0.25, glassReflectivity: 0.06, glassChromatic: 0.1,
+			curl: 30, densityDissipation: 0.4, velocityDissipation: 0.12,
+			splatRadius: 0.25, splatForce: 5000, shading: true, bloom: true, sunrays: true,
+			randomSplatRate: 2.5, randomSplatCount: 2,
+			backColor: { r: 0, g: 0, b: 0 }
+		}
+	};
+
 	const SCRIPT_OPEN = '<' + 'script lang="ts">';
 	const SCRIPT_CLOSE = '<' + '/script>';
 	const usageSnippet = [
@@ -107,9 +431,9 @@
 
 <svelte:head>
 	<title>svelte-fluid — WebGL fluid simulation as a Svelte 5 component</title>
-	<meta name="description" content="Drop-in WebGL fluid simulation for Svelte 5. Multi-instance, resize-stable, deterministic seeding, nine presets. MIT licensed." />
+	<meta name="description" content="Drop-in WebGL fluid simulation for Svelte 5. Multi-instance, resize-stable, deterministic seeding, ten presets. MIT licensed." />
 	<meta property="og:title" content="svelte-fluid" />
-	<meta property="og:description" content="WebGL fluid simulation as a Svelte 5 component. Multi-instance, resize-stable, eight hand-tuned presets." />
+	<meta property="og:description" content="WebGL fluid simulation as a Svelte 5 component. Multi-instance, resize-stable, ten ready-made presets." />
 </svelte:head>
 
 <FluidBackground
@@ -212,7 +536,7 @@
 		<pre class="code-block"><code>npm install svelte-fluid</code></pre>
 		<pre class="code-block"><code>{usageSnippet}</code></pre>
 		<p class="caption">
-			The canvas fills its parent automatically. Eight presets ship out of the box;
+			The canvas fills its parent automatically. Six visual presets and four shape presets ship out of the box;
 			<code>&lt;Fluid /&gt;</code> exposes 40+ props for custom physics and visuals.
 		</p>
 	</section>
@@ -226,20 +550,23 @@
 			</p>
 		</header>
 		<div class="grid-2col">
-			<Card title="Lava Lamp" description="Warm blobs in a glass vessel with rim refraction." snippet={'<LavaLamp />'}>
+			<Card title="Lava Lamp" description="Warm blobs in a glass vessel with rim refraction." onCustomize={() => loadConfig(PRESET_CONFIGS['LavaLamp'], 'LavaLamp')} snippet={`<LavaLamp />\n\n<!-- Equivalent <Fluid> configuration: -->\n<Fluid\n  containerShape={{ type: 'roundedRect',\n    cx: 0.5, cy: 0.5, halfW: 0.38,\n    halfH: 0.45, cornerRadius: 0.15 }}\n  glass\n  glassRefraction={0.3}\n  glassReflectivity={0.08}\n  glassChromatic={0.1}\n  curl={5}\n  densityDissipation={0}\n  initialDensityDissipation={0.25}\n  initialDensityDissipationDuration={1.0}\n  velocityDissipation={0}\n  splatRadius={0.75}\n  splatForce={2200}\n  shading\n  colorful={false}\n  bloom={false}\n  sunrays={false}\n  initialSplatCount={0}\n  backColor={{ r: 222, g: 218, b: 215 }}\n  presetSplats={[\n    { x: 0.18, y: 0.06, dx: 8, dy: 180,\n      color: { r: 1.7, g: 0.12, b: 0.08 } },\n    { x: 0.32, y: 0.1, dx: -5, dy: 160,\n      color: { r: 1.8, g: 0.45, b: 0.08 } },\n    /* ... 6 more warm blobs ... */\n  ]}\n/>`}>
 				<LavaLamp seed={101} lazy aria-label="LavaLamp preset" />
 			</Card>
-			<Card title="Plasma" description="Full-spectrum fluid circulating in a toroidal ring." snippet={'<Plasma />'}>
+			<Card title="Plasma" description="Full-spectrum jets converge into a churning vortex at the center." onCustomize={() => loadConfig(PRESET_CONFIGS['Plasma'], 'Plasma')} snippet={`<Plasma />\n\n<!-- Equivalent <Fluid> configuration: -->\n<Fluid\n  curl={40}\n  densityDissipation={0.12}\n  velocityDissipation={0.08}\n  splatRadius={0.35}\n  splatForce={5000}\n  shading\n  colorful\n  bloom\n  bloomIntensity={1.5}\n  sunrays\n  sunraysWeight={0.5}\n  randomSplatRate={0.4}\n  randomSplatCount={4}\n  randomSplatSpawnY={0.5}\n  backColor={{ r: 4, g: 2, b: 12 }}\n  presetSplats={[...]}\n/>`}>
 				<Plasma seed={202} lazy aria-label="Plasma preset" />
 			</Card>
-			<Card title="Ink in Water" description="India ink sinking through dark water with volumetric bloom." snippet={'<InkInWater />'}>
+			<Card title="Ink in Water" description="India ink sinking through dark water with volumetric bloom." onCustomize={() => loadConfig(PRESET_CONFIGS['Ink in Water'], 'Ink in Water')} snippet={`<InkInWater />\n\n<!-- Equivalent <Fluid> configuration: -->\n<Fluid\n  curl={8}\n  densityDissipation={0.3}\n  velocityDissipation={0.15}\n  pressure={0.85}\n  splatRadius={0.12}\n  splatForce={800}\n  shading\n  colorful={false}\n  bloom\n  bloomIntensity={0.6}\n  sunrays={false}\n  randomSplatRate={0.2}\n  backColor={{ r: 6, g: 8, b: 20 }}\n  presetSplats={[...]}\n/>`}>
 				<InkInWater seed={303} lazy aria-label="Ink in Water preset" />
 			</Card>
-			<Card title="Frozen Swirl" description="An icy whirlpool frozen inside a circular vessel." snippet={'<FrozenSwirl />'}>
+			<Card title="Frozen Swirl" description="An icy whirlpool frozen inside a circular vessel." onCustomize={() => loadConfig(PRESET_CONFIGS['Frozen Swirl'], 'Frozen Swirl')} snippet={`<FrozenSwirl />\n\n<!-- Equivalent <Fluid> configuration: -->\n<Fluid\n  containerShape={{ type: 'circle',\n    cx: 0.5, cy: 0.5, radius: 0.45 }}\n  curl={50}\n  densityDissipation={0}\n  velocityDissipation={1.0}\n  pressure={0.95}\n  splatRadius={0.5}\n  splatForce={8000}\n  shading\n  colorful={false}\n  bloom\n  bloomIntensity={1.0}\n  sunrays={false}\n  backColor={{ r: 4, g: 8, b: 24 }}\n  presetSplats={[...]}\n/>`}>
 				<FrozenSwirl seed={404} lazy aria-label="Frozen Swirl preset" />
 			</Card>
-			<Card title="Aurora" description="Northern-lights ribbons drifting laterally." snippet={'<Aurora />'}>
+			<Card title="Aurora" description="Northern-lights ribbons drifting laterally." onCustomize={() => loadConfig(PRESET_CONFIGS['Aurora'], 'Aurora')} snippet={`<Aurora />\n\n<!-- Equivalent <Fluid> configuration: -->\n<Fluid\n  curl={40}\n  densityDissipation={0}\n  velocityDissipation={0.3}\n  splatRadius={0.4}\n  splatForce={6000}\n  shading\n  colorful={false}\n  bloom\n  bloomIntensity={1.5}\n  sunrays\n  sunraysWeight={1.4}\n  backColor={{ r: 2, g: 4, b: 18 }}\n  presetSplats={[...]}\n/>`}>
 				<Aurora seed={505} lazy aria-label="Aurora preset" />
+			</Card>
+			<Card title="Toroidal Tempest" description="Full-spectrum storm circulating in a high-velocity ring." onCustomize={() => loadConfig(PRESET_CONFIGS['Toroidal Tempest'], 'Toroidal Tempest')} snippet={`<ToroidalTempest />\n\n<!-- Equivalent <Fluid> configuration: -->\n<Fluid\n  containerShape={{ type: 'annulus',\n    cx: 0.5, cy: 0.5,\n    innerRadius: 0.15, outerRadius: 0.42 }}\n  curl={50}\n  densityDissipation={0.25}\n  velocityDissipation={0.02}\n  splatRadius={0.4}\n  splatForce={6000}\n  shading\n  colorful\n  bloom\n  bloomIntensity={1.8}\n  sunrays\n  sunraysWeight={0.6}\n  backColor={{ r: 2, g: 2, b: 10 }}\n  presetSplats={[...]}\n/>`}>
+				<ToroidalTempest seed={660} lazy aria-label="Toroidal Tempest preset" />
 			</Card>
 		</div>
 	</section>
@@ -263,7 +590,7 @@
 				/>
 			</Card>
 
-			<Card title="Flat + soft" description="Bloom off, low curl, faster dye fade." snippet={`<Fluid\n  bloom={false}\n  curl={5}\n  densityDissipation={0.4}\n/>`}>
+			<Card title="Flat + soft" description="Bloom off, low curl, faster dye fade." onCustomize={() => loadConfig(PRESET_CONFIGS['Flat + soft'], 'Flat + soft')} snippet={`<Fluid\n  bloom={false}\n  curl={5}\n  densityDissipation={0.4}\n/>`}>
 				<Fluid
 					seed={5678}
 					bloom={false}
@@ -276,7 +603,7 @@
 				/>
 			</Card>
 
-			<Card title="Bold splats" description="Shading off, oversized splats, high force." snippet={`<Fluid\n  shading={false}\n  splatRadius={0.8}\n  splatForce={9000}\n/>`}>
+			<Card title="Bold splats" description="Shading off, oversized splats, high force." onCustomize={() => loadConfig(PRESET_CONFIGS['Bold splats'], 'Bold splats')} snippet={`<Fluid\n  shading={false}\n  splatRadius={0.8}\n  splatForce={9000}\n/>`}>
 				<Fluid
 					seed={9012}
 					shading={false}
@@ -289,7 +616,7 @@
 				/>
 			</Card>
 
-			<Card title="Slow + transparent" description="Low velocity dissipation on a transparent canvas." snippet={`<Fluid\n  velocityDissipation={0.05}\n  densityDissipation={0.5}\n  transparent\n/>`}>
+			<Card title="Slow + transparent" description="Low velocity dissipation on a transparent canvas." onCustomize={() => loadConfig(PRESET_CONFIGS['Slow + transparent'], 'Slow + transparent')} snippet={`<Fluid\n  velocityDissipation={0.05}\n  densityDissipation={0.5}\n  transparent\n/>`}>
 				<Fluid
 					seed={3456}
 					velocityDissipation={0.05}
@@ -362,7 +689,7 @@
 			</p>
 		</header>
 		<div class="grid-2col">
-			<Card title="Crystal orb" description="Hemisphere dome with chromatic aberration. The fluid magnifies at center and bends at the rim." snippet={`<Fluid\n  glass\n  glassRefraction={0.7}\n  glassChromatic={0.5}\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5, radius: 0.45\n  }}\n/>`}>
+			<Card title="Crystal orb" description="Hemisphere dome with chromatic aberration. The fluid magnifies at center and bends at the rim." onCustomize={() => loadConfig(PRESET_CONFIGS['Crystal orb'], 'Crystal orb')} snippet={`<Fluid\n  glass\n  glassRefraction={0.7}\n  glassChromatic={0.5}\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5, radius: 0.45\n  }}\n/>`}>
 				<Fluid
 					seed={1111}
 					lazy
@@ -389,7 +716,7 @@
 					aria-label="Crystal orb effect demo"
 				/>
 			</Card>
-			<Card title="Soft lens" description="Subtle dome refraction with gentle Fresnel. Glass you feel more than see." snippet={`<Fluid\n  glass\n  glassRefraction={0.25}\n  glassChromatic={0.1}\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5, radius: 0.45\n  }}\n/>`}>
+			<Card title="Soft lens" description="Subtle dome refraction with gentle Fresnel. Glass you feel more than see." onCustomize={() => loadConfig(PRESET_CONFIGS['Soft lens'], 'Soft lens')} snippet={`<Fluid\n  glass\n  glassRefraction={0.25}\n  glassChromatic={0.1}\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5, radius: 0.45\n  }}\n/>`}>
 				<Fluid
 					seed={1212}
 					lazy
@@ -484,14 +811,14 @@
 			</p>
 		</header>
 		<div class="grid-2col">
-			<Card title="Scratch to reveal" description="Move your cursor to uncover the gradient. Sharp iridescent edges fade back over time." snippet={`<FluidReveal>\n  <div class="my-content">\n    Hidden content here\n  </div>\n</FluidReveal>`}>
+			<Card title="Scratch to reveal" description="Move your cursor to uncover the gradient. Sharp iridescent edges fade back over time." snippet={`<FluidReveal>\n  <div style="width: 100%; height: 100%;\n    background: linear-gradient(\n      135deg, #667eea 0%, #764ba2 100%);\n    display: flex; align-items: center;\n    justify-content: center;\n    border-radius: 12px;">\n    <span>Revealed!</span>\n  </div>\n</FluidReveal>`}>
 				<FluidReveal lazy>
 					<div class="reveal-content reveal-gradient">
 						<span class="reveal-label">Revealed!</span>
 					</div>
 				</FluidReveal>
 			</Card>
-			<Card title="Permanent reveal" description="Set fadeBack={false} for a scratch-card effect. Once revealed, content stays visible." snippet={`<FluidReveal\n  fadeBack={false}\n>\n  <div>...</div>\n</FluidReveal>`}>
+			<Card title="Permanent reveal" description="Set fadeBack={false} for a scratch-card effect. Once revealed, content stays visible." snippet={`<FluidReveal fadeBack={false}>\n  <div style="display: grid;\n    grid-template-columns: repeat(3, 1fr);\n    gap: 6px; padding: 10px;\n    width: 100%; height: 100%;\n    background: #1a1a2e;\n    border-radius: 12px;">\n    {#each Array(9) as _, i}\n      <div style="aspect-ratio: 1;\n        border-radius: 6px;\n        background: hsl({i * 40}, 65%, 55%)" />\n    {/each}\n  </div>\n</FluidReveal>`}>
 				<FluidReveal
 					lazy
 					fadeBack={false}
@@ -503,7 +830,7 @@
 					</div>
 				</FluidReveal>
 			</Card>
-			<Card title="Auto-reveal" description="Lissajous animation reveals content before interaction. Touch or click to take control." snippet={`<FluidReveal\n  autoReveal\n  autoRevealSpeed={0.8}\n  fadeBack={false}\n>\n  <div>...</div>\n</FluidReveal>`}>
+			<Card title="Auto-reveal" description="Lissajous animation reveals content before interaction. Touch or click to take control." snippet={`<FluidReveal\n  autoReveal\n  autoRevealSpeed={0.8}\n  fadeBack={false}\n  sensitivity={0.15}\n>\n  <div style="width: 100%; height: 100%;\n    background: linear-gradient(\n      135deg, #0f0c29, #302b63, #24243e);\n    display: flex; align-items: center;\n    justify-content: center;\n    border-radius: 12px; position: relative;">\n    <span>Auto Reveal</span>\n    <!-- colored dots positioned absolutely -->\n  </div>\n</FluidReveal>`}>
 				<FluidReveal
 					lazy
 					autoReveal
@@ -524,7 +851,7 @@
 					</div>
 				</FluidReveal>
 			</Card>
-			<Card title="Soft reveal" description="Higher curve values create softer, more gradual reveal edges." snippet={`<FluidReveal\n  curve={0.5}\n  sensitivity={0.2}\n  splatRadius={0.3}\n>\n  <div>...</div>\n</FluidReveal>`}>
+			<Card title="Soft reveal" description="Higher curve values create softer, more gradual reveal edges." snippet={`<FluidReveal\n  curve={0.5}\n  sensitivity={0.2}\n  splatRadius={0.3}\n>\n  <div style="width: 100%; height: 100%;\n    background: linear-gradient(\n      135deg, #f093fb 0%,\n      #f5576c 50%, #4facfe 100%);\n    display: flex; align-items: center;\n    justify-content: center;\n    border-radius: 12px;">\n    <span>Soft Edges</span>\n  </div>\n</FluidReveal>`}>
 				<FluidReveal
 					lazy
 					curve={0.5}
@@ -539,53 +866,90 @@
 		</div>
 	</section>
 
-	<section class="playground-section">
+	<section id="playground" class="playground-section">
 		<header class="section-header">
 			<h2>Playground</h2>
 			<p>
-				Tweak any parameter live — changes apply instantly via
-				<code>setConfig()</code> without remounting the engine.
+				Tweak any parameter live. Switch between <code>&lt;Fluid&gt;</code> and
+				<code>&lt;FluidReveal&gt;</code> modes.
 			</p>
 		</header>
 	<div class="playground">
 		<div class="playground-canvas" bind:clientWidth={canvasWidth} bind:clientHeight={canvasHeight}>
-			<Fluid
-				bind:this={controlsRef}
-				seed={42}
-				lazy
-				aria-label="Interactive playground fluid simulation, controlled by the panel below"
-				{curl}
-				{splatRadius}
-				{splatForce}
-				{densityDissipation}
-				{velocityDissipation}
-				{pressure}
-				{bloomIntensity}
-				{sunraysWeight}
-				{shading}
-				{bloom}
-				{sunrays}
-				{colorful}
-				{paused}
-				{dyeResolution}
-				{simResolution}
-				{randomSplatRate}
-				{randomSplatSwirl}
-				{transparent}
-				{glass}
-				{glassThickness}
-				{glassRefraction}
-				{glassReflectivity}
-				{glassChromatic}
-				backColor={backColor}
-				containerShape={containerShape}
-				initialSplatCount={15}
-			/>
-			{#if showShapePreview && containerShape}
-				<ShapePreview shape={containerShape} width={canvasWidth} height={canvasHeight} />
+			{#if playgroundMode === 'reveal'}
+				{#key revealAutoReveal}
+				<FluidReveal
+					sensitivity={revealSensitivity}
+					curve={revealCurve}
+					fadeBack={revealFadeBack}
+					autoReveal={revealAutoReveal}
+					autoRevealSpeed={revealAutoRevealSpeed}
+					{splatRadius}
+					{curl}
+					velocityDissipation={velocityDissipation}
+				>
+					{#if revealContent === 'mosaic'}
+						<div class="playground-reveal-content playground-reveal-mosaic">
+							{#each Array(9) as _, i}
+								<div class="playground-mosaic-tile" style:background="hsl({i * 40}, 65%, 55%)"></div>
+							{/each}
+						</div>
+					{:else}
+						<div class="playground-reveal-content" style="background: linear-gradient(135deg, {revealColor1} 0%, {revealColor2} 100%);">
+							<span class="playground-reveal-label">Hello World</span>
+						</div>
+					{/if}
+				</FluidReveal>
+				{/key}
+			{:else}
+				<Fluid
+					bind:this={controlsRef}
+					seed={42}
+					lazy
+					aria-label="Interactive playground fluid simulation"
+					{curl}
+					{splatRadius}
+					{splatForce}
+					{densityDissipation}
+					{velocityDissipation}
+					{pressure}
+					{bloomIntensity}
+					{sunraysWeight}
+					{shading}
+					{bloom}
+					{sunrays}
+					{colorful}
+					{paused}
+					{dyeResolution}
+					{simResolution}
+					{randomSplatRate}
+					{randomSplatCount}
+					{randomSplatSwirl}
+					{randomSplatSpread}
+					{randomSplatSpawnY}
+					{randomSplatDx}
+					{randomSplatDy}
+					{randomSplatEvenSpacing}
+					{splatOnHover}
+					{initialDensityDissipation}
+					{initialDensityDissipationDuration}
+					{transparent}
+					{glass}
+					{glassThickness}
+					{glassRefraction}
+					{glassReflectivity}
+					{glassChromatic}
+					backColor={backColor}
+					containerShape={containerShape}
+					initialSplatCount={15}
+				/>
+				{#if showShapePreview && containerShape}
+					<ShapePreview shape={containerShape} width={canvasWidth} height={canvasHeight} />
+				{/if}
 			{/if}
 		</div>
 		<ControlPanel
+			bind:playgroundMode
 			bind:curl
 			bind:splatRadius
 			bind:splatForce
@@ -602,7 +966,24 @@
 			bind:dyeResolution
 			bind:simResolution
 			bind:randomSplatRate
+			bind:randomSplatCount
 			bind:randomSplatSwirl
+			bind:randomSplatSpread
+			bind:randomSplatSpawnY
+			bind:randomSplatDx
+			bind:randomSplatDy
+			bind:randomSplatEvenSpacing
+			bind:splatOnHover
+			bind:initialDensityDissipation
+			bind:initialDensityDissipationDuration
+			bind:revealSensitivity
+			bind:revealCurve
+			bind:revealFadeBack
+			bind:revealAutoReveal
+			bind:revealAutoRevealSpeed
+			bind:revealContent
+			bind:revealColor1
+			bind:revealColor2
 			bind:backColorR
 			bind:backColorG
 			bind:backColorB
@@ -626,7 +1007,9 @@
 			bind:glassReflectivity
 			bind:glassChromatic
 			bind:showShapePreview
+			{loadedPreset}
 			onRandomSplats={() => controlsRef?.handle.randomSplats(10)}
+			onShare={shareUrl}
 		/>
 	</div>
 	</section>
@@ -864,6 +1247,33 @@
 	}
 	.credit a {
 		color: #888;
+	}
+
+	/* ---- Playground reveal content ---- */
+	.playground-reveal-content {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 12px;
+	}
+	.playground-reveal-label {
+		font-size: 1.6rem;
+		font-weight: 700;
+		color: #fff;
+		text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+	}
+	.playground-reveal-mosaic {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 8px;
+		padding: 12px;
+		background: #1a1a2e;
+	}
+	.playground-mosaic-tile {
+		aspect-ratio: 1;
+		border-radius: 6px;
 	}
 
 	/* ---- Reveal section ---- */
