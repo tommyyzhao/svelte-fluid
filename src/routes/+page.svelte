@@ -1052,11 +1052,11 @@
 			</p>
 		</header>
 		<div class="grid-2col">
-			<Card title="Sticky text" description="Dye accumulates on the word and resists fading. Fluid flows around the letterforms." snippet={`<FluidStick\n  text="STICKY"\n  font="bold 80px sans-serif"\n/>`}>
+			<Card title="Sticky text" description="Dye accumulates on the word and resists fading. Fluid flows around the letterforms." snippet={`<FluidStick\n  text="FLUID"\n  font="900 120px sans-serif"\n/>`}>
 				<FluidStick
 					lazy
-					text="STICKY"
-					font="bold 80px 'Helvetica Neue', Arial, sans-serif"
+					text="FLUID"
+					font="900 120px 'Helvetica Neue', Arial, sans-serif"
 				/>
 			</Card>
 			<Card title="Lightning bolt" description="SVG path acts as a dye attractor. The shape glows with accumulated color." snippet={`<FluidStick\n  d="M55 5 L25 45 L45 45 L20 95\n     L75 50 L55 50 L80 5 Z"\n/>`}>
