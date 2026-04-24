@@ -1,10 +1,10 @@
-# Session Handoff — 2026-04-24 (session 14)
+# Session Handoff — 2026-04-24 (session 15)
 
 ## Project
 
 svelte-fluid — WebGL Navier-Stokes fluid simulation as a Svelte 5 component library. MIT licensed, derived from PavelDoGreat/WebGL-Fluid-Simulation.
 
-Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: (see git log)
+Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: 9804f2c
 
 ## Current state
 
@@ -14,7 +14,7 @@ Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: (see 
 - Glass post-processing: hemisphere dome (circles) and rim model (all others)
 - FluidReveal: multiplicative dissipation, customizable cover/accent colors (ADR-0029), iridescent fringes
 - FluidDistortion: velocity-driven image warping with bleed, initial chaos, auto-distort (ADR-0030)
-- FluidStick: physics-level dye sticking via mask texture — **mask texture GPU sampling bug** (see below)
+- FluidStick: physics-level dye sticking via mask texture — **GPU sampling bug FIXED this session**
 - FluidBackground: full-viewport fluid with DOM exclusion zones
 - 30 ADRs, 6 learning docs, architecture.md, porting-notes.md, contributing.md
 - ~36 demo instances on the main page (4 sticky)
@@ -27,24 +27,26 @@ Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: (see 
 
 ## What this session built
 
-1. **`autoAnimateDuration` prop** on `FluidStick` — new prop (default 3.5s) that stops
-   the auto-animation after N seconds. Once stopped, off-mask dye fades, revealing
-   the sticky shape. Set to 0 for indefinite.
+1. **Fixed sticky mask texture GPU sampling** — three targeted changes to
+   `initStickyMaskTexture()` and `step()` in `FluidEngine.ts`:
+   - `gl.activeTexture(gl.TEXTURE7)` before texture creation, so the mask is
+     created/configured on its dedicated unit (not whatever unit happened to be active).
+   - `gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1)` before the single-channel R8/LUMINANCE
+     upload, restored to 4 after. Handles mask widths that aren't multiples of 4.
+   - Re-bind sticky mask (`bindStickyMask()` + `gl.uniform1i`) before the dye
+     advection pass in `step()`, ensuring the binding survives program switches
+     from `applyMask`.
 
-2. **Color-cycling auto-animate** — replaced the fixed purple `{r:0.3, g:0.15, b:0.3}`
-   with rainbow HSV cycling at 1.5× HDR intensity. Produces vivid accumulated dye.
+2. **Verified via browser debug shader** — temporarily modified the advection shader
+   to output `vec4(stickyVal, uStickyStrength, uMultiplicative*0.5, 1.0)`. The "HI"
+   text was clearly visible (red inside letters, teal outside), confirming the mask
+   texture is correctly sampled by the physics shader pipeline.
 
-3. **FluidStick default tuning** — `splatRadius` 0.25→0.6, `splatForce` 6000→10000,
-   `densityDissipation` 0.85→0.78, `amplify` 0.3→0.5.
-
-4. **Auto-animate timing fixes** — deferred `animStartTime` (set on first available
-   frame, not mount time) so lazy-loaded cards get the full duration. Fixed Lissajous
-   to use `t` variable (`autoAnimateSpeed` was previously ignored). Wider vertical sweep.
-
-5. **Demo text card update** — "STICKY" bold 80px → "FLUID" 900-weight 120px for bolder letterforms.
-
-6. **Extensive GPU debugging of sticky mask** — discovered and documented a texture
-   sampler binding bug (see Priority 1 below).
+3. **Diagnosed autoPause false positive** — discovered that the apparent "always black"
+   canvas during debugging was caused by `document.hidden = true` (Chrome in background
+   while Claude Code ran in terminal). The `autoPause` feature correctly paused the
+   engine, and RAF was throttled by Chrome for background tabs. This was NOT a bug —
+   it was a debugging environment issue.
 
 ## Key files
 
@@ -65,26 +67,20 @@ Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: (see 
 
 ## What needs attention next
 
-### Priority 1: Fix sticky mask texture GPU sampling bug (CRITICAL)
+### Priority 1: FluidStick tuning (IMMEDIATE)
 
-**The bug**: `texture2D(uStickyMask, uv).r` always returns 0 in the advection shader, despite the mask texture containing correct data.
+The sticky effect now WORKS at the GPU level, but the **"Sticky text" and "Sticky + circle"** demo presets need tuning — dye isn't persisting long enough to be visually compelling. The "Lightning bolt" and "Strong pressure" presets work decently.
 
-**What we know for certain** (all verified this session):
-- Mask texture IS created with correct data (`initStickyMaskTexture` confirmed 44k+ non-zero pixels via console log)
-- Mask texture IS on the GPU with correct values (readback via framebuffer attachment showed R=255 for text center pixel)
-- Engine config IS correct: `STICKY=true`, `STICKY_STRENGTH=1.0`, `STICKY_MASK.text="HI"`
-- Advection program HAS the `uStickyMask` uniform (verified via `Object.keys(advectionProgram.uniforms)`)
-- A **hardcoded mask** (`step(0.3, vUv.x) * (1.0 - step(0.7, vUv.x))`) in the shader DOES WORK — dye persists in the center stripe, fades on edges. This proves the dissipation modulation logic is 100% correct.
-- The GPU has 16 fragment texture units (verified `MAX_TEXTURE_IMAGE_UNITS=16`)
+Tuning parameters to explore:
+- `densityDissipation` (currently 0.78 in FluidStick) — this is the off-mask fade rate in multiplicative mode. Lower = slower fade. Consider different values per preset.
+- `stickyStrength` (currently 1.0) — max means zero decay on mask. This should be fine.
+- `stickyAmplify` (currently 0.5) — how much extra dye is deposited on the mask during splats.
+- `autoAnimateDuration` (currently 3.5s) — how long the Lissajous animation runs.
+- `autoAnimateSpeed` — affects how quickly the Lissajous path is traced. Faster = more passes over the text.
+- `splatRadius` (currently 0.6) — larger splats deposit more dye on the mask per pass.
+- `initialSplatCount` (currently 20 in FluidStick) — more initial splats = more dye on mask from the start.
 
-**What to investigate next session**:
-1. **Check if `gl.uniform1i(uniforms.uStickyMask, 7)` is actually being called with a valid non-null location**. The uniform location exists in the JS object, but verify it's a valid `WebGLUniformLocation`, not just a falsy value. Print `typeof` and the value.
-2. **Verify texture unit 7 binding persists until draw time**. Add `gl.getParameter(gl.TEXTURE_BINDING_2D)` checks right before the dye advection `blit()` call with TEXTURE7 active, to see if the mask texture is still bound.
-3. **Check if `setConfig()` is inadvertently calling `initStickyMaskTexture()` which disposes the mask**. Add a counter to track how many times `initStickyMaskTexture` is called — if >1, setConfig is re-initing and potentially clearing the mask.
-4. **Try using `gl.UNPACK_ALIGNMENT = 1`** before the mask texture upload. The mask width might not be a multiple of 4 at certain aspect ratios (though 512 is fine).
-5. **Try binding the mask texture inline** in `step()` (before the dye blit), instead of relying on the earlier `bindStickyMask()` call persisting through the velocity advection pass.
-
-**Key constraint**: Vite HMR does NOT hot-reload FluidEngine.ts or shaders.ts changes to running instances. You MUST kill the dev server, `rm -rf node_modules/.vite .svelte-kit`, and restart `bun run dev` after ANY engine/shader change. A browser hard-reload (cmd+shift+r) alone is NOT sufficient — the Vite module transform cache must be cleared.
+The text presets may need more vigorous auto-animation (higher speed, more splats, longer duration) so enough dye accumulates on the text before animation stops.
 
 ### Planned features
 
@@ -101,7 +97,7 @@ Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: (see 
 2. **FluidReveal/FluidDistortion/FluidStick pointer-events** — Canvas sits above content; interactive elements can't receive clicks.
 3. **Multiplicative velocity dissipation** — REVEAL and STICKY modes override velocity dissipation to 0.98 (hardcoded). This means `velocityDissipation` prop is ignored in these modes.
 4. **Texture unit 7** — Sticky mask uses the last guaranteed WebGL texture unit. No room for additional texture-based features without checking `MAX_COMBINED_TEXTURE_IMAGE_UNITS`.
-5. **Vite HMR for engine** — FluidEngine.ts and shaders.ts changes don't hot-reload to existing instances. Full page reload + Vite cache clear required.
+5. **Vite HMR for engine** — FluidEngine.ts and shaders.ts changes don't hot-reload to existing instances. Full page reload + Vite cache clear required (`rm -rf node_modules/.vite .svelte-kit`).
 
 ### Follow-ups
 
@@ -122,7 +118,7 @@ Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: (see 
 - Container shapes: two approaches coexist:
   - **Analytical** (circle/frame/roundedRect/annulus): SDF computed per-fragment in shaders, mirrored in TypeScript for rejection sampling.
   - **Mask texture** (svgPath): rasterized via OffscreenCanvas at canvas aspect ratio, uploaded as R8/LUMINANCE texture. Text mode uses alphabetic baseline with `(ascent - descent) / 2` offset.
-- **Sticky mask**: separate from container mask. Rasterized via same OffscreenCanvas approach, uploaded to texture unit 7. Optional blur via blurMaskData(). Physics shaders sample this mask to modulate dissipation (advection), inject pressure (pressure Jacobi), and amplify splats (splat shader). All uniforms default to 0.0 when sticky is disabled — zero overhead. **GPU sampling currently broken (see Priority 1).**
+- **Sticky mask**: separate from container mask. Rasterized via same OffscreenCanvas approach, uploaded to texture unit 7 with `UNPACK_ALIGNMENT=1`. Optional blur via blurMaskData(). Physics shaders sample this mask to modulate dissipation (advection), inject pressure (pressure Jacobi), and amplify splats (splat shader). All uniforms default to 0.0 when sticky is disabled — zero overhead. **GPU sampling now working (fixed session 15).**
 - Glass post-processing: two models. Hemisphere (circles), Rim (all others). Requires container shape.
 - Reveal mode: REVEAL keyword, multiplicative dissipation, coverColor - dye output.
 - Distortion mode: DISTORTION keyword, dye.r as UV offset magnitude, velocity as direction.
