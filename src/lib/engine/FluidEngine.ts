@@ -898,15 +898,20 @@ export class FluidEngine implements FluidHandle {
 		if (shape.text) {
 			// Text mode: measure the text, then scale to fill the mask.
 			ctx.font = shape.font ?? 'bold 72px sans-serif';
+			ctx.textAlign = 'center';
+			ctx.textBaseline = 'alphabetic';
 			const metrics = ctx.measureText(shape.text);
 			const textW = metrics.width;
-			const textH = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+			const ascent = metrics.actualBoundingBoxAscent;
+			const descent = metrics.actualBoundingBoxDescent;
+			const textH = ascent + descent;
 			const pad = 0.9;
 			const scale = Math.min((maskW * pad) / textW, (maskH * pad) / textH);
 			ctx.setTransform(scale, 0, 0, scale, maskW / 2, maskH / 2);
-			ctx.textAlign = 'center';
-			ctx.textBaseline = 'middle';
-			ctx.fillText(shape.text, 0, 0);
+			// Glyph spans from -ascent to +descent relative to the
+			// alphabetic baseline. Shift the baseline so the glyph's
+			// visual center lands at the canvas center.
+			ctx.fillText(shape.text, 0, (ascent - descent) / 2);
 		} else if (shape.d) {
 			// Path mode: map viewBox to canvas pixels, preserving the path's
 			// own aspect ratio by uniform-scaling to fit the mask rectangle.

@@ -9,16 +9,16 @@
 
 	const cards = [
 		{
-			title: 'Navier-Stokes',
-			body: 'Real-time fluid dynamics on the GPU via WebGL fragment shaders. Velocity, pressure, advection — the full pipeline.'
+			title: 'Fluid Simulation',
+			body: 'Real-time fluid dynamics on the GPU via WebGL. Velocity, pressure, advection — the full physics pipeline.'
 		},
 		{
 			title: 'Container Shapes',
-			body: 'Confine fluid inside circles, frames, annuli, rounded rects, or arbitrary SVG paths and text.'
+			body: 'Confine fluid inside circles, frames, rings, rounded rectangles, or custom SVG paths and text.'
 		},
 		{
 			title: 'Glass Effects',
-			body: 'Post-processing pass with Snell refraction, Fresnel specular highlights, and chromatic aberration.'
+			body: 'Glass lens effect with light bending, reflective highlights, and rainbow color fringing.'
 		},
 		{
 			title: 'Svelte 5 Runes',
@@ -54,7 +54,7 @@
 		<header>
 			<h1>Background Fluid</h1>
 			<p class="sub">
-				Full-viewport Navier-Stokes simulation with DOM element exclusion zones
+				Full-viewport fluid simulation with DOM element exclusion zones
 			</p>
 		</header>
 

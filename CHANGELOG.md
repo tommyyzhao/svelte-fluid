@@ -11,6 +11,69 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Text mask glyph centering** (`FluidEngine.ts`) — `textBaseline` was set to
+  `'middle'` after `measureText`, so ascent/descent were measured from the
+  alphabetic baseline but drawing used the em-square midpoint. Glyphs like `&`
+  were visually off-center and clipped. Now uses `textBaseline: 'alphabetic'`
+  for both measurement and drawing, with explicit `(ascent - descent) / 2`
+  offset for true visual centering.
+- **Rectangle shape not restoring** — switching the shape dropdown back to
+  Rectangle did nothing because `containerShape` derived returned `undefined`,
+  which `resolveConfig` skips (line 181: `if (input.containerShape !== undefined)`).
+  Changed to return `null`, which the engine correctly processes as "clear shape".
+- **Glass shape auto-switch not reversible** — enabling glass forced
+  `containerShapeType` to `roundedRect` with no way back. Now remembers the
+  pre-glass shape in `shapeBeforeGlass` and restores it when glass is unchecked.
+- **7 missing URL hash serialization variables** — `randomSplatDx`, `randomSplatDy`,
+  `randomSplatEvenSpacing`, `revealAutoRevealSpeed`, `revealContent`,
+  `revealCoverColor`, `revealAccentColor` were silently lost when sharing
+  playground URLs. Added to `serializeState()`, `deserializeState()`, and the
+  hash-push `$effect` tracking array.
+
+### Changed
+
+- **Playground label overhaul** — all checkbox labels standardized to sentence
+  case: bloom→Bloom, glass→Glass, shading→Shading, sunrays→Sunrays,
+  transparent→Transparent, paused→Paused, splatOnHover→Splat on hover,
+  fadeBack→Fade back, autoReveal→Auto-reveal, colorful→Cycle colors.
+  Shape dropdown: circle→Circle, frame→Frame, roundedRect→Rounded rect,
+  annulus→Ring. "shape" label→"Shape". glassChromatic→"Color fringing".
+  autoRevealSpeed→"Auto-reveal speed".
+- **"Annulus" renamed to "Ring"** throughout user-facing UI — dropdown label,
+  card title, card description, PRESET_CONFIGS key, Portal ring description.
+  Internal `type: 'annulus'` in ContainerShape API unchanged.
+- **Shape "none" → "Rectangle"** — dropdown label for the default full-canvas
+  mode now reads "Rectangle" instead of "none".
+- **Glass + Rectangle** — "Rectangle" option disabled when glass is on with
+  tooltip "Glass requires a container shape". Glass auto-switches to
+  `roundedRect` as fallback.
+- **densityDissipation moved to Physics section** — removed from quick-controls
+  bar, added at top of Physics accordion body.
+- **Paused moved to quick controls** — moved from Visuals accordion to the
+  quick-controls row alongside Bloom and Glass.
+- **Container Shape accordion hidden when Rectangle** — no empty section shown
+  when there are no shape parameters to configure.
+- **bloomIntensity/sunraysWeight conditionally visible** — sliders hidden when
+  their parent effect (bloom/sunrays) is off.
+- **initialDensityDissipation help text** — added field hint explaining
+  construct-only semantics. Duration label changed to "Ramp duration (s)".
+- **Comprehensive jargon cleanup** across all card descriptions and extra routes:
+  - "Snell's law refraction" → "optical refraction"
+  - "analytical shapes" → "built-in shapes"
+  - "Hemisphere dome with chromatic aberration" → "Glass sphere with rainbow color fringing"
+  - "Fresnel" → "soft edge reflections"
+  - "Chromatic rim refraction" → "Rainbow light bending"
+  - "volumetric bloom" → "a soft glow"
+  - "High curl, instant velocity decay" → "Strong swirl, instant slowdown"
+  - "India ink" → "Deep blue ink"
+  - "Set fadeBack={false}" → "Disable fade-back"
+  - "Lissajous animation" → "automated cursor traces a pattern"
+  - "Navier-Stokes" → "Fluid Simulation" (background-fluid page)
+  - "annuli" → "rings", "rounded rects" → "rounded rectangles"
+  - "Post-processing pass with Snell refraction, Fresnel specular highlights, and chromatic aberration" → "Glass lens effect with light bending, reflective highlights, and rainbow color fringing"
+
 ### Added
 
 - **`<ToroidalTempest>` preset** — 6th visual preset. Full-spectrum storm

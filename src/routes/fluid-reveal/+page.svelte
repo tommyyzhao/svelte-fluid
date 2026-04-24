@@ -60,7 +60,7 @@
 			>
 				<div class="content auto-content">
 					<h3>Automatic Reveal</h3>
-					<p>A Lissajous animation reveals content before you interact. Touch or click to take over.</p>
+					<p>An automated cursor traces a pattern to reveal content. Touch or click to take over.</p>
 					<div class="sparkle-grid">
 						{#each Array(16) as _, i}
 							<div class="sparkle" style:background="hsl({i * 22.5}, 70%, 60%)"></div>
