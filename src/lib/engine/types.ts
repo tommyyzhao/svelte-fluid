@@ -324,6 +324,50 @@ export interface FluidConfig {
 	 * (white). Bucket A.
 	 */
 	revealCoverColor?: RGB;
+	/**
+	 * Enable distortion mode. The fluid velocity field warps an underlying
+	 * image instead of rendering dye colors. Cursor movement creates
+	 * velocity splats that ripple and distort the image like liquid glass.
+	 * Mutually exclusive with `reveal`. Default false. Bucket B (keyword recompile).
+	 */
+	distortion?: boolean;
+	/**
+	 * How strongly the velocity field warps the image UV coordinates.
+	 * 0 = no distortion, 1 = very strong. Default 0.4. Bucket A.
+	 */
+	distortionPower?: number;
+	/**
+	 * URL of the image to distort. The engine loads the image asynchronously
+	 * and uploads it as a WebGL texture. Changing the URL at runtime triggers
+	 * a new load + texture re-upload. Required when `distortion` is true.
+	 */
+	distortionImageUrl?: string;
+	/**
+	 * How the distortion image fits the canvas.
+	 * - `'cover'`: image fills the canvas, cropping if needed (default)
+	 * - `'contain'`: image fits within the canvas, may have empty borders
+	 */
+	distortionFit?: 'cover' | 'contain';
+	/**
+	 * Scale factor for the distortion image. Values > 1 zoom out (more
+	 * image visible, less edge smearing during distortion). Values < 1
+	 * zoom in. Default 1.0. Bucket A.
+	 */
+	distortionScale?: number;
+	/**
+	 * Horizontal bleed fraction (0–0.5). The canvas extends invisibly
+	 * beyond the visible area by this fraction on each side, so the
+	 * fluid velocity field doesn't bounce at the content edges.
+	 * The image is mapped to the visible sub-region only.
+	 * Typically computed by `FluidDistortion` from a pixel `bleed` prop.
+	 * Default 0. Bucket A.
+	 */
+	distortionBleedX?: number;
+	/**
+	 * Vertical bleed fraction (0–0.5). See `distortionBleedX`.
+	 * Default 0. Bucket A.
+	 */
+	distortionBleedY?: number;
 }
 
 /**
@@ -381,6 +425,13 @@ export interface ResolvedConfig {
 	REVEAL_SENSITIVITY: number;
 	REVEAL_CURVE: number;
 	REVEAL_COVER_COLOR: RGB;
+	DISTORTION: boolean;
+	DISTORTION_POWER: number;
+	DISTORTION_IMAGE_URL: string | null;
+	DISTORTION_FIT: 'cover' | 'contain';
+	DISTORTION_SCALE: number;
+	DISTORTION_BLEED_X: number;
+	DISTORTION_BLEED_Y: number;
 }
 
 /** Pixel format pair returned by `getSupportedFormat`. */

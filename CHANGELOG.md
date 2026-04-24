@@ -11,6 +11,43 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`FluidDistortion` component** — new Svelte wrapper that uses the fluid
+  velocity field to warp an underlying image. Cursor movement creates liquid
+  ripple distortions. Props: `src`, `strength`, `intensity`, `fit`, `scale`,
+  `bleed`, `initialSplats`, `autoDistort`, `autoDistortSpeed`.
+- **`DISTORTION` display shader keyword** — mutually exclusive with `REVEAL`
+  via `#elif`. Reads `dye.r` as distortion intensity, `velocity.xy` as
+  direction, offsets image UVs by `normalize(vel) * dye.r * power`.
+  Supports cover/contain fit modes and configurable scale.
+- **Distortion bleed** — `bleed` prop (CSS pixels, default 60) extends the
+  canvas invisibly beyond each edge. The fluid velocity field flows freely
+  past the visible boundaries instead of bouncing. Image UVs are remapped
+  to the visible sub-region via `uBleed` uniform.
+- **Initial chaos splats** — `initialSplats` prop (default 20) generates
+  random high-velocity splats at construction. Combined with
+  `initialDensityDissipation: 0.5` ramp over 2 seconds, creates a dramatic
+  warp-to-clear transition on load.
+- **FluidConfig distortion fields** — `distortion`, `distortionPower`,
+  `distortionImageUrl`, `distortionFit`, `distortionScale`,
+  `distortionBleedX`, `distortionBleedY`. Bucket B (keyword) for
+  `distortion` boolean, Bucket A (hot scalar) for all others.
+- **Distortion image texture** — `loadDistortionImage()` in `FluidEngine`
+  loads image URLs asynchronously and uploads as GL texture. Handles CORS,
+  stale load cancellation, and context restore re-loading.
+- **Demo: Distortion section** — 4 cards (Image distortion, Auto-distort,
+  Strong warp, Contained with shape) using Bosch's *Garden of Earthly
+  Delights* (public domain, 1490–1500).
+- **14 new tests** (`distortion.test.ts`) — UV offset math, edge alpha,
+  bleed remapping, config defaults, mutual exclusivity with REVEAL.
+- **ADR-0030** — documents FluidDistortion architecture decisions.
+
+### Changed
+
+- **Ksenia Kondrashova acknowledgment** — README Acknowledgments section now
+  credits her CodePen demos as inspiration for the reveal and distortion effects.
+
 ### Fixed
 
 - **Text mask glyph centering** (`FluidEngine.ts`) — `textBaseline` was set to

@@ -6,6 +6,7 @@
 		CircularFluid,
 		Fluid,
 		FluidBackground,
+		FluidDistortion,
 		FluidReveal,
 		FrameFluid,
 		FrozenSwirl,
@@ -989,6 +990,54 @@
 						<span class="reveal-label">Soft Edges</span>
 					</div>
 				</FluidReveal>
+			</Card>
+		</div>
+	</section>
+
+	<section id="distortion">
+		<header class="section-header">
+			<h2>Distortion</h2>
+			<p>
+				<code>&lt;FluidDistortion&gt;</code> warps an image using the fluid velocity field.
+				Move your cursor to create liquid ripples.
+			</p>
+		</header>
+		<div class="grid-2col">
+			<Card title="Image distortion" description="Cursor movement warps the image like liquid glass. The velocity field bends UV coordinates." snippet={`<FluidDistortion\n  src="/bosch-garden.jpg"\n  strength={0.4}\n  intensity={24}\n/>`}>
+				<FluidDistortion
+					lazy
+					src="/bosch-garden.jpg"
+					strength={0.4}
+					intensity={24}
+				/>
+			</Card>
+			<Card title="Auto-distort" description="An automated cursor creates a continuous ripple effect. Touch or click to take over." snippet={`<FluidDistortion\n  src="/bosch-garden.jpg"\n  autoDistort\n  autoDistortSpeed={1.0}\n  strength={0.3}\n  intensity={20}\n/>`}>
+				<FluidDistortion
+					lazy
+					src="/bosch-garden.jpg"
+					autoDistort
+					autoDistortSpeed={1.0}
+					strength={0.3}
+					intensity={20}
+				/>
+			</Card>
+			<Card title="Strong warp" description="High distortion power and intensity for dramatic liquid warping." snippet={`<FluidDistortion\n  src="/bosch-garden.jpg"\n  strength={0.8}\n  intensity={50}\n  velocityDissipation={0.95}\n/>`}>
+				<FluidDistortion
+					lazy
+					src="/bosch-garden.jpg"
+					strength={0.8}
+					intensity={50}
+					velocityDissipation={0.95}
+				/>
+			</Card>
+			<Card title="Contained with shape" description="Distortion confined to a circular container shape." snippet={`<FluidDistortion\n  src="/bosch-garden.jpg"\n  strength={0.4}\n  intensity={24}\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5,\n    radius: 0.45\n  }}\n/>`}>
+				<FluidDistortion
+					lazy
+					src="/bosch-garden.jpg"
+					strength={0.4}
+					intensity={24}
+					containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
+				/>
 			</Card>
 		</div>
 	</section>
