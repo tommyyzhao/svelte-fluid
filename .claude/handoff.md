@@ -1,22 +1,23 @@
-# Session Handoff — 2026-04-24 (session 12)
+# Session Handoff — 2026-04-24 (session 13)
 
 ## Project
 
 svelte-fluid — WebGL Navier-Stokes fluid simulation as a Svelte 5 component library. MIT licensed, derived from PavelDoGreat/WebGL-Fluid-Simulation.
 
-Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: 505b1dd
+Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: 6cb9e95
 
 ## Current state
 
-- 153 tests, all passing. 0 type errors. Build + publint clean.
+- 187 tests, all passing. 0 type errors. Build + publint clean.
 - 10 presets: LavaLamp, Plasma, InkInWater, FrozenSwirl, Aurora, ToroidalTempest, CircularFluid, FrameFluid, AnnularFluid, SvgPathFluid
 - 5 container shapes: circle, frame, roundedRect, annulus, svgPath (mask texture)
 - Glass post-processing: hemisphere dome (circles) and rim model (all others)
 - FluidReveal: multiplicative dissipation, customizable cover/accent colors (ADR-0029), iridescent fringes
 - FluidDistortion: velocity-driven image warping with bleed, initial chaos, auto-distort (ADR-0030)
+- FluidStick: physics-level dye sticking via mask texture (NEW — needs visual tuning)
 - FluidBackground: full-viewport fluid with DOM exclusion zones
 - 30 ADRs, 6 learning docs, architecture.md, porting-notes.md, contributing.md
-- ~32 demo instances on the main page (27 previous + 4 distortion + FluidBackground)
+- ~36 demo instances on the main page (previous + 4 sticky)
 - Every demo card has `</>` code toggle + "Customize" button
 - Playground with Fluid/Reveal mode toggle, accordion ControlPanel, URL hash state, `</>` code preview
 - Floating `</>` button for FluidBackground code snippet
@@ -26,121 +27,133 @@ Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: 505b1
 
 ## What this session built
 
-1. **FluidDistortion component** (`src/lib/FluidDistortion.svelte`, ~290 LOC):
-   - Wraps `<Fluid>` with `distortion={true}` and distortion-specific props
-   - Props: `src` (image URL), `strength` (UV offset power, default 0.4), `intensity` (dye per interaction, default 24), `fit` ('cover'|'contain'), `scale`, `bleed` (CSS px, default 60), `initialSplats` (default 20), `autoDistort`, `autoDistortSpeed`
-   - Manual pointer handling: injects scalar dye `{ r: intensity * 0.001, g: 0, b: 0 }` + velocity from pointer delta
-   - Auto-distort: Lissajous animation before first interaction (like FluidReveal's autoReveal)
-   - Distortion-tuned defaults: `splatRadius: 1`, `pressure: 0`, `curl: 0`, `bloom: false`, `densityDissipation: 0.98`
+1. **FluidStick component** (`src/lib/FluidStick.svelte`, ~210 LOC):
+   - Wraps `<Fluid>` with `sticky={true}` and sticky-specific props
+   - Props: `text`, `font`, `d`, `maskViewBox`, `maskFillRule`, `maskResolution`, `maskBlur`, `strength`, `stickyPressureAmount`, `amplify`, `autoAnimate`, `autoAnimateSpeed`
+   - Auto-animate: Lissajous cursor animation deposits dye before user interaction
+   - Sticky-tuned defaults: multiplicative dissipation 0.85, no random splats, no bloom, splatOnHover
 
-2. **Bleed system** (canvas edge overflow):
-   - `bleed` prop (CSS pixels, default 60) extends canvas via `style:inset="{-bleed}px"` with `overflow: hidden` on container
-   - `bind:clientWidth/Height` tracks container dimensions; computes UV bleed fractions
-   - Shader remaps `vUv` to visible sub-region: `visUv = (vUv - uBleed) / (1.0 - 2.0 * uBleed)`
-   - Visible-area aspect ratio computed for correct image fit within the visible portion
-   - Velocity field flows freely past visible edges — no bounce artifacts
+2. **StickyMask type** (`types.ts`):
+   - `{ text?, font?, d?, viewBox?, fillRule?, maskResolution?, blur? }`
+   - Same rasterization approach as `ContainerShape.svgPath` text mode
 
-3. **Initial chaos splats**:
-   - `initialSplats` prop (default 20) generates random high-velocity (4000–8000) preset splats
-   - Dye intensity 0.15 saturates the canvas with distortion on load
-   - `initialDensityDissipation: 0.5` with 2-second ramp to steady-state 0.98
-   - Creates dramatic warp-to-clear transition effect on load
+3. **Sticky shader uniforms** — always-present, default to 0.0 (identity when disabled):
+   - `advectionShader`: `uStickyMask` (sampler2D), `uStickyStrength` (float) — modulate dissipation per-pixel. On-mask: dissipation → 1.0 (no fade). Off-mask: normal fade.
+   - `pressureShader`: `uStickyMask`, `uStickyPressure` — inject artificial positive pressure on mask, pushing fluid around the shape
+   - `splatShader`: `uStickyMask`, `uStickyAmplify` — boost splat intensity on mask (`splat *= 1.0 + mask * amplify`)
 
-4. **DISTORTION display shader keyword** (`shaders.ts`):
-   - Mutually exclusive with REVEAL via `#ifdef DISTORTION / #elif defined(REVEAL) / #else`
-   - Reads `dye.r` as distortion intensity, `velocity.xy` as direction
-   - Offsets image UVs by `normalize(vel) * dye.r * distortionPower`
-   - Cover/contain fit modes via `uDistortionFit` uniform
-   - `uDistortionScale` for zoom control, `uBleed` vec2 for UV remapping
-   - Soft edge alpha fadeout at image borders
+4. **Engine changes** (`FluidEngine.ts`):
+   - `stickyMaskTexture` + `stickyFallbackTexture` (1x1 black) fields
+   - `initStickyMaskTexture()` — OffscreenCanvas rasterization, optional blur, R8/LUMINANCE upload to texture unit 7
+   - `blurMaskData()` — multi-pass separable box blur on Uint8Array
+   - `bindStickyMask()` — binds mask or fallback to TEXTURE7
+   - `step()`: binds sticky uniforms before pressure loop, velocity advection (strength=0), dye advection (strength=config)
+   - `splat()`: amplify=0 for velocity splats, amplify=config for dye splats
+   - Multiplicative velocity dissipation override: uses 0.98 when REVEAL/STICKY is active (VELOCITY_DISSIPATION=0.2 would kill velocity at 80%/frame in multiplicative mode)
+   - `setConfig()`: `stickyMaskEqual` change detection triggers `initStickyMaskTexture` rebuild
+   - `dispose()`: cleans up both sticky textures
+   - `handleContextRestored()`: recreates sticky mask texture
 
-5. **Engine changes** (`FluidEngine.ts`):
-   - `distortionTexture` field + `loadDistortionImage(url)` — async Image load, CORS, GL texture upload
-   - Stale load cancellation (URL changed while loading)
-   - Context restore re-loads the distortion image
-   - `updateKeywords()` adds `DISTORTION` (mutually exclusive with `REVEAL`)
-   - `drawDisplay()` binds distortion texture (slot 5), velocity (slot 6), power/ratio/fit/scale/bleed uniforms
-   - `render()` distortion path: `gl.disable(gl.BLEND)` + drawDisplay + early return (no background, no glass)
-   - `setConfig()`: `distortion` → Bucket B; power/fit/scale/bleedX/bleedY → Bucket A; imageUrl → async load
-   - `dispose()` cleans up distortion texture
+5. **Types** (`types.ts`):
+   - `StickyMask` interface
+   - FluidConfig: `sticky`, `stickyMask`, `stickyStrength`, `stickyPressure`, `stickyAmplify`
+   - ResolvedConfig: `STICKY`, `STICKY_MASK`, `STICKY_STRENGTH`, `STICKY_PRESSURE`, `STICKY_AMPLIFY`
 
-6. **Types** (`types.ts`):
-   - FluidConfig: `distortion`, `distortionPower`, `distortionImageUrl`, `distortionFit`, `distortionScale`, `distortionBleedX`, `distortionBleedY`
-   - ResolvedConfig: `DISTORTION`, `DISTORTION_POWER`, `DISTORTION_IMAGE_URL`, `DISTORTION_FIT`, `DISTORTION_SCALE`, `DISTORTION_BLEED_X`, `DISTORTION_BLEED_Y`
+6. **Container shapes** (`container-shapes.ts`):
+   - Added `stickyMaskEqual()` for deep comparison
+   - Exported `viewBoxEqual()` (was private)
 
-7. **Demo: Distortion section** (`+page.svelte`):
-   - 4 cards: Image distortion, Auto-distort, Strong warp, Contained with shape
-   - Uses `static/bosch-garden.jpg` — Hieronymus Bosch's *Garden of Earthly Delights* (public domain, 1490–1500, 1870x924)
+7. **Demo: Sticky section** (`+page.svelte`):
+   - 4 cards: Sticky text, Lightning bolt, Sticky + circle, Strong pressure
+   - Lightning bolt and Strong pressure demos work well visually
+   - Sticky text demo needs visual tuning (see known issues)
 
-8. **Tests** (`distortion.test.ts`, 14 new tests):
-   - UV offset math (zero dye, zero power, directional shift, power/dye scaling)
-   - Cover/contain fit behavior
-   - Scale zoom-out behavior
-   - Edge alpha (center, outside, edge)
-   - Bleed UV remapping (identity, edge mapping, center invariance, CSS pixel computation)
-   - Config defaults, mutual exclusivity with REVEAL
-
-9. **Acknowledgment**: README credits Ksenia Kondrashova's CodePen demos as inspiration for reveal and distortion effects.
-
-10. **ADR-0030**: Documents FluidDistortion architecture, image texture management, fit modes, bucket classification, render path.
+8. **Tests** (`sticky.test.ts`, 34 new tests):
+   - Advection dissipation modulation (7 tests): identity when disabled, full/partial sticky, multiplicative/additive modes
+   - Pressure injection (4 tests): identity, positive pressure, partial mask
+   - Splat amplification (5 tests): identity, full/partial mask, large amplify
+   - StickyMask equality (9 tests): null, text, path, font, blur, defaults
+   - ViewBox equality (4 tests): undefined, default, same, different
+   - Config type validation (4 tests)
 
 ## Key files
 
 | File | Role |
 |------|------|
-| src/lib/engine/FluidEngine.ts (~1720 LOC) | The engine: WebGL state, physics step, render, dispose, mask texture, glass pass, reveal path, distortion path (loadDistortionImage, drawDisplay DISTORTION uniforms), multiplicative dissipation |
-| src/lib/Fluid.svelte (~430 LOC) | Svelte wrapper: DOM, ResizeObserver, adaptive resolution, lazy/autoPause, context slot management. Destructures ALL FluidConfig props including distortion fields. |
-| src/lib/FluidDistortion.svelte (~290 LOC) | Fluid as image distortion: bleed canvas extension, initial chaos splats, pointer-driven scalar dye injection, auto-distort Lissajous, cover/contain fit |
-| src/lib/FluidReveal.svelte (~300 LOC) | Fluid as opacity mask: coverColor/accentColor props, derived dye injection color, manual pointer handling, auto-reveal Lissajous |
+| src/lib/engine/FluidEngine.ts (~1750 LOC) | The engine: WebGL state, physics step, render, dispose, mask texture, glass pass, reveal path, distortion path, sticky mask (initStickyMaskTexture, bindStickyMask, step/splat uniform binding) |
+| src/lib/Fluid.svelte (~440 LOC) | Svelte wrapper: DOM, ResizeObserver, adaptive resolution, lazy/autoPause, destructures ALL FluidConfig props including 5 sticky fields |
+| src/lib/FluidStick.svelte (~210 LOC) | Fluid as sticky text/path: text/font/d rasterization via stickyMask, auto-animate Lissajous, multiplicative dissipation defaults |
+| src/lib/FluidDistortion.svelte (~290 LOC) | Fluid as image distortion: bleed canvas, initial chaos splats, pointer-driven dye injection |
+| src/lib/FluidReveal.svelte (~300 LOC) | Fluid as opacity mask: coverColor/accentColor, manual pointer handling, auto-reveal Lissajous |
 | src/lib/FluidBackground.svelte (~180 LOC) | Full-viewport fluid background with DOM exclusion via CSS selector |
-| src/lib/engine/gl-utils.ts | WebGL utilities: Material class (keyword shader variants), FBO create/resize/dispose, shader compile |
-| src/lib/engine/shaders.ts | All GLSL: advection (with uMultiplicative), display (with REVEAL and DISTORTION branches), glass, container mask |
-| src/lib/engine/types.ts | FluidConfig (with distortion* fields), ResolvedConfig, ContainerShape (5 variants), FluidHandle |
-| src/routes/+page.svelte (~1550 LOC) | Demo page: ~32 instances, FluidBackground wrapper, playground state, loadConfig, URL hash, PRESET_CONFIGS, 4 distortion cards |
-| src/routes/components/ControlPanel.svelte (~1120 LOC) | Playground controls: mode toggle, accordion sections with badges, quick controls, code generation, cover/accent color pickers |
-| src/routes/components/Card.svelte | Demo card: canvas slot, caption, `</>` code toggle, Customize button, "Copied!" feedback |
-| src/routes/background-fluid/+page.svelte | Extra route: background fluid demo with feature cards |
+| src/lib/engine/gl-utils.ts | WebGL utilities: Material class (keyword shader variants), FBO create/resize/dispose |
+| src/lib/engine/shaders.ts | All GLSL: advection (uStickyMask/uStickyStrength), pressure (uStickyMask/uStickyPressure), splat (uStickyMask/uStickyAmplify), display (REVEAL/DISTORTION branches), glass, container mask |
+| src/lib/engine/types.ts | FluidConfig (with sticky* fields), StickyMask, ResolvedConfig, ContainerShape, FluidHandle |
+| src/lib/engine/container-shapes.ts | SDF evaluation, containerShapeEqual, stickyMaskEqual, viewBoxEqual, maskAreaFraction |
+| src/routes/+page.svelte (~1600 LOC) | Demo page: ~36 instances, FluidBackground wrapper, playground, 4 sticky cards |
+| src/routes/components/ControlPanel.svelte (~1120 LOC) | Playground controls: mode toggle, accordion sections, code generation |
 
 ## What needs attention next
+
+### Priority 1: FluidStick visual tuning (CRITICAL)
+
+The sticky physics pipeline is complete and verified (mask on GPU, shader math tested, pressure/splat/advection all wired). But the **text-mode demo** doesn't show a clearly visible text shape yet. The SVG path demos (lightning bolt, triangle) work better because the path shapes are larger/bolder.
+
+Root causes identified:
+- **Dissipation balance**: `densityDissipation=0.85` in multiplicative mode means off-mask dye fades 15%/frame. With auto-animate continuously injecting dye, the steady-state dye level is high everywhere, reducing contrast between on-mask (persists) and off-mask (fades).
+- **Auto-animate intensity**: The Lissajous cursor injects `{r:0.3, g:0.15, b:0.3}` at 60fps. This is enough to keep the canvas bright along the cursor trail, masking the sticking effect.
+- **Vite HMR limitation**: Engine module changes don't hot-reload to running instances. Full page reload needed after engine changes — use `cmd+shift+r` or kill/restart the dev server.
+
+Suggested fixes to try next session:
+1. **Stop auto-animate after N seconds** so dye fades everywhere except on-mask, revealing the text shape
+2. **Use `initialDensityDissipation` ramp** — start with low dissipation (0.5) for 2 seconds so initial splats burn the text in, then ramp to 0.85 for steady-state
+3. **Increase dissipation to 0.8** (20%/frame off-mask) — dye trails fade in <0.5s, giving immediate contrast
+4. **Lower auto-animate color** to `{r:0.1, g:0.1, b:0.1}` — minimal injection, let accumulation reveal the shape
+5. Consider adding an `invertDisplay` option (like the codepen's `1-C`) for a white-background aesthetic where dark dye sticks
 
 ### Planned features
 
 1. **npm publish** — Package is ready. Run `npm publish --access public --provenance`. Create a GitHub release with tag `v0.1.0`.
 2. **Test gaps** — Priority 1: dispose() cleanup, setConfig() bucket transitions, context loss/restore. Priority 2: FluidBackground DOM exclusion, glass post-processing, distortion image loading.
 3. **Changesets setup** — `@changesets/cli` for automated CHANGELOG + npm publish + GitHub releases.
-4. **Playground distortion mode** — Add distortion as a third playground mode alongside Fluid and Reveal. Would need image URL input and distortion-specific controls.
+4. **Playground distortion mode** — Add distortion as a third playground mode.
+5. **Playground sticky mode** — Add sticky as a fourth playground mode with text/font/path controls.
+6. **ADR-0031** — Document FluidStick architecture decisions (sticky mask rasterization, shader modulation approach, multiplicative mode choice, velocity dissipation override).
 
 ### Known issues
 
-5. **~32 demo instances + background** — Exceeds browser's ~16 WebGL context limit. The loseContext() fix in lazy teardown releases slots, but fast scrolling can still briefly exceed the cap.
-6. **FluidReveal pointer-events limitation** — Canvas sits above content; interactive elements can't receive clicks. Same applies to FluidDistortion. Documented in JSDoc.
-7. **`{#key revealAutoReveal}` remount semantics** — toggling autoReveal destroys/rebuilds the fluid state. Needed because autoReveal starts in `onMount`. Accepted tradeoff.
-8. **Distortion image load race** — First frame may render before image texture is loaded. Displays black until the image arrives. Could add a loading placeholder.
+1. **~36 demo instances + background** — Exceeds browser's ~16 WebGL context limit. Lazy teardown helps but fast scrolling can briefly exceed the cap.
+2. **FluidReveal/FluidDistortion/FluidStick pointer-events** — Canvas sits above content; interactive elements can't receive clicks.
+3. **Multiplicative velocity dissipation** — REVEAL and STICKY modes override velocity dissipation to 0.98 (hardcoded). This means `velocityDissipation` prop is ignored in these modes. Should be configurable or documented.
+4. **Texture unit 7** — Sticky mask uses the last guaranteed WebGL texture unit. No room for additional texture-based features without checking `MAX_COMBINED_TEXTURE_IMAGE_UNITS`.
+5. **Vite HMR for engine** — FluidEngine.ts changes don't hot-reload to existing instances. Full page reload required. This made debugging difficult this session.
 
 ### Follow-ups
 
-9. **Named glass presets** — `glass="crystal"`, `glass="frosted"`, `glass="orb"`.
-10. **Animated specular drift** — Slow sinusoidal light direction wobble when cursor is idle.
-11. **FluidReveal/FluidDistortion interactive content** — Proper event forwarding so revealed/distorted buttons/links work.
-12. **Video/canvas as distortion source** — Per-frame texture updates for animated content.
-13. **Distortion + glass** — Currently mutually exclusive (distortion returns early). Could compose them.
+1. **Named glass presets** — `glass="crystal"`, `glass="frosted"`, `glass="orb"`.
+2. **Animated specular drift** — Slow sinusoidal light direction wobble when cursor is idle.
+3. **FluidReveal/FluidDistortion/FluidStick interactive content** — Proper event forwarding.
+4. **Video/canvas as distortion source** — Per-frame texture updates for animated content.
+5. **Distortion + glass** — Currently mutually exclusive.
+6. **Sticky + image mask** — Allow a grayscale image URL as the sticky mask source (in addition to text/path).
 
 ## Architecture quick-reference
 
 - Engine is per-instance, no module-level mutable state. Each canvas gets its own WebGL context.
-- Fluid.svelte applies adaptive resolution in instantiate() before constructing the engine — caps textures to canvas pixel size, suppresses expensive effects on small canvases.
+- Fluid.svelte applies adaptive resolution in instantiate() before constructing the engine.
 - Resize: teardown immediately (blank canvas), debounce rebuild by 150ms.
 - Lazy teardown: dispose engine + loseContext() (releases browser context slot). Rebuild: restoreContext() + wait for webglcontextrestored event + create new engine.
-- setConfig() has 4 buckets: A (scalars incl. splatOnHover, glass params, revealSensitivity, revealCurve, revealCoverColor, distortionPower, distortionFit, distortionScale, distortionBleedX/Y — picked up next frame), B (keyword recompile — shading, bloom, sunrays, reveal, distortion), C (FBO rebuild), D (construct-only). Additionally, svgPath shape changes trigger mask texture rebuild, `glass` toggle triggers sceneFBO alloc/dispose, `distortionImageUrl` change triggers async image load, and `reveal`/`distortion` toggles trigger keyword recompile.
+- setConfig() has 4 buckets: A (scalars incl. splatOnHover, glass params, sticky params — picked up next frame), B (keyword recompile — shading, bloom, sunrays, reveal, distortion; sticky/stickyMask triggers mask rebuild), C (FBO rebuild), D (construct-only). Additionally, svgPath shape changes trigger mask texture rebuild, `glass` toggle triggers sceneFBO alloc/dispose, `distortionImageUrl` change triggers async image load, and `sticky`/`stickyMask` changes trigger sticky mask texture rebuild.
 - Container shapes: two approaches coexist:
   - **Analytical** (circle/frame/roundedRect/annulus): SDF computed per-fragment in shaders, mirrored in TypeScript for rejection sampling.
-  - **Mask texture** (svgPath): rasterized via OffscreenCanvas at canvas aspect ratio, uploaded as R8/LUMINANCE texture. Text mode uses alphabetic baseline with `(ascent - descent) / 2` offset for visual centering.
-- Glass post-processing: two models. **Hemisphere** (circles): full-surface dome with Snell's law; `glassThickness` boosts rim refraction, specular, and glow. **Rim** (all others): refraction band at container boundary. Glass requires a container shape — `CONTAINER_SHAPE` must be non-null.
-- Reveal mode: `REVEAL` keyword in display shader outputs `max(uRevealCoverColor - c, vec3(0.0))` with non-premultiplied alpha. Advection switches to multiplicative dissipation via `uMultiplicative` uniform. Render path skips backColor/checkerboard/glass when REVEAL is active. FluidReveal derives dye injection color as `max(coverColor - accentColor, 0)`.
-- Distortion mode: `DISTORTION` keyword in display shader, mutually exclusive with `REVEAL`. Reads `dye.r` as distortion intensity and `velocity.xy` as direction. Offsets image UVs by `normalize(vel) * offset * uDistortionPower`. Remaps UVs via `uBleed` to account for canvas bleed overflow. Image loaded asynchronously via `loadDistortionImage()`. Render path skips backColor/checkerboard/glass.
-- Transparent mode: `gl.clear(0,0,0,0)` replaces checkerboard. Canvas CSS background = transparent.
+  - **Mask texture** (svgPath): rasterized via OffscreenCanvas at canvas aspect ratio, uploaded as R8/LUMINANCE texture. Text mode uses alphabetic baseline with `(ascent - descent) / 2` offset.
+- **Sticky mask**: separate from container mask. Rasterized via same OffscreenCanvas approach, uploaded to texture unit 7. Optional blur via blurMaskData(). Physics shaders sample this mask to modulate dissipation (advection), inject pressure (pressure Jacobi), and amplify splats (splat shader). All uniforms default to 0.0 when sticky is disabled — zero overhead.
+- Glass post-processing: two models. Hemisphere (circles), Rim (all others). Requires container shape.
+- Reveal mode: REVEAL keyword, multiplicative dissipation, coverColor - dye output.
+- Distortion mode: DISTORTION keyword, dye.r as UV offset magnitude, velocity as direction.
+- Sticky mode: no display keyword (purely physics-level). Uses multiplicative dissipation for dye. Velocity dissipation overridden to 0.98 in multiplicative mode.
+- Transparent mode: `gl.clear(0,0,0,0)` replaces checkerboard.
 - FluidBackground: evenodd SVG path mask. Outer rect = viewport, inner rounded-rect holes = excluded elements.
 - Material class caches compiled shader variants by sorted keyword string key.
-- Context loss/restore: handled via webglcontextlost/webglcontextrestored events. dispose() does NOT call loseContext() — the Svelte component does it separately for lazy instances. Distortion texture is re-loaded on context restore.
-- Demo page: `<main>` has `pointer-events: none`; interactive elements re-enable individually so FluidBackground splats work across full page width.
-- Playground: `loadConfig()` calls `resetAllDefaults()` first, then applies overrides from `PRESET_CONFIGS`. For reveal configs, sets `prevMode = targetMode` to skip the physics snapshot $effect. URL hash uses compact short keys serialized as base64 JSON. Glass enable stores `shapeBeforeGlass` and restores on glass disable.
+- Context loss/restore: handled via events. dispose() does NOT call loseContext(). Sticky mask texture is re-created on context restore.
+- Texture unit budget: 0=dye, 1=bloom/various, 2=various, 3=sunrays, 4=containerMask, 5=distortionTexture, 6=velocity(distortion), 7=stickyMask.
