@@ -404,3 +404,7 @@ This library is a derivative work of
 the original 2017 WebGL implementation by Pavel Dobryakov. The shader
 sources are reused unchanged. Both the upstream project and this port
 are MIT-licensed; see `LICENSE` for the full notices.
+
+The reveal and distortion effects were inspired by
+[Ksenia Kondrashova's](https://codepen.io/ksenia-k) creative WebGL
+demos built on the same fluid simulation.

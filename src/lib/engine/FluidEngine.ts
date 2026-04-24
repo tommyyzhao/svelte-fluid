@@ -120,7 +120,14 @@ const DEFAULTS: ResolvedConfig = {
 	REVEAL: false,
 	REVEAL_SENSITIVITY: 0.1,
 	REVEAL_CURVE: 0.1,
-	REVEAL_COVER_COLOR: { r: 1, g: 1, b: 1 }
+	REVEAL_COVER_COLOR: { r: 1, g: 1, b: 1 },
+	DISTORTION: false,
+	DISTORTION_POWER: 0.4,
+	DISTORTION_IMAGE_URL: null,
+	DISTORTION_FIT: 'cover' as const,
+	DISTORTION_SCALE: 1.0,
+	DISTORTION_BLEED_X: 0,
+	DISTORTION_BLEED_Y: 0
 };
 function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): ResolvedConfig {
 	const out: ResolvedConfig = { ...base };
@@ -189,6 +196,13 @@ function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): Re
 	if (input.revealSensitivity !== undefined) out.REVEAL_SENSITIVITY = input.revealSensitivity;
 	if (input.revealCurve !== undefined) out.REVEAL_CURVE = input.revealCurve;
 	if (input.revealCoverColor !== undefined) out.REVEAL_COVER_COLOR = input.revealCoverColor;
+	if (input.distortion !== undefined) out.DISTORTION = input.distortion;
+	if (input.distortionPower !== undefined) out.DISTORTION_POWER = input.distortionPower;
+	if (input.distortionImageUrl !== undefined) out.DISTORTION_IMAGE_URL = input.distortionImageUrl ?? null;
+	if (input.distortionFit !== undefined) out.DISTORTION_FIT = input.distortionFit;
+	if (input.distortionScale !== undefined) out.DISTORTION_SCALE = input.distortionScale;
+	if (input.distortionBleedX !== undefined) out.DISTORTION_BLEED_X = Math.max(0, Math.min(0.5, input.distortionBleedX));
+	if (input.distortionBleedY !== undefined) out.DISTORTION_BLEED_Y = Math.max(0, Math.min(0.5, input.distortionBleedY));
 	return out;
 }
 
@@ -241,6 +255,11 @@ export class FluidEngine implements FluidHandle {
 	private displayMaterial!: Material;
 	private applyMaskProgram!: ProgramWrap;
 	private glassProgram!: ProgramWrap;
+
+	// --- Distortion image texture ---
+	private distortionTexture: WebGLTexture | null = null;
+	private distortionImgRatio = 1.0;
+	private distortionLoadedUrl: string | null = null;
 
 	// --- Mask texture for svgPath shapes ---
 	private maskTexture: WebGLTexture | null = null;
@@ -304,6 +323,9 @@ export class FluidEngine implements FluidHandle {
 		this.initFramebuffers();
 		this.initMaskTexture();
 		this.initGlassFramebuffer();
+		if (this.config.DISTORTION_IMAGE_URL) {
+			this.loadDistortionImage(this.config.DISTORTION_IMAGE_URL);
+		}
 		this.multipleSplats(this.randomSplatCount());
 
 		// Construct-only preset splats. Applied after the random initial
@@ -429,6 +451,8 @@ export class FluidEngine implements FluidHandle {
 		const shapeChanged = !containerShapeEqual(a.CONTAINER_SHAPE, b.CONTAINER_SHAPE);
 		const glassChanged = a.GLASS !== b.GLASS || shapeChanged;
 		const revealChanged = a.REVEAL !== b.REVEAL;
+		const distortionChanged = a.DISTORTION !== b.DISTORTION;
+		const distortionImageChanged = a.DISTORTION_IMAGE_URL !== b.DISTORTION_IMAGE_URL;
 		const pointerInputChanged = a.POINTER_INPUT !== b.POINTER_INPUT;
 
 		this.config = b;
@@ -441,7 +465,8 @@ export class FluidEngine implements FluidHandle {
 		if (sunraysChanged) this.initSunraysFramebuffers();
 		if (shapeChanged) this.initMaskTexture();
 		if (glassChanged) this.initGlassFramebuffer();
-		if (kwChanged || shapeChanged || revealChanged) this.updateKeywords();
+		if (kwChanged || shapeChanged || revealChanged || distortionChanged) this.updateKeywords();
+		if (distortionImageChanged) this.loadDistortionImage(b.DISTORTION_IMAGE_URL);
 		if (pointerInputChanged) {
 			if (b.POINTER_INPUT) {
 				this.installPointerListeners();
@@ -486,6 +511,12 @@ export class FluidEngine implements FluidHandle {
 		this.initFramebuffers();
 		this.initMaskTexture();
 		this.initGlassFramebuffer();
+		// Re-load distortion image (GL texture was lost with context)
+		if (this.config.DISTORTION_IMAGE_URL) {
+			this.distortionTexture = null;
+			this.distortionLoadedUrl = null;
+			this.loadDistortionImage(this.config.DISTORTION_IMAGE_URL);
+		}
 		this.multipleSplats(this.randomSplatCount());
 		if (this.config.POINTER_INPUT && !this.pointerListenersInstalled) {
 			this.installPointerListeners();
@@ -529,6 +560,13 @@ export class FluidEngine implements FluidHandle {
 		if (this.ditheringTexture) {
 			this.ditheringTexture.dispose();
 			gl.deleteTexture(this.ditheringTexture.texture);
+		}
+
+		// Distortion texture
+		if (this.distortionTexture) {
+			gl.deleteTexture(this.distortionTexture);
+			this.distortionTexture = null;
+			this.distortionLoadedUrl = null;
 		}
 
 		// Mask texture
@@ -856,6 +894,49 @@ export class FluidEngine implements FluidHandle {
 	}
 
 	/**
+	 * Load an image from a URL and upload it as the distortion texture.
+	 * Follows the same async pattern as the dithering texture.
+	 */
+	private loadDistortionImage(url: string | null): void {
+		const gl = this.gl;
+
+		if (!url) {
+			if (this.distortionTexture) {
+				gl.deleteTexture(this.distortionTexture);
+				this.distortionTexture = null;
+				this.distortionLoadedUrl = null;
+			}
+			return;
+		}
+		if (url === this.distortionLoadedUrl) return;
+
+		const image = new Image();
+		image.crossOrigin = 'anonymous';
+		image.onload = () => {
+			if (this.disposed || this.contextLost) return;
+			// URL may have changed while loading — ignore stale loads
+			if (this.config.DISTORTION_IMAGE_URL !== url) return;
+
+			try {
+				if (!this.distortionTexture) {
+					this.distortionTexture = gl.createTexture()!;
+				}
+				gl.bindTexture(gl.TEXTURE_2D, this.distortionTexture);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+				this.distortionImgRatio = image.naturalWidth / image.naturalHeight;
+				this.distortionLoadedUrl = url;
+			} catch {
+				// Context lost between check and GL calls — silently ignore
+			}
+		};
+		image.src = url;
+	}
+
+	/**
 	 * Rasterize the current svgPath container shape to a mask texture.
 	 * Called at construction (if shape is svgPath) and on shape change.
 	 * Uses OffscreenCanvas + Path2D for zero-dependency SVG rasterization.
@@ -1018,7 +1099,9 @@ export class FluidEngine implements FluidHandle {
 		if (this.config.BLOOM) keywords.push('BLOOM');
 		if (this.config.SUNRAYS) keywords.push('SUNRAYS');
 		if (this.config.CONTAINER_SHAPE) keywords.push('CONTAINER_MASK');
-		if (this.config.REVEAL) keywords.push('REVEAL');
+		// DISTORTION and REVEAL are mutually exclusive display modes
+		if (this.config.DISTORTION) keywords.push('DISTORTION');
+		else if (this.config.REVEAL) keywords.push('REVEAL');
 		this.displayMaterial.setKeywords(keywords);
 	}
 
@@ -1261,6 +1344,13 @@ export class FluidEngine implements FluidHandle {
 			this.blur(this.sunrays, this.sunraysTemp, 1);
 		}
 
+		// Distortion mode: image distorted by velocity, no background, no glass
+		if (this.config.DISTORTION) {
+			gl.disable(gl.BLEND);
+			this.drawDisplay(target);
+			return;
+		}
+
 		// Reveal mode: premultiplied alpha output, no background, no glass
 		if (this.config.REVEAL) {
 			gl.disable(gl.BLEND);
@@ -1340,7 +1430,18 @@ export class FluidEngine implements FluidHandle {
 		if (this.config.CONTAINER_SHAPE) {
 			this.setContainerShapeUniforms(this.displayMaterial.uniforms, width, height, 4);
 		}
-		if (this.config.REVEAL) {
+		if (this.config.DISTORTION && this.distortionTexture) {
+			gl.activeTexture(gl.TEXTURE5);
+			gl.bindTexture(gl.TEXTURE_2D, this.distortionTexture);
+			gl.uniform1i(this.displayMaterial.uniforms.uDistortionTexture, 5);
+			gl.uniform1i(this.displayMaterial.uniforms.uVelocity, this.velocity.read.attach(6));
+			gl.uniform1f(this.displayMaterial.uniforms.uDistortionPower, this.config.DISTORTION_POWER);
+			gl.uniform1f(this.displayMaterial.uniforms.uImgRatio, this.distortionImgRatio);
+			gl.uniform1f(this.displayMaterial.uniforms.uCanvasRatio, this.canvas.width / this.canvas.height);
+			gl.uniform1f(this.displayMaterial.uniforms.uDistortionScale, this.config.DISTORTION_SCALE);
+			gl.uniform1i(this.displayMaterial.uniforms.uDistortionFit, this.config.DISTORTION_FIT === 'cover' ? 0 : 1);
+			gl.uniform2f(this.displayMaterial.uniforms.uBleed, this.config.DISTORTION_BLEED_X, this.config.DISTORTION_BLEED_Y);
+		} else if (this.config.REVEAL) {
 			gl.uniform1f(this.displayMaterial.uniforms.uRevealSensitivity, this.config.REVEAL_SENSITIVITY);
 			gl.uniform1f(this.displayMaterial.uniforms.uRevealCurve, this.config.REVEAL_CURVE);
 			const cc = this.config.REVEAL_COVER_COLOR;

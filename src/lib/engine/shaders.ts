@@ -146,10 +146,20 @@ export const displayShaderSource = `
     uniform sampler2D uContainerMaskTexture;
 
 #ifdef REVEAL
-
     uniform float uRevealSensitivity;
     uniform float uRevealCurve;
     uniform vec3 uRevealCoverColor;
+#endif
+
+#ifdef DISTORTION
+    uniform sampler2D uDistortionTexture;
+    uniform sampler2D uVelocity;
+    uniform float uDistortionPower;
+    uniform float uImgRatio;
+    uniform float uCanvasRatio;
+    uniform float uDistortionScale;
+    uniform int uDistortionFit;
+    uniform vec2 uBleed;
 #endif
 
     vec3 linearToGamma (vec3 color) {
@@ -253,7 +263,50 @@ export const displayShaderSource = `
         a *= cmask;
     #endif
 
-    #ifdef REVEAL
+    #ifdef DISTORTION
+        float offset = texture2D(uTexture, vUv).r;
+        vec2 vel = texture2D(uVelocity, vUv).xy;
+        vel += 0.001;
+
+        // Remap from full canvas UV to visible sub-region UV.
+        // When bleed > 0 the canvas extends beyond the visible area;
+        // the image should fill only the visible portion.
+        vec2 visUv = (vUv - uBleed) / max(1.0 - 2.0 * uBleed, 0.01);
+
+        // Aspect-ratio-corrected UV (use visible UV for image mapping)
+        // Compute visible-area aspect ratio (differs from canvas ratio when bleed is set)
+        float visRatio = uCanvasRatio * (1.0 - 2.0 * uBleed.x) / max(1.0 - 2.0 * uBleed.y, 0.01);
+        vec2 imgUv = visUv - 0.5;
+        if (uDistortionFit == 0) {
+            // Cover: image fills visible area, may crop
+            if (visRatio > uImgRatio) {
+                imgUv.y *= uImgRatio / visRatio;
+            } else {
+                imgUv.x *= visRatio / uImgRatio;
+            }
+        } else {
+            // Contain: full image visible, may have borders
+            if (visRatio > uImgRatio) {
+                imgUv.x *= visRatio / uImgRatio;
+            } else {
+                imgUv.y *= uImgRatio / visRatio;
+            }
+        }
+        imgUv /= max(uDistortionScale, 0.01);
+        imgUv += 0.5;
+
+        // Apply velocity-directed distortion
+        imgUv -= uDistortionPower * normalize(vel) * offset;
+
+        vec3 img = texture2D(uDistortionTexture, vec2(imgUv.x, 1.0 - imgUv.y)).rgb;
+
+        // Soft edge fade to prevent harsh clipping at image borders
+        float ew = 0.004;
+        float edgeAlpha = smoothstep(0.0, ew, imgUv.x) * smoothstep(1.0, 1.0 - ew, imgUv.x);
+        edgeAlpha *= smoothstep(0.0, ew, imgUv.y) * smoothstep(1.0, 1.0 - ew, imgUv.y);
+
+        gl_FragColor = vec4(img * edgeAlpha * cmask, edgeAlpha * cmask);
+    #elif defined(REVEAL)
         float revealAmount = clamp(pow(clamp(a * uRevealSensitivity, 0.0, 1.0), uRevealCurve), 0.0, 1.0);
         float alpha = (1.0 - revealAmount) * cmask;
         gl_FragColor = vec4(max(uRevealCoverColor - c, vec3(0.0)), alpha);
