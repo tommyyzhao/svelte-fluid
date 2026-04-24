@@ -97,6 +97,34 @@ export type ContainerShape =
 	| { type: 'svgPath'; d?: string; text?: string; font?: string; viewBox?: [number, number, number, number]; fillRule?: 'nonzero' | 'evenodd'; maskResolution?: number };
 
 /**
+ * Describes a sticky mask shape. The mask is rasterized to a texture and
+ * used to modulate physics shaders so dye "sticks" to the masked region.
+ *
+ * Two rasterization modes:
+ * - **Text mode** (`text`): uses `ctx.fillText()` with `font`.
+ * - **Path mode** (`d`): uses `Path2D(d)` with `viewBox` mapping.
+ *
+ * At least one of `d` or `text` must be provided. If both are given,
+ * `text` takes precedence (same as `ContainerShape.svgPath`).
+ */
+export interface StickyMask {
+	/** SVG path data string. */
+	d?: string;
+	/** Text to rasterize as the mask. Takes precedence over `d`. */
+	text?: string;
+	/** CSS font string for text mode. Default `'bold 72px sans-serif'`. */
+	font?: string;
+	/** viewBox for path mode. Default `[0, 0, 100, 100]`. */
+	viewBox?: [number, number, number, number];
+	/** Fill rule for path mode. Default `'nonzero'`. */
+	fillRule?: 'nonzero' | 'evenodd';
+	/** Rasterization resolution (longest dimension). Default 512. */
+	maskResolution?: number;
+	/** Blur radius in mask pixels. Softens edges for smoother physics. Default 0. */
+	blur?: number;
+}
+
+/**
  * Public, camelCase fluid configuration. Every field is optional;
  * the engine fills in defaults at construction time.
  */
@@ -368,6 +396,40 @@ export interface FluidConfig {
 	 * Default 0. Bucket A.
 	 */
 	distortionBleedY?: number;
+	/**
+	 * Enable sticky mode. Dye clings to the `stickyMask` region by
+	 * modulating advection dissipation (dye persists on the mask),
+	 * pressure (fluid flows around the mask), and splat strength
+	 * (more dye deposited on the mask). Composable with container
+	 * shapes, bloom, sunrays, glass. Mutually exclusive with reveal
+	 * and distortion. Default false. Triggers mask texture rebuild.
+	 */
+	sticky?: boolean;
+	/**
+	 * The mask shape that dye sticks to. Rasterized to a texture via
+	 * OffscreenCanvas. Supports text, SVG paths, or both. Changing
+	 * this at runtime triggers a texture rebuild. Required when
+	 * `sticky` is true.
+	 */
+	stickyMask?: StickyMask;
+	/**
+	 * How strongly dye dissipation is reduced on the mask.
+	 * 0 = no effect, 1 = dye never fades on mask (dissipation → 0).
+	 * Default 0.9. Bucket A.
+	 */
+	stickyStrength?: number;
+	/**
+	 * Artificial pressure injected on the mask to push fluid around
+	 * the shape. Creates a high-pressure zone that repels incoming
+	 * velocity. 0 = no pressure effect. Default 0.15. Bucket A.
+	 */
+	stickyPressure?: number;
+	/**
+	 * Splat intensity multiplier on the mask region. 0 = no extra
+	 * amplification, higher = more dye deposited on mask.
+	 * Default 0.3. Bucket A.
+	 */
+	stickyAmplify?: number;
 }
 
 /**
@@ -432,6 +494,11 @@ export interface ResolvedConfig {
 	DISTORTION_SCALE: number;
 	DISTORTION_BLEED_X: number;
 	DISTORTION_BLEED_Y: number;
+	STICKY: boolean;
+	STICKY_MASK: StickyMask | null;
+	STICKY_STRENGTH: number;
+	STICKY_PRESSURE: number;
+	STICKY_AMPLIFY: number;
 }
 
 /** Pixel format pair returned by `getSupportedFormat`. */

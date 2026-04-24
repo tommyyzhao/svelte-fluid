@@ -8,6 +8,7 @@
 		FluidBackground,
 		FluidDistortion,
 		FluidReveal,
+		FluidStick,
 		FrameFluid,
 		FrozenSwirl,
 		InkInWater,
@@ -1037,6 +1038,47 @@
 					strength={0.4}
 					intensity={24}
 					containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
+				/>
+			</Card>
+		</div>
+	</section>
+
+	<section id="sticky">
+		<header class="section-header">
+			<h2>Sticky</h2>
+			<p>
+				<code>&lt;FluidStick&gt;</code> makes dye cling to text or SVG paths.
+				Physics-level modulation: reduced dissipation, artificial pressure, and amplified splats.
+			</p>
+		</header>
+		<div class="grid-2col">
+			<Card title="Sticky text" description="Dye accumulates on the word and resists fading. Fluid flows around the letterforms." snippet={`<FluidStick\n  text="STICKY"\n  font="bold 80px sans-serif"\n/>`}>
+				<FluidStick
+					lazy
+					text="STICKY"
+					font="bold 80px 'Helvetica Neue', Arial, sans-serif"
+				/>
+			</Card>
+			<Card title="Lightning bolt" description="SVG path acts as a dye attractor. The shape glows with accumulated color." snippet={`<FluidStick\n  d="M55 5 L25 45 L45 45 L20 95\n     L75 50 L55 50 L80 5 Z"\n/>`}>
+				<FluidStick
+					lazy
+					d="M55 5 L25 45 L45 45 L20 95 L75 50 L55 50 L80 5 Z"
+				/>
+			</Card>
+			<Card title="Sticky + circle" description="Sticky text inside a circular container. The fluid is confined to the circle while dye clings to the letters." snippet={`<FluidStick\n  text="HI"\n  font="bold 100px sans-serif"\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5,\n    radius: 0.45\n  }}\n/>`}>
+				<FluidStick
+					lazy
+					text="HI"
+					font="bold 100px 'Helvetica Neue', Arial, sans-serif"
+					containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
+				/>
+			</Card>
+			<Card title="Strong pressure" description="High stickyPressure makes fluid visibly deflect around the shape, creating turbulent vortices." snippet={`<FluidStick\n  d="M50 5 L5 95 L95 95 Z"\n  stickyPressureAmount={0.5}\n  strength={1.0}\n/>`}>
+				<FluidStick
+					lazy
+					d="M50 5 L5 95 L95 95 Z"
+					stickyPressureAmount={0.5}
+					strength={1.0}
 				/>
 			</Card>
 		</div>
