@@ -715,7 +715,14 @@ export const advectionShader = `
     #endif
         float stickyVal = texture2D(uStickyMask, vec2(vUv.x, 1.0 - vUv.y)).r;
         if (uMultiplicative > 0.5) {
-            float adjDissipation = mix(dissipation, 1.0, stickyVal * uStickyStrength);
+            float adjDissipation;
+            if (uStickyStrength >= 0.0) {
+                // Dye: preserve on mask (dissipation → 1.0)
+                adjDissipation = mix(dissipation, 1.0, stickyVal * uStickyStrength);
+            } else {
+                // Velocity: dampen on mask (dissipation → near-zero)
+                adjDissipation = dissipation * max(0.0, 1.0 + stickyVal * uStickyStrength);
+            }
             gl_FragColor = clamp(adjDissipation * result, -1000.0, 1000.0);
         } else {
             float adjDissipation = mix(dissipation, 0.0, stickyVal * uStickyStrength);

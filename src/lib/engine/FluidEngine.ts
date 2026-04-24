@@ -1128,7 +1128,7 @@ export class FluidEngine implements FluidHandle {
 			const ascent = metrics.actualBoundingBoxAscent;
 			const descent = metrics.actualBoundingBoxDescent;
 			const textH = ascent + descent;
-			const pad = 0.9;
+			const pad = mask.padding ?? 0.9;
 			const scale = Math.min((maskW * pad) / textW, (maskH * pad) / textH);
 			ctx.setTransform(scale, 0, 0, scale, maskW / 2, maskH / 2);
 			ctx.fillText(mask.text, 0, (ascent - descent) / 2);
@@ -1474,7 +1474,15 @@ export class FluidEngine implements FluidHandle {
 		);
 		this.bindStickyMask();
 		gl.uniform1i(this.advectionProgram.uniforms.uStickyMask, 7);
-		gl.uniform1f(this.advectionProgram.uniforms.uStickyStrength, 0.0); // velocity: no sticky
+		// Velocity: pass negative strength to activate damping mode in the
+		// advection shader. On-mask velocity is multiplied by
+		// (1 - 0.8 * stickyStrength) each frame, so with strength=1.0
+		// velocity decays ~80%/frame, preventing dye from being advected
+		// off the mask while allowing some residual flow for natural look.
+		gl.uniform1f(
+			this.advectionProgram.uniforms.uStickyStrength,
+			this.config.STICKY ? -(this.config.STICKY_STRENGTH * 0.8) : 0.0
+		);
 		gl.uniform2f(
 			this.advectionProgram.uniforms.texelSize,
 			this.velocity.texelSizeX,
