@@ -492,22 +492,19 @@
 				<span>splatRadius <em>{splatRadius.toFixed(2)}</em></span>
 				<input type="range" min="0.05" max="1" step="0.01" bind:value={splatRadius} />
 			</label>
-			<label>
-				<span>densityDissipation <em>{densityDissipation.toFixed(2)}</em></span>
-				<input type="range" min="0" max="4" step="0.05" bind:value={densityDissipation} />
-			</label>
 			<div class="quick-row">
-				<label class="check"><input type="checkbox" bind:checked={bloom} /> bloom</label>
-				<label class="check"><input type="checkbox" bind:checked={glass} /> glass</label>
+				<label class="check"><input type="checkbox" bind:checked={bloom} /> Bloom</label>
+				<label class="check"><input type="checkbox" bind:checked={glass} /> Glass</label>
+				<label class="check"><input type="checkbox" bind:checked={paused} /> Paused</label>
 			</div>
 			<label>
-				<span>shape</span>
+				<span>Shape</span>
 				<select bind:value={containerShapeType}>
-					<option value="none">none</option>
-					<option value="circle">circle</option>
-					<option value="frame">frame</option>
-					<option value="roundedRect">roundedRect</option>
-					<option value="annulus">annulus</option>
+					<option value="none" disabled={glass} title={glass ? 'Glass requires a container shape' : ''}>Rectangle</option>
+					<option value="circle">Circle</option>
+					<option value="frame">Frame</option>
+					<option value="roundedRect">Rounded rect</option>
+					<option value="annulus">Ring</option>
 				</select>
 			</label>
 		</section>
@@ -521,6 +518,10 @@
 		{#if openSections.has('physics')}
 			<section class="accordion-body">
 				<label>
+					<span>densityDissipation <em>{densityDissipation.toFixed(2)}</em></span>
+					<input type="range" min="0" max="4" step="0.05" bind:value={densityDissipation} />
+				</label>
+				<label>
 					<span>splatForce <em>{splatForce}</em></span>
 					<input type="range" min="500" max="12000" step="100" bind:value={splatForce} />
 				</label>
@@ -532,13 +533,14 @@
 					<span>pressure <em>{pressure.toFixed(2)}</em></span>
 					<input type="range" min="0" max="1" step="0.01" bind:value={pressure} />
 				</label>
-				<label class="check"><input type="checkbox" bind:checked={splatOnHover} /> splatOnHover</label>
+				<label class="check"><input type="checkbox" bind:checked={splatOnHover} /> Splat on hover</label>
+				<p class="field-hint">Initial dissipation ramp — applied at engine start only. Changing these requires a page reload.</p>
 				<label>
 					<span>initialDensityDissipation <em>{initialDensityDissipation.toFixed(2)}</em></span>
 					<input type="range" min="0" max="2" step="0.05" bind:value={initialDensityDissipation} />
 				</label>
 				<label>
-					<span>initialDensityDissipationDuration <em>{initialDensityDissipationDuration.toFixed(1)}</em></span>
+					<span>Ramp duration (s) <em>{initialDensityDissipationDuration.toFixed(1)}</em></span>
 					<input type="range" min="0" max="5" step="0.1" bind:value={initialDensityDissipationDuration} />
 				</label>
 			</section>
@@ -590,18 +592,21 @@
 		</button>
 		{#if openSections.has('visuals')}
 			<section class="accordion-body">
-				<label class="check"><input type="checkbox" bind:checked={shading} /> shading</label>
-				<label class="check"><input type="checkbox" bind:checked={sunrays} /> sunrays</label>
-				<label class="check"><input type="checkbox" bind:checked={colorful} /> colorful</label>
-				<label class="check"><input type="checkbox" bind:checked={paused} /> paused</label>
+				<label class="check"><input type="checkbox" bind:checked={shading} /> Shading</label>
+				<label class="check"><input type="checkbox" bind:checked={sunrays} /> Sunrays</label>
+				<label class="check"><input type="checkbox" bind:checked={colorful} /> Cycle colors</label>
+				{#if bloom}
 				<label>
 					<span>bloomIntensity <em>{bloomIntensity.toFixed(2)}</em></span>
 					<input type="range" min="0" max="2" step="0.05" bind:value={bloomIntensity} />
 				</label>
+				{/if}
+				{#if sunrays}
 				<label>
 					<span>sunraysWeight <em>{sunraysWeight.toFixed(2)}</em></span>
 					<input type="range" min="0" max="2" step="0.05" bind:value={sunraysWeight} />
 				</label>
+				{/if}
 			</section>
 		{/if}
 
@@ -652,10 +657,11 @@
 					<span>B <em>{backColorB}</em></span>
 					<input type="range" min="0" max="255" step="1" bind:value={backColorB} />
 				</label>
-				<label class="check"><input type="checkbox" bind:checked={transparent} /> transparent</label>
+				<label class="check"><input type="checkbox" bind:checked={transparent} /> Transparent</label>
 			</section>
 		{/if}
 
+		{#if containerShapeType !== 'none'}
 		<button class="accordion-header" onclick={() => toggleSection('shape')}>
 			<span>Container Shape</span>
 			{#if shapeChanges > 0}<span class="badge">{shapeChanges}</span>{/if}
@@ -663,16 +669,14 @@
 		</button>
 		{#if openSections.has('shape')}
 			<section class="accordion-body">
-				{#if containerShapeType !== 'none'}
-					<label>
-						<span>cx <em>{containerCx.toFixed(2)}</em></span>
-						<input type="range" min="0" max="1" step="0.01" bind:value={containerCx} />
-					</label>
-					<label>
-						<span>cy <em>{containerCy.toFixed(2)}</em></span>
-						<input type="range" min="0" max="1" step="0.01" bind:value={containerCy} />
-					</label>
-				{/if}
+				<label>
+					<span>cx <em>{containerCx.toFixed(2)}</em></span>
+					<input type="range" min="0" max="1" step="0.01" bind:value={containerCx} />
+				</label>
+				<label>
+					<span>cy <em>{containerCy.toFixed(2)}</em></span>
+					<input type="range" min="0" max="1" step="0.01" bind:value={containerCy} />
+				</label>
 				{#if containerShapeType === 'circle'}
 					<label>
 						<span>radius <em>{containerRadius.toFixed(2)}</em></span>
@@ -723,10 +727,9 @@
 						<input type="range" min="0.05" max="0.5" step="0.01" bind:value={containerOuterRadius} />
 					</label>
 				{/if}
-				{#if containerShapeType !== 'none'}
-					<label class="check"><input type="checkbox" bind:checked={showShapePreview} /> Show shape outline</label>
-				{/if}
+				<label class="check"><input type="checkbox" bind:checked={showShapePreview} /> Show shape outline</label>
 			</section>
+		{/if}
 		{/if}
 
 		<button class="accordion-header" onclick={() => toggleSection('glass')}>
@@ -752,7 +755,7 @@
 						<input type="range" min="0" max="1" step="0.05" bind:value={glassReflectivity} />
 					</label>
 					<label>
-						<span>glassChromatic <em>{glassChromatic.toFixed(2)}</em></span>
+						<span>Color fringing <em>{glassChromatic.toFixed(2)}</em></span>
 						<input type="range" min="0" max="1" step="0.05" bind:value={glassChromatic} />
 					</label>
 				{/if}
@@ -789,11 +792,11 @@
 				<span>splatRadius <em>{splatRadius.toFixed(2)}</em></span>
 				<input type="range" min="0.05" max="1" step="0.01" bind:value={splatRadius} />
 			</label>
-			<label class="check"><input type="checkbox" bind:checked={revealFadeBack} /> fadeBack</label>
-			<label class="check"><input type="checkbox" bind:checked={revealAutoReveal} /> autoReveal</label>
+			<label class="check"><input type="checkbox" bind:checked={revealFadeBack} /> Fade back</label>
+			<label class="check"><input type="checkbox" bind:checked={revealAutoReveal} /> Auto-reveal</label>
 			{#if revealAutoReveal}
 				<label>
-					<span>autoRevealSpeed <em>{revealAutoRevealSpeed.toFixed(1)}</em></span>
+					<span>Auto-reveal speed <em>{revealAutoRevealSpeed.toFixed(1)}</em></span>
 					<input type="range" min="0.1" max="3" step="0.1" bind:value={revealAutoRevealSpeed} />
 				</label>
 			{/if}
@@ -964,6 +967,16 @@
 		flex-direction: column;
 		gap: 6px;
 		padding: 6px 0 10px;
+	}
+	.field-hint {
+		margin: 4px 0 0;
+		padding: 4px 6px;
+		font-size: 0.65rem;
+		line-height: 1.4;
+		color: #777;
+		background: #111;
+		border-radius: 4px;
+		border-left: 2px solid #333;
 	}
 	.hint-btn {
 		padding: 6px 10px !important;

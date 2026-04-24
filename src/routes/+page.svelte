@@ -102,7 +102,7 @@
 		if (containerShapeType === 'frame') return { type: 'frame' as const, cx: containerCx, cy: containerCy, halfW: containerHalfW, halfH: containerHalfH, innerCornerRadius: containerInnerCornerRadius, outerHalfW: containerOuterHalfW, outerHalfH: containerOuterHalfH, outerCornerRadius: containerOuterCornerRadius };
 		if (containerShapeType === 'roundedRect') return { type: 'roundedRect' as const, cx: containerCx, cy: containerCy, halfW: containerHalfW, halfH: containerHalfH, cornerRadius: containerCornerRadius };
 		if (containerShapeType === 'annulus') return { type: 'annulus' as const, cx: containerCx, cy: containerCy, innerRadius: containerInnerRadius, outerRadius: containerOuterRadius };
-		return undefined;
+		return null;
 	});
 
 	let backColor = $derived({ r: backColorR, g: backColorG, b: backColorB });
@@ -114,9 +114,16 @@
 	let revealCoverRgb = $derived(hexToRgb01(revealCoverColor));
 	let revealAccentRgb = $derived(hexToRgb01(revealAccentColor));
 
+	// Glass requires a container shape. Remember the pre-glass shape
+	// so we can restore it when glass is unchecked.
+	let shapeBeforeGlass: typeof containerShapeType | null = null;
 	$effect(() => {
 		if (glass && containerShapeType === 'none') {
-			containerShapeType = 'circle';
+			shapeBeforeGlass = 'none';
+			containerShapeType = 'roundedRect';
+		} else if (!glass && shapeBeforeGlass !== null) {
+			containerShapeType = shapeBeforeGlass;
+			shapeBeforeGlass = null;
 		}
 	});
 
@@ -278,6 +285,8 @@
 		a('rr', randomSplatRate, D.randomSplatRate); a('rn', randomSplatCount, D.randomSplatCount);
 		a('rw', randomSplatSwirl, D.randomSplatSwirl); a('rp', randomSplatSpread, D.randomSplatSpread);
 		a('ry', randomSplatSpawnY, D.randomSplatSpawnY);
+		a('rx', randomSplatDx, D.randomSplatDx); a('rd2', randomSplatDy, D.randomSplatDy);
+		a('re', randomSplatEvenSpacing, D.randomSplatEvenSpacing);
 		a('oh', splatOnHover, D.splatOnHover);
 		a('id', initialDensityDissipation, D.initialDensityDissipation);
 		a('it', initialDensityDissipationDuration, D.initialDensityDissipationDuration);
@@ -285,6 +294,10 @@
 		a('gy', glassReflectivity, D.glassReflectivity); a('gc', glassChromatic, D.glassChromatic);
 		a('rs', revealSensitivity, D.revealSensitivity); a('rc', revealCurve, D.revealCurve);
 		a('fb', revealFadeBack, D.revealFadeBack); a('ar', revealAutoReveal, D.revealAutoReveal);
+		a('as', revealAutoRevealSpeed, D.revealAutoRevealSpeed);
+		a('rv', revealContent, D.revealContent);
+		a('cc', revealCoverColor, D.revealCoverColor);
+		a('ac', revealAccentColor, D.revealAccentColor);
 		// Container shape sub-params (only if shape is active)
 		if (containerShapeType === 'circle') {
 			a('cx', containerCx, D.containerCx); a('cy', containerCy, D.containerCy);
@@ -337,6 +350,9 @@
 			if (g('rw') !== undefined) randomSplatSwirl = g('rw') as number;
 			if (g('rp') !== undefined) randomSplatSpread = g('rp') as number;
 			if (g('ry') !== undefined) randomSplatSpawnY = g('ry') as number;
+			if (g('rx') !== undefined) randomSplatDx = g('rx') as number;
+			if (g('rd2') !== undefined) randomSplatDy = g('rd2') as number;
+			if (g('re') !== undefined) randomSplatEvenSpacing = g('re') as boolean;
 			if (g('oh') !== undefined) splatOnHover = g('oh') as boolean;
 			if (g('id') !== undefined) initialDensityDissipation = g('id') as number;
 			if (g('it') !== undefined) initialDensityDissipationDuration = g('it') as number;
@@ -348,6 +364,10 @@
 			if (g('rc') !== undefined) revealCurve = g('rc') as number;
 			if (g('fb') !== undefined) revealFadeBack = g('fb') as boolean;
 			if (g('ar') !== undefined) revealAutoReveal = g('ar') as boolean;
+			if (g('as') !== undefined) revealAutoRevealSpeed = g('as') as number;
+			if (g('rv') !== undefined) revealContent = g('rv') as 'text' | 'mosaic';
+			if (g('cc') !== undefined) revealCoverColor = g('cc') as string;
+			if (g('ac') !== undefined) revealAccentColor = g('ac') as string;
 			if (g('cx') !== undefined) containerCx = g('cx') as number;
 			if (g('cy') !== undefined) containerCy = g('cy') as number;
 			if (g('rd') !== undefined) containerRadius = g('rd') as number;
@@ -372,10 +392,12 @@
 			velocityDissipation, pressure, bloomIntensity, sunraysWeight, shading,
 			bloom, sunrays, colorful, glass, transparent, containerShapeType,
 			backColorR, backColorG, backColorB, randomSplatRate, randomSplatCount,
-			randomSplatSwirl, randomSplatSpread, splatOnHover, glassThickness,
+			randomSplatSwirl, randomSplatSpread, randomSplatSpawnY, randomSplatDx,
+			randomSplatDy, randomSplatEvenSpacing, splatOnHover, glassThickness,
 			glassRefraction, glassReflectivity, glassChromatic, containerCx, containerCy,
 			containerRadius, containerInnerRadius, containerOuterRadius,
-			revealSensitivity, revealCurve, revealFadeBack, revealAutoReveal];
+			revealSensitivity, revealCurve, revealFadeBack, revealAutoReveal,
+			revealAutoRevealSpeed, revealContent, revealCoverColor, revealAccentColor];
 		clearTimeout(hashTimer);
 		hashTimer = setTimeout(() => {
 			const s = serializeState();
@@ -472,7 +494,7 @@
 		Default: {},
 		Circle: { containerShape: { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }, splatOnHover: true },
 		Frame: { containerShape: { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.2 }, splatOnHover: true },
-		Annulus: { containerShape: { type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.4 }, splatOnHover: true },
+		Ring: { containerShape: { type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.4 }, splatOnHover: true },
 		'Rounded frame': { containerShape: { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.2, innerCornerRadius: 0.06 }, splatOnHover: true },
 		'Portal ring': {
 			containerShape: { type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.42 },
@@ -658,13 +680,13 @@
 			<Card title="Lava Lamp" description="Warm blobs in a glass vessel with rim refraction." onCustomize={() => loadConfig(PRESET_CONFIGS['LavaLamp'], 'LavaLamp')} snippet={`<LavaLamp />\n\n<!-- Equivalent <Fluid> configuration: -->\n<Fluid\n  containerShape={{ type: 'roundedRect',\n    cx: 0.5, cy: 0.5, halfW: 0.38,\n    halfH: 0.45, cornerRadius: 0.15 }}\n  glass\n  glassRefraction={0.3}\n  glassReflectivity={0.08}\n  glassChromatic={0.1}\n  curl={5}\n  densityDissipation={0}\n  initialDensityDissipation={0.25}\n  initialDensityDissipationDuration={1.0}\n  velocityDissipation={0}\n  splatRadius={0.75}\n  splatForce={2200}\n  shading\n  colorful={false}\n  bloom={false}\n  sunrays={false}\n  initialSplatCount={0}\n  backColor={{ r: 222, g: 218, b: 215 }}\n  presetSplats={[\n    { x: 0.18, y: 0.06, dx: 8, dy: 180,\n      color: { r: 1.7, g: 0.12, b: 0.08 } },\n    { x: 0.32, y: 0.1, dx: -5, dy: 160,\n      color: { r: 1.8, g: 0.45, b: 0.08 } },\n    /* ... 6 more warm blobs ... */\n  ]}\n/>`}>
 				<LavaLamp seed={101} lazy aria-label="LavaLamp preset" />
 			</Card>
-			<Card title="Plasma" description="Full-spectrum jets converge into a churning vortex at the center." onCustomize={() => loadConfig(PRESET_CONFIGS['Plasma'], 'Plasma')} snippet={`<Plasma />\n\n<!-- Equivalent <Fluid> configuration: -->\n<Fluid\n  curl={40}\n  densityDissipation={0.12}\n  velocityDissipation={0.08}\n  splatRadius={0.35}\n  splatForce={5000}\n  shading\n  colorful\n  bloom\n  bloomIntensity={1.5}\n  sunrays\n  sunraysWeight={0.5}\n  randomSplatRate={0.4}\n  randomSplatCount={4}\n  randomSplatSpawnY={0.5}\n  backColor={{ r: 4, g: 2, b: 12 }}\n  presetSplats={[...]}\n/>`}>
+			<Card title="Plasma" description="Rapid color jets with strong curl and vivid bloom lighting up a dark canvas." onCustomize={() => loadConfig(PRESET_CONFIGS['Plasma'], 'Plasma')} snippet={`<Plasma />\n\n<!-- Equivalent <Fluid> configuration: -->\n<Fluid\n  curl={40}\n  densityDissipation={0.12}\n  velocityDissipation={0.08}\n  splatRadius={0.35}\n  splatForce={5000}\n  shading\n  colorful\n  bloom\n  bloomIntensity={1.5}\n  sunrays\n  sunraysWeight={0.5}\n  randomSplatRate={0.4}\n  randomSplatCount={4}\n  randomSplatSpawnY={0.5}\n  backColor={{ r: 4, g: 2, b: 12 }}\n  presetSplats={[...]}\n/>`}>
 				<Plasma seed={202} lazy aria-label="Plasma preset" />
 			</Card>
-			<Card title="Ink in Water" description="India ink sinking through dark water with volumetric bloom." onCustomize={() => loadConfig(PRESET_CONFIGS['Ink in Water'], 'Ink in Water')} snippet={`<InkInWater />\n\n<!-- Equivalent <Fluid> configuration: -->\n<Fluid\n  curl={8}\n  densityDissipation={0.3}\n  velocityDissipation={0.15}\n  pressure={0.85}\n  splatRadius={0.12}\n  splatForce={800}\n  shading\n  colorful={false}\n  bloom\n  bloomIntensity={0.6}\n  sunrays={false}\n  randomSplatRate={0.2}\n  backColor={{ r: 6, g: 8, b: 20 }}\n  presetSplats={[...]}\n/>`}>
+			<Card title="Ink in Water" description="Deep blue ink diffusing through dark water with a soft glow." onCustomize={() => loadConfig(PRESET_CONFIGS['Ink in Water'], 'Ink in Water')} snippet={`<InkInWater />\n\n<!-- Equivalent <Fluid> configuration: -->\n<Fluid\n  curl={8}\n  densityDissipation={0.3}\n  velocityDissipation={0.15}\n  pressure={0.85}\n  splatRadius={0.12}\n  splatForce={800}\n  shading\n  colorful={false}\n  bloom\n  bloomIntensity={0.6}\n  sunrays={false}\n  randomSplatRate={0.2}\n  backColor={{ r: 6, g: 8, b: 20 }}\n  presetSplats={[...]}\n/>`}>
 				<InkInWater seed={303} lazy aria-label="Ink in Water preset" />
 			</Card>
-			<Card title="Frozen Swirl" description="An icy whirlpool frozen inside a circular vessel." onCustomize={() => loadConfig(PRESET_CONFIGS['Frozen Swirl'], 'Frozen Swirl')} snippet={`<FrozenSwirl />\n\n<!-- Equivalent <Fluid> configuration: -->\n<Fluid\n  containerShape={{ type: 'circle',\n    cx: 0.5, cy: 0.5, radius: 0.45 }}\n  curl={50}\n  densityDissipation={0}\n  velocityDissipation={1.0}\n  pressure={0.95}\n  splatRadius={0.5}\n  splatForce={8000}\n  shading\n  colorful={false}\n  bloom\n  bloomIntensity={1.0}\n  sunrays={false}\n  backColor={{ r: 4, g: 8, b: 24 }}\n  presetSplats={[...]}\n/>`}>
+			<Card title="Frozen Swirl" description="Cyan dye flash-frozen in a circular vessel. Strong swirl, instant slowdown." onCustomize={() => loadConfig(PRESET_CONFIGS['Frozen Swirl'], 'Frozen Swirl')} snippet={`<FrozenSwirl />\n\n<!-- Equivalent <Fluid> configuration: -->\n<Fluid\n  containerShape={{ type: 'circle',\n    cx: 0.5, cy: 0.5, radius: 0.45 }}\n  curl={50}\n  densityDissipation={0}\n  velocityDissipation={1.0}\n  pressure={0.95}\n  splatRadius={0.5}\n  splatForce={8000}\n  shading\n  colorful={false}\n  bloom\n  bloomIntensity={1.0}\n  sunrays={false}\n  backColor={{ r: 4, g: 8, b: 24 }}\n  presetSplats={[...]}\n/>`}>
 				<FrozenSwirl seed={404} lazy aria-label="Frozen Swirl preset" />
 			</Card>
 			<Card title="Aurora" description="Northern-lights ribbons drifting laterally." onCustomize={() => loadConfig(PRESET_CONFIGS['Aurora'], 'Aurora')} snippet={`<Aurora />\n\n<!-- Equivalent <Fluid> configuration: -->\n<Fluid\n  curl={40}\n  densityDissipation={0}\n  velocityDissipation={0.3}\n  splatRadius={0.4}\n  splatForce={6000}\n  shading\n  colorful={false}\n  bloom\n  bloomIntensity={1.5}\n  sunrays\n  sunraysWeight={1.4}\n  backColor={{ r: 2, g: 4, b: 18 }}\n  presetSplats={[...]}\n/>`}>
@@ -738,8 +760,8 @@
 		<header class="section-header subsection-header">
 			<h3>Container shapes</h3>
 			<p>
-				Masks confine the simulation to a region.
-				Five analytical shapes plus arbitrary SVG paths are built in.
+				Masks confine the fluid to a region.
+				Choose from five built-in shapes or use custom SVG paths.
 			</p>
 		</header>
 		<div class="grid-2col">
@@ -749,10 +771,10 @@
 			<Card title="Frame" description="Fluid around a rectangular inner cutout." onCustomize={() => loadConfig(PRESET_CONFIGS['Frame'], 'Frame')} snippet={`<Fluid\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.2, halfH: 0.2\n  }}\n/>`}>
 				<FrameFluid seed={707} lazy splatOnHover aria-label="Frame fluid shape demo" />
 			</Card>
-			<Card title="Annulus" description="Ring-vortex fluid between two concentric circles." onCustomize={() => loadConfig(PRESET_CONFIGS['Annulus'], 'Annulus')} snippet={`<Fluid\n  containerShape={{\n    type: 'annulus',\n    cx: 0.5, cy: 0.5,\n    innerRadius: 0.15, outerRadius: 0.4\n  }}\n/>`}>
+			<Card title="Ring" description="Fluid flowing in a ring between two circles." onCustomize={() => loadConfig(PRESET_CONFIGS['Ring'], 'Ring')} snippet={`<Fluid\n  containerShape={{\n    type: 'annulus',\n    cx: 0.5, cy: 0.5,\n    innerRadius: 0.15, outerRadius: 0.4\n  }}\n/>`}>
 				<AnnularFluid seed={909} lazy splatOnHover aria-label="Annular fluid shape demo" />
 			</Card>
-			<Card title="Rounded frame" description="Frame with rounded inner corners via innerCornerRadius." onCustomize={() => loadConfig(PRESET_CONFIGS['Rounded frame'], 'Rounded frame')} snippet={`<Fluid\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.2, halfH: 0.2,\n    innerCornerRadius: 0.06\n  }}\n/>`}>
+			<Card title="Rounded frame" description="Frame with rounded inner corners for a softer cutout." onCustomize={() => loadConfig(PRESET_CONFIGS['Rounded frame'], 'Rounded frame')} snippet={`<Fluid\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.2, halfH: 0.2,\n    innerCornerRadius: 0.06\n  }}\n/>`}>
 				<FrameFluid seed={818} lazy splatOnHover innerCornerRadius={0.06} aria-label="Rounded frame shape demo" />
 			</Card>
 			<Card title="SVG path" description="Fluid shaped by an arbitrary SVG path — a lightning bolt." onCustomize={() => loadConfig(PRESET_CONFIGS['SVG path'], 'SVG path')} snippet={`<Fluid\n  containerShape={{\n    type: 'svgPath',\n    d: 'M55 2 L30 42 L48 42 L25 70 ...'\n  }}\n/>`}>
@@ -778,7 +800,7 @@
 					aria-label="SVG path fluid shape demo"
 				/>
 			</Card>
-			<Card title="Text glyph" description="Fluid shaped by a bold ampersand via Canvas 2D text rasterization." onCustomize={() => loadConfig(PRESET_CONFIGS['Text glyph'], 'Text glyph')} snippet={`<Fluid\n  containerShape={{\n    type: 'svgPath',\n    text: '&',\n    font: 'bold 200px Georgia, serif',\n    fillRule: 'evenodd'\n  }}\n/>`}>
+			<Card title="Text glyph" description="Fluid shaped by a bold ampersand. Any text string can become a container." onCustomize={() => loadConfig(PRESET_CONFIGS['Text glyph'], 'Text glyph')} snippet={`<Fluid\n  containerShape={{\n    type: 'svgPath',\n    text: '&',\n    font: 'bold 200px Georgia, serif',\n    fillRule: 'evenodd'\n  }}\n/>`}>
 				<SvgPathFluid seed={1010} lazy splatOnHover aria-label="Text glyph fluid shape demo" />
 			</Card>
 		</div>
@@ -788,13 +810,13 @@
 		<header class="section-header">
 			<h2>Container effects</h2>
 			<p>
-				The <code>glass</code> prop adds a post-processing layer.
-				Circles get a hemisphere dome with Snell's law refraction;
-				other shapes get rim refraction at the boundary.
+				The <code>glass</code> prop adds a lens effect.
+				Circles get a dome with optical refraction;
+				other shapes get edge refraction at the boundary.
 			</p>
 		</header>
 		<div class="grid-2col">
-			<Card title="Crystal orb" description="Hemisphere dome with chromatic aberration. The fluid magnifies at center and bends at the rim." onCustomize={() => loadConfig(PRESET_CONFIGS['Crystal orb'], 'Crystal orb')} snippet={`<Fluid\n  glass\n  glassRefraction={0.7}\n  glassChromatic={0.5}\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5, radius: 0.45\n  }}\n/>`}>
+			<Card title="Crystal orb" description="Glass sphere with rainbow color fringing. The fluid magnifies at center and bends at the rim." onCustomize={() => loadConfig(PRESET_CONFIGS['Crystal orb'], 'Crystal orb')} snippet={`<Fluid\n  glass\n  glassRefraction={0.7}\n  glassChromatic={0.5}\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5, radius: 0.45\n  }}\n/>`}>
 				<Fluid
 					seed={1111}
 					lazy
@@ -821,7 +843,7 @@
 					aria-label="Crystal orb effect demo"
 				/>
 			</Card>
-			<Card title="Soft lens" description="Subtle dome refraction with gentle Fresnel. Glass you feel more than see." onCustomize={() => loadConfig(PRESET_CONFIGS['Soft lens'], 'Soft lens')} snippet={`<Fluid\n  glass\n  glassRefraction={0.25}\n  glassChromatic={0.1}\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5, radius: 0.45\n  }}\n/>`}>
+			<Card title="Soft lens" description="Subtle glass lens with soft edge reflections. Glass you feel more than see." onCustomize={() => loadConfig(PRESET_CONFIGS['Soft lens'], 'Soft lens')} snippet={`<Fluid\n  glass\n  glassRefraction={0.25}\n  glassChromatic={0.1}\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5, radius: 0.45\n  }}\n/>`}>
 				<Fluid
 					seed={1212}
 					lazy
@@ -848,7 +870,7 @@
 					aria-label="Soft lens effect demo"
 				/>
 			</Card>
-			<Card title="Portal ring" description="Chromatic rim refraction on an annulus. Rainbow fringes at both edges." onCustomize={() => loadConfig(PRESET_CONFIGS['Portal ring'], 'Portal ring')} snippet={`<Fluid\n  glass\n  glassThickness={0.05}\n  glassRefraction={0.6}\n  glassChromatic={0.7}\n  containerShape={{\n    type: 'annulus',\n    cx: 0.5, cy: 0.5,\n    innerRadius: 0.15, outerRadius: 0.42\n  }}\n/>`}>
+			<Card title="Portal ring" description="Rainbow light bending on a ring shape. Colorful fringes at both edges." onCustomize={() => loadConfig(PRESET_CONFIGS['Portal ring'], 'Portal ring')} snippet={`<Fluid\n  glass\n  glassThickness={0.05}\n  glassRefraction={0.6}\n  glassChromatic={0.7}\n  containerShape={{\n    type: 'annulus',\n    cx: 0.5, cy: 0.5,\n    innerRadius: 0.15, outerRadius: 0.42\n  }}\n/>`}>
 				<Fluid
 					seed={1313}
 					lazy
@@ -875,7 +897,7 @@
 					aria-label="Portal ring glass effect demo"
 				/>
 			</Card>
-			<Card title="Glass frame" description="Rim refraction along a rounded picture frame. Chromatic fringes at the walls." onCustomize={() => loadConfig(PRESET_CONFIGS['Glass frame'], 'Glass frame')} snippet={`<Fluid\n  glass\n  glassThickness={0.06}\n  glassRefraction={0.5}\n  glassChromatic={0.4}\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.22, halfH: 0.22,\n    innerCornerRadius: 0.06\n  }}\n/>`}>
+			<Card title="Glass frame" description="Light bending along a rounded picture frame. Rainbow fringes at the walls." onCustomize={() => loadConfig(PRESET_CONFIGS['Glass frame'], 'Glass frame')} snippet={`<Fluid\n  glass\n  glassThickness={0.06}\n  glassRefraction={0.5}\n  glassChromatic={0.4}\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.22, halfH: 0.22,\n    innerCornerRadius: 0.06\n  }}\n/>`}>
 				<Fluid
 					seed={1414}
 					lazy
@@ -923,7 +945,7 @@
 					</div>
 				</FluidReveal>
 			</Card>
-			<Card title="Permanent reveal" description="Set fadeBack={false} for a scratch-card effect. Once revealed, content stays visible." onCustomize={() => loadConfig(PRESET_CONFIGS['Permanent reveal'], 'Permanent reveal')} snippet={`<FluidReveal fadeBack={false}>\n  <div style="display: grid;\n    grid-template-columns: repeat(3, 1fr);\n    gap: 6px; padding: 10px;\n    width: 100%; height: 100%;\n    background: #1a1a2e;\n    border-radius: 12px;">\n    {#each Array(9) as _, i}\n      <div style="aspect-ratio: 1;\n        border-radius: 6px;\n        background: hsl({i * 40}, 65%, 55%)" />\n    {/each}\n  </div>\n</FluidReveal>`}>
+			<Card title="Permanent reveal" description="Disable fade-back for a scratch-card effect. Once revealed, content stays visible." onCustomize={() => loadConfig(PRESET_CONFIGS['Permanent reveal'], 'Permanent reveal')} snippet={`<FluidReveal fadeBack={false}>\n  <div style="display: grid;\n    grid-template-columns: repeat(3, 1fr);\n    gap: 6px; padding: 10px;\n    width: 100%; height: 100%;\n    background: #1a1a2e;\n    border-radius: 12px;">\n    {#each Array(9) as _, i}\n      <div style="aspect-ratio: 1;\n        border-radius: 6px;\n        background: hsl({i * 40}, 65%, 55%)" />\n    {/each}\n  </div>\n</FluidReveal>`}>
 				<FluidReveal
 					lazy
 					fadeBack={false}
@@ -935,7 +957,7 @@
 					</div>
 				</FluidReveal>
 			</Card>
-			<Card title="Auto-reveal" description="Lissajous animation reveals content before interaction. Touch or click to take control." onCustomize={() => loadConfig(PRESET_CONFIGS['Auto-reveal'], 'Auto-reveal')} snippet={`<FluidReveal\n  autoReveal\n  autoRevealSpeed={0.8}\n  fadeBack={false}\n  sensitivity={0.15}\n>\n  <div style="width: 100%; height: 100%;\n    background: linear-gradient(\n      135deg, #0f0c29, #302b63, #24243e);\n    display: flex; align-items: center;\n    justify-content: center;\n    border-radius: 12px; position: relative;">\n    <span>Auto Reveal</span>\n    <!-- colored dots positioned absolutely -->\n  </div>\n</FluidReveal>`}>
+			<Card title="Auto-reveal" description="An automated cursor traces a pattern to reveal content. Touch or click to take over." onCustomize={() => loadConfig(PRESET_CONFIGS['Auto-reveal'], 'Auto-reveal')} snippet={`<FluidReveal\n  autoReveal\n  autoRevealSpeed={0.8}\n  fadeBack={false}\n  sensitivity={0.15}\n>\n  <div style="width: 100%; height: 100%;\n    background: linear-gradient(\n      135deg, #0f0c29, #302b63, #24243e);\n    display: flex; align-items: center;\n    justify-content: center;\n    border-radius: 12px; position: relative;">\n    <span>Auto Reveal</span>\n    <!-- colored dots positioned absolutely -->\n  </div>\n</FluidReveal>`}>
 				<FluidReveal
 					lazy
 					autoReveal
@@ -956,7 +978,7 @@
 					</div>
 				</FluidReveal>
 			</Card>
-			<Card title="Soft reveal" description="Higher curve values create softer, more gradual reveal edges." onCustomize={() => loadConfig(PRESET_CONFIGS['Soft reveal'], 'Soft reveal')} snippet={`<FluidReveal\n  curve={0.5}\n  sensitivity={0.2}\n  splatRadius={0.3}\n>\n  <div style="width: 100%; height: 100%;\n    background: linear-gradient(\n      135deg, #f093fb 0%,\n      #f5576c 50%, #4facfe 100%);\n    display: flex; align-items: center;\n    justify-content: center;\n    border-radius: 12px;">\n    <span>Soft Edges</span>\n  </div>\n</FluidReveal>`}>
+			<Card title="Soft reveal" description="Higher softness creates more gradual, feathered reveal edges." onCustomize={() => loadConfig(PRESET_CONFIGS['Soft reveal'], 'Soft reveal')} snippet={`<FluidReveal\n  curve={0.5}\n  sensitivity={0.2}\n  splatRadius={0.3}\n>\n  <div style="width: 100%; height: 100%;\n    background: linear-gradient(\n      135deg, #f093fb 0%,\n      #f5576c 50%, #4facfe 100%);\n    display: flex; align-items: center;\n    justify-content: center;\n    border-radius: 12px;">\n    <span>Soft Edges</span>\n  </div>\n</FluidReveal>`}>
 				<FluidReveal
 					lazy
 					curve={0.5}
