@@ -6,7 +6,7 @@
  * and the display shader's CONTAINER_MASK block, kept in sync by tests.
  */
 
-import type { ContainerShape } from './types.js';
+import type { ContainerShape, StickyMask } from './types.js';
 
 /**
  * CPU-side mask data for svgPath shapes, used for rejection sampling
@@ -220,8 +220,23 @@ function svgPathMask(uvX: number, uvY: number, maskCtx?: MaskContext): number {
 	return data[cy * width + cx] / 255;
 }
 
+/** Deep equality for StickyMask values. */
+export function stickyMaskEqual(
+	a: StickyMask | null | undefined,
+	b: StickyMask | null | undefined
+): boolean {
+	if (a === b) return true;
+	if (a == null || b == null) return false;
+	return a.d === b.d && a.text === b.text &&
+		(a.font ?? '') === (b.font ?? '') &&
+		(a.fillRule ?? 'nonzero') === (b.fillRule ?? 'nonzero') &&
+		(a.maskResolution ?? 512) === (b.maskResolution ?? 512) &&
+		(a.blur ?? 0) === (b.blur ?? 0) &&
+		viewBoxEqual(a.viewBox, b.viewBox);
+}
+
 /** Compare two optional viewBox tuples. Defaults to [0,0,100,100]. */
-function viewBoxEqual(
+export function viewBoxEqual(
 	a: [number, number, number, number] | undefined,
 	b: [number, number, number, number] | undefined
 ): boolean {

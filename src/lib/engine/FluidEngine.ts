@@ -63,7 +63,7 @@ import {
 import { type DitheringTexture, createDitheringTexture } from './dithering.js';
 import { type Pointer, createPointer, updatePointerDownData, updatePointerMoveData, updatePointerUpData } from './pointer.js';
 import { type Rng, generateColor, mulberry32, normalizeColor, randomSeed } from './rng.js';
-import { containerShapeEqual, containerMask, maskAreaFraction, type MaskContext } from './container-shapes.js';
+import { containerShapeEqual, stickyMaskEqual, containerMask, maskAreaFraction, type MaskContext } from './container-shapes.js';
 import * as S from './shaders.js';
 
 /* -------------------------------------------------------------------------- */
@@ -127,7 +127,12 @@ const DEFAULTS: ResolvedConfig = {
 	DISTORTION_FIT: 'cover' as const,
 	DISTORTION_SCALE: 1.0,
 	DISTORTION_BLEED_X: 0,
-	DISTORTION_BLEED_Y: 0
+	DISTORTION_BLEED_Y: 0,
+	STICKY: false,
+	STICKY_MASK: null,
+	STICKY_STRENGTH: 0.9,
+	STICKY_PRESSURE: 0.15,
+	STICKY_AMPLIFY: 0.3
 };
 function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): ResolvedConfig {
 	const out: ResolvedConfig = { ...base };
@@ -203,6 +208,11 @@ function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): Re
 	if (input.distortionScale !== undefined) out.DISTORTION_SCALE = input.distortionScale;
 	if (input.distortionBleedX !== undefined) out.DISTORTION_BLEED_X = Math.max(0, Math.min(0.5, input.distortionBleedX));
 	if (input.distortionBleedY !== undefined) out.DISTORTION_BLEED_Y = Math.max(0, Math.min(0.5, input.distortionBleedY));
+	if (input.sticky !== undefined) out.STICKY = input.sticky;
+	if (input.stickyMask !== undefined) out.STICKY_MASK = input.stickyMask ?? null;
+	if (input.stickyStrength !== undefined) out.STICKY_STRENGTH = input.stickyStrength;
+	if (input.stickyPressure !== undefined) out.STICKY_PRESSURE = input.stickyPressure;
+	if (input.stickyAmplify !== undefined) out.STICKY_AMPLIFY = input.stickyAmplify;
 	return out;
 }
 
@@ -268,6 +278,10 @@ export class FluidEngine implements FluidHandle {
 	private maskH = 0;
 	private maskAreaFractionCache = 1.0;
 
+	// --- Sticky mask texture ---
+	private stickyMaskTexture: WebGLTexture | null = null;
+	private stickyFallbackTexture: WebGLTexture | null = null;
+
 	// --- Framebuffers ---
 	private dye!: DoubleFBO;
 	private velocity!: DoubleFBO;
@@ -322,6 +336,7 @@ export class FluidEngine implements FluidHandle {
 		this.updateKeywords();
 		this.initFramebuffers();
 		this.initMaskTexture();
+		this.initStickyMaskTexture();
 		this.initGlassFramebuffer();
 		if (this.config.DISTORTION_IMAGE_URL) {
 			this.loadDistortionImage(this.config.DISTORTION_IMAGE_URL);
@@ -383,6 +398,9 @@ export class FluidEngine implements FluidHandle {
 		if (this.contextLost) return;
 		const gl = this.gl;
 		this.splatProgram.bind();
+		this.bindStickyMask();
+		gl.uniform1i(this.splatProgram.uniforms.uStickyMask, 7);
+		gl.uniform1f(this.splatProgram.uniforms.uStickyAmplify, 0.0); // velocity splat: no amplify
 		gl.uniform1i(this.splatProgram.uniforms.uTarget, this.velocity.read.attach(0));
 		gl.uniform1f(
 			this.splatProgram.uniforms.aspectRatio,
@@ -397,6 +415,11 @@ export class FluidEngine implements FluidHandle {
 		this.blit(this.velocity.write);
 		this.velocity.swap();
 
+		// Dye splat: apply sticky amplification
+		gl.uniform1f(
+			this.splatProgram.uniforms.uStickyAmplify,
+			this.config.STICKY ? this.config.STICKY_AMPLIFY : 0.0
+		);
 		gl.uniform1i(this.splatProgram.uniforms.uTarget, this.dye.read.attach(0));
 		gl.uniform3f(this.splatProgram.uniforms.color, color.r, color.g, color.b);
 		this.blit(this.dye.write);
@@ -453,6 +476,8 @@ export class FluidEngine implements FluidHandle {
 		const revealChanged = a.REVEAL !== b.REVEAL;
 		const distortionChanged = a.DISTORTION !== b.DISTORTION;
 		const distortionImageChanged = a.DISTORTION_IMAGE_URL !== b.DISTORTION_IMAGE_URL;
+		const stickyChanged = a.STICKY !== b.STICKY;
+		const stickyMaskChanged = !stickyMaskEqual(a.STICKY_MASK, b.STICKY_MASK);
 		const pointerInputChanged = a.POINTER_INPUT !== b.POINTER_INPUT;
 
 		this.config = b;
@@ -466,6 +491,7 @@ export class FluidEngine implements FluidHandle {
 		if (shapeChanged) this.initMaskTexture();
 		if (glassChanged) this.initGlassFramebuffer();
 		if (kwChanged || shapeChanged || revealChanged || distortionChanged) this.updateKeywords();
+		if (stickyChanged || stickyMaskChanged) this.initStickyMaskTexture();
 		if (distortionImageChanged) this.loadDistortionImage(b.DISTORTION_IMAGE_URL);
 		if (pointerInputChanged) {
 			if (b.POINTER_INPUT) {
@@ -510,6 +536,7 @@ export class FluidEngine implements FluidHandle {
 		this.updateKeywords();
 		this.initFramebuffers();
 		this.initMaskTexture();
+		this.initStickyMaskTexture();
 		this.initGlassFramebuffer();
 		// Re-load distortion image (GL texture was lost with context)
 		if (this.config.DISTORTION_IMAGE_URL) {
@@ -574,6 +601,16 @@ export class FluidEngine implements FluidHandle {
 			gl.deleteTexture(this.maskTexture);
 			this.maskTexture = null;
 			this.maskData = null;
+		}
+
+		// Sticky mask texture
+		if (this.stickyMaskTexture) {
+			gl.deleteTexture(this.stickyMaskTexture);
+			this.stickyMaskTexture = null;
+		}
+		if (this.stickyFallbackTexture) {
+			gl.deleteTexture(this.stickyFallbackTexture);
+			this.stickyFallbackTexture = null;
 		}
 
 		// Programs
@@ -707,6 +744,16 @@ export class FluidEngine implements FluidHandle {
 		this.displayMaterial = new Material(gl, this.baseVertexShader, S.displayShaderSource);
 		this.applyMaskProgram = makeProgram(gl, this.baseVertexShader, f.applyMask);
 		this.glassProgram = makeProgram(gl, this.baseVertexShader, f.glass);
+
+		// 1x1 black fallback for sticky mask (prevents undefined sampler reads)
+		if (this.stickyFallbackTexture) gl.deleteTexture(this.stickyFallbackTexture);
+		this.stickyFallbackTexture = gl.createTexture()!;
+		gl.bindTexture(gl.TEXTURE_2D, this.stickyFallbackTexture);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, 1, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, new Uint8Array([0]));
 	}
 
 	private initFramebuffers(): void {
@@ -1036,6 +1083,134 @@ export class FluidEngine implements FluidHandle {
 		this.maskTexture = tex;
 	}
 
+	/**
+	 * Rasterize the current sticky mask to a texture. Called at
+	 * construction (if sticky is enabled) and on stickyMask change.
+	 * Reuses the same OffscreenCanvas + Path2D pattern as initMaskTexture.
+	 */
+	private initStickyMaskTexture(): void {
+		const gl = this.gl;
+		const mask = this.config.STICKY_MASK;
+
+		// Dispose previous
+		if (this.stickyMaskTexture) {
+			gl.deleteTexture(this.stickyMaskTexture);
+			this.stickyMaskTexture = null;
+		}
+
+		if (!this.config.STICKY || !mask) return;
+		if (!mask.text && !mask.d) return;
+
+		const baseDim = mask.maskResolution ?? 512;
+		const [vx, vy, vw, vh] = mask.viewBox ?? [0, 0, 100, 100];
+		const fillRule = mask.fillRule ?? 'nonzero';
+
+		const aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
+		const maskW = aspect >= 1 ? baseDim : Math.round(baseDim * aspect);
+		const maskH = aspect >= 1 ? Math.round(baseDim / aspect) : baseDim;
+
+		let ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+		if (typeof OffscreenCanvas !== 'undefined') {
+			ctx = new OffscreenCanvas(maskW, maskH).getContext('2d')!;
+		} else {
+			const el = document.createElement('canvas');
+			el.width = maskW;
+			el.height = maskH;
+			ctx = el.getContext('2d')!;
+		}
+		ctx.fillStyle = 'white';
+		if (mask.text) {
+			ctx.font = mask.font ?? 'bold 72px sans-serif';
+			ctx.textAlign = 'center';
+			ctx.textBaseline = 'alphabetic';
+			const metrics = ctx.measureText(mask.text);
+			const textW = metrics.width;
+			const ascent = metrics.actualBoundingBoxAscent;
+			const descent = metrics.actualBoundingBoxDescent;
+			const textH = ascent + descent;
+			const pad = 0.9;
+			const scale = Math.min((maskW * pad) / textW, (maskH * pad) / textH);
+			ctx.setTransform(scale, 0, 0, scale, maskW / 2, maskH / 2);
+			ctx.fillText(mask.text, 0, (ascent - descent) / 2);
+		} else if (mask.d) {
+			const scaleX = maskW / vw;
+			const scaleY = maskH / vh;
+			const s = Math.min(scaleX, scaleY);
+			const offsetX = (maskW - vw * s) / 2;
+			const offsetY = (maskH - vh * s) / 2;
+			ctx.translate(offsetX, offsetY);
+			ctx.scale(s, s);
+			ctx.translate(-vx, -vy);
+			ctx.fill(new Path2D(mask.d), fillRule);
+		}
+
+		const imageData = ctx.getImageData(0, 0, maskW, maskH);
+		const maskData = new Uint8Array(maskW * maskH);
+		for (let i = 0; i < maskW * maskH; i++) {
+			maskData[i] = imageData.data[i * 4 + 3];
+		}
+
+		// Optional blur — soften edges for smoother physics interaction
+		const blurRadius = mask.blur ?? 0;
+		if (blurRadius > 0) {
+			this.blurMaskData(maskData, maskW, maskH, blurRadius);
+		}
+
+		// Upload as GPU texture
+		const tex = gl.createTexture()!;
+		gl.bindTexture(gl.TEXTURE_2D, tex);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+		if (this.ext.isWebGL2) {
+			const gl2 = gl as WebGL2RenderingContext;
+			gl2.texImage2D(gl2.TEXTURE_2D, 0, gl2.R8, maskW, maskH, 0, gl2.RED, gl2.UNSIGNED_BYTE, maskData);
+		} else {
+			gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, maskW, maskH, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, maskData);
+		}
+		this.stickyMaskTexture = tex;
+	}
+
+	/** In-place box blur of a single-channel mask. Multiple passes approximate Gaussian. */
+	private blurMaskData(data: Uint8Array, w: number, h: number, radius: number): void {
+		const passes = Math.max(1, Math.ceil(radius / 2));
+		const r = Math.max(1, Math.round(radius));
+		const temp = new Uint8Array(w * h);
+		for (let pass = 0; pass < passes; pass++) {
+			// Horizontal pass → temp
+			for (let y = 0; y < h; y++) {
+				for (let x = 0; x < w; x++) {
+					let sum = 0, count = 0;
+					for (let dx = -r; dx <= r; dx++) {
+						const nx = x + dx;
+						if (nx >= 0 && nx < w) { sum += data[y * w + nx]; count++; }
+					}
+					temp[y * w + x] = (sum / count) | 0;
+				}
+			}
+			// Vertical pass → data
+			for (let x = 0; x < w; x++) {
+				for (let y = 0; y < h; y++) {
+					let sum = 0, count = 0;
+					for (let dy = -r; dy <= r; dy++) {
+						const ny = y + dy;
+						if (ny >= 0 && ny < h) { sum += temp[ny * w + x]; count++; }
+					}
+					data[y * w + x] = (sum / count) | 0;
+				}
+			}
+		}
+	}
+
+	/** Bind the sticky mask texture (or 1x1 black fallback) to texture unit 7. */
+	private bindStickyMask(): void {
+		const gl = this.gl;
+		gl.activeTexture(gl.TEXTURE7);
+		gl.bindTexture(gl.TEXTURE_2D, this.stickyMaskTexture ?? this.stickyFallbackTexture);
+	}
+
 	/** Multiply a DoubleFBO's contents by the container shape mask in place. */
 	private applyMask(target: DoubleFBO): void {
 		const shape = this.config.CONTAINER_SHAPE;
@@ -1261,6 +1436,12 @@ export class FluidEngine implements FluidHandle {
 			this.velocity.texelSizeY
 		);
 		gl.uniform1i(this.pressureProgram.uniforms.uDivergence, this.divergence.attach(0));
+		this.bindStickyMask();
+		gl.uniform1i(this.pressureProgram.uniforms.uStickyMask, 7);
+		gl.uniform1f(
+			this.pressureProgram.uniforms.uStickyPressure,
+			this.config.STICKY ? this.config.STICKY_PRESSURE : 0.0
+		);
 		for (let i = 0; i < this.config.PRESSURE_ITERATIONS; i++) {
 			gl.uniform1i(this.pressureProgram.uniforms.uPressure, this.pressure.read.attach(1));
 			this.blit(this.pressure.write);
@@ -1287,8 +1468,11 @@ export class FluidEngine implements FluidHandle {
 		this.advectionProgram.bind();
 		gl.uniform1f(
 			this.advectionProgram.uniforms.uMultiplicative,
-			this.config.REVEAL ? 1.0 : 0.0
+			(this.config.REVEAL || this.config.STICKY) ? 1.0 : 0.0
 		);
+		this.bindStickyMask();
+		gl.uniform1i(this.advectionProgram.uniforms.uStickyMask, 7);
+		gl.uniform1f(this.advectionProgram.uniforms.uStickyStrength, 0.0); // velocity: no sticky
 		gl.uniform2f(
 			this.advectionProgram.uniforms.texelSize,
 			this.velocity.texelSizeX,
@@ -1305,9 +1489,14 @@ export class FluidEngine implements FluidHandle {
 		gl.uniform1i(this.advectionProgram.uniforms.uVelocity, velocityId);
 		gl.uniform1i(this.advectionProgram.uniforms.uSource, velocityId);
 		gl.uniform1f(this.advectionProgram.uniforms.dt, dt);
+		// In multiplicative mode (REVEAL/STICKY), VELOCITY_DISSIPATION (0.2)
+		// would kill velocity instantly (velocity *= 0.2 per frame). Use 0.98
+		// instead — gentle 2%/frame fade that keeps fluid flowing naturally.
 		gl.uniform1f(
 			this.advectionProgram.uniforms.dissipation,
-			this.config.VELOCITY_DISSIPATION
+			(this.config.REVEAL || this.config.STICKY)
+				? 0.98
+				: this.config.VELOCITY_DISSIPATION
 		);
 		this.blit(this.velocity.write);
 		this.velocity.swap();
@@ -1316,6 +1505,12 @@ export class FluidEngine implements FluidHandle {
 		// Re-bind advection program — applyMask switches the active GL
 		// program, and the dye advection below reuses advectionProgram.
 		if (this.config.CONTAINER_SHAPE) this.advectionProgram.bind();
+
+		// Sticky modulates DYE advection only (not velocity above)
+		gl.uniform1f(
+			this.advectionProgram.uniforms.uStickyStrength,
+			this.config.STICKY ? this.config.STICKY_STRENGTH : 0.0
+		);
 
 		if (!this.ext.supportLinearFiltering) {
 			gl.uniform2f(

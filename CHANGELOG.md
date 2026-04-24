@@ -13,6 +13,33 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`FluidStick` component** (`FluidStick.svelte`, ~210 LOC) — new Svelte wrapper
+  that makes fluid dye "stick" to text or SVG path shapes. Three physics-level
+  shader modulations: advection dissipation (dye persists on mask), pressure
+  injection (fluid flows around mask), splat amplification (more dye deposited
+  on mask). Props: `text`, `font`, `d`, `maskViewBox`, `maskFillRule`,
+  `maskResolution`, `maskBlur`, `strength`, `stickyPressureAmount`, `amplify`,
+  `autoAnimate`, `autoAnimateSpeed`.
+- **`StickyMask` type** (`types.ts`) — describes the mask shape for sticky mode.
+  Supports text mode (`text` + `font`) and SVG path mode (`d` + `viewBox`).
+  Same rasterization pattern as `ContainerShape.svgPath` text mode.
+- **Sticky shader uniforms** — `uStickyMask`/`uStickyStrength` added to advection
+  shader, `uStickyMask`/`uStickyPressure` to pressure shader,
+  `uStickyMask`/`uStickyAmplify` to splat shader. All default to 0.0 (identity)
+  when sticky is disabled — zero performance cost for non-sticky instances.
+- **`FluidConfig` sticky fields** — `sticky` (Bucket B), `stickyMask` (triggers
+  texture rebuild), `stickyStrength` (Bucket A, default 0.9),
+  `stickyPressure` (Bucket A, default 0.15), `stickyAmplify` (Bucket A, default 0.3).
+- **Sticky mask texture** — `initStickyMaskTexture()` in FluidEngine rasterizes
+  text/SVG path via OffscreenCanvas, extracts alpha channel, optional box blur,
+  uploads as R8/LUMINANCE texture on unit 7. Includes `blurMaskData()` for
+  multi-pass box blur approximating Gaussian.
+- **`stickyMaskEqual()`** — deep equality for StickyMask values, exported from
+  `container-shapes.ts`. Also exported `viewBoxEqual()`.
+- **Demo: Sticky section** — 4 cards (Sticky text, Lightning bolt, Sticky + circle,
+  Strong pressure) on the demo page.
+- **34 new tests** (`sticky.test.ts`) — advection dissipation modulation, pressure
+  injection, splat amplification, StickyMask equality, viewBoxEqual, config types.
 - **`FluidDistortion` component** — new Svelte wrapper that uses the fluid
   velocity field to warp an underlying image. Cursor movement creates liquid
   ripple distortions. Props: `src`, `strength`, `intensity`, `fit`, `scale`,
@@ -45,6 +72,10 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Multiplicative velocity dissipation override** — when `REVEAL` or `STICKY`
+  enables multiplicative advection mode, velocity dissipation is overridden
+  to 0.98 instead of using `VELOCITY_DISSIPATION` (default 0.2) which would
+  kill velocity at 80% per frame in multiplicative mode.
 - **Ksenia Kondrashova acknowledgment** — README Acknowledgments section now
   credits her CodePen demos as inspiration for the reveal and distortion effects.
 

@@ -15,6 +15,9 @@ export type { FluidRevealProps } from './FluidReveal.svelte';
 export { default as FluidDistortion } from './FluidDistortion.svelte';
 export type { FluidDistortionProps } from './FluidDistortion.svelte';
 
+export { default as FluidStick } from './FluidStick.svelte';
+export type { FluidStickProps } from './FluidStick.svelte';
+
 export { FluidEngine, type FluidEngineOptions } from './engine/FluidEngine.js';
 export type {
 	FluidConfig,
@@ -25,7 +28,8 @@ export type {
 	FBO,
 	DoubleFBO,
 	ExtInfo,
-	ContainerShape
+	ContainerShape,
+	StickyMask
 } from './engine/types.js';
 export { mulberry32, randomSeed, generateColor, HSVtoRGB, normalizeColor, type Rng } from './engine/rng.js';
 

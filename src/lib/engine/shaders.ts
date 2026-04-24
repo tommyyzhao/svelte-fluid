@@ -662,11 +662,15 @@ export const splatShader = `
     uniform vec3 color;
     uniform vec2 point;
     uniform float radius;
+    uniform sampler2D uStickyMask;
+    uniform float uStickyAmplify;
 
     void main () {
         vec2 p = vUv - point.xy;
         p.x *= aspectRatio;
         vec3 splat = exp(-dot(p, p) / radius) * color;
+        float stickyVal = texture2D(uStickyMask, vec2(vUv.x, 1.0 - vUv.y)).r;
+        splat *= 1.0 + stickyVal * uStickyAmplify;
         vec3 base = texture2D(uTarget, vUv).xyz;
         gl_FragColor = vec4(clamp(base + splat, -1000.0, 1000.0), 1.0);
     }
@@ -684,6 +688,8 @@ export const advectionShader = `
     uniform float dt;
     uniform float dissipation;
     uniform float uMultiplicative;
+    uniform sampler2D uStickyMask;
+    uniform float uStickyStrength;
 
     vec4 bilerp (sampler2D sam, vec2 uv, vec2 tsize) {
         vec2 st = uv / tsize - 0.5;
@@ -707,10 +713,13 @@ export const advectionShader = `
         vec2 coord = vUv - dt * texture2D(uVelocity, vUv).xy * texelSize;
         vec4 result = texture2D(uSource, coord);
     #endif
+        float stickyVal = texture2D(uStickyMask, vec2(vUv.x, 1.0 - vUv.y)).r;
         if (uMultiplicative > 0.5) {
-            gl_FragColor = clamp(dissipation * result, -1000.0, 1000.0);
+            float adjDissipation = mix(dissipation, 1.0, stickyVal * uStickyStrength);
+            gl_FragColor = clamp(adjDissipation * result, -1000.0, 1000.0);
         } else {
-            float decay = 1.0 + dissipation * dt;
+            float adjDissipation = mix(dissipation, 0.0, stickyVal * uStickyStrength);
+            float decay = 1.0 + adjDissipation * dt;
             gl_FragColor = clamp(result / decay, -1000.0, 1000.0);
         }
     }
@@ -809,6 +818,8 @@ export const pressureShader = `
     varying highp vec2 vB;
     uniform sampler2D uPressure;
     uniform sampler2D uDivergence;
+    uniform sampler2D uStickyMask;
+    uniform float uStickyPressure;
 
     void main () {
         float L = texture2D(uPressure, vL).x;
@@ -818,6 +829,8 @@ export const pressureShader = `
         float C = texture2D(uPressure, vUv).x;
         float divergence = texture2D(uDivergence, vUv).x;
         float pressure = (L + R + B + T - divergence) * 0.25;
+        float stickyVal = texture2D(uStickyMask, vec2(vUv.x, 1.0 - vUv.y)).r;
+        pressure += stickyVal * uStickyPressure;
         gl_FragColor = vec4(pressure, 0.0, 0.0, 1.0);
     }
 `;
