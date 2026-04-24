@@ -1,10 +1,10 @@
-# Session Handoff — 2026-04-23 (session 10)
+# Session Handoff — 2026-04-24 (session 11)
 
 ## Project
 
 svelte-fluid — WebGL Navier-Stokes fluid simulation as a Svelte 5 component library. MIT licensed, derived from PavelDoGreat/WebGL-Fluid-Simulation.
 
-Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: faddc47
+Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: 2b3ed7a
 
 ## Current state
 
@@ -25,87 +25,75 @@ Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: faddc
 
 ## What this session built
 
-1. **Reveal cover/accent color props** (ADR-0029):
-   - `revealCoverColor: RGB` added to FluidConfig (Bucket A). Shader changed from `1.0 - c` to `max(uRevealCoverColor - c, vec3(0.0))`. Default white → pixel-identical behavior.
-   - `FluidReveal.coverColor` and `FluidReveal.accentColor` props. Dye injection derived as `max(cover - accent, 0)` per channel. No engine uniform for accent — it lives entirely in FluidReveal.
-   - `Fluid.svelte` updated to destructure and forward `revealCoverColor` in props + `buildConfig()`.
+1. **Playground UX bug fixes**:
+   - Shape dropdown "Rectangle" (was "none") now works: `containerShape` derived returns `null` instead of `undefined` so the engine processes it.
+   - Glass auto-switch to roundedRect now remembers the previous shape in `shapeBeforeGlass` and restores it when glass is unchecked.
+   - "Rectangle" `<option>` disabled when glass is on, with tooltip "Glass requires a container shape".
+   - Container Shape accordion hidden when shape is Rectangle (was showing empty section).
+   - 7 missing URL hash serialization variables added: `randomSplatDx`, `randomSplatDy`, `randomSplatEvenSpacing`, `revealAutoRevealSpeed`, `revealContent`, `revealCoverColor`, `revealAccentColor`. Also added to the hash-push $effect tracking array.
 
-2. **Customize on ALL demo cards** — every card now has Customize + PRESET_CONFIGS:
-   - Config cards: Default
-   - Container shapes: Circle, Frame, Annulus, Rounded frame, SVG path, Text glyph
-   - Glass effects: Portal ring, Glass frame
-   - Reveal cards: Scratch to reveal, Permanent reveal, Auto-reveal, Soft reveal
-   - `loadConfig()` updated to handle `playgroundMode: 'reveal'` (applies reveal physics defaults, skips snapshot $effect via `prevMode` sync).
-   - `customContainerShape` state enables svgPath shapes in playground (cleared on dropdown change).
+2. **Text mask glyph centering** (`FluidEngine.ts:initMaskTexture()`):
+   - `textBaseline` was set to `'middle'` after `measureText`, so ascent/descent measured from alphabetic baseline but drawing used em-square midpoint. Glyphs like `&` were visually off-center and clipped.
+   - Fixed: set `textBaseline: 'alphabetic'` and `textAlign: 'center'` before `measureText`, then offset `fillText` by `(ascent - descent) / 2` for true visual centering.
 
-3. **Physics snapshot on Reveal mode switch**:
-   - Switching to Reveal: snapshots curl/velocityDissipation/splatRadius/bloom/sunrays/shading, applies reveal defaults (curl=0, vd=0.9, sr=0.2, bloom/sunrays/shading off).
-   - Switching back to Fluid: restores snapshot.
-   - Uses `untrack()` to prevent circular $effect dependencies.
+3. **Label standardization** (ControlPanel.svelte):
+   - All checkbox labels → sentence case: bloom→Bloom, glass→Glass, shading→Shading, sunrays→Sunrays, transparent→Transparent, paused→Paused, splatOnHover→Splat on hover, fadeBack→Fade back, autoReveal→Auto-reveal, colorful→Cycle colors.
+   - Shape dropdown → capitalized: circle→Circle, frame→Frame, roundedRect→Rounded rect, annulus→Ring. Label "shape"→"Shape".
+   - `glassChromatic` → "Color fringing". `autoRevealSpeed` → "Auto-reveal speed".
 
-4. **`</>` code preview redesign**:
-   - ControlPanel: "Copy code" button replaced with `</>` toggle showing inline code panel + Copy button (same pattern as Card component).
-   - FluidBackground: floating `</>` button (fixed top-right) with expandable code panel showing exact FluidBackground props.
+4. **Control layout improvements**:
+   - `densityDissipation` moved from quick-controls bar to Physics accordion section.
+   - `Paused` moved from Visuals section to quick-controls row (alongside Bloom, Glass).
+   - `bloomIntensity` slider hidden when bloom is off. `sunraysWeight` slider hidden when sunrays is off.
+   - `initialDensityDissipation` / duration: added field hint explaining construct-only semantics ("applied at engine start only"). Duration label changed to "Ramp duration (s)".
 
-5. **UX polish**:
-   - Share button "Copied!" feedback (1.8s flash).
-   - Card copy button "Copied!" feedback.
-   - Label audit: "Even spacing", "Show shape outline".
-   - Underlying content section simplified (type dropdown only, colors invariant).
-   - Reveal playground default curve changed to 0.25.
-   - `controlsRef` typed with proper `FluidHandle` import.
-   - `planned-fixes.md` deleted (all items completed).
+5. **"Annulus" → "Ring"** throughout user-facing UI:
+   - Dropdown label, card title ("Ring"), card description ("Fluid flowing in a ring between two circles"), PRESET_CONFIGS key, Portal ring description. Internal `type: 'annulus'` in ContainerShape API unchanged.
+
+6. **Comprehensive jargon cleanup** across all card descriptions and extra routes:
+   - Snell's law → optical refraction; Fresnel → soft edge reflections; chromatic aberration → rainbow color fringing; analytical shapes → built-in shapes; volumetric bloom → soft glow; velocity decay → slowdown; Lissajous → automated cursor pattern; Navier-Stokes → Fluid Simulation; annuli → rings; India ink → Deep blue ink; churning vortex → rapid color jets; whirlpool → flash-frozen; fadeBack={false} → disable fade-back.
+
+7. **Inaccurate description fixes**:
+   - Plasma: "churning vortex at the center" → "strong curl and vivid bloom lighting up a dark canvas"
+   - Ink in Water: "India ink sinking" → "Deep blue ink diffusing" (ink is blue, not black; nothing sinks)
+   - Frozen Swirl: "icy whirlpool" → "cyan dye flash-frozen" (velocity dies instantly, no ongoing whirlpool)
 
 ## Key files
 
 | File | Role |
 |------|------|
-| src/lib/engine/FluidEngine.ts (~1620 LOC) | The engine: WebGL state, physics step, render, dispose, mask texture, glass pass, reveal path, multiplicative dissipation |
+| src/lib/engine/FluidEngine.ts (~1620 LOC) | The engine: WebGL state, physics step, render, dispose, mask texture (text centering fix here), glass pass, reveal path, multiplicative dissipation |
 | src/lib/Fluid.svelte (~420 LOC) | Svelte wrapper: DOM, ResizeObserver, adaptive resolution, lazy/autoPause, context slot management. Destructures ALL FluidConfig props including revealCoverColor. |
 | src/lib/FluidReveal.svelte (~300 LOC) | Fluid as opacity mask: coverColor/accentColor props, derived dye injection color, manual pointer handling, auto-reveal Lissajous |
 | src/lib/FluidBackground.svelte (~180 LOC) | Full-viewport fluid background with DOM exclusion via CSS selector |
 | src/lib/engine/gl-utils.ts | WebGL utilities: Material class (keyword shader variants), FBO create/resize/dispose, shader compile |
 | src/lib/engine/shaders.ts | All GLSL: advection (with uMultiplicative), display (with REVEAL coverColor), glass, container mask |
 | src/lib/engine/types.ts | FluidConfig (with revealCoverColor), ResolvedConfig, ContainerShape (5 variants), FluidHandle |
-| src/routes/+page.svelte (~1100 LOC) | Demo page: ~28 instances, FluidBackground wrapper, playground state, loadConfig (with reveal mode support), URL hash, PRESET_CONFIGS, customContainerShape |
-| src/routes/components/ControlPanel.svelte (~1100 LOC) | Playground controls: mode toggle, accordion sections with badges, quick controls, code generation, cover/accent color pickers |
+| src/routes/+page.svelte (~1500 LOC) | Demo page: ~28 instances, FluidBackground wrapper, playground state, loadConfig (with reveal mode support), URL hash, PRESET_CONFIGS (Ring not Annulus), customContainerShape, shapeBeforeGlass |
+| src/routes/components/ControlPanel.svelte (~1120 LOC) | Playground controls: mode toggle, accordion sections with badges, quick controls (curl, splatRadius, Bloom, Glass, Paused, Shape), code generation, cover/accent color pickers |
 | src/routes/components/Card.svelte | Demo card: canvas slot, caption, `</>` code toggle, Customize button, "Copied!" feedback |
-| docs/decisions/0029-reveal-cover-accent-colors.md | ADR for cover/accent color architecture |
-| docs/architecture.md | System design — Bucket A now lists revealSensitivity, revealCurve, revealCoverColor |
+| src/routes/background-fluid/+page.svelte | Extra route: background fluid demo with feature cards (jargon cleaned up) |
+| src/routes/fluid-reveal/+page.svelte | Extra route: FluidReveal demos (Lissajous description fixed) |
 
 ## What needs attention next
 
-### User-reported playground issues (DO NOT FIX — document only)
-
-1. **Shape "none" label** — should say "Rectangle" or "Full canvas" instead of "none". The default shape is the full rectangular canvas, not "no shape."
-
-2. **Glass + "none" shape → auto-circle is wrong** — when enabling glass from the default shape, the `$effect` switches containerShapeType to `'circle'` (hemisphere dome). The user expects either: (a) glass applied to the rectangle (rim refraction around the canvas edge), or (b) switch to `'roundedRect'` instead of `'circle'`. Investigate whether glass-on-full-canvas is feasible. If not, default to roundedRect. The offending code is the `$effect` at +page.svelte line ~109: `if (glass && containerShapeType === 'none') containerShapeType = 'circle'`.
-
-3. **initialDensityDissipation / initialDensityDissipationDuration controls do nothing visible** — these are construct-only (Bucket D) params that affect the first N seconds after engine creation. Changing them at runtime via setConfig has no effect because the engine's internal timer has already elapsed. To make them previewable: consider adding a "restart simulation" button, or re-creating the engine when these change, or moving them to a separate "Initial Conditions" section with a restart action.
-
-4. **initialDensityDissipationDuration naming is unclear** — the relationship: `densityDissipation` is the steady-state value; `initialDensityDissipation` is the starting value; `initialDensityDissipationDuration` is how many seconds to linearly interpolate from initial → steady-state. Consider renaming to something like `dissipationRampDuration` or adding inline help text explaining the ramp.
-
-5. **densityDissipation placement** — currently in the quick-controls bar at the top. User expects it in the "Physics" accordion section alongside velocityDissipation, pressure, etc. Consider moving it to Physics and replacing the quick-controls slot with something else (or keeping it in both places).
-
-6. **"colorful" label is not self-explanatory** — the prop cycles pointer color over time (HSV rotation). Consider renaming the label to "Cycle colors" or adding a tooltip/description.
-
 ### Planned features
 
-7. **npm publish** — Package is ready. Run `npm publish --access public --provenance`. Create a GitHub release with tag `v0.1.0`.
-8. **Test gaps** — Priority 1: dispose() cleanup, setConfig() bucket transitions, context loss/restore. Priority 2: FluidBackground DOM exclusion, glass post-processing.
-9. **Changesets setup** — `@changesets/cli` for automated CHANGELOG + npm publish + GitHub releases.
+1. **npm publish** — Package is ready. Run `npm publish --access public --provenance`. Create a GitHub release with tag `v0.1.0`.
+2. **Test gaps** — Priority 1: dispose() cleanup, setConfig() bucket transitions, context loss/restore. Priority 2: FluidBackground DOM exclusion, glass post-processing.
+3. **Changesets setup** — `@changesets/cli` for automated CHANGELOG + npm publish + GitHub releases.
 
 ### Known issues
 
-10. **~28 demo instances + background** — Exceeds browser's ~16 WebGL context limit. The loseContext() fix in lazy teardown releases slots, but fast scrolling can still briefly exceed the cap.
-11. **FluidReveal pointer-events limitation** — Canvas sits above content; interactive elements can't receive clicks. Documented in JSDoc.
-12. **`{#key revealAutoReveal}` remount semantics** — toggling autoReveal destroys/rebuilds the fluid state. Needed because autoReveal starts in `onMount`. Accepted tradeoff.
+4. **~28 demo instances + background** — Exceeds browser's ~16 WebGL context limit. The loseContext() fix in lazy teardown releases slots, but fast scrolling can still briefly exceed the cap.
+5. **FluidReveal pointer-events limitation** — Canvas sits above content; interactive elements can't receive clicks. Documented in JSDoc.
+6. **`{#key revealAutoReveal}` remount semantics** — toggling autoReveal destroys/rebuilds the fluid state. Needed because autoReveal starts in `onMount`. Accepted tradeoff.
 
 ### Follow-ups
 
-13. **Named glass presets** — `glass="crystal"`, `glass="frosted"`, `glass="orb"`.
-14. **Animated specular drift** — Slow sinusoidal light direction wobble when cursor is idle.
-15. **FluidReveal interactive content** — Proper event forwarding so revealed buttons/links work.
+7. **Named glass presets** — `glass="crystal"`, `glass="frosted"`, `glass="orb"`.
+8. **Animated specular drift** — Slow sinusoidal light direction wobble when cursor is idle.
+9. **FluidReveal interactive content** — Proper event forwarding so revealed buttons/links work.
 
 ## Architecture quick-reference
 
@@ -116,12 +104,12 @@ Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: faddc
 - setConfig() has 4 buckets: A (scalars incl. splatOnHover, glass params, revealSensitivity, revealCurve, revealCoverColor — picked up next frame), B (keyword recompile — shading, bloom, sunrays, reveal), C (FBO rebuild), D (construct-only). Additionally, svgPath shape changes trigger mask texture rebuild, `glass` toggle triggers sceneFBO alloc/dispose, and `reveal` toggle triggers keyword recompile.
 - Container shapes: two approaches coexist:
   - **Analytical** (circle/frame/roundedRect/annulus): SDF computed per-fragment in shaders, mirrored in TypeScript for rejection sampling.
-  - **Mask texture** (svgPath): rasterized via OffscreenCanvas at canvas aspect ratio, uploaded as R8/LUMINANCE texture. Text mode uses actualBoundingBox metrics for sizing.
-- Glass post-processing: two models. **Hemisphere** (circles): full-surface dome with Snell's law; `glassThickness` boosts rim refraction, specular, and glow. **Rim** (all others): refraction band at container boundary.
+  - **Mask texture** (svgPath): rasterized via OffscreenCanvas at canvas aspect ratio, uploaded as R8/LUMINANCE texture. Text mode uses alphabetic baseline with `(ascent - descent) / 2` offset for visual centering.
+- Glass post-processing: two models. **Hemisphere** (circles): full-surface dome with Snell's law; `glassThickness` boosts rim refraction, specular, and glow. **Rim** (all others): refraction band at container boundary. Glass requires a container shape — `CONTAINER_SHAPE` must be non-null. When shape is 'none' (Rectangle), glass is not applicable because there's no visible boundary to refract around (the canvas edges are clipped by CSS).
 - Reveal mode: `REVEAL` keyword in display shader outputs `max(uRevealCoverColor - c, vec3(0.0))` with non-premultiplied alpha. Advection switches to multiplicative dissipation via `uMultiplicative` uniform. Render path skips backColor/checkerboard/glass when REVEAL is active. FluidReveal derives dye injection color as `max(coverColor - accentColor, 0)`.
 - Transparent mode: `gl.clear(0,0,0,0)` replaces checkerboard. Canvas CSS background = transparent.
 - FluidBackground: evenodd SVG path mask. Outer rect = viewport, inner rounded-rect holes = excluded elements.
 - Material class caches compiled shader variants by sorted keyword string key.
 - Context loss/restore: handled via webglcontextlost/webglcontextrestored events. dispose() does NOT call loseContext() — the Svelte component does it separately for lazy instances.
 - Demo page: `<main>` has `pointer-events: none`; interactive elements re-enable individually so FluidBackground splats work across full page width.
-- Playground: `loadConfig()` calls `resetAllDefaults()` first, then applies overrides from `PRESET_CONFIGS`. For reveal configs, sets `prevMode = targetMode` to skip the physics snapshot $effect. URL hash uses compact short keys serialized as base64 JSON.
+- Playground: `loadConfig()` calls `resetAllDefaults()` first, then applies overrides from `PRESET_CONFIGS`. For reveal configs, sets `prevMode = targetMode` to skip the physics snapshot $effect. URL hash uses compact short keys serialized as base64 JSON. Glass enable stores `shapeBeforeGlass` and restores on glass disable.
