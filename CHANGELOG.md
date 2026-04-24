@@ -13,6 +13,34 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`autoAnimateDuration` prop** on `FluidStick` — controls how many seconds
+  auto-animation runs before stopping. Default 3.5s. Once stopped, off-mask dye
+  fades away, revealing the sticky shape. Set to 0 for indefinite animation.
+- **Color-cycling auto-animate** — `FluidStick` auto-animation now cycles through
+  rainbow hues (HSV rotation at 2×t) at 1.5× HDR intensity, replacing the fixed
+  purple `{r:0.3, g:0.15, b:0.3}` color. Produces vivid accumulated dye.
+
+### Changed
+
+- **FluidStick default tuning** — `splatRadius` 0.25→0.6 (thicker cursor splats),
+  `splatForce` 6000→10000 (brighter splats), `densityDissipation` 0.85→0.78
+  (faster off-mask fade), `amplify` 0.3→0.5 (stronger on-mask boost).
+- **FluidStick auto-animate timing** — deferred clock start (`animStartTime` set
+  on first available frame, not mount time) so lazy-loaded cards get the full
+  animation duration. Fixed Lissajous to use `t` variable (was using raw ms,
+  ignoring `autoAnimateSpeed`). Wider vertical sweep (±0.27 vs ±0.2).
+- **Demo sticky text card** — changed text from "STICKY" (bold 80px) to "FLUID"
+  (900-weight 120px) for bolder letterforms.
+
+### Known Issues
+
+- **Sticky mask texture GPU sampling bug** — the mask texture is created correctly
+  (verified: non-zero pixel data, correct GPU readback R=255), and the engine
+  config is correct (STICKY=true, uniforms exist). However, `texture2D(uStickyMask, uv).r`
+  returns 0 in the advection shader. A hardcoded `step()` mask pattern DOES work,
+  confirming the dissipation logic is correct. Root cause is a texture sampler
+  binding issue that needs investigation. Pre-existing from session 13.
+
 - **`FluidStick` component** (`FluidStick.svelte`, ~210 LOC) — new Svelte wrapper
   that makes fluid dye "stick" to text or SVG path shapes. Three physics-level
   shader modulations: advection dissipation (dye persists on mask), pressure

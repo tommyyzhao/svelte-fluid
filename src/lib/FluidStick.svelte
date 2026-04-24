@@ -51,6 +51,12 @@
 		autoAnimate?: boolean;
 		/** Speed multiplier for auto-animation. Default 1.0. */
 		autoAnimateSpeed?: number;
+		/**
+		 * How many seconds auto-animation runs before stopping.
+		 * Once stopped, off-mask dye fades away, revealing the sticky shape.
+		 * 0 = run indefinitely (until user interacts). Default 3.5.
+		 */
+		autoAnimateDuration?: number;
 		/** Optional fixed width in CSS pixels. */
 		width?: number;
 		/** Optional fixed height in CSS pixels. */
@@ -80,9 +86,10 @@
 		maskBlur = 4,
 		strength = 1.0,
 		stickyPressureAmount = 0.15,
-		amplify = 0.3,
+		amplify = 0.5,
 		autoAnimate = true,
 		autoAnimateSpeed = 1.0,
+		autoAnimateDuration = 3.5,
 		lazy = false,
 		autoPause = true,
 		width,
@@ -90,13 +97,13 @@
 		class: className,
 		style,
 		// Sticky uses multiplicative dissipation for dye (like REVEAL mode).
-		// 0.85 = aggressive 15%/frame off-mask fade so sticky contrast
-		// is immediately visible. On-mask: dissipation → 1.0 (never fades).
-		densityDissipation = 0.85,
+		// 0.78 = 22%/frame off-mask fade — dye trails clear within ~300ms,
+		// giving strong contrast once auto-animate stops. On-mask: → 1.0.
+		densityDissipation = 0.78,
 		velocityDissipation = 0.2,
 		curl = 20,
-		splatRadius = 0.25,
-		splatForce = 6000,
+		splatRadius = 0.6,
+		splatForce = 10000,
 		shading = true,
 		colorful = true,
 		bloom = false,
@@ -134,7 +141,12 @@
 	}
 
 	function startAutoAnimate() {
-		const startTime = performance.now();
+		// Defer the clock start: first few frames may be no-ops while
+		// the engine is being created (ResizeObserver + lazy loading).
+		// Splats silently no-op until the engine exists, then the clock
+		// starts on the first frame where inner is available.
+		let animStartTime: number | undefined;
+
 		function tick(now: number) {
 			if (userInteracted) {
 				autoAnimateRaf = undefined;
@@ -144,16 +156,26 @@
 				autoAnimateRaf = requestAnimationFrame(tick);
 				return;
 			}
-			const t = (now - startTime) * 0.001 * autoAnimateSpeed;
-			const x = 0.5 - 0.45 * Math.sin(0.003 * (now - startTime) - 2);
-			const y = 0.5 + 0.1 * Math.sin(0.0025 * (now - startTime)) + 0.1 * Math.cos(0.002 * (now - startTime));
+			if (!animStartTime) animStartTime = now;
+			const elapsed = (now - animStartTime) * 0.001;
+			if (autoAnimateDuration > 0 && elapsed > autoAnimateDuration) {
+				autoAnimateRaf = undefined;
+				return;
+			}
+			const t = elapsed * autoAnimateSpeed;
+			const x = 0.5 - 0.45 * Math.sin(3.0 * t - 2);
+			const y = 0.5 + 0.15 * Math.sin(2.5 * t) + 0.12 * Math.cos(2.0 * t);
 			const dx = 5 * (x - prevX) * innerWidth;
 			const dy = 5 * (y - prevY) * innerHeight;
 			prevX = x;
 			prevY = y;
-			// Low-intensity splat: off-mask dye fades quickly,
-			// on-mask accumulates to reveal the shape over time
-			inner.handle.splat(x, y, dx, -dy, { r: 0.3, g: 0.15, b: 0.3 });
+			// Color-cycling splats: on-mask dye accumulates vivid
+			// rainbow hues, off-mask fades once animation stops
+			const hue = t * 2.0;
+			const r = 1.5 * (Math.sin(hue) * 0.5 + 0.5);
+			const g = 1.5 * (Math.sin(hue + 2.094) * 0.5 + 0.5);
+			const b = 1.5 * (Math.sin(hue + 4.189) * 0.5 + 0.5);
+			inner.handle.splat(x, y, dx, -dy, { r, g, b });
 			autoAnimateRaf = requestAnimationFrame(tick);
 		}
 		autoAnimateRaf = requestAnimationFrame(tick);
