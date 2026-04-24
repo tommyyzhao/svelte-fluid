@@ -32,14 +32,16 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 - **Demo sticky text card** — changed text from "STICKY" (bold 80px) to "FLUID"
   (900-weight 120px) for bolder letterforms.
 
-### Known Issues
+### Fixed
 
-- **Sticky mask texture GPU sampling bug** — the mask texture is created correctly
-  (verified: non-zero pixel data, correct GPU readback R=255), and the engine
-  config is correct (STICKY=true, uniforms exist). However, `texture2D(uStickyMask, uv).r`
-  returns 0 in the advection shader. A hardcoded `step()` mask pattern DOES work,
-  confirming the dissipation logic is correct. Root cause is a texture sampler
-  binding issue that needs investigation. Pre-existing from session 13.
+- **Sticky mask texture GPU sampling** — three fixes to `initStickyMaskTexture()`
+  and `step()` in `FluidEngine.ts`: (1) `gl.activeTexture(gl.TEXTURE7)` before
+  texture creation ensures the mask is created on its dedicated unit, (2)
+  `gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1)` before upload handles single-channel
+  textures with non-aligned row widths (restored to 4 after), (3) re-bind mask
+  texture + uniform before dye advection pass to survive program switches from
+  `applyMask`. The advection shader now correctly reads the mask and modulates
+  dissipation — dye persists on the text/path shape.
 
 - **`FluidStick` component** (`FluidStick.svelte`, ~210 LOC) — new Svelte wrapper
   that makes fluid dye "stick" to text or SVG path shapes. Three physics-level

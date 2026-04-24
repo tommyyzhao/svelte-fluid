@@ -1156,20 +1156,22 @@ export class FluidEngine implements FluidHandle {
 			this.blurMaskData(maskData, maskW, maskH, blurRadius);
 		}
 
-		// Upload as GPU texture
+		// Upload as GPU texture on unit 7 (its dedicated slot)
+		gl.activeTexture(gl.TEXTURE7);
 		const tex = gl.createTexture()!;
 		gl.bindTexture(gl.TEXTURE_2D, tex);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-		gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+		gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
 		if (this.ext.isWebGL2) {
 			const gl2 = gl as WebGL2RenderingContext;
 			gl2.texImage2D(gl2.TEXTURE_2D, 0, gl2.R8, maskW, maskH, 0, gl2.RED, gl2.UNSIGNED_BYTE, maskData);
 		} else {
 			gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, maskW, maskH, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, maskData);
 		}
+		gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
 		this.stickyMaskTexture = tex;
 	}
 
@@ -1505,6 +1507,10 @@ export class FluidEngine implements FluidHandle {
 		// Re-bind advection program — applyMask switches the active GL
 		// program, and the dye advection below reuses advectionProgram.
 		if (this.config.CONTAINER_SHAPE) this.advectionProgram.bind();
+
+		// Re-bind sticky mask for dye advection pass
+		this.bindStickyMask();
+		gl.uniform1i(this.advectionProgram.uniforms.uStickyMask, 7);
 
 		// Sticky modulates DYE advection only (not velocity above)
 		gl.uniform1f(
