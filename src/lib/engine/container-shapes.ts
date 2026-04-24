@@ -232,6 +232,7 @@ export function stickyMaskEqual(
 		(a.fillRule ?? 'nonzero') === (b.fillRule ?? 'nonzero') &&
 		(a.maskResolution ?? 512) === (b.maskResolution ?? 512) &&
 		(a.blur ?? 0) === (b.blur ?? 0) &&
+		(a.padding ?? 0.9) === (b.padding ?? 0.9) &&
 		viewBoxEqual(a.viewBox, b.viewBox);
 }
 

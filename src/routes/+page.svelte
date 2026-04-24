@@ -1065,20 +1065,20 @@
 					d="M55 5 L25 45 L45 45 L20 95 L75 50 L55 50 L80 5 Z"
 				/>
 			</Card>
-			<Card title="Sticky + circle" description="Sticky text inside a circular container. The fluid is confined to the circle while dye clings to the letters." snippet={`<FluidStick\n  text="HI"\n  font="bold 100px sans-serif"\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5,\n    radius: 0.45\n  }}\n/>`}>
+			<Card title="Sticky + circle" description="Sticky text inside a circular container. The fluid is confined to the circle while dye clings to the letters." snippet={`<FluidStick\n  text="HI"\n  font="bold 72px sans-serif"\n  maskPadding={0.5}\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5,\n    radius: 0.45\n  }}\n/>`}>
 				<FluidStick
 					lazy
 					text="HI"
-					font="bold 100px 'Helvetica Neue', Arial, sans-serif"
+					font="bold 72px 'Helvetica Neue', Arial, sans-serif"
+					maskPadding={0.5}
 					containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
 				/>
 			</Card>
-			<Card title="Strong pressure" description="High stickyPressure makes fluid visibly deflect around the shape, creating turbulent vortices." snippet={`<FluidStick\n  d="M50 5 L5 95 L95 95 Z"\n  stickyPressureAmount={0.5}\n  strength={1.0}\n/>`}>
+			<Card title="Strong pressure" description="High stickyPressure makes fluid visibly deflect around the shape, creating turbulent vortices." snippet={`<FluidStick\n  d="M50 5 L5 95 L95 95 Z"\n  stickyPressureAmount={0.5}\n/>`}>
 				<FluidStick
 					lazy
 					d="M50 5 L5 95 L95 95 Z"
 					stickyPressureAmount={0.5}
-					strength={1.0}
 				/>
 			</Card>
 		</div>

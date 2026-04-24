@@ -30,8 +30,15 @@
 		/** Blur radius on the mask (mask pixels). Default 4. */
 		maskBlur?: number;
 		/**
+		 * How much of the mask texture the text fills (text mode only).
+		 * 0.9 = text fills 90% of the texture (default). Use smaller
+		 * values when combining with a container shape (e.g. 0.5 to fit
+		 * text inside a circle). Default 0.9.
+		 */
+		maskPadding?: number;
+		/**
 		 * How strongly dye dissipation is reduced on the mask.
-		 * 0 = no effect, 1 = dye never fades on mask. Default 0.9.
+		 * 0 = no effect, 1 = dye never fades on mask. Default 0.95.
 		 */
 		strength?: number;
 		/**
@@ -40,7 +47,7 @@
 		 */
 		stickyPressureAmount?: number;
 		/**
-		 * Splat intensity multiplier on the mask. Default 0.3.
+		 * Splat intensity multiplier on the mask. Default 2.0.
 		 */
 		amplify?: number;
 		/**
@@ -49,12 +56,12 @@
 		 * Default `true`.
 		 */
 		autoAnimate?: boolean;
-		/** Speed multiplier for auto-animation. Default 1.0. */
+		/** Speed multiplier for auto-animation. Default 2.0. */
 		autoAnimateSpeed?: number;
 		/**
 		 * How many seconds auto-animation runs before stopping.
 		 * Once stopped, off-mask dye fades away, revealing the sticky shape.
-		 * 0 = run indefinitely (until user interacts). Default 3.5.
+		 * 0 = run indefinitely (until user interacts). Default 5.0.
 		 */
 		autoAnimateDuration?: number;
 		/** Optional fixed width in CSS pixels. */
@@ -84,12 +91,13 @@
 		maskFillRule,
 		maskResolution = 512,
 		maskBlur = 4,
-		strength = 1.0,
+		maskPadding,
+		strength = 0.95,
 		stickyPressureAmount = 0.15,
-		amplify = 0.5,
+		amplify = 2.0,
 		autoAnimate = true,
-		autoAnimateSpeed = 1.0,
-		autoAnimateDuration = 3.5,
+		autoAnimateSpeed = 2.0,
+		autoAnimateDuration = 5.0,
 		lazy = false,
 		autoPause = true,
 		width,
@@ -97,13 +105,13 @@
 		class: className,
 		style,
 		// Sticky uses multiplicative dissipation for dye (like REVEAL mode).
-		// 0.78 = 22%/frame off-mask fade — dye trails clear within ~300ms,
-		// giving strong contrast once auto-animate stops. On-mask: → 1.0.
-		densityDissipation = 0.78,
+		// 0.85 = 15%/frame off-mask fade — dye trails clear within ~500ms,
+		// giving clear contrast once auto-animate stops. On-mask: → 1.0.
+		densityDissipation = 0.85,
 		velocityDissipation = 0.2,
 		curl = 20,
-		splatRadius = 0.6,
-		splatForce = 10000,
+		splatRadius = 1.0,
+		splatForce = 6000,
 		shading = true,
 		colorful = true,
 		bloom = false,
@@ -111,8 +119,10 @@
 		initialSplatCount = 20,
 		backColor = { r: 0, g: 0, b: 0 },
 		transparent = false,
-		randomSplatRate = 0,
-		randomSplatCount = 0,
+		randomSplatRate = 0.6,
+		randomSplatCount = 3,
+		randomSplatSwirl = 150,
+		randomSplatSpread = 2.0,
 		pointerInput = true,
 		splatOnHover = true,
 		...fluidProps
@@ -128,6 +138,7 @@
 		fillRule: maskFillRule,
 		maskResolution,
 		blur: maskBlur,
+		padding: maskPadding,
 	}));
 
 	// Auto-animate: Lissajous curve deposits dye before user interaction
@@ -165,8 +176,8 @@
 			const t = elapsed * autoAnimateSpeed;
 			const x = 0.5 - 0.45 * Math.sin(3.0 * t - 2);
 			const y = 0.5 + 0.15 * Math.sin(2.5 * t) + 0.12 * Math.cos(2.0 * t);
-			const dx = 5 * (x - prevX) * innerWidth;
-			const dy = 5 * (y - prevY) * innerHeight;
+			const dx = 3 * (x - prevX) * innerWidth;
+			const dy = 3 * (y - prevY) * innerHeight;
 			prevX = x;
 			prevY = y;
 			// Color-cycling splats: on-mask dye accumulates vivid

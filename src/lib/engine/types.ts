@@ -122,6 +122,13 @@ export interface StickyMask {
 	maskResolution?: number;
 	/** Blur radius in mask pixels. Softens edges for smoother physics. Default 0. */
 	blur?: number;
+	/**
+	 * How much of the mask texture the text fills (text mode only).
+	 * 0.9 = text fills 90% of the texture (default). Use smaller values
+	 * when combining with a container shape (e.g. 0.5 to fit inside a
+	 * circle with radius 0.45). Ignored in path mode. Default 0.9.
+	 */
+	padding?: number;
 }
 
 /**

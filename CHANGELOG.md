@@ -13,6 +13,20 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`StickyMask.padding` field / `maskPadding` prop** — controls how much of the
+  mask texture the text fills (text mode only). Default 0.9. Use smaller values
+  (e.g. 0.5) to fit text inside a container shape like a circle.
+- **Sticky velocity damping** — advection shader now dampens velocity on the sticky
+  mask (~80%/frame with strength=1.0). Negative `uStickyStrength` activates a
+  damping branch: `dissipation * max(0, 1 + stickyVal * strength)`. Prevents dye
+  from being advected off the mask by splat-injected velocity.
+- **FluidStick random splats** — default `randomSplatRate=0.6` (burst every ~1.7s),
+  `randomSplatCount=3`, `randomSplatSwirl=150` (gentle tangential velocity),
+  `randomSplatSpread=2.0` (full-canvas spawn). Keeps the sticky text alive with
+  intermittent color refreshes.
+- **`/sticky-tuning` test route** — 4 FluidStick cards with 5 preset buttons and
+  live parameter sliders for tuning sticky physics interactively.
+
 - **`autoAnimateDuration` prop** on `FluidStick` — controls how many seconds
   auto-animation runs before stopping. Default 3.5s. Once stopped, off-mask dye
   fades away, revealing the sticky shape. Set to 0 for indefinite animation.
@@ -22,7 +36,15 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **FluidStick default tuning** — `splatRadius` 0.25→0.6 (thicker cursor splats),
+- **FluidStick default tuning (session 16)** — `amplify` 0.5→2.0 (3× on-mask dye),
+  `autoAnimateSpeed` 1.0→2.0, `autoAnimateDuration` 3.5→5.0s,
+  `densityDissipation` 0.78→0.85 (slower off-mask fade), `splatRadius` 0.6→1.0,
+  `splatForce` 10000→6000 (gentler pointer splats), `strength` 1.0→0.95 (slow
+  visible decay on mask), auto-animate velocity multiplier 5×→3×.
+- **Demo "Sticky + circle"** — font 100px→72px, added `maskPadding={0.5}` so "HI"
+  text fits inside the circle container. Removed explicit `strength={1.0}` from
+  "Strong pressure" preset.
+- **FluidStick default tuning (session 15)** — `splatRadius` 0.25→0.6 (thicker cursor splats),
   `splatForce` 6000→10000 (brighter splats), `densityDissipation` 0.85→0.78
   (faster off-mask fade), `amplify` 0.3→0.5 (stronger on-mask boost).
 - **FluidStick auto-animate timing** — deferred clock start (`animStartTime` set
@@ -34,6 +56,11 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Sticky velocity advection** — velocity was unmodulated by the sticky mask
+  (`uStickyStrength=0.0` for velocity advection), allowing splat-injected velocity
+  to advect dye off the mask even when dissipation was 1.0. Now passes
+  `-(STICKY_STRENGTH * 0.8)` to activate damping mode in the advection shader.
+  Dye accumulates and persists on the sticky mask as intended.
 - **Sticky mask texture GPU sampling** — three fixes to `initStickyMaskTexture()`
   and `step()` in `FluidEngine.ts`: (1) `gl.activeTexture(gl.TEXTURE7)` before
   texture creation ensures the mask is created on its dedicated unit, (2)
