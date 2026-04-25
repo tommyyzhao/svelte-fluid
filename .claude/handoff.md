@@ -1,10 +1,10 @@
-# Session Handoff — 2026-04-24 (session 17)
+# Session Handoff — 2026-04-24 (session 18)
 
 ## Project
 
 svelte-fluid — WebGL Navier-Stokes fluid simulation as a Svelte 5 component library. MIT licensed, derived from PavelDoGreat/WebGL-Fluid-Simulation.
 
-Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: 7057c90
+Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: cc28cb9
 
 ## Current state
 
@@ -17,9 +17,10 @@ Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: 7057c
 - FluidStick: physics-level dye sticking via mask texture — velocity damping, tuned dissipation (0.98)
 - FluidBackground: full-viewport fluid with DOM exclusion zones
 - 30 ADRs, 6 learning docs, architecture.md, porting-notes.md, contributing.md
-- ~36 demo instances on the main page (4 sticky, 4 distortion)
+- ~36 demo instances on the main page (4 sticky, 4 distortion, 4 reveal, 4 glass, 6 shapes, 6 presets, 4 config, 1 background, playground)
 - Every demo card has `</>` code toggle + "Customize" button (including sticky and distortion)
 - Playground with 4-tab mode toggle (Fluid/Reveal/Sticky/Distortion), accordion ControlPanel, URL hash state, `</>` code preview
+- **All non-fluid tabs now have shared accordion sections** (Physics, Random Splats, Visuals, Resolution, Background, Container Shape, Glass)
 - Floating `</>` button for FluidBackground code snippet
 - 4 extra routes: `/background-fluid`, `/fluid-reveal/`, `/svelte-fluid`, `/svg`
 - CI runs tests + type-check + publint + build on every push. GitHub Pages auto-deploys.
@@ -27,56 +28,68 @@ Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: 7057c
 
 ## What this session built
 
-1. **Fixed FluidStick off-mask dye too weak** — Changed `densityDissipation` default
-   from 0.85 to 0.98. Multiplicative dissipation at 0.85 was 15%/frame (gone in
-   ~300ms); 0.98 gives 2%/frame (~1–2s visible trails matching standard Fluid).
-   On-mask retention improved from 10% to 74% after 5s.
+1. **Shared fluid controls for all playground tabs** — Sticky, Reveal, and Distortion
+   tabs now display the same accordion sections as the Fluid tab: Physics (curl,
+   splatRadius, densityDissipation, splatForce, velocityDissipation, pressure,
+   splatOnHover, paused), Random Splats, Visuals, Resolution, Background, Container
+   Shape (all 5 types), Glass. Controls removed from mode-specific sections to avoid
+   duplication.
 
-2. **Fixed `randomSplatSwirl`/`randomSplatSpread` not reaching engine** — FluidStick
-   destructured these props (removing from `...fluidProps`) but never passed them to
-   `<Fluid>`. Random splats had zero velocity and minimal spread. Added
-   `{randomSplatSwirl}` and `{randomSplatSpread}` to the template.
+2. **Full prop passthrough** — FluidStick, FluidReveal, FluidDistortion playground
+   instances now receive all shared fluid props (~15-20 new per component): pressure,
+   bloomIntensity, sunraysWeight, splatOnHover, dyeResolution, simResolution, paused,
+   randomSplat*, backColor, glass*, transparent, etc.
 
-3. **Organic random splat timing** — Rate 1.5→0.4, count 5→3, swirl 150→500.
-   Engine jitter widened from 0.5–1.5× to 0.3–2.0× for "water dripping from leaves"
-   timing. Intervals range from 0.75s to 5.0s.
+3. **Mode-switch snapshot expanded** — Snapshot saves/restores 14 values (was 6):
+   added densityDissipation, splatOnHover, pressure, randomSplatRate/Count/Swirl/
+   Spread, colorful. Each mode switch sets proper defaults for all params. Reset
+   clears fluidSnapshot + prevMode to prevent stale restoration.
 
-4. **4-tab Playground** — Added Sticky and Distortion tabs alongside Fluid and Reveal.
-   Only the active tab's WebGL context renders (no wasted GPU). Mode switch snapshots
-   fluid physics when leaving fluid mode, applies mode-specific defaults, restores
-   on return.
+4. **Reveal preset color variety** — Each reveal demo card has distinct cover/accent
+   colors: "Permanent reveal" (dark charcoal + gold fringes, curl=15), "Auto-reveal"
+   (deep navy + teal/cyan), "Soft reveal" (warm blush + deep purple, curl=3).
+   PRESET_CONFIGS updated so Customize buttons carry colors.
 
-5. **Playground Sticky tab** — Text/font inputs, SVG path textarea, maskBlur/maskPadding
-   sliders, sticky physics (strength, amplify, pressure, densityDissipation), auto-
-   animate speed/duration, container shape selector (Rectangle/Circle/Rounded rect)
-   with glass toggle. "Restart Animation" button remounts FluidStick.
+5. **Fixed: Paused doesn't stop random splats** — `accumulateRandomSplatTimer(dt)`
+   was called before `!PAUSED` check in `FluidEngine.update()`. Moved inside the
+   `if (!PAUSED)` block.
 
-6. **Playground Distortion tab** — Image URL text input, strength/intensity sliders,
-   velocityDissipation, initialSplats, auto-distort checkbox (triggers remount) with
-   speed slider, container shape selector.
+6. **Fixed: "Loaded: Shared config" banner on fresh load** — Added `showBanner`
+   parameter to `deserializeState()`. Initial mount passes `false` so URL hash
+   restoration doesn't trigger the banner.
 
-7. **Customize buttons on all demo cards** — 8 new: 4 sticky + 4 distortion cards now
-   have "Customize" buttons that scroll to playground, switch tab, load config.
+7. **Fixed: Reset from non-fluid tab restores stale snapshot** —
+   `resetAllDefaults()` now clears `fluidSnapshot=null` and resets `prevMode`.
 
-8. **Fixed `loadedPreset` not cleared on Reset** — Made `loadedPreset` `$bindable` in
-   ControlPanel and clear it in `reset()`. "Loaded: X" indicator now clears properly.
+8. **Snippet builders corrected** — `buildRevealSnippet()` compared against Fluid
+   defaults (D.splatRadius=0.25) instead of FluidReveal defaults (0.2). Fixed for
+   all three non-fluid builders. Added shared props (bloom, sunrays, shading,
+   splatForce, pressure, etc.) to all snippet builders.
 
-9. **SVG path (`d`) takes precedence over `text`** — Flipped priority in both
-   `initMaskTexture()` and `initStickyMaskTexture()`. Updated docs in types.ts,
-   FluidStick.svelte, ControlPanel hint text.
+9. **maskPadding label** → "Text size" with hint explaining fill fraction semantics.
 
-10. **Deleted `/sticky-tuning` route** — Functionality folded into playground Sticky tab.
+10. **Random Splat label improvements** — randomSplatRate→"Rate (splats/sec)",
+    randomSplatCount→"Count per burst", randomSplatSwirl→"Swirl",
+    randomSplatSpread→"Spawn spread", randomSplatSpawnY→"Spawn height",
+    randomSplatDx/Dy→"Velocity X/Y".
 
-11. **`buildStickySnippet()` and `buildDistortionSnippet()`** — Code preview generates
-    `<FluidStick>` and `<FluidDistortion>` component code respectively.
+11. **splatRadius slider max** — Fluid quick controls bumped from 1.0→2.0 for
+    consistency with shared accordion.
 
-12. **URL hash state** — All sticky/distortion playground params serialize to URL for sharing.
+12. **Frame outer controls in shared Shape section** — Added outerHalfW, outerHalfH,
+    outerCornerRadius sliders (were missing from non-fluid tabs).
+
+13. **Mobile responsiveness** — Touch target enlargement for mode toggle (padding
+    5→10px), accordion headers, card buttons (padding 2→6px). Main padding tightened
+    (64→40px top, 24→16px sides), gaps reduced (48→32px). Playground canvas min-height
+    260px on <480px. ControlPanel max-height removed on <800px. bg-code-panel width
+    capped to viewport.
 
 ## Key files
 
 | File | Role |
 |------|------|
-| src/lib/engine/FluidEngine.ts (~1770 LOC) | The engine: WebGL state, physics step, render, dispose, mask texture (d takes precedence over text), glass pass, reveal path, distortion path, sticky mask (velocity damping) |
+| src/lib/engine/FluidEngine.ts (~1770 LOC) | The engine: WebGL state, physics step, render, dispose, mask texture (d takes precedence over text), glass pass, reveal path, distortion path, sticky mask (velocity damping). Paused now blocks random splat timer. |
 | src/lib/Fluid.svelte (~440 LOC) | Svelte wrapper: DOM, ResizeObserver, adaptive resolution, lazy/autoPause, destructures ALL FluidConfig props including 5 sticky fields |
 | src/lib/FluidStick.svelte (~260 LOC) | Fluid as sticky text/path: text/font/d rasterization via stickyMask, auto-animate Lissajous with duration/color-cycling, random splats with swirl, maskPadding prop. Passes randomSplatSwirl + randomSplatSpread to Fluid. |
 | src/lib/FluidDistortion.svelte (~290 LOC) | Fluid as image distortion: bleed canvas, initial chaos splats, pointer-driven dye injection |
@@ -86,15 +99,14 @@ Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: 7057c
 | src/lib/engine/shaders.ts | All GLSL: advection (uStickyMask/uStickyStrength with velocity damping branch), pressure, splat, display (REVEAL/DISTORTION branches), glass, container mask |
 | src/lib/engine/types.ts | FluidConfig (with sticky* fields), StickyMask (d takes precedence), ResolvedConfig, ContainerShape, FluidHandle |
 | src/lib/engine/container-shapes.ts | SDF evaluation, containerShapeEqual, stickyMaskEqual (includes padding), viewBoxEqual, maskAreaFraction |
-| src/routes/+page.svelte (~1800 LOC) | Demo page: ~36 instances, FluidBackground wrapper, 4-tab playground (Fluid/Reveal/Sticky/Distortion), all Customize configs, URL hash state |
-| src/routes/components/ControlPanel.svelte (~1300 LOC) | Playground sidebar: 4-tab mode toggle, Fluid accordions, Reveal controls, Sticky controls (text/font/d inputs, physics sliders, container), Distortion controls (URL input, sliders, auto-distort), snippet builders |
+| src/routes/+page.svelte (~1900 LOC) | Demo page: ~36 instances, FluidBackground wrapper, 4-tab playground (Fluid/Reveal/Sticky/Distortion) with full prop passthrough, reveal presets with distinct colors, mode-switch snapshot (14 values), URL hash state, mobile CSS |
+| src/routes/components/ControlPanel.svelte (~1600 LOC) | Playground sidebar: 4-tab mode toggle, mode-specific sections at top, shared accordions (Physics/Splats/Visuals/Resolution/Background/Shape/Glass) for non-fluid tabs, snippet builders with correct per-component defaults, user-friendly labels |
 
 ## What needs attention next
 
 ### Priority: User-requested for next session
 
-1. **Iterate on reveal presets** — Review and improve the FluidReveal demo cards and playground reveal controls.
-2. **Mobile friendliness audit** — Audit the demo web app for mobile responsiveness. Check touch interactions, layout breakpoints, canvas sizing, control panel accessibility on small screens.
+1. **Refine reveal preset tuning** — User requested further iteration on FluidReveal demo cards and playground reveal controls. Specific areas: cover/accent color combinations, physics per card, reveal sensitivity/curve defaults, underlying content variety.
 
 ### Planned features
 
@@ -110,7 +122,8 @@ Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: 7057c
 3. **Multiplicative velocity dissipation** — REVEAL and STICKY modes override velocity dissipation to 0.98 (hardcoded). This means `velocityDissipation` prop is ignored in these modes.
 4. **Texture unit 7** — Sticky mask uses the last guaranteed WebGL texture unit. No room for additional texture-based features without checking `MAX_COMBINED_TEXTURE_IMAGE_UNITS`.
 5. **Vite HMR for engine** — FluidEngine.ts and shaders.ts changes don't hot-reload to existing instances. Full page reload + Vite cache clear required (`rm -rf node_modules/.vite .svelte-kit`).
-6. **Browser automation limitation** — `document.hidden=true` when the terminal has focus prevents RAF from firing. Chrome throttles RAF to 0fps for hidden tabs. This means FluidStick auto-animate and engine rendering can't be tested via browser automation tools.
+6. **Browser automation limitation** — `document.hidden=true` when the terminal has focus prevents RAF from firing. Chrome throttles RAF to 0fps for hidden tabs.
+7. **splatOnHover silently ignored in Reveal mode** — FluidReveal sets `pointerInput=false` by default, so the shared Physics checkbox does nothing. The control is shown but non-functional for Reveal.
 
 ### Follow-ups
 
@@ -141,5 +154,5 @@ Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: 7057c
 - Material class caches compiled shader variants by sorted keyword string key.
 - Context loss/restore: handled via events. dispose() does NOT call loseContext(). Sticky mask texture is re-created on context restore.
 - Texture unit budget: 0=dye, 1=bloom/various, 2=dithering(display), 3=sunrays, 4=containerMask, 5=distortionTexture, 6=velocity(distortion), 7=stickyMask.
-- Random splat jitter: engine uses `baseInterval * (0.3 + rng() * 1.7)` for 0.3–2.0× organic timing variation.
-- Playground: 4-tab mode toggle. Mode switch snapshots fluid physics when leaving fluid mode, applies mode-specific defaults when entering non-fluid modes. Only active tab's WebGL context renders. URL hash persists all state for sharing.
+- Random splat jitter: engine uses `baseInterval * (0.3 + rng() * 1.7)` for 0.3-2.0x organic timing variation. **Paused state now blocks random splat timer accumulation.**
+- Playground: 4-tab mode toggle. Mode switch snapshots 14 fluid physics values when leaving fluid mode, applies mode-specific defaults when entering non-fluid modes, restores on return to fluid. Only active tab's WebGL context renders. Shared accordions render for all non-fluid tabs. URL hash persists all state for sharing (initial load doesn't show "Loaded" banner). Reset clears snapshot to prevent stale restoration.
