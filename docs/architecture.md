@@ -170,8 +170,9 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
    - **C** SIM/DYE/BLOOM/SUNRAYS resolution → `init*Framebuffers()` rebuilds FBOs
    - **A** also includes `stickyStrength`, `stickyPressure`, `stickyAmplify`.
    - **A** also includes `pointerInput` (installs/removes canvas+window
-     event listeners on transition) and `splatOnHover` (cursor movement
-     over the canvas creates splats without requiring a click).
+     event listeners on transition), `splatOnHover` (cursor movement
+     over the canvas creates splats without requiring a click), and
+     `openBoundary` (toggles divergence BCs + container shape mask enforcement).
    - **D** seed / initialSplatCount* / presetSplats → ignored after construction
 
 ### Unmount

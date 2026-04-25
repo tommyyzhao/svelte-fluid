@@ -13,6 +13,16 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`openBoundary` prop** (`FluidConfig.openBoundary?: boolean`, default `false`) —
+  open boundary conditions. When `true`, fluid flows freely instead of bouncing:
+  (1) divergence solver skips no-penetration enforcement at canvas edges,
+  (2) container shapes become visual crops rather than physical walls (`applyMask`
+  skipped on velocity and dye; display shader still clips via `CONTAINER_MASK`).
+  FluidReveal defaults to `openBoundary={true}` for natural scratch behavior.
+  Bucket A (hot-updatable). Uniform `uOpenBoundary` in divergence shader.
+- **`/test-boundary` route** — temporary visual validation page for comparing
+  open vs closed boundary behavior across shape types (none, circle, roundedRect,
+  svgPath). Uses auto-reveal for hands-free comparison.
 - **`@changesets/cli` + `@changesets/changelog-github`** — automated release
   tooling. New scripts: `bun run changeset`, `bun run version`,
   `bun run release`. Config at `.changeset/config.json`.
