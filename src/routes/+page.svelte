@@ -182,10 +182,10 @@
 			}
 			// Apply mode-specific defaults
 			if (mode === 'reveal') {
-				curl = 0; velocityDissipation = 0.9; splatRadius = 0.2;
+				curl = 0; velocityDissipation = 0.98; splatRadius = 0.2;
 				bloom = false; sunrays = false; shading = false;
 				splatOnHover = false; densityDissipation = D.densityDissipation;
-				pressure = D.pressure; colorful = true;
+				pressure = 1.0; colorful = true;
 				randomSplatRate = 0; randomSplatCount = 1;
 				randomSplatSwirl = 0; randomSplatSpread = 0.1;
 			} else if (mode === 'sticky') {
@@ -272,10 +272,10 @@
 		prevMode = targetMode; // prevent snapshot $effect from firing
 		if (targetMode === 'reveal') {
 			fluidSnapshot = null;
-			curl = 0; velocityDissipation = 0.9; splatRadius = 0.2;
+			curl = 0; velocityDissipation = 0.98; splatRadius = 0.2;
 			bloom = false; sunrays = false; shading = false;
 			splatOnHover = false; densityDissipation = D.densityDissipation;
-			pressure = D.pressure; colorful = true;
+			pressure = 1.0; colorful = true;
 			randomSplatRate = 0; randomSplatCount = 1;
 			randomSplatSwirl = 0; randomSplatSpread = 0.1;
 		} else if (targetMode === 'sticky') {
@@ -719,10 +719,10 @@
 			playgroundMode: 'distortion',
 			containerShape: { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 },
 		},
-		'Scratch to reveal': { playgroundMode: 'reveal' },
+		'Scratch to reveal': { playgroundMode: 'reveal', splatRadius: 0.12, velocityDissipation: 0.95, pressureIterations: 10 },
 		'Permanent reveal': { playgroundMode: 'reveal', revealFadeBack: false, revealCoverColor: '#292930', revealAccentColor: '#c8a864', curl: 15 },
-		'Auto-reveal': { playgroundMode: 'reveal', revealAutoReveal: true, revealAutoRevealSpeed: 0.8, revealFadeBack: false, revealSensitivity: 0.15, revealCoverColor: '#0d1421', revealAccentColor: '#00c8ff' },
-		'Soft reveal': { playgroundMode: 'reveal', revealCurve: 0.5, revealSensitivity: 0.2, splatRadius: 0.3, revealCoverColor: '#f0e0e6', revealAccentColor: '#4a0e4f', curl: 3 }
+		'Auto-reveal': { playgroundMode: 'reveal', revealAutoReveal: true, revealAutoRevealSpeed: 0.8, revealFadeBack: false, revealCurve: 0.12, revealSensitivity: 0.15, revealCoverColor: '#0d1421', revealAccentColor: '#00c8ff' },
+		'Liquid reveal': { playgroundMode: 'reveal', pressure: 0.8, revealCurve: 0.5, revealSensitivity: 0.2, splatRadius: 0.3, revealCoverColor: '#f0e0e6', revealAccentColor: '#4a0e4f', curl: 3 }
 	};
 
 	const SCRIPT_OPEN = '<' + 'script lang="ts">';
@@ -1136,8 +1136,8 @@
 			</p>
 		</header>
 		<div class="grid-2col">
-			<Card title="Scratch to reveal" description="Move your cursor to uncover the gradient. Sharp iridescent edges fade back over time." onCustomize={() => loadConfig(PRESET_CONFIGS['Scratch to reveal'], 'Scratch to reveal')} snippet={`<FluidReveal>\n  <div style="width: 100%; height: 100%;\n    background: linear-gradient(\n      135deg, #667eea 0%, #764ba2 100%);\n    display: flex; align-items: center;\n    justify-content: center;\n    border-radius: 12px;">\n    <span>Revealed!</span>\n  </div>\n</FluidReveal>`}>
-				<FluidReveal lazy>
+			<Card title="Scratch to reveal" description="Move your cursor to uncover the gradient. Tight, viscous trails with iridescent fringes that fade back over time." onCustomize={() => loadConfig(PRESET_CONFIGS['Scratch to reveal'], 'Scratch to reveal')} snippet={`<FluidReveal\n  splatRadius={0.12}\n  velocityDissipation={0.95}\n  pressureIterations={10}\n>\n  <div style="width: 100%; height: 100%;\n    background: linear-gradient(\n      135deg, #667eea 0%, #764ba2 100%);\n    display: flex; align-items: center;\n    justify-content: center;\n    border-radius: 12px;">\n    <span>Revealed!</span>\n  </div>\n</FluidReveal>`}>
+				<FluidReveal lazy splatRadius={0.12} velocityDissipation={0.95} pressureIterations={10}>
 					<div class="reveal-content reveal-gradient">
 						<span class="reveal-label">Revealed!</span>
 					</div>
@@ -1158,12 +1158,13 @@
 					</div>
 				</FluidReveal>
 			</Card>
-			<Card title="Auto-reveal" description="A cursor traces a path automatically. Teal fringes on a deep navy cover — touch to take over." onCustomize={() => loadConfig(PRESET_CONFIGS['Auto-reveal'], 'Auto-reveal')} snippet={`<FluidReveal\n  autoReveal\n  autoRevealSpeed={0.8}\n  fadeBack={false}\n  sensitivity={0.15}\n  coverColor={{ r: 0.05, g: 0.08, b: 0.13 }}\n  accentColor={{ r: 0, g: 0.78, b: 1 }}\n>\n  <div>Your content here</div>\n</FluidReveal>`}>
+			<Card title="Auto-reveal" description="A cursor traces a path automatically. Teal fringes on a deep navy cover — touch to take over." onCustomize={() => loadConfig(PRESET_CONFIGS['Auto-reveal'], 'Auto-reveal')} snippet={`<FluidReveal\n  autoReveal\n  autoRevealSpeed={0.8}\n  fadeBack={false}\n  curve={0.12}\n  sensitivity={0.15}\n  coverColor={{ r: 0.05, g: 0.08, b: 0.13 }}\n  accentColor={{ r: 0, g: 0.78, b: 1 }}\n>\n  <div>Your content here</div>\n</FluidReveal>`}>
 				<FluidReveal
 					lazy
 					autoReveal
 					autoRevealSpeed={0.8}
 					fadeBack={false}
+					curve={0.12}
 					sensitivity={0.15}
 					coverColor={{ r: 0.05, g: 0.08, b: 0.13 }}
 					accentColor={{ r: 0, g: 0.78, b: 1 }}
@@ -1181,9 +1182,10 @@
 					</div>
 				</FluidReveal>
 			</Card>
-			<Card title="Soft reveal" description="Blush cover with purple fringes. Wide brush, soft gradient edges, and gentle turbulence." onCustomize={() => loadConfig(PRESET_CONFIGS['Soft reveal'], 'Soft reveal')} snippet={`<FluidReveal\n  curve={0.5}\n  sensitivity={0.2}\n  splatRadius={0.3}\n  coverColor={{ r: 0.94, g: 0.88, b: 0.9 }}\n  accentColor={{ r: 0.29, g: 0.055, b: 0.31 }}\n  curl={3}\n>\n  <div>Your content here</div>\n</FluidReveal>`}>
+			<Card title="Liquid reveal" description="Blush cover with purple fringes. Fluid swirls and eddies create an organic, liquid unmasking effect." onCustomize={() => loadConfig(PRESET_CONFIGS['Liquid reveal'], 'Liquid reveal')} snippet={`<FluidReveal\n  pressure={0.8}\n  curve={0.5}\n  sensitivity={0.2}\n  splatRadius={0.3}\n  coverColor={{ r: 0.94, g: 0.88, b: 0.9 }}\n  accentColor={{ r: 0.29, g: 0.055, b: 0.31 }}\n  curl={3}\n>\n  <div>Your content here</div>\n</FluidReveal>`}>
 				<FluidReveal
 					lazy
+					pressure={0.8}
 					curve={0.5}
 					sensitivity={0.2}
 					splatRadius={0.3}
@@ -1192,7 +1194,7 @@
 					curl={3}
 				>
 					<div class="reveal-content reveal-gradient-2">
-						<span class="reveal-label">Soft Edges</span>
+						<span class="reveal-label">Liquid Reveal</span>
 					</div>
 				</FluidReveal>
 			</Card>

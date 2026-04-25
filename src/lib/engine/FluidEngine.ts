@@ -70,7 +70,8 @@ import * as S from './shaders.js';
 /*                                  Defaults                                  */
 /* -------------------------------------------------------------------------- */
 
-const DEFAULTS: ResolvedConfig = {
+/** @internal Exported for tests — not part of the public API. */
+export const DEFAULTS: ResolvedConfig = {
 	SIM_RESOLUTION: 128,
 	DYE_RESOLUTION: 1024,
 	DENSITY_DISSIPATION: 1,
@@ -134,7 +135,8 @@ const DEFAULTS: ResolvedConfig = {
 	STICKY_PRESSURE: 0.15,
 	STICKY_AMPLIFY: 0.3
 };
-function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): ResolvedConfig {
+/** @internal Exported for tests — not part of the public API. */
+export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): ResolvedConfig {
 	const out: ResolvedConfig = { ...base };
 	if (!input) return out;
 	if (input.simResolution !== undefined) out.SIM_RESOLUTION = input.simResolution;
@@ -1498,13 +1500,18 @@ export class FluidEngine implements FluidHandle {
 		gl.uniform1i(this.advectionProgram.uniforms.uVelocity, velocityId);
 		gl.uniform1i(this.advectionProgram.uniforms.uSource, velocityId);
 		gl.uniform1f(this.advectionProgram.uniforms.dt, dt);
-		// In multiplicative mode (REVEAL/STICKY), VELOCITY_DISSIPATION (0.2)
-		// would kill velocity instantly (velocity *= 0.2 per frame). Use 0.98
-		// instead — gentle 2%/frame fade that keeps fluid flowing naturally.
+		// In multiplicative mode (REVEAL/STICKY), the engine default
+		// VELOCITY_DISSIPATION (0.2) would kill velocity instantly
+		// (velocity *= 0.2 per frame). When the prop looks like an
+		// additive-mode value (≤ 0.5), fall back to 0.98 — gentle
+		// 2%/frame fade. When the prop is > 0.5 it was clearly set
+		// for multiplicative mode, so honor it (e.g. 0.9 or 0.95).
 		gl.uniform1f(
 			this.advectionProgram.uniforms.dissipation,
 			(this.config.REVEAL || this.config.STICKY)
-				? 0.98
+				? (this.config.VELOCITY_DISSIPATION > 0.5
+					? this.config.VELOCITY_DISSIPATION
+					: 0.98)
 				: this.config.VELOCITY_DISSIPATION
 		);
 		this.blit(this.velocity.write);

@@ -64,3 +64,69 @@ describe('reveal alpha curve (shader math mirror)', () => {
 		expect(fringe.g).toBeGreaterThan(fringe.r);
 	});
 });
+
+/* ------------------------------------------------------------------ */
+/*                 Reveal dye color computation                        */
+/* ------------------------------------------------------------------ */
+
+describe('revealDye computation (FluidReveal pointer splat color)', () => {
+	const FLOOR = 0.15;
+
+	/**
+	 * Mirrors FluidReveal.svelte's revealDye $derived computation.
+	 * Ensures nonzero dye intensity for all cover/accent combinations.
+	 */
+	function computeRevealDye(
+		cover: { r: number; g: number; b: number },
+		accent: { r: number; g: number; b: number }
+	) {
+		const dr = cover.r - accent.r;
+		const dg = cover.g - accent.g;
+		const db = cover.b - accent.b;
+		const allNegative = dr <= 0 && dg <= 0 && db <= 0;
+		return {
+			r: Math.max(FLOOR, Math.min(1, allNegative ? -dr : Math.max(0, dr))),
+			g: Math.max(FLOOR, Math.min(1, allNegative ? -dg : Math.max(0, dg))),
+			b: Math.max(FLOOR, Math.min(1, allNegative ? -db : Math.max(0, db)))
+		};
+	}
+
+	it('white cover + dark accent → positive dye (standard case)', () => {
+		const dye = computeRevealDye({ r: 1, g: 1, b: 1 }, { r: 0.05, g: 0.16, b: 0.32 });
+		expect(dye.r).toBeCloseTo(0.95, 2);
+		expect(dye.g).toBeCloseTo(0.84, 2);
+		expect(dye.b).toBeCloseTo(0.68, 2);
+	});
+
+	it('dark cover + bright accent → uses absolute difference (was all-zero bug)', () => {
+		// Permanent reveal: cover=(0.16,0.16,0.18), accent=(0.78,0.66,0.39)
+		const dye = computeRevealDye({ r: 0.16, g: 0.16, b: 0.18 }, { r: 0.78, g: 0.66, b: 0.39 });
+		// Should be |cover - accent| = (0.62, 0.50, 0.21)
+		expect(dye.r).toBeCloseTo(0.62, 2);
+		expect(dye.g).toBeCloseTo(0.50, 2);
+		expect(dye.b).toBeCloseTo(0.21, 2);
+		// Must have nonzero intensity for reveal to work
+		expect(Math.max(dye.r, dye.g, dye.b)).toBeGreaterThan(0);
+	});
+
+	it('identical cover and accent → floor ensures nonzero intensity', () => {
+		const dye = computeRevealDye({ r: 0.5, g: 0.5, b: 0.5 }, { r: 0.5, g: 0.5, b: 0.5 });
+		expect(dye.r).toBe(FLOOR);
+		expect(dye.g).toBe(FLOOR);
+		expect(dye.b).toBe(FLOOR);
+	});
+
+	it('black cover + black accent → floor ensures nonzero intensity', () => {
+		const dye = computeRevealDye({ r: 0, g: 0, b: 0 }, { r: 0, g: 0, b: 0 });
+		expect(Math.max(dye.r, dye.g, dye.b)).toBe(FLOOR);
+	});
+
+	it('mixed positive/negative channels → clamps negatives to 0, keeps positives', () => {
+		// cover.r > accent.r, but cover.g < accent.g
+		const dye = computeRevealDye({ r: 0.8, g: 0.1, b: 0.5 }, { r: 0.2, g: 0.9, b: 0.5 });
+		// Not all-negative (r channel is positive), so standard path
+		expect(dye.r).toBeCloseTo(0.6, 2);
+		expect(dye.g).toBe(FLOOR); // max(0.15, max(0, -0.8)) = 0.15
+		expect(dye.b).toBe(FLOOR); // max(0.15, max(0, 0)) = 0.15
+	});
+});
