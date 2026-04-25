@@ -39,6 +39,7 @@
 	let densityDissipation = $state(D.densityDissipation);
 	let velocityDissipation = $state(D.velocityDissipation);
 	let pressure = $state(D.pressure);
+	let pressureIterations = $state(20);
 	let bloomIntensity = $state(D.bloomIntensity);
 	let sunraysWeight = $state(D.sunraysWeight);
 	let shading = $state(D.shading);
@@ -223,7 +224,7 @@
 		playgroundMode = D.playgroundMode;
 		curl = D.curl; splatRadius = D.splatRadius; splatForce = D.splatForce;
 		densityDissipation = D.densityDissipation; velocityDissipation = D.velocityDissipation;
-		pressure = D.pressure; bloomIntensity = D.bloomIntensity; sunraysWeight = D.sunraysWeight;
+		pressure = D.pressure; pressureIterations = 20; bloomIntensity = D.bloomIntensity; sunraysWeight = D.sunraysWeight;
 		shading = D.shading; bloom = D.bloom; sunrays = D.sunrays; colorful = D.colorful;
 		paused = D.paused; randomSplatRate = D.randomSplatRate; randomSplatCount = D.randomSplatCount;
 		randomSplatSwirl = D.randomSplatSwirl; randomSplatSpread = D.randomSplatSpread;
@@ -302,6 +303,7 @@
 		if (config.densityDissipation !== undefined) densityDissipation = config.densityDissipation as number;
 		if (config.velocityDissipation !== undefined) velocityDissipation = config.velocityDissipation as number;
 		if (config.pressure !== undefined) pressure = config.pressure as number;
+		if (config.pressureIterations !== undefined) pressureIterations = config.pressureIterations as number;
 		if (config.bloomIntensity !== undefined) bloomIntensity = config.bloomIntensity as number;
 		if (config.sunraysWeight !== undefined) sunraysWeight = config.sunraysWeight as number;
 		if (config.shading !== undefined) shading = config.shading as boolean;
@@ -356,6 +358,8 @@
 		if (config.revealFadeBack !== undefined) revealFadeBack = config.revealFadeBack as boolean;
 		if (config.revealAutoReveal !== undefined) revealAutoReveal = config.revealAutoReveal as boolean;
 		if (config.revealAutoRevealSpeed !== undefined) revealAutoRevealSpeed = config.revealAutoRevealSpeed as number;
+		if (config.revealCoverColor !== undefined) revealCoverColor = config.revealCoverColor as string;
+		if (config.revealAccentColor !== undefined) revealAccentColor = config.revealAccentColor as string;
 		if (config.stickyText !== undefined) stickyText = config.stickyText as string;
 		if (config.stickyFont !== undefined) stickyFont = config.stickyFont as string;
 		if (config.stickyD !== undefined) stickyD = config.stickyD as string;
@@ -719,10 +723,12 @@
 			playgroundMode: 'distortion',
 			containerShape: { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 },
 		},
-		'Scratch to reveal': { playgroundMode: 'reveal', splatRadius: 0.12, velocityDissipation: 0.95, pressureIterations: 10 },
-		'Permanent reveal': { playgroundMode: 'reveal', revealFadeBack: false, revealCoverColor: '#292930', revealAccentColor: '#c8a864', curl: 15 },
-		'Auto-reveal': { playgroundMode: 'reveal', revealAutoReveal: true, revealAutoRevealSpeed: 0.8, revealFadeBack: false, revealCurve: 0.12, revealSensitivity: 0.15, revealCoverColor: '#0d1421', revealAccentColor: '#00c8ff' },
-		'Liquid reveal': { playgroundMode: 'reveal', pressure: 0.8, revealCurve: 0.5, revealSensitivity: 0.2, splatRadius: 0.3, revealCoverColor: '#f0e0e6', revealAccentColor: '#4a0e4f', curl: 3 }
+		'Scratch to reveal': { playgroundMode: 'reveal', velocityDissipation: 0.95, pressureIterations: 10 },
+		'Permanent reveal': { playgroundMode: 'reveal', revealFadeBack: false, revealCoverColor: '#292930', revealAccentColor: '#c8a864', velocityDissipation: 0.95, pressureIterations: 10 },
+		'Auto-reveal': { playgroundMode: 'reveal', revealAutoReveal: true, revealAutoRevealSpeed: 0.8, revealFadeBack: false, velocityDissipation: 0.95, revealSensitivity: 0.15, revealCoverColor: '#0d1421', revealAccentColor: '#00c8ff' },
+		'Turbulent reveal': { playgroundMode: 'reveal', pressure: 0.8, revealCurve: 0.5, revealSensitivity: 0.2, splatRadius: 0.3, revealCoverColor: '#f0e0e6', revealAccentColor: '#4a0e4f', curl: 3 },
+		'Circle reveal': { playgroundMode: 'reveal', containerShape: { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }, revealCoverColor: '#0a1f1f', revealAccentColor: '#00e6c8' },
+		'Bounded reveal': { playgroundMode: 'reveal', containerShape: { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.38, halfH: 0.42, cornerRadius: 0.08 }, revealCoverColor: '#2a0f1e', revealAccentColor: '#ff7a5c', curl: 10 }
 	};
 
 	const SCRIPT_OPEN = '<' + 'script lang="ts">';
@@ -1136,20 +1142,21 @@
 			</p>
 		</header>
 		<div class="grid-2col">
-			<Card title="Scratch to reveal" description="Move your cursor to uncover the gradient. Tight, viscous trails with iridescent fringes that fade back over time." onCustomize={() => loadConfig(PRESET_CONFIGS['Scratch to reveal'], 'Scratch to reveal')} snippet={`<FluidReveal\n  splatRadius={0.12}\n  velocityDissipation={0.95}\n  pressureIterations={10}\n>\n  <div style="width: 100%; height: 100%;\n    background: linear-gradient(\n      135deg, #667eea 0%, #764ba2 100%);\n    display: flex; align-items: center;\n    justify-content: center;\n    border-radius: 12px;">\n    <span>Revealed!</span>\n  </div>\n</FluidReveal>`}>
-				<FluidReveal lazy splatRadius={0.12} velocityDissipation={0.95} pressureIterations={10}>
+			<Card title="Scratch to reveal" description="Move your cursor to uncover the gradient. Tight, viscous trails with iridescent fringes that fade back over time." onCustomize={() => loadConfig(PRESET_CONFIGS['Scratch to reveal'], 'Scratch to reveal')} snippet={`<FluidReveal\n  velocityDissipation={0.95}\n  pressureIterations={10}\n>\n  <div style="width: 100%; height: 100%;\n    background: linear-gradient(\n      135deg, #667eea 0%, #764ba2 100%);\n    display: flex; align-items: center;\n    justify-content: center;\n    border-radius: 12px;">\n    <span>Revealed!</span>\n  </div>\n</FluidReveal>`}>
+				<FluidReveal lazy velocityDissipation={0.95} pressureIterations={10}>
 					<div class="reveal-content reveal-gradient">
 						<span class="reveal-label">Revealed!</span>
 					</div>
 				</FluidReveal>
 			</Card>
-			<Card title="Permanent reveal" description="Dark cover with gold fringes — a luxury scratch-card effect. Once revealed, content stays." onCustomize={() => loadConfig(PRESET_CONFIGS['Permanent reveal'], 'Permanent reveal')} snippet={`<FluidReveal\n  fadeBack={false}\n  coverColor={{ r: 0.16, g: 0.16, b: 0.18 }}\n  accentColor={{ r: 0.78, g: 0.66, b: 0.39 }}\n  curl={15}\n>\n  <div>Your content here</div>\n</FluidReveal>`}>
+			<Card title="Permanent reveal" description="Dark cover with gold fringes — a luxury scratch-card effect. Once revealed, content stays." onCustomize={() => loadConfig(PRESET_CONFIGS['Permanent reveal'], 'Permanent reveal')} snippet={`<FluidReveal\n  fadeBack={false}\n  velocityDissipation={0.95}\n  pressureIterations={10}\n  coverColor={{ r: 0.16, g: 0.16, b: 0.18 }}\n  accentColor={{ r: 0.78, g: 0.66, b: 0.39 }}\n>\n  <div>Your content here</div>\n</FluidReveal>`}>
 				<FluidReveal
 					lazy
 					fadeBack={false}
+					velocityDissipation={0.95}
+					pressureIterations={10}
 					coverColor={{ r: 0.16, g: 0.16, b: 0.18 }}
 					accentColor={{ r: 0.78, g: 0.66, b: 0.39 }}
-					curl={15}
 				>
 					<div class="reveal-content reveal-mosaic">
 						{#each Array(9) as _, i}
@@ -1158,13 +1165,13 @@
 					</div>
 				</FluidReveal>
 			</Card>
-			<Card title="Auto-reveal" description="A cursor traces a path automatically. Teal fringes on a deep navy cover — touch to take over." onCustomize={() => loadConfig(PRESET_CONFIGS['Auto-reveal'], 'Auto-reveal')} snippet={`<FluidReveal\n  autoReveal\n  autoRevealSpeed={0.8}\n  fadeBack={false}\n  curve={0.12}\n  sensitivity={0.15}\n  coverColor={{ r: 0.05, g: 0.08, b: 0.13 }}\n  accentColor={{ r: 0, g: 0.78, b: 1 }}\n>\n  <div>Your content here</div>\n</FluidReveal>`}>
+			<Card title="Auto-reveal" description="A cursor traces a path automatically. Teal fringes on a deep navy cover — touch to take over." onCustomize={() => loadConfig(PRESET_CONFIGS['Auto-reveal'], 'Auto-reveal')} snippet={`<FluidReveal\n  autoReveal\n  autoRevealSpeed={0.8}\n  fadeBack={false}\n  velocityDissipation={0.95}\n  sensitivity={0.15}\n  coverColor={{ r: 0.05, g: 0.08, b: 0.13 }}\n  accentColor={{ r: 0, g: 0.78, b: 1 }}\n>\n  <div>Your content here</div>\n</FluidReveal>`}>
 				<FluidReveal
 					lazy
 					autoReveal
 					autoRevealSpeed={0.8}
 					fadeBack={false}
-					curve={0.12}
+					velocityDissipation={0.95}
 					sensitivity={0.15}
 					coverColor={{ r: 0.05, g: 0.08, b: 0.13 }}
 					accentColor={{ r: 0, g: 0.78, b: 1 }}
@@ -1182,7 +1189,7 @@
 					</div>
 				</FluidReveal>
 			</Card>
-			<Card title="Liquid reveal" description="Blush cover with purple fringes. Fluid swirls and eddies create an organic, liquid unmasking effect." onCustomize={() => loadConfig(PRESET_CONFIGS['Liquid reveal'], 'Liquid reveal')} snippet={`<FluidReveal\n  pressure={0.8}\n  curve={0.5}\n  sensitivity={0.2}\n  splatRadius={0.3}\n  coverColor={{ r: 0.94, g: 0.88, b: 0.9 }}\n  accentColor={{ r: 0.29, g: 0.055, b: 0.31 }}\n  curl={3}\n>\n  <div>Your content here</div>\n</FluidReveal>`}>
+			<Card title="Turbulent reveal" description="Blush cover with purple fringes. Lower pressure and higher curl allow swirling, turbulent reveals." onCustomize={() => loadConfig(PRESET_CONFIGS['Turbulent reveal'], 'Turbulent reveal')} snippet={`<FluidReveal\n  pressure={0.8}\n  curve={0.5}\n  sensitivity={0.2}\n  splatRadius={0.3}\n  coverColor={{ r: 0.94, g: 0.88, b: 0.9 }}\n  accentColor={{ r: 0.29, g: 0.055, b: 0.31 }}\n  curl={3}\n>\n  <div>Your content here</div>\n</FluidReveal>`}>
 				<FluidReveal
 					lazy
 					pressure={0.8}
@@ -1194,7 +1201,37 @@
 					curl={3}
 				>
 					<div class="reveal-content reveal-gradient-2">
-						<span class="reveal-label">Liquid Reveal</span>
+						<span class="reveal-label">Turbulent Reveal</span>
+					</div>
+				</FluidReveal>
+			</Card>
+			<Card title="Circle reveal" description="Reveal clipped to a circle — fluid flows freely past the boundary (openBoundary). A peephole scratch-card." onCustomize={() => loadConfig(PRESET_CONFIGS['Circle reveal'], 'Circle reveal')} snippet={`<FluidReveal\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5, radius: 0.45\n  }}\n  coverColor={{ r: 0.04, g: 0.12, b: 0.12 }}\n  accentColor={{ r: 0, g: 0.9, b: 0.78 }}\n>\n  <div>Your content here</div>\n</FluidReveal>`}>
+				<FluidReveal
+					lazy
+					containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
+					coverColor={{ r: 0.04, g: 0.12, b: 0.12 }}
+					accentColor={{ r: 0, g: 0.9, b: 0.78 }}
+				>
+					<div class="reveal-content reveal-mosaic reveal-mosaic-teal">
+						{#each Array(9) as _, i}
+							<div class="mosaic-tile" style:background="hsl({160 + i * 15}, 55%, {35 + i * 5}%)"></div>
+						{/each}
+					</div>
+				</FluidReveal>
+			</Card>
+			<Card title="Bounded reveal" description="Rounded-rect boundary with openBoundary off — fluid bounces off the walls, creating turbulence at the edges." onCustomize={() => loadConfig(PRESET_CONFIGS['Bounded reveal'], 'Bounded reveal')} snippet={`<FluidReveal\n  openBoundary={false}\n  curl={10}\n  containerShape={{\n    type: 'roundedRect',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.38, halfH: 0.42,\n    cornerRadius: 0.08\n  }}\n  coverColor={{ r: 0.16, g: 0.06, b: 0.12 }}\n  accentColor={{ r: 1, g: 0.48, b: 0.36 }}\n>\n  <div>Your content here</div>\n</FluidReveal>`}>
+				<FluidReveal
+					lazy
+					openBoundary={false}
+					curl={10}
+					containerShape={{ type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.38, halfH: 0.42, cornerRadius: 0.08 }}
+					coverColor={{ r: 0.16, g: 0.06, b: 0.12 }}
+					accentColor={{ r: 1, g: 0.48, b: 0.36 }}
+				>
+					<div class="reveal-content reveal-mosaic reveal-mosaic-warm">
+						{#each Array(9) as _, i}
+							<div class="mosaic-tile" style:background="hsl({0 + i * 12}, 60%, {30 + i * 6}%)"></div>
+						{/each}
 					</div>
 				</FluidReveal>
 			</Card>
@@ -1317,6 +1354,7 @@
 					{densityDissipation}
 					{velocityDissipation}
 					{pressure}
+					{pressureIterations}
 					{bloomIntensity}
 					{sunraysWeight}
 					{bloom}
@@ -1463,6 +1501,7 @@
 					{densityDissipation}
 					{velocityDissipation}
 					{pressure}
+					{pressureIterations}
 					{bloomIntensity}
 					{sunraysWeight}
 					{shading}
@@ -1960,6 +1999,12 @@
 	.reveal-stars {
 		background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
 		border-radius: 12px;
+	}
+	.reveal-mosaic-teal {
+		background: #0a2e2e;
+	}
+	.reveal-mosaic-warm {
+		background: #2a0f1a;
 	}
 	.star {
 		position: absolute;

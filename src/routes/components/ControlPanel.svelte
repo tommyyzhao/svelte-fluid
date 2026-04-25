@@ -84,7 +84,7 @@
 		glassChromatic: 0.15,
 		reveal: false,
 		revealSensitivity: 0.1,
-		revealCurve: 0.25,
+		revealCurve: 0.24,
 		revealFadeBack: true,
 		revealAutoReveal: false,
 		revealAutoRevealSpeed: 1.0,

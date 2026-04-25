@@ -360,6 +360,13 @@ export interface FluidConfig {
 	 */
 	revealCoverColor?: RGB;
 	/**
+	 * Accent color shown in the fringe zone between the solid cover and
+	 * the fully revealed content. Controls the colored gradient at reveal
+	 * edges. RGB components in 0–1 linear range. Default
+	 * `{ r: 0.05, g: 0.16, b: 0.32 }` (deep navy). Bucket A.
+	 */
+	revealAccentColor?: RGB;
+	/**
 	 * Enable distortion mode. The fluid velocity field warps an underlying
 	 * image instead of rendering dye colors. Cursor movement creates
 	 * velocity splats that ripple and distort the image like liquid glass.
@@ -506,6 +513,7 @@ export interface ResolvedConfig {
 	REVEAL_SENSITIVITY: number;
 	REVEAL_CURVE: number;
 	REVEAL_COVER_COLOR: RGB;
+	REVEAL_ACCENT_COLOR: RGB;
 	DISTORTION: boolean;
 	DISTORTION_POWER: number;
 	DISTORTION_IMAGE_URL: string | null;

@@ -278,7 +278,7 @@ describe('velocity dissipation in multiplicative mode (REVEAL/STICKY)', () => {
 	});
 
 	it('reveal mode honors multiplicative-range values (> 0.5)', () => {
-		// FluidReveal sets velocityDissipation=0.9 — should be respected
+		// FluidReveal sets velocityDissipation=0.98 — should be respected
 		expect(effectiveVelocityDissipation({ reveal: true, sticky: false, velocityDissipation: 0.9 })).toBe(0.9);
 		expect(effectiveVelocityDissipation({ reveal: true, sticky: false, velocityDissipation: 0.95 })).toBe(0.95);
 	});
