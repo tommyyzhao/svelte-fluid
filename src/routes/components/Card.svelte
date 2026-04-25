@@ -171,4 +171,17 @@
 		color: #fff;
 		border-color: #555;
 	}
+
+	@media (max-width: 600px) {
+		.canvas-slot {
+			height: 200px;
+		}
+		.customize-btn {
+			padding: 6px 10px;
+			font-size: 0.72rem;
+		}
+		.code-toggle {
+			padding: 6px 10px;
+		}
+	}
 </style>

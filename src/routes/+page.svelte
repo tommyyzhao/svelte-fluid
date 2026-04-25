@@ -158,7 +158,13 @@
 	});
 
 	// Snapshot fluid physics when switching away from fluid mode, restore on switch back.
-	let fluidSnapshot: { curl: number; velocityDissipation: number; splatRadius: number; bloom: boolean; sunrays: boolean; shading: boolean } | null = null;
+	let fluidSnapshot: {
+		curl: number; velocityDissipation: number; splatRadius: number;
+		bloom: boolean; sunrays: boolean; shading: boolean;
+		densityDissipation: number; splatOnHover: boolean; pressure: number;
+		randomSplatRate: number; randomSplatCount: number;
+		randomSplatSwirl: number; randomSplatSpread: number; colorful: boolean;
+	} | null = null;
 	let prevMode: string = 'fluid';
 	$effect(() => {
 		const mode = playgroundMode;
@@ -168,23 +174,41 @@
 			prevMode = mode;
 			// Snapshot when leaving fluid mode
 			if (oldMode === 'fluid') {
-				fluidSnapshot = { curl, velocityDissipation, splatRadius, bloom, sunrays, shading };
+				fluidSnapshot = {
+					curl, velocityDissipation, splatRadius, bloom, sunrays, shading,
+					densityDissipation, splatOnHover, pressure,
+					randomSplatRate, randomSplatCount, randomSplatSwirl, randomSplatSpread, colorful
+				};
 			}
 			// Apply mode-specific defaults
 			if (mode === 'reveal') {
 				curl = 0; velocityDissipation = 0.9; splatRadius = 0.2;
 				bloom = false; sunrays = false; shading = false;
+				splatOnHover = false; densityDissipation = D.densityDissipation;
+				pressure = D.pressure; colorful = true;
+				randomSplatRate = 0; randomSplatCount = 1;
+				randomSplatSwirl = 0; randomSplatSpread = 0.1;
 			} else if (mode === 'sticky') {
 				densityDissipation = 0.98; splatRadius = 1.0; curl = 20;
 				bloom = false; sunrays = false; shading = true; splatOnHover = true;
+				velocityDissipation = 0.2; pressure = D.pressure; colorful = true;
+				randomSplatRate = 0.4; randomSplatCount = 3;
+				randomSplatSwirl = 500; randomSplatSpread = 2.0;
 				stickyRemountKey++;
 			} else if (mode === 'distortion') {
 				curl = 0; velocityDissipation = 0.97; splatRadius = 1.0;
 				bloom = false; sunrays = false; shading = false;
 				pressure = 0; densityDissipation = 0.98;
+				splatOnHover = false; colorful = false;
+				randomSplatRate = 0; randomSplatCount = 1;
+				randomSplatSwirl = 0; randomSplatSpread = 0.1;
 				distortionRemountKey++;
 			} else if (mode === 'fluid' && fluidSnapshot) {
-				({ curl, velocityDissipation, splatRadius, bloom, sunrays, shading } = fluidSnapshot);
+				({
+					curl, velocityDissipation, splatRadius, bloom, sunrays, shading,
+					densityDissipation, splatOnHover, pressure,
+					randomSplatRate, randomSplatCount, randomSplatSwirl, randomSplatSpread, colorful
+				} = fluidSnapshot);
 				fluidSnapshot = null;
 			}
 		});
@@ -235,6 +259,8 @@
 		distortionInitialSplats = D.distortionInitialSplats;
 		customContainerShape = null;
 		showShapePreview = false; loadedPreset = '';
+		fluidSnapshot = null;
+		prevMode = D.playgroundMode;
 	}
 
 	function loadConfig(config: PlaygroundConfig, name: string) {
@@ -248,16 +274,26 @@
 			fluidSnapshot = null;
 			curl = 0; velocityDissipation = 0.9; splatRadius = 0.2;
 			bloom = false; sunrays = false; shading = false;
+			splatOnHover = false; densityDissipation = D.densityDissipation;
+			pressure = D.pressure; colorful = true;
+			randomSplatRate = 0; randomSplatCount = 1;
+			randomSplatSwirl = 0; randomSplatSpread = 0.1;
 		} else if (targetMode === 'sticky') {
 			fluidSnapshot = null;
 			densityDissipation = 0.98; splatRadius = 1.0; curl = 20;
 			bloom = false; sunrays = false; shading = true; splatOnHover = true;
+			velocityDissipation = 0.2; pressure = D.pressure; colorful = true;
+			randomSplatRate = 0.4; randomSplatCount = 3;
+			randomSplatSwirl = 500; randomSplatSpread = 2.0;
 			stickyRemountKey++;
 		} else if (targetMode === 'distortion') {
 			fluidSnapshot = null;
 			curl = 0; velocityDissipation = 0.97; splatRadius = 1.0;
 			bloom = false; sunrays = false; shading = false;
 			pressure = 0; densityDissipation = 0.98;
+			splatOnHover = false; colorful = false;
+			randomSplatRate = 0; randomSplatCount = 1;
+			randomSplatSwirl = 0; randomSplatSpread = 0.1;
 			distortionRemountKey++;
 		}
 		if (config.curl !== undefined) curl = config.curl as number;
@@ -413,7 +449,7 @@
 		return btoa(JSON.stringify(s));
 	}
 
-	function deserializeState(hash: string) {
+	function deserializeState(hash: string, showBanner = true) {
 		try {
 			const s = JSON.parse(atob(hash)) as Record<string, unknown>;
 			const g = (k: string) => s[k];
@@ -489,8 +525,10 @@
 			if (g('ow') !== undefined) containerOuterHalfW = g('ow') as number;
 			if (g('oh2') !== undefined) containerOuterHalfH = g('oh2') as number;
 			if (g('oc') !== undefined) containerOuterCornerRadius = g('oc') as number;
-			loadedPreset = 'Shared config';
-			document.getElementById('playground')?.scrollIntoView({ behavior: 'smooth' });
+			if (showBanner) {
+				loadedPreset = 'Shared config';
+				document.getElementById('playground')?.scrollIntoView({ behavior: 'smooth' });
+			}
 		} catch { /* ignore malformed hashes */ }
 	}
 
@@ -531,7 +569,7 @@
 	onMount(() => {
 		const hash = window.location.hash;
 		if (hash.startsWith('#pg=')) {
-			deserializeState(hash.slice(4));
+			deserializeState(hash.slice(4), false);
 		}
 	});
 
@@ -682,9 +720,9 @@
 			containerShape: { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 },
 		},
 		'Scratch to reveal': { playgroundMode: 'reveal' },
-		'Permanent reveal': { playgroundMode: 'reveal', revealFadeBack: false },
-		'Auto-reveal': { playgroundMode: 'reveal', revealAutoReveal: true, revealAutoRevealSpeed: 0.8, revealFadeBack: false, revealSensitivity: 0.15 },
-		'Soft reveal': { playgroundMode: 'reveal', revealCurve: 0.5, revealSensitivity: 0.2, splatRadius: 0.3 }
+		'Permanent reveal': { playgroundMode: 'reveal', revealFadeBack: false, revealCoverColor: '#292930', revealAccentColor: '#c8a864', curl: 15 },
+		'Auto-reveal': { playgroundMode: 'reveal', revealAutoReveal: true, revealAutoRevealSpeed: 0.8, revealFadeBack: false, revealSensitivity: 0.15, revealCoverColor: '#0d1421', revealAccentColor: '#00c8ff' },
+		'Soft reveal': { playgroundMode: 'reveal', revealCurve: 0.5, revealSensitivity: 0.2, splatRadius: 0.3, revealCoverColor: '#f0e0e6', revealAccentColor: '#4a0e4f', curl: 3 }
 	};
 
 	const SCRIPT_OPEN = '<' + 'script lang="ts">';
@@ -1105,10 +1143,13 @@
 					</div>
 				</FluidReveal>
 			</Card>
-			<Card title="Permanent reveal" description="Disable fade-back for a scratch-card effect. Once revealed, content stays visible." onCustomize={() => loadConfig(PRESET_CONFIGS['Permanent reveal'], 'Permanent reveal')} snippet={`<FluidReveal fadeBack={false}>\n  <div style="display: grid;\n    grid-template-columns: repeat(3, 1fr);\n    gap: 6px; padding: 10px;\n    width: 100%; height: 100%;\n    background: #1a1a2e;\n    border-radius: 12px;">\n    {#each Array(9) as _, i}\n      <div style="aspect-ratio: 1;\n        border-radius: 6px;\n        background: hsl({i * 40}, 65%, 55%)" />\n    {/each}\n  </div>\n</FluidReveal>`}>
+			<Card title="Permanent reveal" description="Dark cover with gold fringes — a luxury scratch-card effect. Once revealed, content stays." onCustomize={() => loadConfig(PRESET_CONFIGS['Permanent reveal'], 'Permanent reveal')} snippet={`<FluidReveal\n  fadeBack={false}\n  coverColor={{ r: 0.16, g: 0.16, b: 0.18 }}\n  accentColor={{ r: 0.78, g: 0.66, b: 0.39 }}\n  curl={15}\n>\n  <div>Your content here</div>\n</FluidReveal>`}>
 				<FluidReveal
 					lazy
 					fadeBack={false}
+					coverColor={{ r: 0.16, g: 0.16, b: 0.18 }}
+					accentColor={{ r: 0.78, g: 0.66, b: 0.39 }}
+					curl={15}
 				>
 					<div class="reveal-content reveal-mosaic">
 						{#each Array(9) as _, i}
@@ -1117,13 +1158,15 @@
 					</div>
 				</FluidReveal>
 			</Card>
-			<Card title="Auto-reveal" description="An automated cursor traces a pattern to reveal content. Touch or click to take over." onCustomize={() => loadConfig(PRESET_CONFIGS['Auto-reveal'], 'Auto-reveal')} snippet={`<FluidReveal\n  autoReveal\n  autoRevealSpeed={0.8}\n  fadeBack={false}\n  sensitivity={0.15}\n>\n  <div style="width: 100%; height: 100%;\n    background: linear-gradient(\n      135deg, #0f0c29, #302b63, #24243e);\n    display: flex; align-items: center;\n    justify-content: center;\n    border-radius: 12px; position: relative;">\n    <span>Auto Reveal</span>\n    <!-- colored dots positioned absolutely -->\n  </div>\n</FluidReveal>`}>
+			<Card title="Auto-reveal" description="A cursor traces a path automatically. Teal fringes on a deep navy cover — touch to take over." onCustomize={() => loadConfig(PRESET_CONFIGS['Auto-reveal'], 'Auto-reveal')} snippet={`<FluidReveal\n  autoReveal\n  autoRevealSpeed={0.8}\n  fadeBack={false}\n  sensitivity={0.15}\n  coverColor={{ r: 0.05, g: 0.08, b: 0.13 }}\n  accentColor={{ r: 0, g: 0.78, b: 1 }}\n>\n  <div>Your content here</div>\n</FluidReveal>`}>
 				<FluidReveal
 					lazy
 					autoReveal
 					autoRevealSpeed={0.8}
 					fadeBack={false}
 					sensitivity={0.15}
+					coverColor={{ r: 0.05, g: 0.08, b: 0.13 }}
+					accentColor={{ r: 0, g: 0.78, b: 1 }}
 				>
 					<div class="reveal-content reveal-stars">
 						<span class="reveal-label">Auto Reveal</span>
@@ -1138,12 +1181,15 @@
 					</div>
 				</FluidReveal>
 			</Card>
-			<Card title="Soft reveal" description="Higher softness creates more gradual, feathered reveal edges." onCustomize={() => loadConfig(PRESET_CONFIGS['Soft reveal'], 'Soft reveal')} snippet={`<FluidReveal\n  curve={0.5}\n  sensitivity={0.2}\n  splatRadius={0.3}\n>\n  <div style="width: 100%; height: 100%;\n    background: linear-gradient(\n      135deg, #f093fb 0%,\n      #f5576c 50%, #4facfe 100%);\n    display: flex; align-items: center;\n    justify-content: center;\n    border-radius: 12px;">\n    <span>Soft Edges</span>\n  </div>\n</FluidReveal>`}>
+			<Card title="Soft reveal" description="Blush cover with purple fringes. Wide brush, soft gradient edges, and gentle turbulence." onCustomize={() => loadConfig(PRESET_CONFIGS['Soft reveal'], 'Soft reveal')} snippet={`<FluidReveal\n  curve={0.5}\n  sensitivity={0.2}\n  splatRadius={0.3}\n  coverColor={{ r: 0.94, g: 0.88, b: 0.9 }}\n  accentColor={{ r: 0.29, g: 0.055, b: 0.31 }}\n  curl={3}\n>\n  <div>Your content here</div>\n</FluidReveal>`}>
 				<FluidReveal
 					lazy
 					curve={0.5}
 					sensitivity={0.2}
 					splatRadius={0.3}
+					coverColor={{ r: 0.94, g: 0.88, b: 0.9 }}
+					accentColor={{ r: 0.29, g: 0.055, b: 0.31 }}
+					curl={3}
 				>
 					<div class="reveal-content reveal-gradient-2">
 						<span class="reveal-label">Soft Edges</span>
@@ -1264,8 +1310,37 @@
 					coverColor={revealCoverRgb}
 					accentColor={revealAccentRgb}
 					{splatRadius}
+					{splatForce}
 					{curl}
-					velocityDissipation={velocityDissipation}
+					{densityDissipation}
+					{velocityDissipation}
+					{pressure}
+					{bloomIntensity}
+					{sunraysWeight}
+					{bloom}
+					{sunrays}
+					{shading}
+					{colorful}
+					{paused}
+					{splatOnHover}
+					{dyeResolution}
+					{simResolution}
+					{randomSplatRate}
+					{randomSplatCount}
+					{randomSplatSwirl}
+					{randomSplatSpread}
+					{randomSplatSpawnY}
+					{randomSplatDx}
+					{randomSplatDy}
+					{randomSplatEvenSpacing}
+					{transparent}
+					backColor={{ r: backColorR, g: backColorG, b: backColorB }}
+					containerShape={containerShapeType !== 'none' ? containerShape : undefined}
+					{glass}
+					{glassThickness}
+					{glassRefraction}
+					{glassReflectivity}
+					{glassChromatic}
 				>
 					{#if revealContent === 'mosaic'}
 						<div class="playground-reveal-content playground-reveal-mosaic">
@@ -1300,10 +1375,25 @@
 					{splatForce}
 					{densityDissipation}
 					{velocityDissipation}
+					{pressure}
+					{bloomIntensity}
+					{sunraysWeight}
 					{bloom}
 					{sunrays}
 					{shading}
 					{colorful}
+					{paused}
+					{splatOnHover}
+					{dyeResolution}
+					{simResolution}
+					{randomSplatRate}
+					{randomSplatCount}
+					{randomSplatSwirl}
+					{randomSplatSpread}
+					{randomSplatSpawnY}
+					{randomSplatDx}
+					{randomSplatDy}
+					{randomSplatEvenSpacing}
 					containerShape={containerShapeType !== 'none' ? containerShape : undefined}
 					{glass}
 					{glassThickness}
@@ -1328,8 +1418,35 @@
 					{curl}
 					{splatRadius}
 					{splatForce}
+					{densityDissipation}
 					{velocityDissipation}
+					{pressure}
+					{bloomIntensity}
+					{sunraysWeight}
+					{bloom}
+					{sunrays}
+					{shading}
+					{colorful}
+					{paused}
+					{splatOnHover}
+					{dyeResolution}
+					{simResolution}
+					{randomSplatRate}
+					{randomSplatCount}
+					{randomSplatSwirl}
+					{randomSplatSpread}
+					{randomSplatSpawnY}
+					{randomSplatDx}
+					{randomSplatDy}
+					{randomSplatEvenSpacing}
+					{transparent}
+					backColor={{ r: backColorR, g: backColorG, b: backColorB }}
 					containerShape={containerShapeType !== 'none' ? containerShape : undefined}
+					{glass}
+					{glassThickness}
+					{glassRefraction}
+					{glassReflectivity}
+					{glassChromatic}
 				/>
 				{/key}
 			{:else}
@@ -1655,6 +1772,19 @@
 		.grid-2col {
 			grid-template-columns: 1fr;
 		}
+		main {
+			padding: 40px 16px;
+			gap: 32px;
+		}
+		.tagline {
+			font-size: 0.9rem;
+		}
+		.get-started {
+			padding: 16px 18px;
+		}
+		.bg-code-panel {
+			width: calc(100vw - 28px);
+		}
 	}
 
 	.section-header {
@@ -1718,6 +1848,11 @@
 		}
 		.playground-canvas {
 			min-height: 320px;
+		}
+	}
+	@media (max-width: 480px) {
+		.playground-canvas {
+			min-height: 260px;
 		}
 	}
 

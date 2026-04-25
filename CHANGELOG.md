@@ -13,6 +13,65 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Shared fluid controls for all playground tabs** — Sticky, Reveal, and Distortion
+  tabs now display the same accordion sections as the Fluid tab: Physics, Random
+  Splats, Visuals, Resolution, Background, Container Shape, Glass. All controls
+  are wired to the active component instance. Mode-specific sections remain at top.
+- **Full prop passthrough for playground instances** — `FluidStick`, `FluidReveal`,
+  and `FluidDistortion` playground components now receive all shared fluid props
+  (pressure, bloomIntensity, sunraysWeight, splatOnHover, dyeResolution,
+  simResolution, paused, randomSplat*, backColor, glass*, transparent, etc.)
+  so slider changes in shared accordions take effect immediately.
+- **Reveal preset color variety** — each reveal demo card now has distinct
+  coverColor/accentColor: "Permanent reveal" (dark charcoal + gold), "Auto-reveal"
+  (deep navy + teal), "Soft reveal" (warm blush + deep purple). PRESET_CONFIGS
+  updated so Customize buttons carry colors.
+- **Mobile touch targets** — `@media (max-width: 600px)` rules in ControlPanel
+  (mode toggle buttons 10px padding, accordion headers, action buttons), Card
+  (Customize/code buttons 6px padding), +page.svelte (tighter main padding,
+  smaller playground canvas min-height on <480px, bg-code-panel width capped).
+- **ControlPanel removes max-height on mobile** — `max-height: none` at <800px
+  so the panel expands naturally in stacked layout instead of scrolling.
+
+### Changed
+
+- **Mode-switch snapshot expanded** — snapshot now saves/restores 14 values (was 6):
+  added densityDissipation, splatOnHover, pressure, randomSplatRate/Count/Swirl/
+  Spread, colorful. Each mode switch sets appropriate defaults for all params.
+  `resetAllDefaults()` clears `fluidSnapshot` and `prevMode` to prevent stale
+  snapshot restoration after Reset.
+- **Reveal/Sticky/Distortion ControlPanel sections trimmed** — removed controls
+  that duplicated shared accordions: curl/splatRadius/velocityDissipation from
+  Reveal Physics, densityDissipation/splatRadius/curl + Container from Sticky,
+  velocityDissipation + Container from Distortion.
+- **Snippet builders fixed** — `buildRevealSnippet()` now compares against
+  FluidReveal defaults (splatRadius=0.2, curl=0, velocityDissipation=0.9) instead
+  of Fluid defaults. All three non-fluid builders now include shared props (bloom,
+  sunrays, shading, splatForce, pressure, etc.) when they differ from component
+  defaults.
+- **maskPadding label** → "Text size" with hint explaining fill fraction semantics.
+- **Random Splat labels clarified** — randomSplatRate→"Rate (splats/sec)",
+  randomSplatCount→"Count per burst", randomSplatSwirl→"Swirl",
+  randomSplatSpread→"Spawn spread", randomSplatSpawnY→"Spawn height",
+  randomSplatDx/Dy→"Velocity X/Y".
+- **splatRadius slider max** — Fluid quick controls bumped from 1.0→2.0 to match
+  shared accordion range.
+- **Frame outer controls in shared Shape section** — added outerHalfW, outerHalfH,
+  outerCornerRadius sliders (were only in Fluid tab).
+
+### Fixed
+
+- **Paused doesn't stop random splats** — `accumulateRandomSplatTimer(dt)` was
+  called before the `!PAUSED` check in `FluidEngine.update()`. Moved inside the
+  `if (!PAUSED)` block so pausing truly freezes all simulation activity.
+- **"Loaded: Shared config" banner on fresh load** — URL hash auto-serialization
+  caused `deserializeState()` to set `loadedPreset='Shared config'` on page load.
+  Added `showBanner` parameter; initial mount passes `false` so no banner appears.
+  Only explicit Share link navigation shows it.
+- **Reset from non-fluid tab restores stale snapshot** — `resetAllDefaults()` now
+  clears `fluidSnapshot=null` and resets `prevMode`, preventing the mode-switch
+  `$effect` from overwriting reset values.
+
 - **Playground Sticky tab** — 3rd playground mode with FluidStick controls: text/font
   inputs, SVG path textarea, maskBlur/maskPadding sliders, sticky physics (strength,
   amplify, pressure, densityDissipation), auto-animate speed/duration, container
