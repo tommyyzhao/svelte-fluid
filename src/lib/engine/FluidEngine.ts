@@ -1287,8 +1287,10 @@ export class FluidEngine implements FluidHandle {
 		const dt = this.calcDeltaTime();
 		this.updateColors(dt);
 		this.applyInputs();
-		this.accumulateRandomSplatTimer(dt);
-		if (!this.config.PAUSED) this.step(dt);
+		if (!this.config.PAUSED) {
+			this.accumulateRandomSplatTimer(dt);
+			this.step(dt);
+		}
 		this.render(null);
 		this.rafId = requestAnimationFrame(this.tick);
 	}

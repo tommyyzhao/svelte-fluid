@@ -509,9 +509,13 @@
 		fmt('autoReveal', revealAutoReveal, D.revealAutoReveal);
 		fmt('autoRevealSpeed', revealAutoRevealSpeed, D.revealAutoRevealSpeed);
 		// Compare against FluidReveal defaults, not Fluid defaults.
-		fmt('splatRadius', splatRadius, D.splatRadius);
-		fmt('curl', curl, D.curl);
-		fmt('velocityDissipation', velocityDissipation, D.velocityDissipation);
+		fmt('splatRadius', splatRadius, 0.2);
+		fmt('curl', curl, 0);
+		fmt('velocityDissipation', velocityDissipation, 0.9);
+		fmt('splatForce', splatForce, 6000);
+		fmt('bloom', bloom, false);
+		fmt('sunrays', sunrays, false);
+		fmt('shading', shading, false);
 		const content = '  <div>Your content here</div>';
 		if (lines.length === 0) return `<FluidReveal>\n${content}\n</FluidReveal>`;
 		return ['<FluidReveal', ...lines, '>', content, '</FluidReveal>'].join('\n');
@@ -539,6 +543,12 @@
 		fmt('densityDissipation', densityDissipation, 0.98);
 		fmt('splatRadius', splatRadius, 1.0);
 		fmt('curl', curl, 20);
+		fmt('splatForce', splatForce, 6000);
+		fmt('velocityDissipation', velocityDissipation, 0.2);
+		fmt('bloom', bloom, false);
+		fmt('sunrays', sunrays, false);
+		fmt('shading', shading, true);
+		fmt('pressure', pressure, 0.8);
 		if (lines.length === 0) return '<FluidStick\n  text="FLUID"\n  font="900 120px sans-serif"\n/>';
 		return ['<FluidStick', ...lines, '/>'].join('\n');
 	}
@@ -559,6 +569,13 @@
 		fmt('autoDistortSpeed', distortionAutoDistortSpeed, 1.0);
 		fmt('initialSplats', distortionInitialSplats, 20);
 		fmt('velocityDissipation', velocityDissipation, 0.97);
+		fmt('densityDissipation', densityDissipation, 0.98);
+		fmt('curl', curl, 0);
+		fmt('splatRadius', splatRadius, 1);
+		fmt('pressure', pressure, 0);
+		fmt('bloom', bloom, false);
+		fmt('sunrays', sunrays, false);
+		fmt('shading', shading, false);
 		return ['<FluidDistortion', ...lines, '/>'].join('\n');
 	}
 
@@ -600,7 +617,7 @@
 			</label>
 			<label>
 				<span>splatRadius <em>{splatRadius.toFixed(2)}</em></span>
-				<input type="range" min="0.05" max="1" step="0.01" bind:value={splatRadius} />
+				<input type="range" min="0.05" max="2" step="0.01" bind:value={splatRadius} />
 			</label>
 			<div class="quick-row">
 				<label class="check"><input type="checkbox" bind:checked={bloom} /> Bloom</label>
@@ -664,31 +681,31 @@
 		{#if openSections.has('splats')}
 			<section class="accordion-body">
 				<label>
-					<span>randomSplatRate <em>{randomSplatRate.toFixed(1)}</em></span>
+					<span>Rate (splats/sec) <em>{randomSplatRate.toFixed(1)}</em></span>
 					<input type="range" min="0" max="5" step="0.1" bind:value={randomSplatRate} />
 				</label>
 				<label>
-					<span>randomSplatCount <em>{randomSplatCount}</em></span>
+					<span>Count per burst <em>{randomSplatCount}</em></span>
 					<input type="range" min="1" max="10" step="1" bind:value={randomSplatCount} />
 				</label>
 				<label>
-					<span>randomSplatSwirl <em>{randomSplatSwirl}</em></span>
+					<span>Swirl <em>{randomSplatSwirl}</em></span>
 					<input type="range" min="-1000" max="1000" step="50" bind:value={randomSplatSwirl} />
 				</label>
 				<label>
-					<span>randomSplatSpread <em>{randomSplatSpread.toFixed(2)}</em></span>
+					<span>Spawn spread <em>{randomSplatSpread.toFixed(2)}</em></span>
 					<input type="range" min="0" max="3" step="0.05" bind:value={randomSplatSpread} />
 				</label>
 				<label>
-					<span>randomSplatSpawnY <em>{randomSplatSpawnY.toFixed(2)}</em></span>
+					<span>Spawn height <em>{randomSplatSpawnY.toFixed(2)}</em></span>
 					<input type="range" min="0" max="1" step="0.05" bind:value={randomSplatSpawnY} />
 				</label>
 				<label>
-					<span>randomSplatDx <em>{randomSplatDx}</em></span>
+					<span>Velocity X <em>{randomSplatDx}</em></span>
 					<input type="range" min="-1000" max="1000" step="50" bind:value={randomSplatDx} />
 				</label>
 				<label>
-					<span>randomSplatDy <em>{randomSplatDy}</em></span>
+					<span>Velocity Y <em>{randomSplatDy}</em></span>
 					<input type="range" min="-1000" max="1000" step="50" bind:value={randomSplatDy} />
 				</label>
 				<label class="check"><input type="checkbox" bind:checked={randomSplatEvenSpacing} /> Even spacing</label>
@@ -898,10 +915,6 @@
 				<span>curve <em>{revealCurve.toFixed(2)}</em></span>
 				<input type="range" min="0.01" max="2" step="0.01" bind:value={revealCurve} />
 			</label>
-			<label>
-				<span>splatRadius <em>{splatRadius.toFixed(2)}</em></span>
-				<input type="range" min="0.05" max="1" step="0.01" bind:value={splatRadius} />
-			</label>
 			<label class="check"><input type="checkbox" bind:checked={revealFadeBack} /> Fade back</label>
 			<label class="check"><input type="checkbox" bind:checked={revealAutoReveal} /> Auto-reveal</label>
 			{#if revealAutoReveal}
@@ -910,17 +923,6 @@
 					<input type="range" min="0.1" max="3" step="0.1" bind:value={revealAutoRevealSpeed} />
 				</label>
 			{/if}
-		</section>
-		<section>
-			<h4>Physics</h4>
-			<label>
-				<span>curl <em>{curl}</em></span>
-				<input type="range" min="0" max="50" step="1" bind:value={curl} />
-			</label>
-			<label>
-				<span>velocityDissipation <em>{velocityDissipation.toFixed(3)}</em></span>
-				<input type="range" min="0" max="1" step="0.005" bind:value={velocityDissipation} />
-			</label>
 		</section>
 	{:else if playgroundMode === 'sticky'}
 		<section>
@@ -943,9 +945,10 @@
 				<input type="range" min="0" max="12" step="1" bind:value={stickyMaskBlur} />
 			</label>
 			<label>
-				<span>maskPadding <em>{stickyMaskPadding.toFixed(2)}</em></span>
+				<span>Text size <em>{stickyMaskPadding.toFixed(2)}</em></span>
 				<input type="range" min="0.2" max="1" step="0.05" bind:value={stickyMaskPadding} />
 			</label>
+			<p class="field-hint">How much of the canvas the text fills (0.9 = 90%). Lower = smaller text, more margin.</p>
 		</section>
 		<section>
 			<h4>Sticky Physics</h4>
@@ -961,18 +964,6 @@
 				<span>pressure <em>{stickyPressure.toFixed(2)}</em></span>
 				<input type="range" min="0" max="1" step="0.05" bind:value={stickyPressure} />
 			</label>
-			<label>
-				<span>densityDissipation <em>{densityDissipation.toFixed(2)}</em></span>
-				<input type="range" min="0.5" max="1" step="0.01" bind:value={densityDissipation} />
-			</label>
-			<label>
-				<span>splatRadius <em>{splatRadius.toFixed(2)}</em></span>
-				<input type="range" min="0.1" max="3" step="0.1" bind:value={splatRadius} />
-			</label>
-			<label>
-				<span>curl <em>{curl}</em></span>
-				<input type="range" min="0" max="50" step="1" bind:value={curl} />
-			</label>
 		</section>
 		<section>
 			<h4>Auto-Animate</h4>
@@ -984,38 +975,6 @@
 				<span>duration <em>{stickyAutoAnimateDuration.toFixed(1)}s</em></span>
 				<input type="range" min="1" max="15" step="0.5" bind:value={stickyAutoAnimateDuration} />
 			</label>
-		</section>
-		<section>
-			<h4>Container</h4>
-			<label>
-				<span>Shape</span>
-				<select bind:value={containerShapeType}>
-					<option value="none">Rectangle</option>
-					<option value="circle">Circle</option>
-					<option value="roundedRect">Rounded rect</option>
-				</select>
-			</label>
-			{#if containerShapeType === 'circle'}
-				<label>
-					<span>radius <em>{containerRadius.toFixed(2)}</em></span>
-					<input type="range" min="0.1" max="0.5" step="0.01" bind:value={containerRadius} />
-				</label>
-			{/if}
-			{#if containerShapeType === 'roundedRect'}
-				<label>
-					<span>halfW <em>{containerHalfW.toFixed(2)}</em></span>
-					<input type="range" min="0.1" max="0.45" step="0.01" bind:value={containerHalfW} />
-				</label>
-				<label>
-					<span>halfH <em>{containerHalfH.toFixed(2)}</em></span>
-					<input type="range" min="0.1" max="0.45" step="0.01" bind:value={containerHalfH} />
-				</label>
-				<label>
-					<span>cornerRadius <em>{containerCornerRadius.toFixed(2)}</em></span>
-					<input type="range" min="0" max="0.15" step="0.005" bind:value={containerCornerRadius} />
-				</label>
-			{/if}
-			<label class="check"><input type="checkbox" bind:checked={glass} /> Glass</label>
 		</section>
 	{:else if playgroundMode === 'distortion'}
 		<section>
@@ -1036,10 +995,6 @@
 				<input type="range" min="1" max="100" step="1" bind:value={distortionIntensity} />
 			</label>
 			<label>
-				<span>velocityDissipation <em>{velocityDissipation.toFixed(2)}</em></span>
-				<input type="range" min="0.5" max="1" step="0.01" bind:value={velocityDissipation} />
-			</label>
-			<label>
 				<span>initialSplats <em>{distortionInitialSplats}</em></span>
 				<input type="range" min="0" max="50" step="1" bind:value={distortionInitialSplats} />
 			</label>
@@ -1054,16 +1009,271 @@
 				</label>
 			{/if}
 		</section>
-		<section>
-			<h4>Container</h4>
-			<label>
-				<span>Shape</span>
-				<select bind:value={containerShapeType}>
-					<option value="none">Rectangle</option>
-					<option value="circle">Circle</option>
-				</select>
-			</label>
-		</section>
+	{/if}
+
+	{#if playgroundMode !== 'fluid'}
+		<!-- Shared fluid controls — same accordions as the Fluid tab -->
+		<button class="accordion-header" onclick={() => toggleSection('physics')}>
+			<span>Physics</span>
+			{#if physicsChanges > 0}<span class="badge">{physicsChanges}</span>{/if}
+			<span class="chevron" class:open={openSections.has('physics')}></span>
+		</button>
+		{#if openSections.has('physics')}
+			<section class="accordion-body">
+				<label>
+					<span>curl <em>{curl}</em></span>
+					<input type="range" min="0" max="50" step="1" bind:value={curl} />
+				</label>
+				<label>
+					<span>splatRadius <em>{splatRadius.toFixed(2)}</em></span>
+					<input type="range" min="0.05" max="2" step="0.01" bind:value={splatRadius} />
+				</label>
+				<label>
+					<span>densityDissipation <em>{densityDissipation.toFixed(2)}</em></span>
+					<input type="range" min="0" max="4" step="0.05" bind:value={densityDissipation} />
+				</label>
+				<label>
+					<span>splatForce <em>{splatForce}</em></span>
+					<input type="range" min="500" max="12000" step="100" bind:value={splatForce} />
+				</label>
+				<label>
+					<span>velocityDissipation <em>{velocityDissipation.toFixed(2)}</em></span>
+					<input type="range" min="0" max="4" step="0.05" bind:value={velocityDissipation} />
+				</label>
+				<label>
+					<span>pressure <em>{pressure.toFixed(2)}</em></span>
+					<input type="range" min="0" max="1" step="0.01" bind:value={pressure} />
+				</label>
+				<label class="check"><input type="checkbox" bind:checked={splatOnHover} /> Splat on hover</label>
+				<label class="check"><input type="checkbox" bind:checked={paused} /> Paused</label>
+			</section>
+		{/if}
+
+		<button class="accordion-header" onclick={() => toggleSection('splats')}>
+			<span>Random Splats</span>
+			{#if splatChanges > 0}<span class="badge">{splatChanges}</span>{/if}
+			<span class="chevron" class:open={openSections.has('splats')}></span>
+		</button>
+		{#if openSections.has('splats')}
+			<section class="accordion-body">
+				<label>
+					<span>Rate (splats/sec) <em>{randomSplatRate.toFixed(1)}</em></span>
+					<input type="range" min="0" max="5" step="0.1" bind:value={randomSplatRate} />
+				</label>
+				<label>
+					<span>Count per burst <em>{randomSplatCount}</em></span>
+					<input type="range" min="1" max="10" step="1" bind:value={randomSplatCount} />
+				</label>
+				<label>
+					<span>Swirl <em>{randomSplatSwirl}</em></span>
+					<input type="range" min="-1000" max="1000" step="50" bind:value={randomSplatSwirl} />
+				</label>
+				<label>
+					<span>Spawn spread <em>{randomSplatSpread.toFixed(2)}</em></span>
+					<input type="range" min="0" max="3" step="0.05" bind:value={randomSplatSpread} />
+				</label>
+				<label>
+					<span>Spawn height <em>{randomSplatSpawnY.toFixed(2)}</em></span>
+					<input type="range" min="0" max="1" step="0.05" bind:value={randomSplatSpawnY} />
+				</label>
+				<label>
+					<span>Velocity X <em>{randomSplatDx}</em></span>
+					<input type="range" min="-1000" max="1000" step="50" bind:value={randomSplatDx} />
+				</label>
+				<label>
+					<span>Velocity Y <em>{randomSplatDy}</em></span>
+					<input type="range" min="-1000" max="1000" step="50" bind:value={randomSplatDy} />
+				</label>
+				<label class="check"><input type="checkbox" bind:checked={randomSplatEvenSpacing} /> Even spacing</label>
+			</section>
+		{/if}
+
+		<button class="accordion-header" onclick={() => toggleSection('visuals')}>
+			<span>Visuals</span>
+			{#if visualChanges > 0}<span class="badge">{visualChanges}</span>{/if}
+			<span class="chevron" class:open={openSections.has('visuals')}></span>
+		</button>
+		{#if openSections.has('visuals')}
+			<section class="accordion-body">
+				<label class="check"><input type="checkbox" bind:checked={shading} /> Shading</label>
+				<label class="check"><input type="checkbox" bind:checked={bloom} /> Bloom</label>
+				<label class="check"><input type="checkbox" bind:checked={sunrays} /> Sunrays</label>
+				<label class="check"><input type="checkbox" bind:checked={colorful} /> Cycle colors</label>
+				{#if bloom}
+				<label>
+					<span>bloomIntensity <em>{bloomIntensity.toFixed(2)}</em></span>
+					<input type="range" min="0" max="2" step="0.05" bind:value={bloomIntensity} />
+				</label>
+				{/if}
+				{#if sunrays}
+				<label>
+					<span>sunraysWeight <em>{sunraysWeight.toFixed(2)}</em></span>
+					<input type="range" min="0" max="2" step="0.05" bind:value={sunraysWeight} />
+				</label>
+				{/if}
+			</section>
+		{/if}
+
+		<button class="accordion-header" onclick={() => toggleSection('resolution')}>
+			<span>Resolution</span>
+			{#if resolutionChanges > 0}<span class="badge">{resolutionChanges}</span>{/if}
+			<span class="chevron" class:open={openSections.has('resolution')}></span>
+		</button>
+		{#if openSections.has('resolution')}
+			<section class="accordion-body">
+				<label>
+					<span>dyeResolution <em>{dyeResolution}</em></span>
+					<select bind:value={dyeResolution}>
+						<option value={128}>128</option>
+						<option value={256}>256</option>
+						<option value={512}>512</option>
+						<option value={1024}>1024</option>
+					</select>
+				</label>
+				<label>
+					<span>simResolution <em>{simResolution}</em></span>
+					<select bind:value={simResolution}>
+						<option value={32}>32</option>
+						<option value={64}>64</option>
+						<option value={128}>128</option>
+						<option value={256}>256</option>
+					</select>
+				</label>
+			</section>
+		{/if}
+
+		<button class="accordion-header" onclick={() => toggleSection('background')}>
+			<span>Background</span>
+			{#if backgroundChanges > 0}<span class="badge">{backgroundChanges}</span>{/if}
+			<span class="chevron" class:open={openSections.has('background')}></span>
+		</button>
+		{#if openSections.has('background')}
+			<section class="accordion-body">
+				<label>
+					<span>R <em>{backColorR}</em></span>
+					<input type="range" min="0" max="255" step="1" bind:value={backColorR} />
+				</label>
+				<label>
+					<span>G <em>{backColorG}</em></span>
+					<input type="range" min="0" max="255" step="1" bind:value={backColorG} />
+				</label>
+				<label>
+					<span>B <em>{backColorB}</em></span>
+					<input type="range" min="0" max="255" step="1" bind:value={backColorB} />
+				</label>
+				<label class="check"><input type="checkbox" bind:checked={transparent} /> Transparent</label>
+			</section>
+		{/if}
+
+		<button class="accordion-header" onclick={() => toggleSection('shape')}>
+			<span>Container Shape</span>
+			{#if shapeChanges > 0}<span class="badge">{shapeChanges}</span>{/if}
+			<span class="chevron" class:open={openSections.has('shape')}></span>
+		</button>
+		{#if openSections.has('shape')}
+			<section class="accordion-body">
+				<label>
+					<span>Shape</span>
+					<select bind:value={containerShapeType}>
+						<option value="none" disabled={glass} title={glass ? 'Glass requires a container shape' : ''}>Rectangle</option>
+						<option value="circle">Circle</option>
+						<option value="frame">Frame</option>
+						<option value="roundedRect">Rounded rect</option>
+						<option value="annulus">Ring</option>
+					</select>
+				</label>
+				{#if containerShapeType !== 'none'}
+					<label>
+						<span>cx <em>{containerCx.toFixed(2)}</em></span>
+						<input type="range" min="0" max="1" step="0.01" bind:value={containerCx} />
+					</label>
+					<label>
+						<span>cy <em>{containerCy.toFixed(2)}</em></span>
+						<input type="range" min="0" max="1" step="0.01" bind:value={containerCy} />
+					</label>
+					{#if containerShapeType === 'circle'}
+						<label>
+							<span>radius <em>{containerRadius.toFixed(2)}</em></span>
+							<input type="range" min="0.05" max="0.5" step="0.01" bind:value={containerRadius} />
+						</label>
+					{/if}
+					{#if containerShapeType === 'frame' || containerShapeType === 'roundedRect'}
+						<label>
+							<span>halfW <em>{containerHalfW.toFixed(2)}</em></span>
+							<input type="range" min="0.05" max="0.45" step="0.01" bind:value={containerHalfW} />
+						</label>
+						<label>
+							<span>halfH <em>{containerHalfH.toFixed(2)}</em></span>
+							<input type="range" min="0.05" max="0.45" step="0.01" bind:value={containerHalfH} />
+						</label>
+					{/if}
+					{#if containerShapeType === 'frame'}
+						<label>
+							<span>innerCornerRadius <em>{containerInnerCornerRadius.toFixed(3)}</em></span>
+							<input type="range" min="0" max="0.15" step="0.005" bind:value={containerInnerCornerRadius} />
+						</label>
+						<label>
+							<span>outerHalfW <em>{containerOuterHalfW.toFixed(2)}</em></span>
+							<input type="range" min="0.1" max="0.5" step="0.01" bind:value={containerOuterHalfW} />
+						</label>
+						<label>
+							<span>outerHalfH <em>{containerOuterHalfH.toFixed(2)}</em></span>
+							<input type="range" min="0.1" max="0.5" step="0.01" bind:value={containerOuterHalfH} />
+						</label>
+						<label>
+							<span>outerCornerRadius <em>{containerOuterCornerRadius.toFixed(3)}</em></span>
+							<input type="range" min="0" max="0.2" step="0.005" bind:value={containerOuterCornerRadius} />
+						</label>
+					{/if}
+					{#if containerShapeType === 'roundedRect'}
+						<label>
+							<span>cornerRadius <em>{containerCornerRadius.toFixed(2)}</em></span>
+							<input type="range" min="0" max="0.15" step="0.005" bind:value={containerCornerRadius} />
+						</label>
+					{/if}
+					{#if containerShapeType === 'annulus'}
+						<label>
+							<span>innerRadius <em>{containerInnerRadius.toFixed(2)}</em></span>
+							<input type="range" min="0" max="0.45" step="0.01" bind:value={containerInnerRadius} />
+						</label>
+						<label>
+							<span>outerRadius <em>{containerOuterRadius.toFixed(2)}</em></span>
+							<input type="range" min="0.05" max="0.5" step="0.01" bind:value={containerOuterRadius} />
+						</label>
+					{/if}
+				{/if}
+			</section>
+		{/if}
+
+		<button class="accordion-header" onclick={() => toggleSection('glass')}>
+			<span>Glass</span>
+			{#if glassChanges > 0}<span class="badge">{glassChanges}</span>{/if}
+			<span class="chevron" class:open={openSections.has('glass')}></span>
+		</button>
+		{#if openSections.has('glass')}
+			<section class="accordion-body">
+				{#if !glass}
+					<button class="hint-btn" type="button" onclick={() => { glass = true; }}>Enable glass</button>
+				{:else}
+					<label>
+						<span>glassThickness <em>{glassThickness.toFixed(3)}</em></span>
+						<input type="range" min="0" max="0.15" step="0.005" bind:value={glassThickness} />
+					</label>
+					<label>
+						<span>glassRefraction <em>{glassRefraction.toFixed(2)}</em></span>
+						<input type="range" min="0" max="1" step="0.05" bind:value={glassRefraction} />
+					</label>
+					<label>
+						<span>glassReflectivity <em>{glassReflectivity.toFixed(2)}</em></span>
+						<input type="range" min="0" max="1" step="0.05" bind:value={glassReflectivity} />
+					</label>
+					<label>
+						<span>Color fringing <em>{glassChromatic.toFixed(2)}</em></span>
+						<input type="range" min="0" max="1" step="0.05" bind:value={glassChromatic} />
+					</label>
+				{/if}
+			</section>
+		{/if}
 	{/if}
 
 	<div class="actions">
@@ -1398,5 +1608,23 @@
 	.copy-btn:hover {
 		color: #fff !important;
 		border-color: #555 !important;
+	}
+
+	@media (max-width: 800px) {
+		.panel {
+			max-height: none;
+		}
+	}
+	@media (max-width: 600px) {
+		.mode-toggle button {
+			padding: 10px 4px;
+			font-size: 0.78rem;
+		}
+		.accordion-header {
+			padding: 10px 4px;
+		}
+		button {
+			padding: 10px 12px;
+		}
 	}
 </style>
