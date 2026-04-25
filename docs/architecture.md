@@ -164,7 +164,7 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 3. `engine.setConfig(cfg)` walks the four buckets:
    - **A** scalars/booleans → write to `this.config.X`, picked up next frame.
      Includes `randomSplatSwirl`, `randomSplatEvenSpacing`, `randomSplatSpread`,
-     `revealSensitivity`, `revealCurve`, `revealCoverColor`.
+     `revealSensitivity`, `revealCurve`, `revealCoverColor`, `revealAccentColor`.
    - **B** SHADING/BLOOM/SUNRAYS/REVEAL/DISTORTION → `updateKeywords()` recompiles display shader.
      `sticky` toggle and `stickyMask` change trigger `initStickyMaskTexture()` rebuild.
    - **C** SIM/DYE/BLOOM/SUNRAYS resolution → `init*Framebuffers()` rebuilds FBOs

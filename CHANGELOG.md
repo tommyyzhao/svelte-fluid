@@ -13,6 +13,20 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`revealAccentColor` prop** (`FluidConfig.revealAccentColor?: RGB`, default
+  `{ r: 0.05, g: 0.16, b: 0.32 }`) — separate engine-level accent color uniform
+  for the reveal fringe zone. The accent color now appears **directly** in the
+  fringe between the solid cover and the fully revealed content, independent of
+  the cover color. Previously the accent was baked into the dye via
+  `cover - accent` subtraction, which produced invisible fringes with dark covers.
+  Matching the Ascend-Fluid reference architecture. Bucket A (hot-updatable).
+- **Shaped reveal demo cards** — 2 new cards in the Reveal section: "Circle reveal"
+  (openBoundary + circle containerShape, teal mosaic) and "Bounded reveal"
+  (openBoundary=false + roundedRect, warm mosaic). Showcases shaped reveals.
+- **`smoothstep` threshold in REVEAL shader** — kills near-zero dye intensity so
+  faint Gaussian tails never trigger partial reveal (eliminates "brightening"
+  artifact on the solid cover area).
+
 - **`openBoundary` prop** (`FluidConfig.openBoundary?: boolean`, default `false`) —
   open boundary conditions. When `true`, fluid flows freely instead of bouncing:
   (1) divergence solver skips no-penetration enforcement at canvas edges,
@@ -38,6 +52,31 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
   `@internal` JSDoc — enables direct testing of config resolution logic.
 
 ### Changed
+
+- **REVEAL shader formula** — `max(coverColor - dye, 0)` → `mix(coverColor,
+  accentColor, revealAmount)`. The accent color is now a separate uniform rendered
+  directly in the fringe zone, not derived from cover-dye subtraction. Dark covers
+  with bright accents now produce visible colored fringes.
+- **FluidReveal `curve` default** — 0.1 → **0.24**. The old 0.1 exponent
+  aggressively amplified tiny dye amounts (`pow(0.01, 0.1) = 0.74`), producing
+  mushy edges and cover brightening. 0.24 gives crisper reveal boundaries.
+  Engine `REVEAL_CURVE` and ControlPanel `D.revealCurve` updated to match.
+- **FluidReveal/FluidDistortion pointer velocity** — switched from normalized
+  deltas × 6000 to pixel-based deltas × 5 (mouse) / × 8 (touch), matching
+  Ascend-Fluid reference. Eliminates canvas-size-dependent velocity — small
+  demo cards previously produced 3-4× more velocity than full-screen canvases.
+- **"Liquid reveal" → "Turbulent reveal"** — renamed demo card and preset to
+  better describe the higher-turbulence behavior from lower pressure and curl.
+- **Reveal preset tuning** — all presets now use `curve >= 0.24` and
+  `splatRadius >= 0.2`. Permanent reveal and Auto-reveal use
+  `velocityDissipation=0.95` for blobby/laminar behavior matching Scratch to reveal.
+- **`revealDye` simplified** — now always white `{ r: 1, g: 1, b: 1 }` since
+  only intensity matters for the reveal threshold (accent color handled by shader
+  uniform).
+- **`loadConfig()` gaps fixed** — `revealCoverColor`, `revealAccentColor`, and
+  `pressureIterations` now correctly loaded from PRESET_CONFIGS into playground state.
+- **`revealCurve` default mismatch** — ControlPanel D.revealCurve was 0.25,
+  FluidReveal actual default was 0.1. Both now 0.24.
 
 - **FluidReveal `pressure` default** — 0.8 → **1.0**. Disables the per-frame
   pressure field relaxation step (`pressure *= 0.8`), matching the Ascend-Fluid

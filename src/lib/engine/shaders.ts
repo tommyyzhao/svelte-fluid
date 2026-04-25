@@ -149,6 +149,7 @@ export const displayShaderSource = `
     uniform float uRevealSensitivity;
     uniform float uRevealCurve;
     uniform vec3 uRevealCoverColor;
+    uniform vec3 uRevealAccentColor;
 #endif
 
 #ifdef DISTORTION
@@ -307,9 +308,16 @@ export const displayShaderSource = `
 
         gl_FragColor = vec4(img * edgeAlpha * cmask, edgeAlpha * cmask);
     #elif defined(REVEAL)
-        float revealAmount = clamp(pow(clamp(a * uRevealSensitivity, 0.0, 1.0), uRevealCurve), 0.0, 1.0);
+        float raw = clamp(a * uRevealSensitivity, 0.0, 1.0);
+        // smoothstep kills near-zero dye so the cover never brightens from
+        // faint Gaussian tails — only meaningful dye triggers a reveal.
+        float revealAmount = clamp(pow(raw, uRevealCurve) * smoothstep(0.0, 0.01, raw), 0.0, 1.0);
         float alpha = (1.0 - revealAmount) * cmask;
-        gl_FragColor = vec4(max(uRevealCoverColor - c, vec3(0.0)), alpha);
+        // Accent color appears directly in the fringe zone (matching Ascend-Fluid).
+        // Cover → accent gradient controlled by revealAmount; accent at partial
+        // alpha composites over the underlying content.
+        vec3 color = mix(uRevealCoverColor, uRevealAccentColor, revealAmount);
+        gl_FragColor = vec4(color, alpha);
     #else
         gl_FragColor = vec4(c, a);
     #endif

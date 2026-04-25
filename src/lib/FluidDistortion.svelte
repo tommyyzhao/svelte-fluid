@@ -175,32 +175,35 @@
 	});
 
 	// ---- Pointer-driven distortion splats ----
-	const SPLAT_FORCE = 6000;
-	let prevPtrX = -1;
-	let prevPtrY = -1;
+	// Pixel-based velocity to match Ascend-Fluid reference (see FluidReveal).
+	const MOUSE_FORCE = 5;
+	const TOUCH_FORCE = 8;
+	let prevClientX = -1;
+	let prevClientY = -1;
 
 	function handlePointerMove(e: PointerEvent) {
 		const rect = canvasWrapperEl?.getBoundingClientRect();
 		if (!rect || !inner) return;
 		const x = (e.clientX - rect.left) / rect.width;
 		const y = 1.0 - (e.clientY - rect.top) / rect.height;
-		if (prevPtrX < 0) {
-			prevPtrX = x;
-			prevPtrY = y;
+		if (prevClientX < 0) {
+			prevClientX = e.clientX;
+			prevClientY = e.clientY;
 			return;
 		}
-		const dx = (x - prevPtrX) * SPLAT_FORCE;
-		const dy = (y - prevPtrY) * SPLAT_FORCE;
-		prevPtrX = x;
-		prevPtrY = y;
+		const force = e.pointerType === 'touch' ? TOUCH_FORCE : MOUSE_FORCE;
+		const dx = (e.clientX - prevClientX) * force;
+		const dy = -(e.clientY - prevClientY) * force;
+		prevClientX = e.clientX;
+		prevClientY = e.clientY;
 		// Inject scalar intensity into dye — the distortion shader reads dye.r
 		// as the offset amount, velocity provides the direction.
 		inner.handle.splat(x, y, dx, dy, { r: intensity * 0.001, g: 0, b: 0 });
 	}
 
 	function handlePointerLeave() {
-		prevPtrX = -1;
-		prevPtrY = -1;
+		prevClientX = -1;
+		prevClientY = -1;
 	}
 
 	// ---- Auto-distort animation ----
