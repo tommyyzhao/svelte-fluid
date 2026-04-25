@@ -87,7 +87,7 @@ export interface PresetSplat {
  *   Great for fluid-filled letters without needing SVG path data.
  *
  * At least one of `d` or `text` must be provided. If both are given,
- * `text` takes precedence. See ADR-0024.
+ * `d` takes precedence. See ADR-0024.
  */
 export type ContainerShape =
 	| { type: 'circle'; cx: number; cy: number; radius: number }
@@ -105,7 +105,7 @@ export type ContainerShape =
  * - **Path mode** (`d`): uses `Path2D(d)` with `viewBox` mapping.
  *
  * At least one of `d` or `text` must be provided. If both are given,
- * `text` takes precedence (same as `ContainerShape.svgPath`).
+ * `d` takes precedence (same as `ContainerShape.svgPath`).
  */
 export interface StickyMask {
 	/** SVG path data string. */

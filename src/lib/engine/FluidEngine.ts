@@ -1023,24 +1023,7 @@ export class FluidEngine implements FluidHandle {
 			ctx = el.getContext('2d')!;
 		}
 		ctx.fillStyle = 'white';
-		if (shape.text) {
-			// Text mode: measure the text, then scale to fill the mask.
-			ctx.font = shape.font ?? 'bold 72px sans-serif';
-			ctx.textAlign = 'center';
-			ctx.textBaseline = 'alphabetic';
-			const metrics = ctx.measureText(shape.text);
-			const textW = metrics.width;
-			const ascent = metrics.actualBoundingBoxAscent;
-			const descent = metrics.actualBoundingBoxDescent;
-			const textH = ascent + descent;
-			const pad = 0.9;
-			const scale = Math.min((maskW * pad) / textW, (maskH * pad) / textH);
-			ctx.setTransform(scale, 0, 0, scale, maskW / 2, maskH / 2);
-			// Glyph spans from -ascent to +descent relative to the
-			// alphabetic baseline. Shift the baseline so the glyph's
-			// visual center lands at the canvas center.
-			ctx.fillText(shape.text, 0, (ascent - descent) / 2);
-		} else if (shape.d) {
+		if (shape.d) {
 			// Path mode: map viewBox to canvas pixels, preserving the path's
 			// own aspect ratio by uniform-scaling to fit the mask rectangle.
 			const scaleX = maskW / vw;
@@ -1052,6 +1035,19 @@ export class FluidEngine implements FluidHandle {
 			ctx.scale(s, s);
 			ctx.translate(-vx, -vy);
 			ctx.fill(new Path2D(shape.d), fillRule);
+		} else if (shape.text) {
+			ctx.font = shape.font ?? 'bold 72px sans-serif';
+			ctx.textAlign = 'center';
+			ctx.textBaseline = 'alphabetic';
+			const metrics = ctx.measureText(shape.text);
+			const textW = metrics.width;
+			const ascent = metrics.actualBoundingBoxAscent;
+			const descent = metrics.actualBoundingBoxDescent;
+			const textH = ascent + descent;
+			const pad = 0.9;
+			const scale = Math.min((maskW * pad) / textW, (maskH * pad) / textH);
+			ctx.setTransform(scale, 0, 0, scale, maskW / 2, maskH / 2);
+			ctx.fillText(shape.text, 0, (ascent - descent) / 2);
 		}
 
 		const imageData = ctx.getImageData(0, 0, maskW, maskH);
@@ -1119,7 +1115,17 @@ export class FluidEngine implements FluidHandle {
 			ctx = el.getContext('2d')!;
 		}
 		ctx.fillStyle = 'white';
-		if (mask.text) {
+		if (mask.d) {
+			const scaleX = maskW / vw;
+			const scaleY = maskH / vh;
+			const s = Math.min(scaleX, scaleY);
+			const offsetX = (maskW - vw * s) / 2;
+			const offsetY = (maskH - vh * s) / 2;
+			ctx.translate(offsetX, offsetY);
+			ctx.scale(s, s);
+			ctx.translate(-vx, -vy);
+			ctx.fill(new Path2D(mask.d), fillRule);
+		} else if (mask.text) {
 			ctx.font = mask.font ?? 'bold 72px sans-serif';
 			ctx.textAlign = 'center';
 			ctx.textBaseline = 'alphabetic';
@@ -1132,16 +1138,6 @@ export class FluidEngine implements FluidHandle {
 			const scale = Math.min((maskW * pad) / textW, (maskH * pad) / textH);
 			ctx.setTransform(scale, 0, 0, scale, maskW / 2, maskH / 2);
 			ctx.fillText(mask.text, 0, (ascent - descent) / 2);
-		} else if (mask.d) {
-			const scaleX = maskW / vw;
-			const scaleY = maskH / vh;
-			const s = Math.min(scaleX, scaleY);
-			const offsetX = (maskW - vw * s) / 2;
-			const offsetY = (maskH - vh * s) / 2;
-			ctx.translate(offsetX, offsetY);
-			ctx.scale(s, s);
-			ctx.translate(-vx, -vy);
-			ctx.fill(new Path2D(mask.d), fillRule);
 		}
 
 		const imageData = ctx.getImageData(0, 0, maskW, maskH);
@@ -1343,9 +1339,10 @@ export class FluidEngine implements FluidHandle {
 		const shape = this.config.CONTAINER_SHAPE;
 		const aspect = this.gl.drawingBufferWidth / this.gl.drawingBufferHeight;
 		// Re-jitter interval each iteration so back-to-back splats don't
-		// all subtract the same value.
+		// all subtract the same value. Wide 0.3–2.0× range gives organic
+		// timing — occasional quick double-drips and long pauses.
 		for (;;) {
-			const interval = baseInterval * (0.5 + this.rng());
+			const interval = baseInterval * (0.3 + this.rng() * 1.7);
 			if (this.randomSplatTimer < interval) break;
 			this.randomSplatTimer -= interval;
 			const count = this.config.RANDOM_SPLAT_COUNT;

@@ -32,7 +32,7 @@
 	}
 
 	// ---- Playground state ----
-	let playgroundMode = $state<'fluid' | 'reveal'>('fluid');
+	let playgroundMode = $state<'fluid' | 'reveal' | 'sticky' | 'distortion'>('fluid');
 	let curl = $state(D.curl);
 	let splatRadius = $state(D.splatRadius);
 	let splatForce = $state(D.splatForce);
@@ -95,6 +95,28 @@
 	let canvasHeight = $state(0);
 	let loadedPreset = $state('');
 
+	// ---- Sticky state ----
+	let stickyText = $state('FLUID');
+	let stickyFont = $state('900 120px sans-serif');
+	let stickyD = $state('');
+	let stickyMaskBlur = $state(4);
+	let stickyMaskPadding = $state(0.9);
+	let stickyStrength = $state(0.95);
+	let stickyAmplify = $state(2.0);
+	let stickyPressure = $state(0.15);
+	let stickyAutoAnimateSpeed = $state(2.0);
+	let stickyAutoAnimateDuration = $state(5.0);
+	let stickyRemountKey = $state(0);
+
+	// ---- Distortion state ----
+	let distortionSrc = $state('/bosch-garden.jpg');
+	let distortionStrength = $state(0.4);
+	let distortionIntensity = $state(24);
+	let distortionAutoDistort = $state(false);
+	let distortionAutoDistortSpeed = $state(1.0);
+	let distortionInitialSplats = $state(20);
+	let distortionRemountKey = $state(0);
+
 	// svgPath shapes loaded via Customize — cleared when the user picks a shape manually.
 	let customContainerShape = $state<ContainerShape | null>(null);
 
@@ -135,20 +157,33 @@
 		if (customContainerShape) customContainerShape = null;
 	});
 
-	// Snapshot fluid physics when switching to Reveal mode, restore on switch back.
+	// Snapshot fluid physics when switching away from fluid mode, restore on switch back.
 	let fluidSnapshot: { curl: number; velocityDissipation: number; splatRadius: number; bloom: boolean; sunrays: boolean; shading: boolean } | null = null;
-	let prevMode = 'fluid';
+	let prevMode: string = 'fluid';
 	$effect(() => {
 		const mode = playgroundMode;
 		untrack(() => {
 			if (mode === prevMode) return;
 			const oldMode = prevMode;
 			prevMode = mode;
-			if (mode === 'reveal' && oldMode === 'fluid') {
+			// Snapshot when leaving fluid mode
+			if (oldMode === 'fluid') {
 				fluidSnapshot = { curl, velocityDissipation, splatRadius, bloom, sunrays, shading };
+			}
+			// Apply mode-specific defaults
+			if (mode === 'reveal') {
 				curl = 0; velocityDissipation = 0.9; splatRadius = 0.2;
 				bloom = false; sunrays = false; shading = false;
-			} else if (mode === 'fluid' && oldMode === 'reveal' && fluidSnapshot) {
+			} else if (mode === 'sticky') {
+				densityDissipation = 0.98; splatRadius = 1.0; curl = 20;
+				bloom = false; sunrays = false; shading = true; splatOnHover = true;
+				stickyRemountKey++;
+			} else if (mode === 'distortion') {
+				curl = 0; velocityDissipation = 0.97; splatRadius = 1.0;
+				bloom = false; sunrays = false; shading = false;
+				pressure = 0; densityDissipation = 0.98;
+				distortionRemountKey++;
+			} else if (mode === 'fluid' && fluidSnapshot) {
 				({ curl, velocityDissipation, splatRadius, bloom, sunrays, shading } = fluidSnapshot);
 				fluidSnapshot = null;
 			}
@@ -189,6 +224,15 @@
 		revealAutoRevealSpeed = D.revealAutoRevealSpeed;
 		revealCoverColor = D.revealCoverColor;
 		revealAccentColor = D.revealAccentColor;
+		stickyText = D.stickyText; stickyFont = D.stickyFont; stickyD = D.stickyD;
+		stickyMaskBlur = D.stickyMaskBlur; stickyMaskPadding = D.stickyMaskPadding;
+		stickyStrength = D.stickyStrength; stickyAmplify = D.stickyAmplify;
+		stickyPressure = D.stickyPressure; stickyAutoAnimateSpeed = D.stickyAutoAnimateSpeed;
+		stickyAutoAnimateDuration = D.stickyAutoAnimateDuration;
+		distortionSrc = D.distortionSrc; distortionStrength = D.distortionStrength;
+		distortionIntensity = D.distortionIntensity; distortionAutoDistort = D.distortionAutoDistort;
+		distortionAutoDistortSpeed = D.distortionAutoDistortSpeed;
+		distortionInitialSplats = D.distortionInitialSplats;
 		customContainerShape = null;
 		showShapePreview = false; loadedPreset = '';
 	}
@@ -197,13 +241,24 @@
 		// Reset everything to defaults first, then apply overrides.
 		resetAllDefaults();
 		loadedPreset = name;
-		const targetMode = (config.playgroundMode as 'fluid' | 'reveal') ?? 'fluid';
+		const targetMode = (config.playgroundMode as 'fluid' | 'reveal' | 'sticky' | 'distortion') ?? 'fluid';
 		playgroundMode = targetMode;
 		prevMode = targetMode; // prevent snapshot $effect from firing
 		if (targetMode === 'reveal') {
 			fluidSnapshot = null;
 			curl = 0; velocityDissipation = 0.9; splatRadius = 0.2;
 			bloom = false; sunrays = false; shading = false;
+		} else if (targetMode === 'sticky') {
+			fluidSnapshot = null;
+			densityDissipation = 0.98; splatRadius = 1.0; curl = 20;
+			bloom = false; sunrays = false; shading = true; splatOnHover = true;
+			stickyRemountKey++;
+		} else if (targetMode === 'distortion') {
+			fluidSnapshot = null;
+			curl = 0; velocityDissipation = 0.97; splatRadius = 1.0;
+			bloom = false; sunrays = false; shading = false;
+			pressure = 0; densityDissipation = 0.98;
+			distortionRemountKey++;
 		}
 		if (config.curl !== undefined) curl = config.curl as number;
 		if (config.splatRadius !== undefined) splatRadius = config.splatRadius as number;
@@ -265,6 +320,22 @@
 		if (config.revealFadeBack !== undefined) revealFadeBack = config.revealFadeBack as boolean;
 		if (config.revealAutoReveal !== undefined) revealAutoReveal = config.revealAutoReveal as boolean;
 		if (config.revealAutoRevealSpeed !== undefined) revealAutoRevealSpeed = config.revealAutoRevealSpeed as number;
+		if (config.stickyText !== undefined) stickyText = config.stickyText as string;
+		if (config.stickyFont !== undefined) stickyFont = config.stickyFont as string;
+		if (config.stickyD !== undefined) stickyD = config.stickyD as string;
+		if (config.stickyMaskBlur !== undefined) stickyMaskBlur = config.stickyMaskBlur as number;
+		if (config.stickyMaskPadding !== undefined) stickyMaskPadding = config.stickyMaskPadding as number;
+		if (config.stickyStrength !== undefined) stickyStrength = config.stickyStrength as number;
+		if (config.stickyAmplify !== undefined) stickyAmplify = config.stickyAmplify as number;
+		if (config.stickyPressure !== undefined) stickyPressure = config.stickyPressure as number;
+		if (config.stickyAutoAnimateSpeed !== undefined) stickyAutoAnimateSpeed = config.stickyAutoAnimateSpeed as number;
+		if (config.stickyAutoAnimateDuration !== undefined) stickyAutoAnimateDuration = config.stickyAutoAnimateDuration as number;
+		if (config.distortionSrc !== undefined) distortionSrc = config.distortionSrc as string;
+		if (config.distortionStrength !== undefined) distortionStrength = config.distortionStrength as number;
+		if (config.distortionIntensity !== undefined) distortionIntensity = config.distortionIntensity as number;
+		if (config.distortionAutoDistort !== undefined) distortionAutoDistort = config.distortionAutoDistort as boolean;
+		if (config.distortionAutoDistortSpeed !== undefined) distortionAutoDistortSpeed = config.distortionAutoDistortSpeed as number;
+		if (config.distortionInitialSplats !== undefined) distortionInitialSplats = config.distortionInitialSplats as number;
 		document.getElementById('playground')?.scrollIntoView({ behavior: 'smooth' });
 	}
 
@@ -300,6 +371,24 @@
 		a('rv', revealContent, D.revealContent);
 		a('cc', revealCoverColor, D.revealCoverColor);
 		a('ac', revealAccentColor, D.revealAccentColor);
+		// Sticky fields
+		a('st', stickyText, D.stickyText);
+		a('sfn', stickyFont, D.stickyFont);
+		a('sd', stickyD, D.stickyD);
+		a('smb', stickyMaskBlur, D.stickyMaskBlur);
+		a('smp', stickyMaskPadding, D.stickyMaskPadding);
+		a('ss', stickyStrength, D.stickyStrength);
+		a('sa', stickyAmplify, D.stickyAmplify);
+		a('sp', stickyPressure, D.stickyPressure);
+		a('sas', stickyAutoAnimateSpeed, D.stickyAutoAnimateSpeed);
+		a('sad', stickyAutoAnimateDuration, D.stickyAutoAnimateDuration);
+		// Distortion fields
+		a('ds', distortionSrc, D.distortionSrc);
+		a('dstr', distortionStrength, D.distortionStrength);
+		a('di', distortionIntensity, D.distortionIntensity);
+		a('dad', distortionAutoDistort, D.distortionAutoDistort);
+		a('das', distortionAutoDistortSpeed, D.distortionAutoDistortSpeed);
+		a('dis', distortionInitialSplats, D.distortionInitialSplats);
 		// Container shape sub-params (only if shape is active)
 		if (containerShapeType === 'circle') {
 			a('cx', containerCx, D.containerCx); a('cy', containerCy, D.containerCy);
@@ -328,7 +417,7 @@
 		try {
 			const s = JSON.parse(atob(hash)) as Record<string, unknown>;
 			const g = (k: string) => s[k];
-			if (s.m) playgroundMode = s.m as 'fluid' | 'reveal';
+			if (s.m) playgroundMode = s.m as 'fluid' | 'reveal' | 'sticky' | 'distortion';
 			if (g('cu') !== undefined) curl = g('cu') as number;
 			if (g('sr') !== undefined) splatRadius = g('sr') as number;
 			if (g('sf') !== undefined) splatForce = g('sf') as number;
@@ -370,6 +459,24 @@
 			if (g('rv') !== undefined) revealContent = g('rv') as 'text' | 'mosaic';
 			if (g('cc') !== undefined) revealCoverColor = g('cc') as string;
 			if (g('ac') !== undefined) revealAccentColor = g('ac') as string;
+			// Sticky fields
+			if (g('st') !== undefined) stickyText = g('st') as string;
+			if (g('sfn') !== undefined) stickyFont = g('sfn') as string;
+			if (g('sd') !== undefined) stickyD = g('sd') as string;
+			if (g('smb') !== undefined) stickyMaskBlur = g('smb') as number;
+			if (g('smp') !== undefined) stickyMaskPadding = g('smp') as number;
+			if (g('ss') !== undefined) stickyStrength = g('ss') as number;
+			if (g('sa') !== undefined) stickyAmplify = g('sa') as number;
+			if (g('sp') !== undefined) stickyPressure = g('sp') as number;
+			if (g('sas') !== undefined) stickyAutoAnimateSpeed = g('sas') as number;
+			if (g('sad') !== undefined) stickyAutoAnimateDuration = g('sad') as number;
+			// Distortion fields
+			if (g('ds') !== undefined) distortionSrc = g('ds') as string;
+			if (g('dstr') !== undefined) distortionStrength = g('dstr') as number;
+			if (g('di') !== undefined) distortionIntensity = g('di') as number;
+			if (g('dad') !== undefined) distortionAutoDistort = g('dad') as boolean;
+			if (g('das') !== undefined) distortionAutoDistortSpeed = g('das') as number;
+			if (g('dis') !== undefined) distortionInitialSplats = g('dis') as number;
 			if (g('cx') !== undefined) containerCx = g('cx') as number;
 			if (g('cy') !== undefined) containerCy = g('cy') as number;
 			if (g('rd') !== undefined) containerRadius = g('rd') as number;
@@ -399,7 +506,12 @@
 			glassRefraction, glassReflectivity, glassChromatic, containerCx, containerCy,
 			containerRadius, containerInnerRadius, containerOuterRadius,
 			revealSensitivity, revealCurve, revealFadeBack, revealAutoReveal,
-			revealAutoRevealSpeed, revealContent, revealCoverColor, revealAccentColor];
+			revealAutoRevealSpeed, revealContent, revealCoverColor, revealAccentColor,
+			stickyText, stickyFont, stickyD, stickyMaskBlur, stickyMaskPadding,
+			stickyStrength, stickyAmplify, stickyPressure, stickyAutoAnimateSpeed,
+			stickyAutoAnimateDuration, distortionSrc, distortionStrength,
+			distortionIntensity, distortionAutoDistort, distortionAutoDistortSpeed,
+			distortionInitialSplats];
 		clearTimeout(hashTimer);
 		hashTimer = setTimeout(() => {
 			const s = serializeState();
@@ -522,6 +634,52 @@
 		'Text glyph': {
 			containerShape: { type: 'svgPath', text: '&', font: 'bold 200px Georgia, serif', fillRule: 'evenodd' },
 			splatOnHover: true
+		},
+		// Sticky presets
+		'Sticky text': {
+			playgroundMode: 'sticky',
+			stickyText: 'FLUID',
+			stickyFont: '900 120px sans-serif',
+			stickyD: '',
+		},
+		'Lightning bolt': {
+			playgroundMode: 'sticky',
+			stickyText: '',
+			stickyD: 'M55 5 L25 45 L45 45 L20 95 L75 50 L55 50 L80 5 Z',
+		},
+		'Sticky + circle': {
+			playgroundMode: 'sticky',
+			stickyText: 'HI',
+			stickyFont: 'bold 72px sans-serif',
+			stickyMaskPadding: 0.5,
+			containerShape: { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 },
+		},
+		'Strong pressure': {
+			playgroundMode: 'sticky',
+			stickyText: '',
+			stickyD: 'M50 5 L5 95 L95 95 Z',
+			stickyPressure: 0.5,
+		},
+		// Distortion presets
+		'Image distortion': {
+			playgroundMode: 'distortion',
+		},
+		'Auto-distort': {
+			playgroundMode: 'distortion',
+			distortionAutoDistort: true,
+			distortionAutoDistortSpeed: 1.0,
+			distortionStrength: 0.3,
+			distortionIntensity: 20,
+		},
+		'Strong warp': {
+			playgroundMode: 'distortion',
+			distortionStrength: 0.8,
+			distortionIntensity: 50,
+			velocityDissipation: 0.95,
+		},
+		'Contained distortion': {
+			playgroundMode: 'distortion',
+			containerShape: { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 },
 		},
 		'Scratch to reveal': { playgroundMode: 'reveal' },
 		'Permanent reveal': { playgroundMode: 'reveal', revealFadeBack: false },
@@ -1004,7 +1162,7 @@
 			</p>
 		</header>
 		<div class="grid-2col">
-			<Card title="Image distortion" description="Cursor movement warps the image like liquid glass. The velocity field bends UV coordinates." snippet={`<FluidDistortion\n  src="/bosch-garden.jpg"\n  strength={0.4}\n  intensity={24}\n/>`}>
+			<Card title="Image distortion" description="Cursor movement warps the image like liquid glass. The velocity field bends UV coordinates." onCustomize={() => loadConfig(PRESET_CONFIGS['Image distortion'], 'Image distortion')} snippet={`<FluidDistortion\n  src="/bosch-garden.jpg"\n  strength={0.4}\n  intensity={24}\n/>`}>
 				<FluidDistortion
 					lazy
 					src="/bosch-garden.jpg"
@@ -1012,7 +1170,7 @@
 					intensity={24}
 				/>
 			</Card>
-			<Card title="Auto-distort" description="An automated cursor creates a continuous ripple effect. Touch or click to take over." snippet={`<FluidDistortion\n  src="/bosch-garden.jpg"\n  autoDistort\n  autoDistortSpeed={1.0}\n  strength={0.3}\n  intensity={20}\n/>`}>
+			<Card title="Auto-distort" description="An automated cursor creates a continuous ripple effect. Touch or click to take over." onCustomize={() => loadConfig(PRESET_CONFIGS['Auto-distort'], 'Auto-distort')} snippet={`<FluidDistortion\n  src="/bosch-garden.jpg"\n  autoDistort\n  autoDistortSpeed={1.0}\n  strength={0.3}\n  intensity={20}\n/>`}>
 				<FluidDistortion
 					lazy
 					src="/bosch-garden.jpg"
@@ -1022,7 +1180,7 @@
 					intensity={20}
 				/>
 			</Card>
-			<Card title="Strong warp" description="High distortion power and intensity for dramatic liquid warping." snippet={`<FluidDistortion\n  src="/bosch-garden.jpg"\n  strength={0.8}\n  intensity={50}\n  velocityDissipation={0.95}\n/>`}>
+			<Card title="Strong warp" description="High distortion power and intensity for dramatic liquid warping." onCustomize={() => loadConfig(PRESET_CONFIGS['Strong warp'], 'Strong warp')} snippet={`<FluidDistortion\n  src="/bosch-garden.jpg"\n  strength={0.8}\n  intensity={50}\n  velocityDissipation={0.95}\n/>`}>
 				<FluidDistortion
 					lazy
 					src="/bosch-garden.jpg"
@@ -1031,7 +1189,7 @@
 					velocityDissipation={0.95}
 				/>
 			</Card>
-			<Card title="Contained with shape" description="Distortion confined to a circular container shape." snippet={`<FluidDistortion\n  src="/bosch-garden.jpg"\n  strength={0.4}\n  intensity={24}\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5,\n    radius: 0.45\n  }}\n/>`}>
+			<Card title="Contained with shape" description="Distortion confined to a circular container shape." onCustomize={() => loadConfig(PRESET_CONFIGS['Contained distortion'], 'Contained distortion')} snippet={`<FluidDistortion\n  src="/bosch-garden.jpg"\n  strength={0.4}\n  intensity={24}\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5,\n    radius: 0.45\n  }}\n/>`}>
 				<FluidDistortion
 					lazy
 					src="/bosch-garden.jpg"
@@ -1052,20 +1210,20 @@
 			</p>
 		</header>
 		<div class="grid-2col">
-			<Card title="Sticky text" description="Dye accumulates on the word and resists fading. Fluid flows around the letterforms." snippet={`<FluidStick\n  text="FLUID"\n  font="900 120px sans-serif"\n/>`}>
+			<Card title="Sticky text" description="Dye accumulates on the word and resists fading. Fluid flows around the letterforms." onCustomize={() => loadConfig(PRESET_CONFIGS['Sticky text'], 'Sticky text')} snippet={`<FluidStick\n  text="FLUID"\n  font="900 120px sans-serif"\n/>`}>
 				<FluidStick
 					lazy
 					text="FLUID"
 					font="900 120px 'Helvetica Neue', Arial, sans-serif"
 				/>
 			</Card>
-			<Card title="Lightning bolt" description="SVG path acts as a dye attractor. The shape glows with accumulated color." snippet={`<FluidStick\n  d="M55 5 L25 45 L45 45 L20 95\n     L75 50 L55 50 L80 5 Z"\n/>`}>
+			<Card title="Lightning bolt" description="SVG path acts as a dye attractor. The shape glows with accumulated color." onCustomize={() => loadConfig(PRESET_CONFIGS['Lightning bolt'], 'Lightning bolt')} snippet={`<FluidStick\n  d="M55 5 L25 45 L45 45 L20 95\n     L75 50 L55 50 L80 5 Z"\n/>`}>
 				<FluidStick
 					lazy
 					d="M55 5 L25 45 L45 45 L20 95 L75 50 L55 50 L80 5 Z"
 				/>
 			</Card>
-			<Card title="Sticky + circle" description="Sticky text inside a circular container. The fluid is confined to the circle while dye clings to the letters." snippet={`<FluidStick\n  text="HI"\n  font="bold 72px sans-serif"\n  maskPadding={0.5}\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5,\n    radius: 0.45\n  }}\n/>`}>
+			<Card title="Sticky + circle" description="Sticky text inside a circular container. The fluid is confined to the circle while dye clings to the letters." onCustomize={() => loadConfig(PRESET_CONFIGS['Sticky + circle'], 'Sticky + circle')} snippet={`<FluidStick\n  text="HI"\n  font="bold 72px sans-serif"\n  maskPadding={0.5}\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5,\n    radius: 0.45\n  }}\n/>`}>
 				<FluidStick
 					lazy
 					text="HI"
@@ -1074,7 +1232,7 @@
 					containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
 				/>
 			</Card>
-			<Card title="Strong pressure" description="High stickyPressure makes fluid visibly deflect around the shape, creating turbulent vortices." snippet={`<FluidStick\n  d="M50 5 L5 95 L95 95 Z"\n  stickyPressureAmount={0.5}\n/>`}>
+			<Card title="Strong pressure" description="High stickyPressure makes fluid visibly deflect around the shape, creating turbulent vortices." onCustomize={() => loadConfig(PRESET_CONFIGS['Strong pressure'], 'Strong pressure')} snippet={`<FluidStick\n  d="M50 5 L5 95 L95 95 Z"\n  stickyPressureAmount={0.5}\n/>`}>
 				<FluidStick
 					lazy
 					d="M50 5 L5 95 L95 95 Z"
@@ -1088,8 +1246,9 @@
 		<header class="section-header">
 			<h2>Playground</h2>
 			<p>
-				Tweak any parameter live. Switch between <code>&lt;Fluid&gt;</code> and
-				<code>&lt;FluidReveal&gt;</code> modes.
+				Tweak any parameter live. Switch between <code>&lt;Fluid&gt;</code>,
+				<code>&lt;FluidReveal&gt;</code>, <code>&lt;FluidStick&gt;</code>, and
+				<code>&lt;FluidDistortion&gt;</code> modes.
 			</p>
 		</header>
 	<div class="playground">
@@ -1120,6 +1279,58 @@
 						</div>
 					{/if}
 				</FluidReveal>
+				{/key}
+			{:else if playgroundMode === 'sticky'}
+				{#key stickyRemountKey}
+				<FluidStick
+					text={stickyText || undefined}
+					font={stickyFont}
+					d={stickyD || undefined}
+					maskBlur={stickyMaskBlur}
+					maskPadding={stickyMaskPadding}
+					strength={stickyStrength}
+					amplify={stickyAmplify}
+					stickyPressureAmount={stickyPressure}
+					autoAnimateSpeed={stickyAutoAnimateSpeed}
+					autoAnimateDuration={stickyAutoAnimateDuration}
+					seed={42}
+					lazy
+					{curl}
+					{splatRadius}
+					{splatForce}
+					{densityDissipation}
+					{velocityDissipation}
+					{bloom}
+					{sunrays}
+					{shading}
+					{colorful}
+					containerShape={containerShapeType !== 'none' ? containerShape : undefined}
+					{glass}
+					{glassThickness}
+					{glassRefraction}
+					{glassReflectivity}
+					{glassChromatic}
+					{transparent}
+					backColor={{ r: backColorR, g: backColorG, b: backColorB }}
+				/>
+				{/key}
+			{:else if playgroundMode === 'distortion'}
+				{#key distortionRemountKey}
+				<FluidDistortion
+					src={distortionSrc}
+					strength={distortionStrength}
+					intensity={distortionIntensity}
+					autoDistort={distortionAutoDistort}
+					autoDistortSpeed={distortionAutoDistortSpeed}
+					initialSplats={distortionInitialSplats}
+					seed={42}
+					lazy
+					{curl}
+					{splatRadius}
+					{splatForce}
+					{velocityDissipation}
+					containerShape={containerShapeType !== 'none' ? containerShape : undefined}
+				/>
 				{/key}
 			{:else}
 				<Fluid
@@ -1227,7 +1438,25 @@
 			bind:glassReflectivity
 			bind:glassChromatic
 			bind:showShapePreview
-			{loadedPreset}
+			bind:loadedPreset
+			bind:stickyText
+			bind:stickyFont
+			bind:stickyD
+			bind:stickyMaskBlur
+			bind:stickyMaskPadding
+			bind:stickyStrength
+			bind:stickyAmplify
+			bind:stickyPressure
+			bind:stickyAutoAnimateSpeed
+			bind:stickyAutoAnimateDuration
+			bind:distortionSrc
+			bind:distortionStrength
+			bind:distortionIntensity
+			bind:distortionAutoDistort
+			bind:distortionAutoDistortSpeed
+			bind:distortionInitialSplats
+			onRemountSticky={() => stickyRemountKey++}
+			onRemountDistortion={() => distortionRemountKey++}
 			onRandomSplats={() => controlsRef?.handle.randomSplats(10)}
 			onShare={shareUrl}
 		/>

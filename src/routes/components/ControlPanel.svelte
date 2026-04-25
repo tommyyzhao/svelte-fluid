@@ -22,10 +22,17 @@
 		glassReflectivity: number; glassChromatic: number;
 		reveal: boolean; revealSensitivity: number; revealCurve: number;
 		revealFadeBack: boolean; revealAutoReveal: boolean; revealAutoRevealSpeed: number;
-		playgroundMode: 'fluid' | 'reveal';
+		playgroundMode: 'fluid' | 'reveal' | 'sticky' | 'distortion';
 		revealContent: 'text' | 'mosaic';
 		revealCoverColor: string;
 		revealAccentColor: string;
+		stickyText: string; stickyFont: string; stickyD: string;
+		stickyMaskBlur: number; stickyMaskPadding: number;
+		stickyStrength: number; stickyAmplify: number; stickyPressure: number;
+		stickyAutoAnimateSpeed: number; stickyAutoAnimateDuration: number;
+		distortionSrc: string; distortionStrength: number; distortionIntensity: number;
+		distortionAutoDistort: boolean; distortionAutoDistortSpeed: number;
+		distortionInitialSplats: number;
 	} = {
 		curl: 30,
 		splatRadius: 0.25,
@@ -84,7 +91,23 @@
 		playgroundMode: 'fluid',
 		revealContent: 'text',
 		revealCoverColor: '#ffffff',
-		revealAccentColor: '#0d2952'
+		revealAccentColor: '#0d2952',
+		stickyText: 'FLUID',
+		stickyFont: '900 120px sans-serif',
+		stickyD: '',
+		stickyMaskBlur: 4,
+		stickyMaskPadding: 0.9,
+		stickyStrength: 0.95,
+		stickyAmplify: 2.0,
+		stickyPressure: 0.15,
+		stickyAutoAnimateSpeed: 2.0,
+		stickyAutoAnimateDuration: 5.0,
+		distortionSrc: '/bosch-garden.jpg',
+		distortionStrength: 0.4,
+		distortionIntensity: 24,
+		distortionAutoDistort: false,
+		distortionAutoDistortSpeed: 1.0,
+		distortionInitialSplats: 20
 	};
 </script>
 
@@ -149,7 +172,25 @@
 		revealCoverColor = $bindable(D.revealCoverColor),
 		revealAccentColor = $bindable(D.revealAccentColor),
 		showShapePreview = $bindable(false),
-		loadedPreset = '',
+		loadedPreset = $bindable(''),
+		stickyText = $bindable(D.stickyText),
+		stickyFont = $bindable(D.stickyFont),
+		stickyD = $bindable(D.stickyD),
+		stickyMaskBlur = $bindable(D.stickyMaskBlur),
+		stickyMaskPadding = $bindable(D.stickyMaskPadding),
+		stickyStrength = $bindable(D.stickyStrength),
+		stickyAmplify = $bindable(D.stickyAmplify),
+		stickyPressure = $bindable(D.stickyPressure),
+		stickyAutoAnimateSpeed = $bindable(D.stickyAutoAnimateSpeed),
+		stickyAutoAnimateDuration = $bindable(D.stickyAutoAnimateDuration),
+		distortionSrc = $bindable(D.distortionSrc),
+		distortionStrength = $bindable(D.distortionStrength),
+		distortionIntensity = $bindable(D.distortionIntensity),
+		distortionAutoDistort = $bindable(D.distortionAutoDistort),
+		distortionAutoDistortSpeed = $bindable(D.distortionAutoDistortSpeed),
+		distortionInitialSplats = $bindable(D.distortionInitialSplats),
+		onRemountSticky,
+		onRemountDistortion,
 		onRandomSplats,
 		onShare
 	}: {
@@ -207,12 +248,21 @@
 		revealFadeBack?: boolean;
 		revealAutoReveal?: boolean;
 		revealAutoRevealSpeed?: number;
-		playgroundMode?: 'fluid' | 'reveal';
+		playgroundMode?: 'fluid' | 'reveal' | 'sticky' | 'distortion';
 		revealContent?: 'text' | 'mosaic';
 		revealCoverColor?: string;
 		revealAccentColor?: string;
 		showShapePreview?: boolean;
 		loadedPreset?: string;
+		stickyText?: string; stickyFont?: string; stickyD?: string;
+		stickyMaskBlur?: number; stickyMaskPadding?: number;
+		stickyStrength?: number; stickyAmplify?: number; stickyPressure?: number;
+		stickyAutoAnimateSpeed?: number; stickyAutoAnimateDuration?: number;
+		distortionSrc?: string; distortionStrength?: number; distortionIntensity?: number;
+		distortionAutoDistort?: boolean; distortionAutoDistortSpeed?: number;
+		distortionInitialSplats?: number;
+		onRemountSticky?: () => void;
+		onRemountDistortion?: () => void;
 		onRandomSplats?: () => void;
 		onShare?: () => void;
 	} = $props();
@@ -346,11 +396,30 @@
 		revealCoverColor = D.revealCoverColor;
 		revealAccentColor = D.revealAccentColor;
 		playgroundMode = D.playgroundMode;
+		loadedPreset = '';
 		showShapePreview = false;
+		stickyText = D.stickyText;
+		stickyFont = D.stickyFont;
+		stickyD = D.stickyD;
+		stickyMaskBlur = D.stickyMaskBlur;
+		stickyMaskPadding = D.stickyMaskPadding;
+		stickyStrength = D.stickyStrength;
+		stickyAmplify = D.stickyAmplify;
+		stickyPressure = D.stickyPressure;
+		stickyAutoAnimateSpeed = D.stickyAutoAnimateSpeed;
+		stickyAutoAnimateDuration = D.stickyAutoAnimateDuration;
+		distortionSrc = D.distortionSrc;
+		distortionStrength = D.distortionStrength;
+		distortionIntensity = D.distortionIntensity;
+		distortionAutoDistort = D.distortionAutoDistort;
+		distortionAutoDistortSpeed = D.distortionAutoDistortSpeed;
+		distortionInitialSplats = D.distortionInitialSplats;
 	}
 
 	function buildSnippet(): string {
 		if (playgroundMode === 'reveal') return buildRevealSnippet();
+		if (playgroundMode === 'sticky') return buildStickySnippet();
+		if (playgroundMode === 'distortion') return buildDistortionSnippet();
 		return buildFluidSnippet();
 	}
 
@@ -448,6 +517,51 @@
 		return ['<FluidReveal', ...lines, '>', content, '</FluidReveal>'].join('\n');
 	}
 
+	function buildStickySnippet(): string {
+		const lines: string[] = [];
+		const fmt = (key: string, value: number | boolean | string, def: number | boolean | string) => {
+			if (value !== def) {
+				if (typeof value === 'string') lines.push(`  ${key}="${value}"`);
+				else if (typeof value === 'boolean') { if (value) lines.push(`  ${key}`); }
+				else lines.push(`  ${key}={${value}}`);
+			}
+		};
+		if (stickyText) fmt('text', stickyText, 'FLUID');
+		else if (stickyD) lines.push(`  d="${stickyD}"`);
+		fmt('font', stickyFont, '900 120px sans-serif');
+		fmt('maskBlur', stickyMaskBlur, 4);
+		fmt('maskPadding', stickyMaskPadding, 0.9);
+		fmt('strength', stickyStrength, 0.95);
+		fmt('amplify', stickyAmplify, 2.0);
+		fmt('stickyPressureAmount', stickyPressure, 0.15);
+		fmt('autoAnimateSpeed', stickyAutoAnimateSpeed, 2.0);
+		fmt('autoAnimateDuration', stickyAutoAnimateDuration, 5.0);
+		fmt('densityDissipation', densityDissipation, 0.98);
+		fmt('splatRadius', splatRadius, 1.0);
+		fmt('curl', curl, 20);
+		if (lines.length === 0) return '<FluidStick\n  text="FLUID"\n  font="900 120px sans-serif"\n/>';
+		return ['<FluidStick', ...lines, '/>'].join('\n');
+	}
+
+	function buildDistortionSnippet(): string {
+		const lines: string[] = [];
+		const fmt = (key: string, value: number | boolean | string, def: number | boolean | string) => {
+			if (value !== def) {
+				if (typeof value === 'string') lines.push(`  ${key}="${value}"`);
+				else if (typeof value === 'boolean') { if (value) lines.push(`  ${key}`); }
+				else lines.push(`  ${key}={${value}}`);
+			}
+		};
+		lines.push(`  src="${distortionSrc}"`);
+		fmt('strength', distortionStrength, 0.4);
+		fmt('intensity', distortionIntensity, 24);
+		fmt('autoDistort', distortionAutoDistort, false);
+		fmt('autoDistortSpeed', distortionAutoDistortSpeed, 1.0);
+		fmt('initialSplats', distortionInitialSplats, 20);
+		fmt('velocityDissipation', velocityDissipation, 0.97);
+		return ['<FluidDistortion', ...lines, '/>'].join('\n');
+	}
+
 	async function copySnippet() {
 		const snippet = buildSnippet();
 		try {
@@ -464,14 +578,10 @@
 <aside class="panel">
 	<!-- Mode toggle -->
 	<div class="mode-toggle">
-		<button
-			class:active={playgroundMode === 'fluid'}
-			onclick={() => (playgroundMode = 'fluid')}
-		>Fluid</button>
-		<button
-			class:active={playgroundMode === 'reveal'}
-			onclick={() => (playgroundMode = 'reveal')}
-		>Reveal</button>
+		<button class:active={playgroundMode === 'fluid'} onclick={() => (playgroundMode = 'fluid')}>Fluid</button>
+		<button class:active={playgroundMode === 'reveal'} onclick={() => (playgroundMode = 'reveal')}>Reveal</button>
+		<button class:active={playgroundMode === 'sticky'} onclick={() => (playgroundMode = 'sticky')}>Sticky</button>
+		<button class:active={playgroundMode === 'distortion'} onclick={() => (playgroundMode = 'distortion')}>Distortion</button>
 	</div>
 
 	{#if loadedPreset}
@@ -761,7 +871,7 @@
 				{/if}
 			</section>
 		{/if}
-	{:else}
+	{:else if playgroundMode === 'reveal'}
 		<!-- Reveal mode controls -->
 		<section>
 			<h4>Underlying Content</h4>
@@ -812,11 +922,159 @@
 				<input type="range" min="0" max="1" step="0.005" bind:value={velocityDissipation} />
 			</label>
 		</section>
+	{:else if playgroundMode === 'sticky'}
+		<section>
+			<h4>Mask Shape</h4>
+			<label>
+				<span>Text</span>
+				<input type="text" bind:value={stickyText} placeholder="FLUID" />
+			</label>
+			<label>
+				<span>Font</span>
+				<input type="text" bind:value={stickyFont} placeholder="900 120px sans-serif" />
+			</label>
+			<label>
+				<span>SVG path (d)</span>
+				<textarea bind:value={stickyD} placeholder="M55 5 L25 45 ..." rows="2"></textarea>
+			</label>
+			<p class="field-hint">SVG path takes priority over text when both are set.</p>
+			<label>
+				<span>maskBlur <em>{stickyMaskBlur}</em></span>
+				<input type="range" min="0" max="12" step="1" bind:value={stickyMaskBlur} />
+			</label>
+			<label>
+				<span>maskPadding <em>{stickyMaskPadding.toFixed(2)}</em></span>
+				<input type="range" min="0.2" max="1" step="0.05" bind:value={stickyMaskPadding} />
+			</label>
+		</section>
+		<section>
+			<h4>Sticky Physics</h4>
+			<label>
+				<span>strength <em>{stickyStrength.toFixed(2)}</em></span>
+				<input type="range" min="0" max="1" step="0.05" bind:value={stickyStrength} />
+			</label>
+			<label>
+				<span>amplify <em>{stickyAmplify.toFixed(1)}</em></span>
+				<input type="range" min="0" max="5" step="0.1" bind:value={stickyAmplify} />
+			</label>
+			<label>
+				<span>pressure <em>{stickyPressure.toFixed(2)}</em></span>
+				<input type="range" min="0" max="1" step="0.05" bind:value={stickyPressure} />
+			</label>
+			<label>
+				<span>densityDissipation <em>{densityDissipation.toFixed(2)}</em></span>
+				<input type="range" min="0.5" max="1" step="0.01" bind:value={densityDissipation} />
+			</label>
+			<label>
+				<span>splatRadius <em>{splatRadius.toFixed(2)}</em></span>
+				<input type="range" min="0.1" max="3" step="0.1" bind:value={splatRadius} />
+			</label>
+			<label>
+				<span>curl <em>{curl}</em></span>
+				<input type="range" min="0" max="50" step="1" bind:value={curl} />
+			</label>
+		</section>
+		<section>
+			<h4>Auto-Animate</h4>
+			<label>
+				<span>speed <em>{stickyAutoAnimateSpeed.toFixed(1)}</em></span>
+				<input type="range" min="0.5" max="5" step="0.1" bind:value={stickyAutoAnimateSpeed} />
+			</label>
+			<label>
+				<span>duration <em>{stickyAutoAnimateDuration.toFixed(1)}s</em></span>
+				<input type="range" min="1" max="15" step="0.5" bind:value={stickyAutoAnimateDuration} />
+			</label>
+		</section>
+		<section>
+			<h4>Container</h4>
+			<label>
+				<span>Shape</span>
+				<select bind:value={containerShapeType}>
+					<option value="none">Rectangle</option>
+					<option value="circle">Circle</option>
+					<option value="roundedRect">Rounded rect</option>
+				</select>
+			</label>
+			{#if containerShapeType === 'circle'}
+				<label>
+					<span>radius <em>{containerRadius.toFixed(2)}</em></span>
+					<input type="range" min="0.1" max="0.5" step="0.01" bind:value={containerRadius} />
+				</label>
+			{/if}
+			{#if containerShapeType === 'roundedRect'}
+				<label>
+					<span>halfW <em>{containerHalfW.toFixed(2)}</em></span>
+					<input type="range" min="0.1" max="0.45" step="0.01" bind:value={containerHalfW} />
+				</label>
+				<label>
+					<span>halfH <em>{containerHalfH.toFixed(2)}</em></span>
+					<input type="range" min="0.1" max="0.45" step="0.01" bind:value={containerHalfH} />
+				</label>
+				<label>
+					<span>cornerRadius <em>{containerCornerRadius.toFixed(2)}</em></span>
+					<input type="range" min="0" max="0.15" step="0.005" bind:value={containerCornerRadius} />
+				</label>
+			{/if}
+			<label class="check"><input type="checkbox" bind:checked={glass} /> Glass</label>
+		</section>
+	{:else if playgroundMode === 'distortion'}
+		<section>
+			<h4>Image</h4>
+			<label>
+				<span>Image URL</span>
+				<input type="text" bind:value={distortionSrc} placeholder="/bosch-garden.jpg" />
+			</label>
+		</section>
+		<section>
+			<h4>Distortion</h4>
+			<label>
+				<span>strength <em>{distortionStrength.toFixed(2)}</em></span>
+				<input type="range" min="0" max="1" step="0.05" bind:value={distortionStrength} />
+			</label>
+			<label>
+				<span>intensity <em>{distortionIntensity}</em></span>
+				<input type="range" min="1" max="100" step="1" bind:value={distortionIntensity} />
+			</label>
+			<label>
+				<span>velocityDissipation <em>{velocityDissipation.toFixed(2)}</em></span>
+				<input type="range" min="0.5" max="1" step="0.01" bind:value={velocityDissipation} />
+			</label>
+			<label>
+				<span>initialSplats <em>{distortionInitialSplats}</em></span>
+				<input type="range" min="0" max="50" step="1" bind:value={distortionInitialSplats} />
+			</label>
+		</section>
+		<section>
+			<h4>Auto-Distort</h4>
+			<label class="check"><input type="checkbox" bind:checked={distortionAutoDistort} onchange={() => onRemountDistortion?.()} /> Auto-distort</label>
+			{#if distortionAutoDistort}
+				<label>
+					<span>speed <em>{distortionAutoDistortSpeed.toFixed(1)}</em></span>
+					<input type="range" min="0.1" max="3" step="0.1" bind:value={distortionAutoDistortSpeed} />
+				</label>
+			{/if}
+		</section>
+		<section>
+			<h4>Container</h4>
+			<label>
+				<span>Shape</span>
+				<select bind:value={containerShapeType}>
+					<option value="none">Rectangle</option>
+					<option value="circle">Circle</option>
+				</select>
+			</label>
+		</section>
 	{/if}
 
 	<div class="actions">
 		{#if playgroundMode === 'fluid'}
 			<button type="button" onclick={() => onRandomSplats?.()}>Random Splats</button>
+		{/if}
+		{#if playgroundMode === 'sticky'}
+			<button type="button" onclick={() => onRemountSticky?.()}>Restart Animation</button>
+		{/if}
+		{#if playgroundMode === 'distortion'}
+			<button type="button" onclick={() => onRemountDistortion?.()}>Restart</button>
 		{/if}
 		<button type="button" class="secondary" onclick={reset}>Reset</button>
 		<div class="action-row">
@@ -870,15 +1128,16 @@
 	}
 	.mode-toggle button {
 		flex: 1;
-		padding: 6px 12px;
+		padding: 5px 4px;
 		border: none;
 		border-radius: 6px;
 		background: transparent;
 		color: #666;
 		cursor: pointer;
-		font-size: 0.82rem;
+		font-size: 0.72rem;
 		font-weight: 600;
 		transition: all 120ms;
+		white-space: nowrap;
 	}
 	.mode-toggle button.active {
 		background: #1c2a3a;
@@ -1024,6 +1283,20 @@
 	}
 	input[type='range'] {
 		width: 100%;
+	}
+	input[type='text'], textarea {
+		width: 100%;
+		background: #0d0d10;
+		border: 1px solid #2a2a2e;
+		border-radius: 4px;
+		color: #e0e0e0;
+		padding: 4px 6px;
+		font-size: 0.75rem;
+		font-family: monospace;
+	}
+	textarea {
+		resize: vertical;
+		min-height: 2.5rem;
 	}
 	select {
 		background: #0a0a0a;

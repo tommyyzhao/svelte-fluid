@@ -15,7 +15,7 @@
 	import type { FluidConfig, FluidHandle, RGB, StickyMask } from './engine/types.js';
 
 	export interface FluidStickProps extends FluidConfig {
-		/** Text to render as the sticky mask. Takes precedence over `d`. */
+		/** Text to render as the sticky mask. `d` takes precedence if both are set. */
 		text?: string;
 		/** CSS font string for text mode. Default `'bold 72px sans-serif'`. */
 		font?: string;
@@ -104,10 +104,11 @@
 		height,
 		class: className,
 		style,
-		// Sticky uses multiplicative dissipation for dye (like REVEAL mode).
-		// 0.85 = 15%/frame off-mask fade — dye trails clear within ~500ms,
-		// giving clear contrast once auto-animate stops. On-mask: → 1.0.
-		densityDissipation = 0.85,
+		// Sticky uses multiplicative dissipation (like REVEAL mode).
+		// 0.98 = 2%/frame off-mask fade — trails visible ~1-2s, matching
+		// standard Fluid feel. On-mask (strength 0.95): mix → 0.999,
+		// dye persists ~74% after 5s.
+		densityDissipation = 0.98,
 		velocityDissipation = 0.2,
 		curl = 20,
 		splatRadius = 1.0,
@@ -119,9 +120,9 @@
 		initialSplatCount = 20,
 		backColor = { r: 0, g: 0, b: 0 },
 		transparent = false,
-		randomSplatRate = 0.6,
+		randomSplatRate = 0.4,
 		randomSplatCount = 3,
-		randomSplatSwirl = 150,
+		randomSplatSwirl = 500,
 		randomSplatSpread = 2.0,
 		pointerInput = true,
 		splatOnHover = true,
@@ -238,6 +239,8 @@
 		{transparent}
 		{randomSplatRate}
 		{randomSplatCount}
+		{randomSplatSwirl}
+		{randomSplatSpread}
 		{pointerInput}
 		{splatOnHover}
 		{lazy}
