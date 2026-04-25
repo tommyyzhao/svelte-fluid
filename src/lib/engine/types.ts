@@ -404,6 +404,18 @@ export interface FluidConfig {
 	 */
 	distortionBleedY?: number;
 	/**
+	 * Open boundary conditions. When `true`, fluid flows freely
+	 * instead of bouncing back at boundaries. Affects both the canvas
+	 * edges (divergence solver skips no-penetration enforcement) and
+	 * container shapes (shape becomes a visual crop rather than a
+	 * physical wall — dye and velocity are not zeroed outside the shape).
+	 *
+	 * Default `false` (closed — fluid bounces at all boundaries).
+	 * {@link FluidReveal} defaults to `true` for natural scratch behavior.
+	 * Bucket A (hot-updatable).
+	 */
+	openBoundary?: boolean;
+	/**
 	 * Enable sticky mode. Dye clings to the `stickyMask` region by
 	 * modulating advection dissipation (dye persists on the mask),
 	 * pressure (fluid flows around the mask), and splat strength
@@ -501,6 +513,7 @@ export interface ResolvedConfig {
 	DISTORTION_SCALE: number;
 	DISTORTION_BLEED_X: number;
 	DISTORTION_BLEED_Y: number;
+	OPEN_BOUNDARY: boolean;
 	STICKY: boolean;
 	STICKY_MASK: StickyMask | null;
 	STICKY_STRENGTH: number;

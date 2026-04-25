@@ -125,6 +125,7 @@
 		velocityDissipation = 0.98,
 		pressure = 1.0,
 		curl = 0,
+		openBoundary = true,
 		pointerInput = false,
 		backColor = { r: 0, g: 0, b: 0 },
 		coverColor,
@@ -302,6 +303,7 @@
 			{velocityDissipation}
 			{pressure}
 			{curl}
+			{openBoundary}
 			{pointerInput}
 			{backColor}
 			{lazy}

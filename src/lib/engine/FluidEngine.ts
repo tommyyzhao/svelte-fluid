@@ -129,6 +129,7 @@ export const DEFAULTS: ResolvedConfig = {
 	DISTORTION_SCALE: 1.0,
 	DISTORTION_BLEED_X: 0,
 	DISTORTION_BLEED_Y: 0,
+	OPEN_BOUNDARY: false,
 	STICKY: false,
 	STICKY_MASK: null,
 	STICKY_STRENGTH: 0.9,
@@ -210,6 +211,7 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 	if (input.distortionScale !== undefined) out.DISTORTION_SCALE = input.distortionScale;
 	if (input.distortionBleedX !== undefined) out.DISTORTION_BLEED_X = Math.max(0, Math.min(0.5, input.distortionBleedX));
 	if (input.distortionBleedY !== undefined) out.DISTORTION_BLEED_Y = Math.max(0, Math.min(0.5, input.distortionBleedY));
+	if (input.openBoundary !== undefined) out.OPEN_BOUNDARY = input.openBoundary;
 	if (input.sticky !== undefined) out.STICKY = input.sticky;
 	if (input.stickyMask !== undefined) out.STICKY_MASK = input.stickyMask ?? null;
 	if (input.stickyStrength !== undefined) out.STICKY_STRENGTH = input.stickyStrength;
@@ -1424,6 +1426,7 @@ export class FluidEngine implements FluidHandle {
 			this.velocity.texelSizeY
 		);
 		gl.uniform1i(this.divergenceProgram.uniforms.uVelocity, this.velocity.read.attach(0));
+		gl.uniform1f(this.divergenceProgram.uniforms.uOpenBoundary, this.config.OPEN_BOUNDARY ? 1.0 : 0.0);
 		this.blit(this.divergence);
 
 		this.clearProgram.bind();
@@ -1516,11 +1519,11 @@ export class FluidEngine implements FluidHandle {
 		);
 		this.blit(this.velocity.write);
 		this.velocity.swap();
-		if (this.config.CONTAINER_SHAPE) this.applyMask(this.velocity);
+		if (this.config.CONTAINER_SHAPE && !this.config.OPEN_BOUNDARY) this.applyMask(this.velocity);
 
 		// Re-bind advection program — applyMask switches the active GL
 		// program, and the dye advection below reuses advectionProgram.
-		if (this.config.CONTAINER_SHAPE) this.advectionProgram.bind();
+		if (this.config.CONTAINER_SHAPE && !this.config.OPEN_BOUNDARY) this.advectionProgram.bind();
 
 		// Re-bind sticky mask for dye advection pass
 		this.bindStickyMask();
@@ -1547,7 +1550,7 @@ export class FluidEngine implements FluidHandle {
 		);
 		this.blit(this.dye.write);
 		this.dye.swap();
-		if (this.config.CONTAINER_SHAPE) this.applyMask(this.dye);
+		if (this.config.CONTAINER_SHAPE && !this.config.OPEN_BOUNDARY) this.applyMask(this.dye);
 	}
 
 	private render(target: FBO | null): void {
