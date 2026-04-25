@@ -111,8 +111,10 @@
 		style,
 		children,
 		// Reveal-friendly defaults (consumer can override).
-		// curl=0 skips vorticity passes; multiplicative dissipation
-		// (activated by reveal=true) matches the reference physics.
+		// curl=0 skips vorticity passes; pressure=1.0 disables pressure
+		// relaxation for clean laminar flow (matches Ascend-Fluid reference);
+		// multiplicative dissipation (activated by reveal=true) matches
+		// the reference physics.
 		densityDissipation: densityDissipationProp,
 		splatRadius = 0.2,
 		splatOnHover = false,
@@ -120,7 +122,8 @@
 		bloom = false,
 		sunrays = false,
 		shading = false,
-		velocityDissipation = 0.9,
+		velocityDissipation = 0.98,
+		pressure = 1.0,
 		curl = 0,
 		pointerInput = false,
 		backColor = { r: 0, g: 0, b: 0 },
@@ -133,17 +136,28 @@
 	let canvasWrapperEl: HTMLDivElement | undefined = $state(undefined);
 
 	// ---- Pointer-driven reveal splats ----
-	// Dye color = coverColor - accentColor. The display shader outputs
-	// coverColor - c, so at full dye the fringe matches the accent color.
+	// The display shader outputs max(coverColor - c, 0) with alpha driven
+	// by dye intensity max(c.r, c.g, c.b). We compute dye = cover - accent
+	// when cover > accent; when accent is brighter (dark covers), the
+	// difference is negative so we fall back to the absolute difference
+	// to ensure nonzero intensity. A floor of 0.15 per channel guarantees
+	// the reveal always triggers regardless of color combination.
 	const DEFAULT_COVER: RGB = { r: 1, g: 1, b: 1 };
 	const DEFAULT_ACCENT: RGB = { r: 0.05, g: 0.16, b: 0.32 };
 	let revealDye = $derived.by(() => {
 		const cv = coverColor ?? DEFAULT_COVER;
 		const ac = accentColor ?? DEFAULT_ACCENT;
+		const dr = cv.r - ac.r;
+		const dg = cv.g - ac.g;
+		const db = cv.b - ac.b;
+		// If any channel is positive, use cover-accent (clamp negatives to 0).
+		// If all channels are negative (dark cover + bright accent), use
+		// the absolute difference so the dye has nonzero intensity.
+		const allNegative = dr <= 0 && dg <= 0 && db <= 0;
 		return {
-			r: Math.max(0, Math.min(1, cv.r - ac.r)),
-			g: Math.max(0, Math.min(1, cv.g - ac.g)),
-			b: Math.max(0, Math.min(1, cv.b - ac.b))
+			r: Math.max(0.15, Math.min(1, allNegative ? -dr : Math.max(0, dr))),
+			g: Math.max(0.15, Math.min(1, allNegative ? -dg : Math.max(0, dg))),
+			b: Math.max(0.15, Math.min(1, allNegative ? -db : Math.max(0, db)))
 		};
 	});
 	const SPLAT_FORCE = 6000;
@@ -286,6 +300,7 @@
 			{sunrays}
 			{shading}
 			{velocityDissipation}
+			{pressure}
 			{curl}
 			{pointerInput}
 			{backColor}

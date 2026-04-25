@@ -511,8 +511,9 @@
 		// Compare against FluidReveal defaults, not Fluid defaults.
 		fmt('splatRadius', splatRadius, 0.2);
 		fmt('curl', curl, 0);
-		fmt('velocityDissipation', velocityDissipation, 0.9);
+		fmt('velocityDissipation', velocityDissipation, 0.98);
 		fmt('splatForce', splatForce, 6000);
+		fmt('pressure', pressure, 1.0);
 		fmt('bloom', bloom, false);
 		fmt('sunrays', sunrays, false);
 		fmt('shading', shading, false);

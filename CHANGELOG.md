@@ -13,6 +13,65 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`@changesets/cli` + `@changesets/changelog-github`** — automated release
+  tooling. New scripts: `bun run changeset`, `bun run version`,
+  `bun run release`. Config at `.changeset/config.json`.
+- **73 new tests** — `resolve-config.test.ts` (47 tests: field mapping,
+  clamping, density dissipation ramp, partial patches, construct-only fields)
+  and `lifecycle.test.ts` (26 tests: dispose contract, setConfig bucket
+  classification, context loss/restore state machine, velocity dissipation
+  threshold logic).
+- **ADR-0031** — documents FluidStick architecture: sticky mask rasterization,
+  three-shader modulation (advection/pressure/splat), multiplicative dissipation,
+  velocity damping, zero-overhead when disabled, texture unit budget.
+- **`resolveConfig()` and `DEFAULTS` exported** from `FluidEngine.ts` with
+  `@internal` JSDoc — enables direct testing of config resolution logic.
+
+### Changed
+
+- **FluidReveal `pressure` default** — 0.8 → **1.0**. Disables the per-frame
+  pressure field relaxation step (`pressure *= 0.8`), matching the Ascend-Fluid
+  reference. Eliminates "bubble collapse" where revealed transparent areas
+  quickly filled back in. Passed explicitly to `<Fluid>` as a destructured prop.
+- **FluidReveal `velocityDissipation` default** — 0.9 → **0.98**. The old 0.9
+  was set when the engine ignored it (hardcoding 0.98). Now that the engine
+  honors the prop (see fix below), 0.98 restores the original behavior.
+- **Velocity dissipation in multiplicative mode** — the engine previously
+  hardcoded 0.98 for all REVEAL/STICKY instances, ignoring the prop. Now uses
+  a threshold: if `velocityDissipation > 0.5` (clearly a multiplicative-mode
+  value), honor it; if ≤ 0.5 (additive-mode default like 0.2), fall back to
+  0.98. This allows FluidReveal consumers to tune velocity decay (e.g. 0.95
+  for tighter Ascend-like feel).
+- **"Soft reveal" → "Liquid reveal"** — renamed demo card and preset. Now
+  explicitly sets `pressure={0.8}` to opt into the swirly pressure relaxation
+  that FluidReveal's new default (1.0) disables. Description updated to
+  emphasize the organic, liquid unmasking effect.
+- **Scratch-to-Reveal preset tuning** — `splatRadius` 0.2→0.12 (tighter splats
+  matching Ascend's `1/height` scale), `velocityDissipation` 0.98→0.95 (faster
+  velocity decay for viscous feel), `pressureIterations` 20→10 (matching
+  Ascend). Produces tight, viscous trails instead of diffuse washes.
+- **Auto-reveal preset** — added `curve={0.12}` (+0.02 from FluidReveal
+  default of 0.1).
+- **Playground reveal-mode defaults** — `pressure` set to 1.0 and
+  `velocityDissipation` to 0.98 in both mode-switch and loadConfig paths.
+- **Reveal snippet builder** — updated default comparisons: `velocityDissipation`
+  0.9→0.98, `pressure` 0.8→1.0, added `pressure` to `buildRevealSnippet()`.
+
+### Fixed
+
+- **FluidReveal zero-dye bug with dark covers** — `revealDye` computation
+  (`coverColor - accentColor`) produced all-zero dye when the accent color was
+  brighter than the cover in every channel (e.g. Permanent reveal: dark gray
+  cover + gold accent). Zero-intensity dye meant the reveal shader never
+  triggered — cursor movement had no effect. Fixed: when all channels are
+  negative, uses the absolute difference `|cover - accent|`; a floor of 0.15
+  per channel guarantees nonzero intensity for all color combinations. Added
+  5 tests covering dark-cover, identical-color, and mixed-channel cases.
+
+### Documentation
+
+- **ADR-0031** — FluidStick architecture decisions (see Added above).
+
 - **Shared fluid controls for all playground tabs** — Sticky, Reveal, and Distortion
   tabs now display the same accordion sections as the Fluid tab: Physics, Random
   Splats, Visuals, Resolution, Background, Container Shape, Glass. All controls
