@@ -13,6 +13,51 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Playground Sticky tab** — 3rd playground mode with FluidStick controls: text/font
+  inputs, SVG path textarea, maskBlur/maskPadding sliders, sticky physics (strength,
+  amplify, pressure, densityDissipation), auto-animate speed/duration, container
+  shape selector (Rectangle/Circle/Rounded rect) with glass toggle. Remounts on
+  "Restart Animation" to reset auto-animate.
+- **Playground Distortion tab** — 4th playground mode with FluidDistortion controls:
+  image URL text input, strength/intensity sliders, velocityDissipation,
+  initialSplats, auto-distort checkbox with speed slider, container shape selector.
+  Toggling auto-distort triggers a remount so the Lissajous animation starts.
+- **Customize buttons on Sticky/Distortion demo cards** — all 8 demo cards
+  (4 sticky, 4 distortion) now have "Customize" buttons that scroll to the
+  playground, switch to the correct tab, and load the card's config.
+- **URL hash state for Sticky/Distortion** — all sticky/distortion playground params
+  serialize to the URL hash for sharing.
+
+### Changed
+
+- **Playground mode toggle** — expanded from 2 tabs (Fluid/Reveal) to 4 tabs
+  (Fluid/Reveal/Sticky/Distortion). Reduced button padding/font-size to fit.
+  Only the active tab's WebGL context is rendered.
+- **SVG path (`d`) now takes precedence over `text`** — in both `initMaskTexture()`
+  and `initStickyMaskTexture()` in `FluidEngine.ts`, and in `ContainerShape.svgPath`
+  and `StickyMask` type docs. Previously text took precedence; now SVG path wins
+  when both are set.
+- **FluidStick `densityDissipation`** — default 0.85→0.98. Multiplicative dissipation
+  at 0.85 was 15%/frame (dye gone in ~300ms); 0.98 gives 2%/frame (~1–2s visible
+  trails, matching standard Fluid feel). On-mask retention improved from 10%→74%
+  after 5s.
+- **FluidStick random splat timing** — rate 0.6→0.4 (every ~2.5s), count 3→3,
+  swirl 150→500 (stronger tangential velocity). Engine jitter widened from
+  0.5–1.5× to 0.3–2.0× for organic "water dripping" timing.
+- **`/sticky-tuning` route removed** — functionality folded into the main
+  playground's Sticky tab.
+
+### Fixed
+
+- **`loadedPreset` not cleared on Reset** — `loadedPreset` was a read-only prop in
+  ControlPanel; clicking "Clear"/"Reset" reset all values but the "Loaded: X"
+  indicator persisted. Made `loadedPreset` `$bindable` and clear it in `reset()`.
+- **`randomSplatSwirl`/`randomSplatSpread` not passed to `<Fluid>`** — FluidStick
+  destructured these props (removing them from `...fluidProps`) but never forwarded
+  them to the inner `<Fluid>` component. The engine used defaults: swirl=0 (zero
+  velocity) and spread=0.1 (tiny band). Random splats were invisible. Added
+  `{randomSplatSwirl}` and `{randomSplatSpread}` to the template.
+
 - **`StickyMask.padding` field / `maskPadding` prop** — controls how much of the
   mask texture the text fills (text mode only). Default 0.9. Use smaller values
   (e.g. 0.5) to fit text inside a container shape like a circle.

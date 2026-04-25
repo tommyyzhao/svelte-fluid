@@ -69,7 +69,7 @@ Two approaches coexist:
 - **Container shapes** (6): Circle, Frame, Annulus, Rounded rect, Rounded frame, SVG path — all lazy, `splatOnHover`
 - **Container effects** (4): Glass orb, Subtle lens, Glass ring, Diamond frame — all use `glass` prop, lazy
 - **Reveal** (4): Scratch-to-reveal, Permanent reveal, Auto-reveal, Soft reveal — all use `<FluidReveal>`
-- **Playground** (1): interactive with ControlPanel (includes glass controls)
+- **Playground** (1): interactive with ControlPanel, 4-tab mode toggle (Fluid/Reveal/Sticky/Distortion). Only the active tab's WebGL context renders.
 
 All grids use `repeat(2, 1fr)`.
 Extra routes: `/background-fluid`, `/fluid-reveal/`, `/svelte-fluid`, `/svg`
