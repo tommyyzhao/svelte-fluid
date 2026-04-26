@@ -25,6 +25,7 @@
 		playgroundMode: 'fluid' | 'reveal' | 'sticky' | 'distortion';
 		revealContent: 'text' | 'mosaic';
 		revealCoverColor: string;
+		revealFringeColor: string;
 		revealAccentColor: string;
 		stickyText: string; stickyFont: string; stickyD: string;
 		stickyMaskBlur: number; stickyMaskPadding: number;
@@ -84,13 +85,14 @@
 		glassChromatic: 0.15,
 		reveal: false,
 		revealSensitivity: 0.1,
-		revealCurve: 0.24,
+		revealCurve: 0.5,
 		revealFadeBack: true,
 		revealAutoReveal: false,
 		revealAutoRevealSpeed: 1.0,
 		playgroundMode: 'fluid',
 		revealContent: 'text',
 		revealCoverColor: '#ffffff',
+		revealFringeColor: '#99b3d9',
 		revealAccentColor: '#0d2952',
 		stickyText: 'FLUID',
 		stickyFont: '900 120px sans-serif',
@@ -170,6 +172,7 @@
 		playgroundMode = $bindable(D.playgroundMode),
 		revealContent = $bindable(D.revealContent),
 		revealCoverColor = $bindable(D.revealCoverColor),
+		revealFringeColor = $bindable(D.revealFringeColor),
 		revealAccentColor = $bindable(D.revealAccentColor),
 		showShapePreview = $bindable(false),
 		loadedPreset = $bindable(''),
@@ -251,6 +254,7 @@
 		playgroundMode?: 'fluid' | 'reveal' | 'sticky' | 'distortion';
 		revealContent?: 'text' | 'mosaic';
 		revealCoverColor?: string;
+		revealFringeColor?: string;
 		revealAccentColor?: string;
 		showShapePreview?: boolean;
 		loadedPreset?: string;
@@ -394,6 +398,7 @@
 		revealAutoRevealSpeed = D.revealAutoRevealSpeed;
 		revealContent = D.revealContent;
 		revealCoverColor = D.revealCoverColor;
+		revealFringeColor = D.revealFringeColor;
 		revealAccentColor = D.revealAccentColor;
 		playgroundMode = D.playgroundMode;
 		loadedPreset = '';
@@ -517,6 +522,17 @@
 		fmt('bloom', bloom, false);
 		fmt('sunrays', sunrays, false);
 		fmt('shading', shading, false);
+		// Color props — emit as RGB object literals when non-default
+		const fmtColor = (key: string, hex: string, def: string) => {
+			if (hex === def) return;
+			const r = parseInt(hex.slice(1, 3), 16) / 255;
+			const g = parseInt(hex.slice(3, 5), 16) / 255;
+			const b = parseInt(hex.slice(5, 7), 16) / 255;
+			lines.push(`  ${key}={{ r: ${r.toFixed(2)}, g: ${g.toFixed(2)}, b: ${b.toFixed(2)} }}`);
+		};
+		fmtColor('coverColor', revealCoverColor, D.revealCoverColor);
+		fmtColor('fringeColor', revealFringeColor, D.revealFringeColor);
+		fmtColor('accentColor', revealAccentColor, D.revealAccentColor);
 		const content = '  <div>Your content here</div>';
 		if (lines.length === 0) return `<FluidReveal>\n${content}\n</FluidReveal>`;
 		return ['<FluidReveal', ...lines, '>', content, '</FluidReveal>'].join('\n');
@@ -903,6 +919,10 @@
 			<label>
 				<span>Cover color</span>
 				<input type="color" bind:value={revealCoverColor} />
+			</label>
+			<label>
+				<span>Fringe color</span>
+				<input type="color" bind:value={revealFringeColor} />
 			</label>
 			<label>
 				<span>Accent color</span>
