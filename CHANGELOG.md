@@ -26,6 +26,16 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 - **`smoothstep` threshold in REVEAL shader** — kills near-zero dye intensity so
   faint Gaussian tails never trigger partial reveal (eliminates "brightening"
   artifact on the solid cover area).
+- **`revealFringeColor` prop** (`FluidConfig.revealFringeColor?: RGB`, default
+  `{ r: 0.6, g: 0.7, b: 0.85 }`) — outer fringe color between the cover and the
+  accent in the reveal shader. Creates a two-tone fringe:
+  cover → fringeColor → accentColor → transparent. Eliminates the dark band
+  artifact that appeared when mixing distant colors (e.g. white cover + dark navy
+  accent produced ugly gray intermediates). Bucket A (hot-updatable).
+  `FluidReveal` exposes it as `fringeColor` prop.
+- **Playground reveal snippet builder** — `buildRevealSnippet()` now emits
+  `coverColor`, `fringeColor`, and `accentColor` as RGB object literals when
+  they differ from defaults.
 
 - **`openBoundary` prop** (`FluidConfig.openBoundary?: boolean`, default `false`) —
   open boundary conditions. When `true`, fluid flows freely instead of bouncing:
@@ -53,20 +63,31 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **REVEAL shader formula** — `max(coverColor - dye, 0)` → `mix(coverColor,
-  accentColor, revealAmount)`. The accent color is now a separate uniform rendered
-  directly in the fringe zone, not derived from cover-dye subtraction. Dark covers
-  with bright accents now produce visible colored fringes.
-- **FluidReveal `curve` default** — 0.1 → **0.24**. The old 0.1 exponent
-  aggressively amplified tiny dye amounts (`pow(0.01, 0.1) = 0.74`), producing
-  mushy edges and cover brightening. 0.24 gives crisper reveal boundaries.
+- **REVEAL shader formula** — complete overhaul across three sessions:
+  (1) `max(coverColor - dye, 0)` → `mix(coverColor, accentColor, revealAmount)` →
+  (2) `smoothstep(0, 0.5, pow(raw, curve))` for crisp S-curve edges →
+  (3) two-tone fringe via `cover → fringeColor → accentColor` with one-sided ramp.
+  The smoothstep sharpening kills the Gaussian tail gradient, producing a tight
+  boundary with a large "clearly revealed" center. The one-sided ramp
+  (`smoothstep(0, 0.25, revealAmount)` for accent blend) prevents the white-band
+  artifact that the bell curve created at high revealAmount.
+- **FluidReveal `curve` default** — 0.1 → 0.24 → **0.5**. The old 0.24 exponent
+  still produced a wide gradient. 0.5 (sqrt) combined with smoothstep sharpening
+  gives crisp scratch-card-like edges while keeping a meaningful fringe zone.
   Engine `REVEAL_CURVE` and ControlPanel `D.revealCurve` updated to match.
+  JSDoc corrected: higher curve = crisper edge (was incorrectly described as
+  the opposite).
 - **FluidReveal/FluidDistortion pointer velocity** — switched from normalized
   deltas × 6000 to pixel-based deltas × 5 (mouse) / × 8 (touch), matching
   Ascend-Fluid reference. Eliminates canvas-size-dependent velocity — small
   demo cards previously produced 3-4× more velocity than full-screen canvases.
 - **"Liquid reveal" → "Turbulent reveal"** — renamed demo card and preset to
   better describe the higher-turbulence behavior from lower pressure and curl.
+  Further tuned: `curl` 3→20, `pressure` 0.8→0.4, added `velocityDissipation=0.96`,
+  `splatRadius` 0.3→0.35 for much more chaotic swirling reveals.
+- **All 6 reveal demo cards** — now include `fringeColor` prop in both the
+  rendered `<FluidReveal>` instances and the `</>` code snippets. Fringe colors
+  chosen to create smooth transitions for each cover/accent combination.
 - **Reveal preset tuning** — all presets now use `curve >= 0.24` and
   `splatRadius >= 0.2`. Permanent reveal and Auto-reveal use
   `velocityDissipation=0.95` for blobby/laminar behavior matching Scratch to reveal.
@@ -108,6 +129,14 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **White band artifact in reveal fringe** — at high `revealAmount` (≈ 0.85–0.95),
+  the bell curve `4*r*(1-r)` reverted the color toward cover (white) while alpha
+  was still nonzero, creating a bright white glow between the accent zone and the
+  transparent center. Fixed by switching to a one-sided ramp that saturates to
+  accent and stays there.
+- **Dark band artifact between cover and accent** — mixing distant colors
+  (white + deep navy) through `smoothstep` produced ugly dark gray intermediates.
+  Fixed by introducing `revealFringeColor` as an intermediate color stop.
 - **FluidReveal zero-dye bug with dark covers** — `revealDye` computation
   (`coverColor - accentColor`) produced all-zero dye when the accent color was
   brighter than the cover in every channel (e.g. Permanent reveal: dark gray
