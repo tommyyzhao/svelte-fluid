@@ -348,9 +348,9 @@ export interface FluidConfig {
 	 */
 	revealSensitivity?: number;
 	/**
-	 * Power exponent for the reveal alpha curve. Lower values create a
-	 * steeper threshold (more binary reveal), higher values create a
-	 * softer gradient. Default 0.1. Bucket A.
+	 * Power exponent for the reveal alpha curve. Higher values create a
+	 * crisper edge (more binary reveal), lower values create a softer
+	 * gradient with wider fringes. Default 0.5. Bucket A.
 	 */
 	revealCurve?: number;
 	/**
@@ -366,6 +366,14 @@ export interface FluidConfig {
 	 * `{ r: 0.05, g: 0.16, b: 0.32 }` (deep navy). Bucket A.
 	 */
 	revealAccentColor?: RGB;
+	/**
+	 * Fringe color at the outer edge of the reveal boundary, between
+	 * the cover color and the accent color. Creates a two-tone fringe:
+	 * cover → fringeColor → accentColor → transparent. RGB components
+	 * in 0–1 linear range. Default `{ r: 0.6, g: 0.7, b: 0.85 }`
+	 * (soft blue). Bucket A.
+	 */
+	revealFringeColor?: RGB;
 	/**
 	 * Enable distortion mode. The fluid velocity field warps an underlying
 	 * image instead of rendering dye colors. Cursor movement creates
@@ -514,6 +522,7 @@ export interface ResolvedConfig {
 	REVEAL_CURVE: number;
 	REVEAL_COVER_COLOR: RGB;
 	REVEAL_ACCENT_COLOR: RGB;
+	REVEAL_FRINGE_COLOR: RGB;
 	DISTORTION: boolean;
 	DISTORTION_POWER: number;
 	DISTORTION_IMAGE_URL: string | null;

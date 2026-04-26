@@ -120,9 +120,10 @@ export const DEFAULTS: ResolvedConfig = {
 	GLASS_CHROMATIC: 0.15,
 	REVEAL: false,
 	REVEAL_SENSITIVITY: 0.1,
-	REVEAL_CURVE: 0.24,
+	REVEAL_CURVE: 0.5,
 	REVEAL_COVER_COLOR: { r: 1, g: 1, b: 1 },
 	REVEAL_ACCENT_COLOR: { r: 0.05, g: 0.16, b: 0.32 },
+	REVEAL_FRINGE_COLOR: { r: 0.6, g: 0.7, b: 0.85 },
 	DISTORTION: false,
 	DISTORTION_POWER: 0.4,
 	DISTORTION_IMAGE_URL: null,
@@ -206,6 +207,7 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 	if (input.revealCurve !== undefined) out.REVEAL_CURVE = input.revealCurve;
 	if (input.revealCoverColor !== undefined) out.REVEAL_COVER_COLOR = input.revealCoverColor;
 	if (input.revealAccentColor !== undefined) out.REVEAL_ACCENT_COLOR = input.revealAccentColor;
+	if (input.revealFringeColor !== undefined) out.REVEAL_FRINGE_COLOR = input.revealFringeColor;
 	if (input.distortion !== undefined) out.DISTORTION = input.distortion;
 	if (input.distortionPower !== undefined) out.DISTORTION_POWER = input.distortionPower;
 	if (input.distortionImageUrl !== undefined) out.DISTORTION_IMAGE_URL = input.distortionImageUrl ?? null;
@@ -1668,6 +1670,8 @@ export class FluidEngine implements FluidHandle {
 			gl.uniform3f(this.displayMaterial.uniforms.uRevealCoverColor, cc.r, cc.g, cc.b);
 			const ac = this.config.REVEAL_ACCENT_COLOR;
 			gl.uniform3f(this.displayMaterial.uniforms.uRevealAccentColor, ac.r, ac.g, ac.b);
+			const fc = this.config.REVEAL_FRINGE_COLOR;
+			gl.uniform3f(this.displayMaterial.uniforms.uRevealFringeColor, fc.r, fc.g, fc.b);
 		}
 		this.blit(target);
 	}

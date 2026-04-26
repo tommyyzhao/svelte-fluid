@@ -22,9 +22,9 @@
 		 */
 		sensitivity?: number;
 		/**
-		 * Power exponent for the reveal alpha curve. Lower values create
-		 * a steeper threshold (more binary), higher values create a
-		 * softer gradient. Default 0.1.
+		 * Power exponent for the reveal alpha curve. Higher values create
+		 * a crisper edge (more binary), lower values create a softer
+		 * gradient with wider fringes. Default 0.5.
 		 */
 		curve?: number;
 		/**
@@ -37,6 +37,12 @@
 		 * RGB components in 0–1 linear range. Default blue `{ r: 0.2, g: 0.35, b: 0.7 }`.
 		 */
 		accentColor?: RGB;
+		/**
+		 * Fringe color at the outer edge of the reveal boundary, between
+		 * cover and accent. Creates a two-tone fringe. RGB components in
+		 * 0–1 linear range. Default soft blue `{ r: 0.6, g: 0.7, b: 0.85 }`.
+		 */
+		fringeColor?: RGB;
 		/**
 		 * Whether revealed areas gradually fade back to covered.
 		 * `true` → multiplicative dissipation 0.995 (slow fade-back).
@@ -98,7 +104,7 @@
 
 	let {
 		sensitivity = 0.1,
-		curve = 0.24,
+		curve = 0.5,
 		fadeBack = true,
 		fadeSpeed,
 		autoReveal = false,
@@ -130,6 +136,7 @@
 		backColor = { r: 0, g: 0, b: 0 },
 		coverColor,
 		accentColor,
+		fringeColor,
 		...fluidProps
 	}: FluidRevealProps = $props();
 
@@ -281,6 +288,7 @@
 			revealCurve={curve}
 			revealCoverColor={coverColor}
 			revealAccentColor={accentColor}
+			revealFringeColor={fringeColor}
 			densityDissipation={dissipation}
 			{splatRadius}
 			{splatOnHover}

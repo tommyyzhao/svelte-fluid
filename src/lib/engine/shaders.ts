@@ -150,6 +150,7 @@ export const displayShaderSource = `
     uniform float uRevealCurve;
     uniform vec3 uRevealCoverColor;
     uniform vec3 uRevealAccentColor;
+    uniform vec3 uRevealFringeColor;
 #endif
 
 #ifdef DISTORTION
@@ -309,14 +310,17 @@ export const displayShaderSource = `
         gl_FragColor = vec4(img * edgeAlpha * cmask, edgeAlpha * cmask);
     #elif defined(REVEAL)
         float raw = clamp(a * uRevealSensitivity, 0.0, 1.0);
-        // smoothstep kills near-zero dye so the cover never brightens from
-        // faint Gaussian tails — only meaningful dye triggers a reveal.
-        float revealAmount = clamp(pow(raw, uRevealCurve) * smoothstep(0.0, 0.01, raw), 0.0, 1.0);
+        // pow shapes the input; smoothstep sharpens the transition into a
+        // crisp S-curve so the Gaussian tail doesn't create a long gradient.
+        // Below ~0.1 shaped: solid cover. Above 0.5: fully revealed.
+        float revealAmount = smoothstep(0.0, 0.5, pow(raw, uRevealCurve));
         float alpha = (1.0 - revealAmount) * cmask;
-        // Accent color appears directly in the fringe zone (matching Ascend-Fluid).
-        // Cover → accent gradient controlled by revealAmount; accent at partial
-        // alpha composites over the underlying content.
-        vec3 color = mix(uRevealCoverColor, uRevealAccentColor, revealAmount);
+        // Two-tone fringe: cover → fringeColor at the outer edge,
+        // fringeColor → accentColor toward the transparent center.
+        // Avoids dark intermediate values from mixing distant colors.
+        float outerBlend = smoothstep(0.0, 0.15, revealAmount);
+        float innerBlend = smoothstep(0.15, 0.4, revealAmount);
+        vec3 color = mix(mix(uRevealCoverColor, uRevealFringeColor, outerBlend), uRevealAccentColor, innerBlend);
         gl_FragColor = vec4(color, alpha);
     #else
         gl_FragColor = vec4(c, a);
