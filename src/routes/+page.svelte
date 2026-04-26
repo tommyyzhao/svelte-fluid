@@ -730,9 +730,9 @@
 			containerShape: { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 },
 		},
 		'Scratch to reveal': { playgroundMode: 'reveal', velocityDissipation: 0.95, pressureIterations: 10 },
-		'Permanent reveal': { playgroundMode: 'reveal', revealFadeBack: false, revealCoverColor: '#292930', revealFringeColor: '#736847', revealAccentColor: '#c8a864', velocityDissipation: 0.95, pressureIterations: 10 },
+		'Permanent reveal': { playgroundMode: 'reveal', revealFadeBack: false, revealCoverColor: '#292930', revealFringeColor: '#b8944d', revealAccentColor: '#c8a864', velocityDissipation: 0.95, pressureIterations: 10 },
 		'Auto-reveal': { playgroundMode: 'reveal', revealAutoReveal: true, revealAutoRevealSpeed: 0.8, revealFadeBack: false, velocityDissipation: 0.95, revealSensitivity: 0.15, revealCoverColor: '#0d1421', revealFringeColor: '#26598c', revealAccentColor: '#00c8ff' },
-		'Turbulent reveal': { playgroundMode: 'reveal', pressure: 0.8, revealCurve: 0.5, revealSensitivity: 0.2, splatRadius: 0.3, revealCoverColor: '#f0e0e6', revealFringeColor: '#a6809a', revealAccentColor: '#4a0e4f', curl: 3 },
+		'Turbulent reveal': { playgroundMode: 'reveal', pressure: 0.4, revealCurve: 0.5, revealSensitivity: 0.2, splatRadius: 0.35, revealCoverColor: '#f0e0e6', revealFringeColor: '#a6809a', revealAccentColor: '#4a0e4f', curl: 20, velocityDissipation: 0.96 },
 		'Circle reveal': { playgroundMode: 'reveal', containerShape: { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }, revealCoverColor: '#0a1f1f', revealFringeColor: '#266661', revealAccentColor: '#00e6c8' },
 		'Bounded reveal': { playgroundMode: 'reveal', containerShape: { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.38, halfH: 0.42, cornerRadius: 0.08 }, revealCoverColor: '#2a0f1e', revealFringeColor: '#8c4038', revealAccentColor: '#ff7a5c', curl: 10 }
 	};
@@ -1155,14 +1155,14 @@
 					</div>
 				</FluidReveal>
 			</Card>
-			<Card title="Permanent reveal" description="Dark cover with gold fringes — a luxury scratch-card effect. Once revealed, content stays." onCustomize={() => loadConfig(PRESET_CONFIGS['Permanent reveal'], 'Permanent reveal')} snippet={`<FluidReveal\n  fadeBack={false}\n  velocityDissipation={0.95}\n  pressureIterations={10}\n  coverColor={{ r: 0.16, g: 0.16, b: 0.18 }}\n  fringeColor={{ r: 0.45, g: 0.41, b: 0.28 }}\n  accentColor={{ r: 0.78, g: 0.66, b: 0.39 }}\n>\n  <div>Your content here</div>\n</FluidReveal>`}>
+			<Card title="Permanent reveal" description="Dark cover with gold fringes — a luxury scratch-card effect. Once revealed, content stays." onCustomize={() => loadConfig(PRESET_CONFIGS['Permanent reveal'], 'Permanent reveal')} snippet={`<FluidReveal\n  fadeBack={false}\n  velocityDissipation={0.95}\n  pressureIterations={10}\n  coverColor={{ r: 0.16, g: 0.16, b: 0.18 }}\n  fringeColor={{ r: 0.72, g: 0.58, b: 0.3 }}\n  accentColor={{ r: 0.78, g: 0.66, b: 0.39 }}\n>\n  <div>Your content here</div>\n</FluidReveal>`}>
 				<FluidReveal
 					lazy
 					fadeBack={false}
 					velocityDissipation={0.95}
 					pressureIterations={10}
 					coverColor={{ r: 0.16, g: 0.16, b: 0.18 }}
-					fringeColor={{ r: 0.45, g: 0.41, b: 0.28 }}
+					fringeColor={{ r: 0.72, g: 0.58, b: 0.3 }}
 					accentColor={{ r: 0.78, g: 0.66, b: 0.39 }}
 				>
 					<div class="reveal-content reveal-mosaic">
@@ -1197,17 +1197,18 @@
 					</div>
 				</FluidReveal>
 			</Card>
-			<Card title="Turbulent reveal" description="Blush cover with purple fringes. Lower pressure and higher curl allow swirling, turbulent reveals." onCustomize={() => loadConfig(PRESET_CONFIGS['Turbulent reveal'], 'Turbulent reveal')} snippet={`<FluidReveal\n  pressure={0.8}\n  curve={0.5}\n  sensitivity={0.2}\n  splatRadius={0.3}\n  coverColor={{ r: 0.94, g: 0.88, b: 0.9 }}\n  fringeColor={{ r: 0.65, g: 0.5, b: 0.6 }}\n  accentColor={{ r: 0.29, g: 0.055, b: 0.31 }}\n  curl={3}\n>\n  <div>Your content here</div>\n</FluidReveal>`}>
+			<Card title="Turbulent reveal" description="Blush cover with purple fringes. High curl and low pressure create swirling, chaotic reveals." onCustomize={() => loadConfig(PRESET_CONFIGS['Turbulent reveal'], 'Turbulent reveal')} snippet={`<FluidReveal\n  pressure={0.4}\n  curve={0.5}\n  sensitivity={0.2}\n  splatRadius={0.35}\n  velocityDissipation={0.96}\n  coverColor={{ r: 0.94, g: 0.88, b: 0.9 }}\n  fringeColor={{ r: 0.65, g: 0.5, b: 0.6 }}\n  accentColor={{ r: 0.29, g: 0.055, b: 0.31 }}\n  curl={20}\n>\n  <div>Your content here</div>\n</FluidReveal>`}>
 				<FluidReveal
 					lazy
-					pressure={0.8}
+					pressure={0.4}
 					curve={0.5}
 					sensitivity={0.2}
-					splatRadius={0.3}
+					splatRadius={0.35}
+					velocityDissipation={0.96}
 					coverColor={{ r: 0.94, g: 0.88, b: 0.9 }}
 					fringeColor={{ r: 0.65, g: 0.5, b: 0.6 }}
 					accentColor={{ r: 0.29, g: 0.055, b: 0.31 }}
-					curl={3}
+					curl={20}
 				>
 					<div class="reveal-content reveal-gradient-2">
 						<span class="reveal-label">Turbulent Reveal</span>
