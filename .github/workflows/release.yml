@@ -3,6 +3,9 @@ name: Release
 on:
   push:
     branches: [main]
+  # Manual trigger for the very first publish (v0.1.0) before any
+  # changesets exist. Subsequent releases use the push-driven flow.
+  workflow_dispatch:
 
 # One release attempt at a time.
 concurrency:
@@ -49,9 +52,21 @@ jobs:
       - name: Build library
         run: bun run prepack
 
-      # If `.changeset/*.md` files exist, opens a "Version Packages" PR.
-      # When that PR is merged (no remaining changesets), runs `publish`.
-      - name: Create Release PR or publish
+      # Manual dispatch path — direct publish using the version already
+      # in package.json. Used for the initial release (v0.1.0) before
+      # any changesets exist. From v0.1.1 onward, releases run through
+      # the push-driven changesets flow below.
+      - name: Direct publish (manual dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # Push path — if `.changeset/*.md` files exist, opens a "Version
+      # Packages" PR. When that PR is merged (no remaining changesets),
+      # runs `publish`.
+      - name: Create Release PR or publish (changesets)
+        if: github.event_name == 'push'
         uses: changesets/action@v1
         with:
           version: bun run changeset version
