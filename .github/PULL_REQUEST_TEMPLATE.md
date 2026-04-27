@@ -8,7 +8,7 @@ Before requesting review, please confirm:
 
 - [ ] `bun run check` passes (0 errors, 0 warnings)
 - [ ] `bun run prepack` passes (publint reports "All good!")
-- [ ] If touching `src/lib/engine/`, an ADR has been added in `docs/decisions/`
+- [ ] If touching `src/lib/engine/`, an ADR has been added in `dev-docs/decisions/`
 - [ ] `CHANGELOG.md` has been updated under `[Unreleased]`
 - [ ] The commit message follows Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`)
 

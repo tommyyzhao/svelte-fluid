@@ -60,6 +60,8 @@
 		randomSplatRate = 0,
 		initialSplatCount = 0,
 		backColor = { r: 8, g: 8, b: 16 },
+		pointerTarget = 'window' as const,
+		splatOnHover = true,
 		...fluidProps
 	}: FluidBackgroundProps = $props();
 
@@ -173,6 +175,8 @@
 			{randomSplatRate}
 			{initialSplatCount}
 			{backColor}
+			{pointerTarget}
+			{splatOnHover}
 			{...fluidProps}
 		/>
 	</div>

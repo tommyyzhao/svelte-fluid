@@ -1,8 +1,8 @@
-# svelte-fluid documentation
+# svelte-fluid — developer documentation
 
-This folder holds the project's narrative documentation. User-facing
-install/usage/prop-table info lives in the top-level [`README.md`](../README.md);
-the docs here are for contributors and future maintainers.
+Internal documentation for contributors and maintainers. Consumer-facing
+install/usage/prop-table info lives in the top-level [`README.md`](../README.md).
+Contributing guidelines live in [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 
 ## Layout
 

@@ -101,6 +101,7 @@ export const DEFAULTS: ResolvedConfig = {
 	INITIAL_SPLAT_MIN: 5,
 	INITIAL_SPLAT_MAX: 25,
 	POINTER_INPUT: true,
+	POINTER_TARGET: 'canvas' as const,
 	SPLAT_ON_HOVER: false,
 	SEED: 0,
 	RANDOM_SPLAT_RATE: 0,
@@ -184,6 +185,7 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 		out.INITIAL_SPLAT_MAX = input.initialSplatCount;
 	}
 	if (input.pointerInput !== undefined) out.POINTER_INPUT = input.pointerInput;
+	if (input.pointerTarget !== undefined) out.POINTER_TARGET = input.pointerTarget;
 	if (input.splatOnHover !== undefined) out.SPLAT_ON_HOVER = input.splatOnHover;
 	if (input.seed !== undefined) out.SEED = input.seed >>> 0;
 	if (input.randomSplatRate !== undefined) out.RANDOM_SPLAT_RATE = input.randomSplatRate;
@@ -341,6 +343,7 @@ export class FluidEngine implements FluidHandle {
 		this.initBuffersAndPrograms();
 		this.ditheringTexture = createDitheringTexture(this.gl);
 
+		this.initDistortionFallback();
 		this.updateKeywords();
 		this.initFramebuffers();
 		this.initMaskTexture();
@@ -487,6 +490,7 @@ export class FluidEngine implements FluidHandle {
 		const stickyChanged = a.STICKY !== b.STICKY;
 		const stickyMaskChanged = !stickyMaskEqual(a.STICKY_MASK, b.STICKY_MASK);
 		const pointerInputChanged = a.POINTER_INPUT !== b.POINTER_INPUT;
+		const pointerTargetChanged = a.POINTER_TARGET !== b.POINTER_TARGET;
 
 		this.config = b;
 		if (a.BACK_COLOR !== b.BACK_COLOR) {
@@ -501,13 +505,14 @@ export class FluidEngine implements FluidHandle {
 		if (kwChanged || shapeChanged || revealChanged || distortionChanged) this.updateKeywords();
 		if (stickyChanged || stickyMaskChanged) this.initStickyMaskTexture();
 		if (distortionImageChanged) this.loadDistortionImage(b.DISTORTION_IMAGE_URL);
-		if (pointerInputChanged) {
+		if (pointerInputChanged || pointerTargetChanged) {
+			// Reinstall listeners when input toggles or target changes
+			this.removePointerListeners();
 			if (b.POINTER_INPUT) {
 				this.installPointerListeners();
 			} else {
-				this.removePointerListeners();
-				// Also drain any in-flight pointer state so a half-press
-				// doesn't keep emitting splats after the listeners are gone.
+				// Drain in-flight pointer state so a half-press
+				// doesn't keep emitting splats after listeners are gone.
 				for (const p of this.pointers) {
 					p.down = false;
 					p.moved = false;
@@ -541,6 +546,9 @@ export class FluidEngine implements FluidHandle {
 		this.initBuffersAndPrograms();
 		this.ditheringTexture.dispose(); // prevent stale image.onload from touching the new context
 		this.ditheringTexture = createDitheringTexture(this.gl);
+		this.distortionTexture = null;
+		this.distortionLoadedUrl = null;
+		this.initDistortionFallback();
 		this.updateKeywords();
 		this.initFramebuffers();
 		this.initMaskTexture();
@@ -548,8 +556,6 @@ export class FluidEngine implements FluidHandle {
 		this.initGlassFramebuffer();
 		// Re-load distortion image (GL texture was lost with context)
 		if (this.config.DISTORTION_IMAGE_URL) {
-			this.distortionTexture = null;
-			this.distortionLoadedUrl = null;
 			this.loadDistortionImage(this.config.DISTORTION_IMAGE_URL);
 		}
 		this.multipleSplats(this.randomSplatCount());
@@ -672,6 +678,7 @@ export class FluidEngine implements FluidHandle {
 			this.config.SHADING = false;
 			this.config.BLOOM = false;
 			this.config.SUNRAYS = false;
+			this.config.GLASS = false;
 			this.config.DYE_RESOLUTION = Math.min(this.config.DYE_RESOLUTION, 512);
 		}
 	}
@@ -946,6 +953,25 @@ export class FluidEngine implements FluidHandle {
 			gl.UNSIGNED_BYTE,
 			gl.LINEAR
 		);
+	}
+
+	/**
+	 * Create a 1x1 white fallback so the distortion shader never samples
+	 * an unbound texture while the real image is loading asynchronously.
+	 */
+	private initDistortionFallback(): void {
+		const gl = this.gl;
+		if (!this.distortionTexture) {
+			this.distortionTexture = gl.createTexture()!;
+		}
+		gl.bindTexture(gl.TEXTURE_2D, this.distortionTexture);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+			new Uint8Array([255, 255, 255, 255]));
+		this.distortionImgRatio = 1;
 	}
 
 	/**
@@ -1652,7 +1678,7 @@ export class FluidEngine implements FluidHandle {
 		if (this.config.CONTAINER_SHAPE) {
 			this.setContainerShapeUniforms(this.displayMaterial.uniforms, width, height, 4);
 		}
-		if (this.config.DISTORTION && this.distortionTexture) {
+		if (this.config.DISTORTION) {
 			gl.activeTexture(gl.TEXTURE5);
 			gl.bindTexture(gl.TEXTURE_2D, this.distortionTexture);
 			gl.uniform1i(this.displayMaterial.uniforms.uDistortionTexture, 5);
@@ -1917,27 +1943,39 @@ export class FluidEngine implements FluidHandle {
 	/*                              Pointer events                            */
 	/* ---------------------------------------------------------------------- */
 
+	private installedPointerTarget: EventTarget | null = null;
+
 	private installPointerListeners(): void {
 		if (this.pointerListenersInstalled) return;
-		this.canvas.addEventListener('mousedown', this.onMouseDown);
-		this.canvas.addEventListener('mousemove', this.onMouseMove);
-		this.canvas.addEventListener('mouseleave', this.onMouseLeave);
+		const useWindow = this.config.POINTER_TARGET === 'window';
+		const target: EventTarget = useWindow ? window : this.canvas;
+		this.installedPointerTarget = target;
+
+		target.addEventListener('mousedown', this.onMouseDown as EventListener);
+		target.addEventListener('mousemove', this.onMouseMove as EventListener);
+		if (!useWindow) {
+			this.canvas.addEventListener('mouseleave', this.onMouseLeave);
+		}
 		window.addEventListener('mouseup', this.onMouseUp);
-		this.canvas.addEventListener('touchstart', this.onTouchStart, { passive: false });
-		this.canvas.addEventListener('touchmove', this.onTouchMove, { passive: false });
+		// Window-level touch listeners must be passive to avoid blocking scroll
+		target.addEventListener('touchstart', this.onTouchStart as EventListener, { passive: useWindow });
+		target.addEventListener('touchmove', this.onTouchMove as EventListener, { passive: useWindow });
 		window.addEventListener('touchend', this.onTouchEnd);
 		this.pointerListenersInstalled = true;
 	}
 
 	private removePointerListeners(): void {
 		if (!this.pointerListenersInstalled) return;
-		this.canvas.removeEventListener('mousedown', this.onMouseDown);
-		this.canvas.removeEventListener('mousemove', this.onMouseMove);
+		const target = this.installedPointerTarget ?? this.canvas;
+
+		target.removeEventListener('mousedown', this.onMouseDown as EventListener);
+		target.removeEventListener('mousemove', this.onMouseMove as EventListener);
 		this.canvas.removeEventListener('mouseleave', this.onMouseLeave);
 		window.removeEventListener('mouseup', this.onMouseUp);
-		this.canvas.removeEventListener('touchstart', this.onTouchStart);
-		this.canvas.removeEventListener('touchmove', this.onTouchMove);
+		target.removeEventListener('touchstart', this.onTouchStart as EventListener);
+		target.removeEventListener('touchmove', this.onTouchMove as EventListener);
 		window.removeEventListener('touchend', this.onTouchEnd);
+		this.installedPointerTarget = null;
 		this.pointerListenersInstalled = false;
 	}
 
@@ -2003,7 +2041,7 @@ export class FluidEngine implements FluidHandle {
 	}
 
 	private handleTouchStart(e: TouchEvent): void {
-		e.preventDefault();
+		if (this.config.POINTER_TARGET !== 'window') e.preventDefault();
 		const touches = e.targetTouches;
 		for (let i = 0; i < touches.length; i++) {
 			// Reuse existing slots from previous gestures. Only push when
@@ -2026,7 +2064,7 @@ export class FluidEngine implements FluidHandle {
 	}
 
 	private handleTouchMove(e: TouchEvent): void {
-		e.preventDefault();
+		if (this.config.POINTER_TARGET !== 'window') e.preventDefault();
 		const touches = e.targetTouches;
 		for (let i = 0; i < touches.length; i++) {
 			const pointer = this.pointers[i + 1];

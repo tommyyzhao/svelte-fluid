@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { slide } from 'svelte/transition';
 	import type { Snippet } from 'svelte';
 
 	let {
@@ -52,13 +53,13 @@
 						class="code-toggle"
 						class:active={showCode}
 						onclick={() => (showCode = !showCode)}
-						aria-label="Toggle code snippet">&lt;/&gt;</button
-					>
+						aria-label={showCode ? 'Hide code' : 'View code'}
+					>{showCode ? 'Hide code' : 'View code'}</button>
 				{/if}
 			</div>
 		</div>
 		{#if snippet && showCode}
-			<div class="snippet-wrap">
+			<div class="snippet-wrap" transition:slide={{ duration: 180 }}>
 				<pre><code>{snippet}</code></pre>
 				<button class="copy-btn" onclick={copySnippet} aria-live="polite">
 					{#if copyState === 'copied'}Copied!{:else}Copy{/if}
@@ -127,18 +128,18 @@
 	}
 	.code-toggle {
 		padding: 2px 8px;
-		font-size: 0.75rem;
-		font-family: monospace;
-		background: transparent;
-		border: 1px solid #333;
+		font-size: 0.7rem;
+		background: #1c2a3a;
+		border: 1px solid #2a4a6a;
 		border-radius: 4px;
-		color: #666;
+		color: #8bc;
 		cursor: pointer;
+		transition: all 120ms;
 	}
 	.code-toggle:hover,
 	.code-toggle.active {
-		color: #cce6ff;
-		border-color: #555;
+		background: #243a52;
+		color: #cfe;
 	}
 	.snippet-wrap {
 		position: relative;

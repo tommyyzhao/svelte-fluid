@@ -18,6 +18,9 @@ export type { FluidDistortionProps } from './FluidDistortion.svelte';
 export { default as FluidStick } from './FluidStick.svelte';
 export type { FluidStickProps } from './FluidStick.svelte';
 
+export { default as FluidText } from './FluidText.svelte';
+export type { FluidTextProps } from './FluidText.svelte';
+
 export { FluidEngine, type FluidEngineOptions } from './engine/FluidEngine.js';
 export type {
 	FluidConfig,

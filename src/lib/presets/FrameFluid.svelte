@@ -20,7 +20,7 @@
 	export type FrameFluidProps = Pick<
 		FluidProps,
 		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label'
-	> & { innerCornerRadius?: number };
+	> & { innerCornerRadius?: number; outerCornerRadius?: number };
 </script>
 
 <script lang="ts">
@@ -36,6 +36,7 @@
 		lazy,
 		'aria-label': ariaLabel,
 		innerCornerRadius,
+		outerCornerRadius,
 		splatOnHover
 	}: FrameFluidProps = $props();
 
@@ -76,7 +77,7 @@
 	{lazy}
 	{splatOnHover}
 	aria-label={ariaLabel}
-	containerShape={{ type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.25, halfH: 0.25, innerCornerRadius }}
+	containerShape={{ type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.25, halfH: 0.25, innerCornerRadius, outerCornerRadius }}
 	curl={30}
 	densityDissipation={0.08}
 	initialDensityDissipation={0.5}

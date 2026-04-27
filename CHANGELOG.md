@@ -13,6 +13,65 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`FluidText` component** — fluid simulation confined inside text letterforms.
+  Auto-computes aspect ratio from `OffscreenCanvas.measureText()` so font appears
+  the same visual size regardless of text length. Props: `text`, `font`, `height`,
+  `maskResolution`, plus all `FluidConfig` props. Exported from library index.
+- **`pointerTarget` prop** (`FluidConfig.pointerTarget?: 'canvas' | 'window'`,
+  default `'canvas'`) — configures whether pointer event listeners attach to the
+  canvas element or to `window`. Window mode enables background fluid to respond
+  to pointer activity anywhere on the page. Touch listeners registered as passive
+  in window mode (scrolling not blocked). Bucket A (hot-updatable).
+- **`FluidBackground` defaults** — `pointerTarget` defaults to `'window'` and
+  `splatOnHover` defaults to `true`, so background fluid responds to all page
+  pointer activity out of the box.
+- **Distortion fallback texture** — 1×1 white pixel texture created at engine
+  construction so the distortion shader never samples unbound/black data while
+  the real image loads asynchronously.
+- **`AGENTS.md`** — root-level file redirecting all LLM agents to `CLAUDE.md`.
+- **`outerCornerRadius` prop on `FrameFluid`** — allows rounding the outer
+  boundary of the frame preset component.
+
+### Changed
+
+- **Hero title** — replaced manual `<Fluid>` + `wordShape()` with `<FluidText>`
+  components. Both words now render at equal font height. Splat tuning increased
+  (`splatRadius` 0.3→0.6, `splatForce` 5000→8000, `initialSplatCount` 8→20,
+  `randomSplatRate` 4→6, `randomSplatCount` 2→4, `randomSplatSwirl` 200→300).
+- **Code preview buttons** — replaced icon-only `</>` with labeled "View code" /
+  "Hide code" toggle. Styled to match "Customize" button (filled background,
+  `#1c2a3a` / `#2a4a6a` border). Added 180ms `slide` transition on code panel.
+  FluidBackground floating button also updated.
+- **Rounded frame demo** — now rounds both inner (`innerCornerRadius: 0.06`) and
+  outer (`outerCornerRadius: 0.06`) corners. Description updated. Frame demo
+  description updated to "Sharp-edged rectangular frame with no rounding."
+- **`docs/` → `dev-docs/`** — internal documentation (31 ADRs, 6 learnings,
+  architecture, porting notes) moved out of consumer-visible path. All
+  cross-references updated (PR template, session commands, ADRs, porting notes).
+- **`CONTRIBUTING.md`** — full contributing guide moved from `docs/contributing.md`
+  to root. Updated paths from `docs/` to `dev-docs/`.
+- **`CLAUDE.md`** — rewritten as non-redundant agent guide. Removed demo page
+  details and handoff reference. Added "Further reading" table pointing to
+  `dev-docs/`. References `CONTRIBUTING.md` for full contributing guide.
+
+### Fixed
+
+- **FluidStick auto-animate dimensions** — replaced `window.innerWidth/Height`
+  with container dimensions via `bind:clientWidth/clientHeight`. Velocity now
+  scales by actual canvas size, not viewport size.
+- **Mobile glass rendering** — glass auto-disabled when `OES_texture_float_linear`
+  is unavailable (`!ext.supportLinearFiltering`). Prevents black-box rendering on
+  iOS WebGL 1.
+- **Mobile distortion black box** — distortion shader no longer samples unbound
+  texture while image loads. Fallback 1×1 white texture ensures valid output from
+  first frame.
+
+### Documentation
+
+- `dev-docs/README.md` updated to reference root `CONTRIBUTING.md`.
+- Internal cross-references in ADR 0016, ADR 0018, porting-notes updated from
+  `docs/` to `dev-docs/`.
+
 - **`revealAccentColor` prop** (`FluidConfig.revealAccentColor?: RGB`, default
   `{ r: 0.05, g: 0.16, b: 0.32 }`) — separate engine-level accent color uniform
   for the reveal fringe zone. The accent color now appears **directly** in the

@@ -9,6 +9,7 @@
 		FluidDistortion,
 		FluidReveal,
 		FluidStick,
+		FluidText,
 		FrameFluid,
 		FrozenSwirl,
 		InkInWater,
@@ -21,15 +22,6 @@
 	import Card from './components/Card.svelte';
 	import ControlPanel, { D } from './components/ControlPanel.svelte';
 	import ShapePreview from './components/ShapePreview.svelte';
-
-	function wordShape(text: string): ContainerShape {
-		return {
-			type: 'svgPath',
-			text,
-			font: 'bold 100px "Helvetica Neue", Arial, sans-serif',
-			maskResolution: 512
-		};
-	}
 
 	// ---- Playground state ----
 	let playgroundMode = $state<'fluid' | 'reveal' | 'sticky' | 'distortion'>('fluid');
@@ -657,7 +649,7 @@
 		Circle: { containerShape: { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }, splatOnHover: true },
 		Frame: { containerShape: { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.2 }, splatOnHover: true },
 		Ring: { containerShape: { type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.4 }, splatOnHover: true },
-		'Rounded frame': { containerShape: { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.2, innerCornerRadius: 0.06 }, splatOnHover: true },
+		'Rounded frame': { containerShape: { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.2, innerCornerRadius: 0.06, outerHalfW: 0.48, outerHalfH: 0.48, outerCornerRadius: 0.06 }, splatOnHover: true },
 		'Portal ring': {
 			containerShape: { type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.42 },
 			glass: true, glassThickness: 0.05, glassRefraction: 0.6, glassReflectivity: 0.15, glassChromatic: 0.7,
@@ -749,6 +741,9 @@
 
 	let showBgCode = $state(false);
 	const bgSnippet = `<FluidBackground\n  exclude=".card, .get-started, .playground-canvas, .panel"\n  excludeRadius={12}\n  splatOnHover\n  colorful\n  shading\n  bloom\n  bloomIterations={4}\n  bloomIntensity={0.5}\n  sunrays={false}\n  densityDissipation={0.4}\n  velocityDissipation={0.3}\n  curl={50}\n  splatRadius={0.05}\n  splatForce={3000}\n>\n  <!-- page content -->\n</FluidBackground>`;
+
+	let showTitleCode = $state(false);
+	const titleSnippet = `<FluidText\n  text="SVELTE"\n  height={100}\n  seed={42}\n  splatOnHover\n  densityDissipation={0.01}\n  velocityDissipation={0.01}\n  curl={20}\n  splatRadius={0.6}\n  splatForce={8000}\n  shading\n  colorful\n  bloom={false}\n  sunrays={false}\n  initialSplatCount={20}\n  randomSplatRate={6}\n  randomSplatCount={4}\n  randomSplatSpread={2}\n  randomSplatSwirl={300}\n/>`;
 </script>
 
 <svelte:head>
@@ -780,9 +775,9 @@
 			class="bg-code-toggle"
 			class:active={showBgCode}
 			onclick={() => (showBgCode = !showBgCode)}
-			aria-label="Show FluidBackground code"
+			aria-label={showBgCode ? 'Hide background code' : 'View background code'}
 			title="FluidBackground code"
-		>&lt;/&gt;</button>
+		>{showBgCode ? 'Hide code' : 'View code'}</button>
 		{#if showBgCode}
 			<div class="bg-code-panel">
 				<pre><code>{bgSnippet}</code></pre>
@@ -792,53 +787,61 @@
 	</div>
 	<header>
 		<div class="hero-title" role="heading" aria-level="1" aria-label="svelte-fluid">
-			<div class="hero-word">
-				<Fluid
-					seed={42}
-					containerShape={wordShape('SVELTE')}
-					splatOnHover
-					transparent
-					densityDissipation={0.01}
-					velocityDissipation={0.01}
-					curl={20}
-					splatRadius={0.3}
-					splatForce={5000}
-					shading
-					colorful
-					bloom={false}
-					sunrays={false}
-					initialSplatCount={8}
-					randomSplatRate={4}
-					randomSplatCount={2}
-					randomSplatSpread={2}
-					randomSplatSwirl={200}
-					aria-label="SVELTE"
-				/>
-			</div>
-			<div class="hero-word">
-				<Fluid
-					seed={99}
-					containerShape={wordShape('FLUID')}
-					splatOnHover
-					transparent
-					densityDissipation={0.01}
-					velocityDissipation={0.01}
-					curl={20}
-					splatRadius={0.3}
-					splatForce={5000}
-					shading
-					colorful
-					bloom={false}
-					sunrays={false}
-					initialSplatCount={8}
-					randomSplatRate={4}
-					randomSplatCount={2}
-					randomSplatSpread={2}
-					randomSplatSwirl={200}
-					aria-label="FLUID"
-				/>
-			</div>
+			<FluidText
+				text="SVELTE"
+				height={100}
+				seed={42}
+				splatOnHover
+				densityDissipation={0.01}
+				velocityDissipation={0.01}
+				curl={20}
+				splatRadius={0.6}
+				splatForce={8000}
+				shading
+				colorful
+				bloom={false}
+				sunrays={false}
+				initialSplatCount={20}
+				randomSplatRate={6}
+				randomSplatCount={4}
+				randomSplatSpread={2}
+				randomSplatSwirl={300}
+			/>
+			<FluidText
+				text="FLUID"
+				height={100}
+				seed={99}
+				splatOnHover
+				densityDissipation={0.01}
+				velocityDissipation={0.01}
+				curl={20}
+				splatRadius={0.6}
+				splatForce={8000}
+				shading
+				colorful
+				bloom={false}
+				sunrays={false}
+				initialSplatCount={20}
+				randomSplatRate={6}
+				randomSplatCount={4}
+				randomSplatSpread={2}
+				randomSplatSwirl={300}
+			/>
 		</div>
+		<div class="hero-code-row">
+			<button
+				class="hero-code-toggle"
+				class:active={showTitleCode}
+				onclick={() => (showTitleCode = !showTitleCode)}
+				aria-label={showTitleCode ? 'Hide FluidText code' : 'View FluidText code'}
+			>{showTitleCode ? 'Hide code' : 'View code'}</button>
+		</div>
+		{#if showTitleCode}
+			<div class="hero-code-panel">
+				<pre><code>{titleSnippet}</code></pre>
+				<button class="hero-copy-btn" onclick={() => navigator.clipboard.writeText(titleSnippet)}>Copy</button>
+			</div>
+		{/if}
 		<p class="tagline">
 			WebGL fluid simulation as a Svelte 5 component. Multi-instance,
 			resize-stable, deterministic seeding.
@@ -978,14 +981,14 @@
 			<Card title="Circle" description="Fluid swirling inside a circular boundary." onCustomize={() => loadConfig(PRESET_CONFIGS['Circle'], 'Circle')} snippet={`<Fluid\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5, radius: 0.45\n  }}\n/>`}>
 				<CircularFluid seed={606} lazy splatOnHover aria-label="Circular fluid shape demo" />
 			</Card>
-			<Card title="Frame" description="Fluid around a rectangular inner cutout." onCustomize={() => loadConfig(PRESET_CONFIGS['Frame'], 'Frame')} snippet={`<Fluid\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.2, halfH: 0.2\n  }}\n/>`}>
+			<Card title="Frame" description="Sharp-edged rectangular frame with no rounding." onCustomize={() => loadConfig(PRESET_CONFIGS['Frame'], 'Frame')} snippet={`<Fluid\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.2, halfH: 0.2\n  }}\n/>`}>
 				<FrameFluid seed={707} lazy splatOnHover aria-label="Frame fluid shape demo" />
 			</Card>
 			<Card title="Ring" description="Fluid flowing in a ring between two circles." onCustomize={() => loadConfig(PRESET_CONFIGS['Ring'], 'Ring')} snippet={`<Fluid\n  containerShape={{\n    type: 'annulus',\n    cx: 0.5, cy: 0.5,\n    innerRadius: 0.15, outerRadius: 0.4\n  }}\n/>`}>
 				<AnnularFluid seed={909} lazy splatOnHover aria-label="Annular fluid shape demo" />
 			</Card>
-			<Card title="Rounded frame" description="Frame with rounded inner corners for a softer cutout." onCustomize={() => loadConfig(PRESET_CONFIGS['Rounded frame'], 'Rounded frame')} snippet={`<Fluid\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.2, halfH: 0.2,\n    innerCornerRadius: 0.06\n  }}\n/>`}>
-				<FrameFluid seed={818} lazy splatOnHover innerCornerRadius={0.06} aria-label="Rounded frame shape demo" />
+			<Card title="Rounded frame" description="Soft-edged frame with rounded inner and outer corners." onCustomize={() => loadConfig(PRESET_CONFIGS['Rounded frame'], 'Rounded frame')} snippet={`<Fluid\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.2, halfH: 0.2,\n    innerCornerRadius: 0.06,\n    outerHalfW: 0.48, outerHalfH: 0.48,\n    outerCornerRadius: 0.06\n  }}\n/>`}>
+				<FrameFluid seed={818} lazy splatOnHover innerCornerRadius={0.06} outerCornerRadius={0.06} aria-label="Rounded frame shape demo" />
 			</Card>
 			<Card title="SVG path" description="Fluid shaped by an arbitrary SVG path — a lightning bolt." onCustomize={() => loadConfig(PRESET_CONFIGS['SVG path'], 'SVG path')} snippet={`<Fluid\n  containerShape={{\n    type: 'svgPath',\n    d: 'M55 2 L30 42 L48 42 L25 70 ...'\n  }}\n/>`}>
 				<Fluid
@@ -1685,19 +1688,18 @@
 	}
 	.bg-code-toggle {
 		padding: 4px 10px;
-		font-family: monospace;
-		font-size: 0.8rem;
-		background: rgba(20, 20, 22, 0.85);
-		border: 1px solid #333;
+		font-size: 0.75rem;
+		background: rgba(28, 42, 58, 0.9);
+		border: 1px solid #2a4a6a;
 		border-radius: 6px;
-		color: #666;
+		color: #8bc;
 		cursor: pointer;
 		transition: all 120ms;
 	}
 	.bg-code-toggle:hover,
 	.bg-code-toggle.active {
-		color: #cce6ff;
-		border-color: #555;
+		background: rgba(36, 58, 82, 0.95);
+		color: #cfe;
 	}
 	.bg-code-panel {
 		position: absolute;
@@ -1743,11 +1745,62 @@
 		justify-content: center;
 		gap: 0;
 		margin: 0 0 8px;
-	}
-	.hero-word {
-		width: min(45vw, 300px);
-		aspect-ratio: 3 / 1;
 		pointer-events: auto;
+	}
+	.hero-code-row {
+		display: flex;
+		justify-content: center;
+		margin: 4px 0 8px;
+		pointer-events: auto;
+	}
+	.hero-code-toggle {
+		padding: 2px 10px;
+		font-size: 0.7rem;
+		background: rgba(28, 42, 58, 0.7);
+		border: 1px solid rgba(42, 74, 106, 0.5);
+		border-radius: 4px;
+		color: rgba(136, 187, 204, 0.7);
+		cursor: pointer;
+		transition: all 120ms;
+	}
+	.hero-code-toggle:hover,
+	.hero-code-toggle.active {
+		background: rgba(36, 58, 82, 0.9);
+		color: #cfe;
+		border-color: #2a4a6a;
+	}
+	.hero-code-panel {
+		position: relative;
+		max-width: 420px;
+		margin: 0 auto 12px;
+		pointer-events: auto;
+	}
+	.hero-code-panel pre {
+		margin: 0;
+		padding: 10px 12px;
+		background: rgba(13, 13, 13, 0.9);
+		border: 1px solid #222;
+		border-radius: 6px;
+		overflow-x: auto;
+		font-size: 0.72rem;
+		line-height: 1.5;
+		color: #b0c4de;
+	}
+	.hero-copy-btn {
+		position: absolute;
+		top: 6px;
+		right: 6px;
+		padding: 2px 8px;
+		font-size: 0.65rem;
+		background: #222;
+		border: 1px solid #333;
+		border-radius: 3px;
+		color: #888;
+		cursor: pointer;
+	}
+	.hero-copy-btn:hover {
+		color: #fff;
+		border-color: #555;
 	}
 	.tagline {
 		margin: 0 0 12px;

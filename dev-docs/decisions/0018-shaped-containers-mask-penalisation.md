@@ -122,7 +122,7 @@ A `containerShapeEqual` function was extracted from `FluidEngine.ts` to a new `c
 - The `applyMask` blit changes the active GL program. Any physics pass
   immediately following a mask call that implicitly reuses a prior program
   must explicitly re-bind it. See the "GL program rebind" learning in
-  `docs/learnings/presets.md`.
+  `dev-docs/learnings/presets.md`.
 
 **Rejected alternatives:**
 

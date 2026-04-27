@@ -1,4 +1,4 @@
-# svelte-fluid — Claude Code project instructions
+# svelte-fluid — Agent Instructions
 
 ## Identity
 
@@ -11,7 +11,7 @@ Repo: github.com/tommyyzhao/svelte-fluid
 ```sh
 bun install              # install deps
 bun run dev              # dev server at localhost:5173
-bun run test             # vitest (106 tests)
+bun run test             # vitest (272 tests)
 bun run check            # svelte-check (0 errors expected)
 bun run prepack          # svelte-package + publint (must pass before publish)
 bun run build            # full demo site build
@@ -33,59 +33,55 @@ Run `bun run prepack` before committing to verify publint.
 
 When props change at runtime, `engine.setConfig()` classifies each field:
 
-- **Bucket A** (hot scalars): written to `this.config.X`, picked up next frame. Includes all physics scalars, `pointerInput`, `splatOnHover`, `randomSplat*`, `containerShape`, `glassThickness`, `glassRefraction`, `glassReflectivity`, `glassChromatic`, `revealSensitivity`, `revealCurve`, `revealCoverColor`, `revealFringeColor`, `revealAccentColor`.
-- **Bucket B** (keyword recompile): `shading`, `bloom`, `sunrays`, `reveal` → `updateKeywords()` recompiles the display shader.
+- **Bucket A** (hot scalars): written to `this.config.X`, picked up next frame.
+- **Bucket B** (keyword recompile): `shading`, `bloom`, `sunrays`, `reveal`, `distortion` → `updateKeywords()` recompiles the display shader.
 - **Bucket C** (FBO rebuild): `simResolution`, `dyeResolution`, `bloomResolution`, `bloomIterations`, `sunraysResolution` → `initFramebuffers()` / `initBloom()` / `initSunrays()`.
 - **Bucket D** (construct-only): `seed`, `initialSplatCount*`, `presetSplats` → ignored after construction.
 
-When adding a new prop, decide which bucket it belongs to and wire it accordingly.
+When adding a new prop, decide which bucket it belongs to and wire it accordingly. See [ADR 0005](dev-docs/decisions/0005-hot-update-buckets.md) for rationale.
 
-Additionally, `containerShape` with `type: 'svgPath'` triggers a **mask texture rebuild** (re-rasterize + texture re-upload + keyword toggle). This is a separate operation from the 4 buckets above.
+Special triggers beyond the 4 buckets:
+- `containerShape` with `type: 'svgPath'` → mask texture rebuild
+- `glass` boolean → sceneFBO alloc/dispose via `initGlassFramebuffer()`
+- `sticky`/`stickyMask` → sticky mask texture rebuild
+- `distortionImageUrl` → async image load
 
-The `glass` boolean triggers **sceneFBO alloc/dispose** via `initGlassFramebuffer()`. When glass is on, `drawDisplay` renders to `sceneFBO` (RGBA8, canvas resolution) and a `drawGlass` post-processing pass reads it with refraction + specular.
+## Container shapes — adding a new one
 
-The `reveal` boolean triggers a **`REVEAL` keyword** in the display shader. The shader uses `smoothstep(0, 0.5, pow(raw, curve))` for crisp S-curve edges, a two-tone fringe (`cover → fringeColor → accentColor` via nested smoothstep), and `alpha = 1 - revealAmount`. The advection shader switches to multiplicative dissipation (`result *= dissipation`). `render()` skips backColor, checkerboard, and glass when REVEAL is active. See ADR-0027/0028.
+Two approaches coexist: **analytical** (SDF in GLSL + TypeScript mirror) and **mask texture** (svgPath, rasterized via OffscreenCanvas). For a new analytical shape:
 
-## Container shapes
-
-Two approaches coexist:
-
-**Analytical shapes** (circle, frame, roundedRect, annulus): SDFs are computed per-fragment in GLSL (`shaders.ts`) and mirrored in TypeScript (`container-shapes.ts`) for rejection sampling during random splat spawning. When adding a new analytical shape:
 1. Add the variant to `ContainerShape` union in `types.ts`
 2. Add GLSL SDF in `shaders.ts` (inside `containerSDF` function)
 3. Add TypeScript SDF mirror in `container-shapes.ts`
 4. Update `containerShapeEqual` for the new variant
 5. Update `resolveConfig` in `FluidEngine.ts`
 
-**SVG path shapes** (`svgPath`): Rasterized to a mask texture via `OffscreenCanvas` + `Path2D` (ADR-0024). Uses a separate `applyMaskTextureProgram` and `CONTAINER_MASK_TEXTURE` keyword. CPU-side mask data is stored in `maskData` for rejection sampling. See `initMaskTexture()` in `FluidEngine.ts`.
-
-## Demo page structure
-
-27 instances across 8 sections:
-- **Background** (1): `<FluidBackground>` wrapping the entire page, cursor-only splats
-- **Hero title** (2): Fluid-filled "SVELTE" + "FLUID" text (svgPath containers, vigorous random splats)
-- **Presets** (5): LavaLamp, Plasma, InkInWater, FrozenSwirl, Aurora — all lazy
-- **Configuration** (4): Default, Flat+soft, Bold splats, Slow+transparent — all have `splatOnHover`, lazy
-- **Container shapes** (6): Circle, Frame, Annulus, Rounded rect, Rounded frame, SVG path — all lazy, `splatOnHover`
-- **Container effects** (4): Glass orb, Subtle lens, Glass ring, Diamond frame — all use `glass` prop, lazy
-- **Reveal** (6): Scratch-to-reveal, Permanent reveal, Auto-reveal, Turbulent reveal, Circle reveal, Bounded reveal — all use `<FluidReveal>`
-- **Playground** (1): interactive with ControlPanel, 4-tab mode toggle (Fluid/Reveal/Sticky/Distortion). Only the active tab's WebGL context renders.
-
-All grids use `repeat(2, 1fr)`.
-Extra routes: `/background-fluid`, `/fluid-reveal/`, `/svelte-fluid`, `/svg`
+See [ADR 0024](dev-docs/decisions/0024-svg-path-container-shape.md) for the mask texture approach.
 
 ## Conventions
 
 - Bun only (no npm/yarn for dev). `.npmrc` has `engine-strict=true`.
 - Svelte 5 runes only (no Svelte 4 syntax).
 - `.js` extensions in all TypeScript imports.
-- Engine changes require an ADR in `docs/decisions/`.
+- Engine changes require an ADR in `dev-docs/decisions/`.
 - No new runtime dependencies.
 - Tabs, Prettier formatting.
 - Comments explain "why", not "what".
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributing guide, including
+workflows for adding config fields, modifying shaders, and publishing releases.
+
+## Further reading
+
+| Resource | What's there |
+|----------|-------------|
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Hard rules, local setup, workflows, verification checklist, code style |
+| [`dev-docs/architecture.md`](dev-docs/architecture.md) | System design, module boundaries, ownership diagram, public API surface |
+| [`dev-docs/porting-notes.md`](dev-docs/porting-notes.md) | Upstream `script.js` symbol map — read before modifying the engine |
+| [`dev-docs/decisions/`](dev-docs/decisions/) | 31 ADRs documenting every major design choice |
+| [`dev-docs/learnings/`](dev-docs/learnings/) | Gotchas with symptom/cause/fix — check before debugging |
 
 ## Session workflow
 
 - Start: run `/resume-fluid-session`
 - End: run `/end-fluid-session`
-- The living handoff lives at `.claude/handoff.md`
