@@ -9,7 +9,7 @@
 WebGL fluid simulation as a Svelte 5 component library.
 
 <p align="center">
-  <img src="static/hero.gif" alt="Four svelte-fluid presets running simultaneously: LavaLamp, Aurora, Ink in Water, and Circular Fluid" width="720" />
+  <img src="static/hero.webp" alt="svelte-fluid showcase: text-masked fluid, glass orb with chromatic refraction, reveal-scratch effect, and image distortion" width="720" />
 </p>
 
 <p align="center">
