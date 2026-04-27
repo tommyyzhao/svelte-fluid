@@ -24,7 +24,7 @@ simulation. svelte-fluid is purpose-built for Svelte 5:
 - **True component API** — `<Fluid />` with 40+ typed props, live reactive updates, and full cleanup on unmount
 - **Multiple independent instances** per page — no shared GL state
 - **Deterministic seeding** — same `seed` reproduces the same splat pattern across resizes
-- **9 presets** — drop-in `<LavaLamp />`, `<Aurora />`, `<CircularFluid />`, `<SvgPathFluid />`, etc.
+- **10 presets** — drop-in `<LavaLamp />`, `<Aurora />`, `<CircularFluid />`, `<SvgPathFluid />`, etc.
 - **5 container shapes** — circle, frame, roundedRect, annulus, and arbitrary SVG paths / text via mask texture
 - **Glass post-processing** — refraction, specular highlights, and chromatic aberration on any container shape
 - **Lazy loading + auto-pause** — defer engine creation until viewport entry
