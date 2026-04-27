@@ -4,7 +4,7 @@
 
 svelte-fluid — WebGL Navier-Stokes fluid simulation as a Svelte 5 component library. MIT licensed, derived from PavelDoGreat/WebGL-Fluid-Simulation.
 
-Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: 2ffb4a1
+Repo: github.com/tommyyzhao/svelte-fluid · Branch: main · Latest commit: 3c185af
 
 ## Current state
 
