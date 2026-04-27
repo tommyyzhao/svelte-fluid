@@ -9,7 +9,7 @@ Before requesting review, please confirm:
 - [ ] `bun run check` passes (0 errors, 0 warnings)
 - [ ] `bun run prepack` passes (publint reports "All good!")
 - [ ] If touching `src/lib/engine/`, an ADR has been added in `dev-docs/decisions/`
-- [ ] `CHANGELOG.md` has been updated under `[Unreleased]`
+- [ ] A changeset has been added (`bun run changeset`) describing the user-visible impact, or the change is internal-only (refactor, docs, CI)
 - [ ] The commit message follows Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`)
 
 ## Related Issues

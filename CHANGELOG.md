@@ -9,7 +9,7 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 - **minor** — new presets, new props, additive engine features
 - **major** — breaking API changes
 
-## [Unreleased]
+## [0.1.0] — 2026-04-27
 
 ### Added
 
@@ -723,7 +723,10 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 - Container shapes section description updated: "Five analytical shapes
   plus arbitrary SVG paths" (was "Four").
 
-## [0.1.0] — Unreleased
+### Earlier development notes
+
+The entries below were drafted during development before the release flow was
+finalised. Kept as historical record; superseded by the consolidated entries above.
 
 ### Added
 
