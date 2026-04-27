@@ -82,7 +82,7 @@ export function containerMask(
 			return circleMask(uvX, uvY, shape.cx, shape.cy, shape.radius, aspect);
 		case 'frame':
 			return frameMask(uvX, uvY, shape.cx, shape.cy, shape.halfW, shape.halfH,
-				shape.innerCornerRadius, shape.outerHalfW, shape.outerHalfH, shape.outerCornerRadius);
+				shape.innerCornerRadius, shape.outerHalfW, shape.outerHalfH, shape.outerCornerRadius, aspect);
 		case 'roundedRect':
 			return roundedRectSDF(uvX, uvY, shape.cx, shape.cy, shape.halfW, shape.halfH, shape.cornerRadius, aspect);
 		case 'annulus':
@@ -113,8 +113,9 @@ function circleMask(
  * Both inner and outer boundaries support rounded corners via their respective
  * corner radius params. Uses the Inigo Quilez rounded-box SDF when radius > 0.
  *
- * Uses a box SDF in UV space — no aspect correction because the rectangles
- * are specified directly in UV coordinates.
+ * Rounded corners are aspect-corrected so they appear circular in physical
+ * space (like CSS border-radius), not elliptical due to non-square UV space.
+ * Sharp corners (radius = 0) use L∞ distance and need no correction.
  *
  * When outer params are omitted (defaults: outerHalfW=0.5, outerHalfH=0.5,
  * outerCornerRadius=0), the outer boundary covers the full canvas.
@@ -123,14 +124,19 @@ function frameMask(
 	uvX: number, uvY: number,
 	cx: number, cy: number, halfW: number, halfH: number,
 	innerCornerRadius?: number,
-	outerHalfW?: number, outerHalfH?: number, outerCornerRadius?: number
+	outerHalfW?: number, outerHalfH?: number, outerCornerRadius?: number,
+	aspect?: number
 ): number {
+	const a = aspect ?? 1;
+
 	// Inner mask: 0 inside inner rect, 1 outside
 	const icr = innerCornerRadius ?? 0;
 	let innerMask: number;
 	if (icr > 0) {
-		const dx = Math.abs(uvX - cx) - halfW + icr;
-		const dy = Math.abs(uvY - cy) - halfH + icr;
+		const px = (uvX - cx) * a;
+		const py = uvY - cy;
+		const dx = Math.abs(px) - halfW * a + icr;
+		const dy = Math.abs(py) - halfH + icr;
 		const outsideDist = Math.sqrt(Math.max(dx, 0) ** 2 + Math.max(dy, 0) ** 2);
 		const insideDist = Math.min(Math.max(dx, dy), 0);
 		const dist = outsideDist + insideDist - icr;
@@ -147,8 +153,10 @@ function frameMask(
 	const ocr = outerCornerRadius ?? 0;
 	let outerMask: number;
 	if (ocr > 0) {
-		const dx = Math.abs(uvX - cx) - ohw + ocr;
-		const dy = Math.abs(uvY - cy) - ohh + ocr;
+		const px = (uvX - cx) * a;
+		const py = uvY - cy;
+		const dx = Math.abs(px) - ohw * a + ocr;
+		const dy = Math.abs(py) - ohh + ocr;
 		const outsideDist = Math.sqrt(Math.max(dx, 0) ** 2 + Math.max(dy, 0) ** 2);
 		const insideDist = Math.min(Math.max(dx, dy), 0);
 		const dist = outsideDist + insideDist - ocr;
@@ -167,17 +175,20 @@ function frameMask(
  * Uses the Inigo Quilez rounded-box SDF:
  *   d = length(max(abs(p - center) - halfSize + cornerRadius, 0)) - cornerRadius
  *
- * No aspect correction — halfW/halfH are specified directly in UV space.
+ * Aspect-corrected so corners are circular in physical space (like CSS
+ * border-radius). The corner radius is in height-normalized units.
  */
 export function roundedRectSDF(
 	uvX: number, uvY: number,
 	cx: number, cy: number,
 	halfW: number, halfH: number,
 	cornerRadius: number,
-	_aspect: number
+	aspect: number
 ): number {
-	const dx = Math.abs(uvX - cx) - halfW + cornerRadius;
-	const dy = Math.abs(uvY - cy) - halfH + cornerRadius;
+	const px = (uvX - cx) * aspect;
+	const py = uvY - cy;
+	const dx = Math.abs(px) - halfW * aspect + cornerRadius;
+	const dy = Math.abs(py) - halfH + cornerRadius;
 	const outsideDist = Math.sqrt(Math.max(dx, 0) ** 2 + Math.max(dy, 0) ** 2);
 	const insideDist = Math.min(Math.max(dx, dy), 0);
 	const d = outsideDist + insideDist - cornerRadius;

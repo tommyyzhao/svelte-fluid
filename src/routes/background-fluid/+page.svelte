@@ -6,6 +6,56 @@
 	import InkInWater from '$lib/presets/InkInWater.svelte';
 	import FrozenSwirl from '$lib/presets/FrozenSwirl.svelte';
 	import Aurora from '$lib/presets/Aurora.svelte';
+	import CopyPageButton from '../components/CopyPageButton.svelte';
+
+	const pageMarkdown = [
+		'# Background Fluid — svelte-fluid',
+		'',
+		'Full-viewport fluid simulation with DOM element exclusion zones.',
+		'',
+		'## How it works',
+		'',
+		'A single `<Fluid>` canvas covers the viewport at `position: fixed`. Card bounding rectangles are measured via `getBoundingClientRect()` and encoded as holes in an SVG path using `fillRule: \'evenodd\'`. The engine rasterizes this path to a mask texture via `Path2D` on an OffscreenCanvas, then multiplies velocity and dye fields by the mask every physics step. Fluid genuinely cannot enter the exclusion zones -- it pools around them and flows through the gaps.',
+		'',
+		'## Usage',
+		'',
+		'```svelte',
+		'<FluidBackground',
+		'  exclude=".card, .preset-card"',
+		'  splatOnHover',
+		'  colorful',
+		'  shading',
+		'  bloom',
+		'  bloomIterations={4}',
+		'  bloomIntensity={0.6}',
+		'  sunrays={false}',
+		'  densityDissipation={0.4}',
+		'  velocityDissipation={0.3}',
+		'  curl={50}',
+		'  splatRadius={0.05}',
+		'  splatForce={3000}',
+		'>',
+		'  <!-- page content -->',
+		'</FluidBackground>',
+		'```',
+		'',
+		'## Features',
+		'',
+		'- **Fluid Simulation**: Real-time fluid dynamics on the GPU via WebGL. Velocity, pressure, advection -- the full physics pipeline.',
+		'- **Container Shapes**: Confine fluid inside circles, frames, rings, rounded rectangles, or custom SVG paths and text.',
+		'- **Glass Effects**: Glass lens effect with light bending, reflective highlights, and rainbow color fringing.',
+		'- **Svelte 5 Runes**: Reactive props via runes, zero runtime dependencies, and a clean imperative API surface.',
+		'- **9 Presets**: LavaLamp, Plasma, InkInWater, FrozenSwirl, Aurora -- drop-in components with curated defaults.',
+		'- **Background Mode**: Full-viewport fluid with DOM exclusion zones.',
+		'',
+		'## Presets shown',
+		'',
+		'- LavaLamp',
+		'- Plasma',
+		'- InkInWater',
+		'- FrozenSwirl',
+		'- Aurora',
+	].join('\n');
 
 	const cards = [
 		{
@@ -51,6 +101,9 @@
 	splatForce={3000}
 >
 	<main class="content">
+		<div class="copy-page-wrapper">
+			<CopyPageButton content={pageMarkdown} />
+		</div>
 		<header>
 			<h1>Background Fluid</h1>
 			<p class="sub">
@@ -118,6 +171,14 @@
 		margin: 0;
 		background: #08080f;
 		font-family: system-ui, -apple-system, sans-serif;
+	}
+
+	.copy-page-wrapper {
+		position: fixed;
+		top: 14px;
+		right: 14px;
+		z-index: 100;
+		pointer-events: auto;
 	}
 
 	.content {
