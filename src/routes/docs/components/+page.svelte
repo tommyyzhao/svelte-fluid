@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { base } from '$app/paths';
+
 	const SCRIPT_OPEN = '<' + 'script lang="ts">';
 	const SCRIPT_CLOSE = '</' + 'script>';
 </script>
@@ -27,7 +29,7 @@
   &lt;Fluid bind:this={'{'}handle{'}'} curl={'{'}30{'}'} bloom shading colorful /&gt;
 &lt;/div&gt;</code></pre>
 
-<p>Accepts all <a href="/docs/configuration">FluidConfig</a> props plus:</p>
+<p>Accepts all <a href="{base}/docs/configuration">FluidConfig</a> props plus:</p>
 
 <table>
 	<thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
@@ -41,7 +43,7 @@
 	</tbody>
 </table>
 
-<p>Exposes a <a href="/docs/api"><code>FluidHandle</code></a> via <code>bind:this</code> for programmatic control (splats, pause, resume).</p>
+<p>Exposes a <a href="{base}/docs/api"><code>FluidHandle</code></a> via <code>bind:this</code> for programmatic control (splats, pause, resume).</p>
 
 <!-- ============================================================ -->
 <h2 id="fluidbackground">&lt;FluidBackground&gt;</h2>
@@ -69,7 +71,7 @@
 	</tbody>
 </table>
 
-<p>Defaults to <code>pointerTarget='window'</code> and <code>splatOnHover=true</code>. All <a href="/docs/configuration">FluidConfig</a> props are accepted.</p>
+<p>Defaults to <code>pointerTarget='window'</code> and <code>splatOnHover=true</code>. All <a href="{base}/docs/configuration">FluidConfig</a> props are accepted.</p>
 
 <!-- ============================================================ -->
 <h2 id="fluidreveal">&lt;FluidReveal&gt;</h2>
@@ -104,7 +106,7 @@
 	</tbody>
 </table>
 
-<p>Also accepts <code>width</code>, <code>height</code>, <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, and all <a href="/docs/configuration">FluidConfig</a> props.</p>
+<p>Also accepts <code>width</code>, <code>height</code>, <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, and all <a href="{base}/docs/configuration">FluidConfig</a> props.</p>
 
 <div class="callout">
 	<strong>Note:</strong> The canvas sits on top of children for alpha compositing. Interactive elements (links, buttons) inside the slot will not receive pointer events.
@@ -136,7 +138,7 @@
 	</tbody>
 </table>
 
-<p>Also accepts <code>width</code>, <code>height</code>, <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, and all <a href="/docs/configuration">FluidConfig</a> props.</p>
+<p>Also accepts <code>width</code>, <code>height</code>, <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, and all <a href="{base}/docs/configuration">FluidConfig</a> props.</p>
 
 <!-- ============================================================ -->
 <h2 id="fluidstick">&lt;FluidStick&gt;</h2>
@@ -173,7 +175,7 @@
 	</tbody>
 </table>
 
-<p>Also accepts <code>width</code>, <code>height</code>, <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, and all <a href="/docs/configuration">FluidConfig</a> props.</p>
+<p>Also accepts <code>width</code>, <code>height</code>, <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, and all <a href="{base}/docs/configuration">FluidConfig</a> props.</p>
 
 <!-- ============================================================ -->
 <h2 id="fluidtext">&lt;FluidText&gt;</h2>
@@ -203,4 +205,4 @@
 	</tbody>
 </table>
 
-<p>Also accepts <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, and all <a href="/docs/configuration">FluidConfig</a> props. Defaults to <code>transparent=true</code>.</p>
+<p>Also accepts <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, and all <a href="{base}/docs/configuration">FluidConfig</a> props. Defaults to <code>transparent=true</code>.</p>

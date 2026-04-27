@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { base } from '$app/paths';
+
 	const SCRIPT_OPEN = '<' + 'script lang="ts">';
 	const SCRIPT_CLOSE = '</' + 'script>';
 </script>
@@ -54,7 +56,7 @@ yarn add svelte-fluid</code></pre>
 &lt;!-- Northern-lights ribbons --&gt;
 &lt;Aurora /&gt;</code></pre>
 
-<p>See all 10 presets on the <a href="/docs/presets">Presets</a> page.</p>
+<p>See all 10 presets on the <a href="{base}/docs/presets">Presets</a> page.</p>
 
 <h2>Customize</h2>
 
@@ -71,7 +73,7 @@ yarn add svelte-fluid</code></pre>
   colorful
 /&gt;</code></pre>
 
-<p>See the full list of 50+ props on the <a href="/docs/configuration">Configuration</a> page.</p>
+<p>See the full list of 50+ props on the <a href="{base}/docs/configuration">Configuration</a> page.</p>
 
 <h2>Container shapes</h2>
 
@@ -82,7 +84,7 @@ yarn add svelte-fluid</code></pre>
 &lt;Fluid containerShape={'{'}{'{'} type: 'roundedRect', cx: 0.5, cy: 0.5,
   halfW: 0.35, halfH: 0.4, cornerRadius: 0.06 {'}'}{'}'}  /&gt;</code></pre>
 
-<p>Five shape types are available: <code>circle</code>, <code>frame</code>, <code>roundedRect</code>, <code>annulus</code>, and <code>svgPath</code>. See the <a href="/docs/shapes">Container Shapes</a> guide.</p>
+<p>Five shape types are available: <code>circle</code>, <code>frame</code>, <code>roundedRect</code>, <code>annulus</code>, and <code>svgPath</code>. See the <a href="{base}/docs/shapes">Container Shapes</a> guide.</p>
 
 <h2>Beyond the basics</h2>
 
@@ -97,30 +99,30 @@ yarn add svelte-fluid</code></pre>
 	</thead>
 	<tbody>
 		<tr>
-			<td><code><a href="/docs/components#fluid">&lt;Fluid&gt;</a></code></td>
+			<td><code><a href="{base}/docs/components#fluid">&lt;Fluid&gt;</a></code></td>
 			<td>Core simulation canvas. 50+ props for physics and visuals.</td>
 		</tr>
 		<tr>
-			<td><code><a href="/docs/components#fluidbackground">&lt;FluidBackground&gt;</a></code></td>
+			<td><code><a href="{base}/docs/components#fluidbackground">&lt;FluidBackground&gt;</a></code></td>
 			<td>Full-viewport fluid behind page content with DOM exclusion zones.</td>
 		</tr>
 		<tr>
-			<td><code><a href="/docs/components#fluidreveal">&lt;FluidReveal&gt;</a></code></td>
+			<td><code><a href="{base}/docs/components#fluidreveal">&lt;FluidReveal&gt;</a></code></td>
 			<td>Fluid as an opacity mask — cursor movement reveals content below.</td>
 		</tr>
 		<tr>
-			<td><code><a href="/docs/components#fluiddistortion">&lt;FluidDistortion&gt;</a></code></td>
+			<td><code><a href="{base}/docs/components#fluiddistortion">&lt;FluidDistortion&gt;</a></code></td>
 			<td>Fluid velocity warps an underlying image like liquid glass.</td>
 		</tr>
 		<tr>
-			<td><code><a href="/docs/components#fluidstick">&lt;FluidStick&gt;</a></code></td>
+			<td><code><a href="{base}/docs/components#fluidstick">&lt;FluidStick&gt;</a></code></td>
 			<td>Dye clings to text or SVG paths via physics-level modulation.</td>
 		</tr>
 		<tr>
-			<td><code><a href="/docs/components#fluidtext">&lt;FluidText&gt;</a></code></td>
+			<td><code><a href="{base}/docs/components#fluidtext">&lt;FluidText&gt;</a></code></td>
 			<td>Fluid confined inside text letterforms.</td>
 		</tr>
 	</tbody>
 </table>
 
-<p>For programmatic control (injecting splats, pausing, resuming), see the <a href="/docs/api">API Reference</a>.</p>
+<p>For programmatic control (injecting splats, pausing, resuming), see the <a href="{base}/docs/api">API Reference</a>.</p>

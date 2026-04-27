@@ -19,6 +19,7 @@
 		ToroidalTempest
 	} from '$lib/index.js';
 	import type { ContainerShape, FluidHandle } from '$lib/engine/types.js';
+	import { base } from '$app/paths';
 	import Card from './components/Card.svelte';
 	import ControlPanel, { D } from './components/ControlPanel.svelte';
 	import ShapePreview from './components/ShapePreview.svelte';
@@ -1117,7 +1118,7 @@
 				GitHub
 			</a>
 			<span aria-hidden="true">·</span>
-			<a href="/docs">Docs</a>
+			<a href="{base}/docs">Docs</a>
 			<span aria-hidden="true">·</span>
 			<a
 				href="https://github.com/tommyyzhao/svelte-fluid#readme"
