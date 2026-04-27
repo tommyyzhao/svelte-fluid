@@ -1,21 +1,22 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { base } from '$app/paths';
 
 	let { children } = $props();
 
 	let menuOpen = $state(false);
 
 	const nav = [
-		{ label: 'Getting Started', href: '/docs' },
-		{ label: 'Components', href: '/docs/components' },
-		{ label: 'Configuration', href: '/docs/configuration' },
-		{ label: 'Container Shapes', href: '/docs/shapes' },
-		{ label: 'Presets', href: '/docs/presets' },
-		{ label: 'API Reference', href: '/docs/api' }
+		{ label: 'Getting Started', href: `${base}/docs` },
+		{ label: 'Components', href: `${base}/docs/components` },
+		{ label: 'Configuration', href: `${base}/docs/configuration` },
+		{ label: 'Container Shapes', href: `${base}/docs/shapes` },
+		{ label: 'Presets', href: `${base}/docs/presets` },
+		{ label: 'API Reference', href: `${base}/docs/api` }
 	];
 
 	function isActive(href: string, path: string): boolean {
-		if (href === '/docs') return path === '/docs' || path === '/docs/';
+		if (href === `${base}/docs`) return path === `${base}/docs` || path === `${base}/docs/`;
 		return path.startsWith(href);
 	}
 </script>
@@ -30,7 +31,7 @@
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<aside class="sidebar" class:open={menuOpen} onclick={() => (menuOpen = false)}>
 		<div class="sidebar-header">
-			<a href="/" class="sidebar-logo">svelte-fluid</a>
+			<a href="{base}/" class="sidebar-logo">svelte-fluid</a>
 			<span class="sidebar-version">docs</span>
 		</div>
 
@@ -48,7 +49,7 @@
 		</nav>
 
 		<div class="sidebar-footer">
-			<a href="/" class="back-link">← Back to demo</a>
+			<a href="{base}/" class="back-link">← Back to demo</a>
 			<a href="https://github.com/tommyyzhao/svelte-fluid" rel="noreferrer" target="_blank" class="back-link">
 				GitHub
 			</a>
