@@ -43,9 +43,9 @@ Stage all changed files by name (never `git add -A`). Write a structured commit 
 
 Run `git push origin main`. Then run `gh run list --limit 3` to verify both CI and Deploy workflows triggered. Report status to user.
 
-## 7. Regenerate handoff
+## 7. Regenerate handoff (local-only — NOT committed)
 
-Overwrite `.claude/handoff.md` with a comprehensive handoff containing:
+Overwrite `.claude/handoff.md` with a comprehensive handoff. This file is gitignored and stays on the local machine only. It contains:
 
 - **Project**: repo URL, branch, latest commit hash
 - **Current state**: test count, type error count, build status, component count, preset count, shape count, ADR count, demo instance count, docs page count
