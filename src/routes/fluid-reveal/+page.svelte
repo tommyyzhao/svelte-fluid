@@ -1,6 +1,66 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import FluidReveal from '$lib/FluidReveal.svelte';
+	import CopyPageButton from '../components/CopyPageButton.svelte';
+
+	const pageMarkdown = [
+		'# FluidReveal — svelte-fluid',
+		'',
+		'Fluid simulation as an opacity mask. Move your cursor to reveal content below.',
+		'',
+		'## Default (fade-back)',
+		'',
+		'Content is hidden behind a fluid mask. Move your cursor to reveal it. The reveal fades back over time.',
+		'',
+		'```svelte',
+		'<FluidReveal>',
+		'  <div>Your content here</div>',
+		'</FluidReveal>',
+		'```',
+		'',
+		'## Permanent reveal',
+		'',
+		'Once revealed, content stays visible permanently.',
+		'',
+		'```svelte',
+		'<FluidReveal fadeBack={false}>',
+		'  <div>Your content here</div>',
+		'</FluidReveal>',
+		'```',
+		'',
+		'## Auto-reveal animation',
+		'',
+		'An automated cursor traces a pattern to reveal content. Touch or click to take over.',
+		'',
+		'```svelte',
+		'<FluidReveal autoReveal autoRevealSpeed={0.8} fadeBack={false} sensitivity={0.15}>',
+		'  <div>Your content here</div>',
+		'</FluidReveal>',
+		'```',
+		'',
+		'## Soft reveal (high curve)',
+		'',
+		'Higher curve values create a softer, more gradual reveal transition.',
+		'',
+		'```svelte',
+		'<FluidReveal curve={0.5} sensitivity={0.2} splatRadius={0.3}>',
+		'  <div>Your content here</div>',
+		'</FluidReveal>',
+		'```',
+		'',
+		'## With container shape (circular reveal zone)',
+		'',
+		'The reveal only works inside the circle. Outside is transparent.',
+		'',
+		'```svelte',
+		'<FluidReveal',
+		'  containerShape={{ type: \'circle\', cx: 0.5, cy: 0.5, radius: 0.4 }}',
+		'  fadeBack={false}',
+		'>',
+		'  <div>Your content here</div>',
+		'</FluidReveal>',
+		'```',
+	].join('\n');
 </script>
 
 <svelte:head>
@@ -8,7 +68,10 @@
 </svelte:head>
 
 <div class="page">
-	<a href="{base}/" class="back-link">&larr; Back to demos</a>
+	<div class="page-top-row">
+		<a href="{base}/" class="back-link">&larr; Back to demos</a>
+		<CopyPageButton content={pageMarkdown} />
+	</div>
 	<h1>FluidReveal</h1>
 	<p class="subtitle">Fluid simulation as an opacity mask. Move your cursor to reveal content below.</p>
 
@@ -114,6 +177,11 @@
 		color: #eee;
 		background: #0a0a1a;
 		min-height: 100vh;
+	}
+	.page-top-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
 	}
 	.back-link {
 		color: #88f;

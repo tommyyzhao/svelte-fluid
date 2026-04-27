@@ -8,17 +8,29 @@ Run `bun run test && bun run check && bun run prepack`. All three must pass with
 
 Run `git diff --stat` and `git diff --name-only` to see what changed. Read modified files to understand the scope. Categorize changes into: new features, bug fixes, demo changes, doc changes, preset tuning.
 
-## 3. Update CHANGELOG.md
+## 3. Update docs routes (canonical docs)
+
+The docs site at `/docs` is the **canonical documentation**. When this session changed any of the following, update the corresponding route **now** — don't leave it for next session:
+
+| What changed | Update this route |
+|---|---|
+| FluidConfig props (added, removed, defaults, behavior) | `src/routes/docs/configuration/+page.svelte` |
+| Component-specific props (Fluid, FluidReveal, etc.) | `src/routes/docs/components/+page.svelte` |
+| ContainerShape variants or fields | `src/routes/docs/shapes/+page.svelte` |
+| Preset tuning or new presets | `src/routes/docs/presets/+page.svelte` |
+| FluidHandle API, RGB, PresetSplat types | `src/routes/docs/api/+page.svelte` |
+| Major new feature or workflow change | `src/routes/docs/+page.svelte` (Getting Started) |
+| Any public API surface change | `src/routes/skills.md/+page.svelte` (LLM reference) |
+
+Also check whether **internal** dev docs need updating:
+- `dev-docs/architecture.md` — if module boundaries, ownership, or the component diagram changed
+- `CONTRIBUTING.md` — if hard rules, workflows, or verification steps changed
+- `dev-docs/learnings/*.md` — if you hit a non-obvious gotcha worth recording
+- Consider whether an ADR in `dev-docs/decisions/` is needed for engine-level changes (required by project convention)
+
+## 4. Update CHANGELOG.md
 
 Add entries under `[Unreleased]` in the appropriate subsections (Added, Changed, Fixed, Documentation). Be specific — include prop names, file names, before/after values for tuning changes.
-
-## 4. Update docs if needed
-
-Check whether these need updating based on what changed:
-- `dev-docs/architecture.md` — if new props, new handlers, new shaders, or bucket assignments changed
-- `CONTRIBUTING.md` — if demo instance count changed, new hard rules, or workflow changes
-- `dev-docs/learnings/presets.md` — if preset tuning changed
-- Consider whether an ADR is needed for engine-level changes (required by project convention)
 
 ## 5. Stage and commit
 
@@ -36,9 +48,9 @@ Run `git push origin main`. Then run `gh run list --limit 3` to verify both CI a
 Overwrite `.claude/handoff.md` with a comprehensive handoff containing:
 
 - **Project**: repo URL, branch, latest commit hash
-- **Current state**: test count, type error count, build status, preset count, shape count, ADR count, demo instance count
+- **Current state**: test count, type error count, build status, component count, preset count, shape count, ADR count, demo instance count, docs page count
 - **What this session built**: numbered list of every change with file references
-- **Key files table**: the ~12 most important files with one-line role descriptions
+- **Key files table**: the ~15 most important files with one-line role descriptions (include docs routes)
 - **What needs attention next**: categorized into Planned features (from user), Known issues, and Follow-ups
 - **Architecture quick-reference**: the 4-bucket system, container shape pipeline, lazy/autoPause behavior, key invariants
 

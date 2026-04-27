@@ -11,7 +11,7 @@ Repo: github.com/tommyyzhao/svelte-fluid
 ```sh
 bun install              # install deps
 bun run dev              # dev server at localhost:5173
-bun run test             # vitest (272 tests)
+bun run test             # vitest (276 tests)
 bun run check            # svelte-check (0 errors expected)
 bun run prepack          # svelte-package + publint (must pass before publish)
 bun run build            # full demo site build
@@ -71,7 +71,23 @@ See [ADR 0024](dev-docs/decisions/0024-svg-path-container-shape.md) for the mask
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributing guide, including
 workflows for adding config fields, modifying shaders, and publishing releases.
 
-## Further reading
+## Docs routes (canonical)
+
+The `/docs` site routes are the **canonical documentation**. When you change
+the public API (props, types, components, presets), update the corresponding
+route as part of the same change — not as a follow-up.
+
+| Route | Content |
+|-------|---------|
+| `src/routes/docs/+page.svelte` | Getting Started |
+| `src/routes/docs/components/+page.svelte` | All 6 components with props and examples |
+| `src/routes/docs/configuration/+page.svelte` | Full FluidConfig prop reference (70+ props) |
+| `src/routes/docs/shapes/+page.svelte` | ContainerShape variants and fields |
+| `src/routes/docs/presets/+page.svelte` | All 10 presets with pinned prop tables |
+| `src/routes/docs/api/+page.svelte` | FluidHandle imperative API, RGB, PresetSplat |
+| `src/routes/skills.md/+page.svelte` | LLM-friendly API reference |
+
+## Further reading (internal)
 
 | Resource | What's there |
 |----------|-------------|

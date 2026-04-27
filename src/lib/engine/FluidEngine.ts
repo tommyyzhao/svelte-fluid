@@ -1275,6 +1275,10 @@ export class FluidEngine implements FluidHandle {
 			);
 		} else if (shape.type === 'frame') {
 			gl.uniform1i(this.applyMaskProgram.uniforms.uShapeType, 1);
+			gl.uniform1f(
+				this.applyMaskProgram.uniforms.uAspect,
+				gl.drawingBufferWidth / gl.drawingBufferHeight
+			);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfW, shape.halfW);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfH, shape.halfH);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uInnerCornerRadius, shape.innerCornerRadius ?? 0);
@@ -1283,6 +1287,10 @@ export class FluidEngine implements FluidHandle {
 			gl.uniform1f(this.applyMaskProgram.uniforms.uOuterCornerRadius, shape.outerCornerRadius ?? 0);
 		} else if (shape.type === 'roundedRect') {
 			gl.uniform1i(this.applyMaskProgram.uniforms.uShapeType, 2);
+			gl.uniform1f(
+				this.applyMaskProgram.uniforms.uAspect,
+				gl.drawingBufferWidth / gl.drawingBufferHeight
+			);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfW, shape.halfW);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfH, shape.halfH);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uInnerCornerRadius, shape.cornerRadius);
@@ -1731,6 +1739,7 @@ export class FluidEngine implements FluidHandle {
 				gl.uniform1f(uniforms.uContainerAspect, width / height);
 			} else if (s.type === 'frame') {
 				gl.uniform1i(uniforms.uContainerShapeType, 1);
+				gl.uniform1f(uniforms.uContainerAspect, width / height);
 				gl.uniform1f(uniforms.uContainerHalfW, s.halfW);
 				gl.uniform1f(uniforms.uContainerHalfH, s.halfH);
 				gl.uniform1f(uniforms.uContainerInnerCornerRadius, s.innerCornerRadius ?? 0);
@@ -1739,6 +1748,7 @@ export class FluidEngine implements FluidHandle {
 				gl.uniform1f(uniforms.uContainerOuterCornerRadius, s.outerCornerRadius ?? 0);
 			} else if (s.type === 'roundedRect') {
 				gl.uniform1i(uniforms.uContainerShapeType, 2);
+				gl.uniform1f(uniforms.uContainerAspect, width / height);
 				gl.uniform1f(uniforms.uContainerHalfW, s.halfW);
 				gl.uniform1f(uniforms.uContainerHalfH, s.halfH);
 				gl.uniform1f(uniforms.uContainerInnerCornerRadius, s.cornerRadius);

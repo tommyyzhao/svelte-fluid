@@ -32,6 +32,15 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 - **`outerCornerRadius` prop on `FrameFluid`** — allows rounding the outer
   boundary of the frame preset component.
 
+- **Docs site** — 6-page Mintlify-inspired documentation at `/docs` with sidebar
+  navigation: Getting Started, Components, Configuration, Container Shapes,
+  Presets, API Reference. Accessible from the main demo page header.
+- **SKILLS.md route** — LLM-friendly API reference at `/skills.md` (628 lines).
+  All components, props, shapes, presets, types, and usage examples.
+- **`CopyPageButton` component** — reusable button that copies page content as
+  clean markdown. Integrated into main demo, background-fluid, fluid-reveal,
+  and svelte-fluid pages.
+
 ### Changed
 
 - **Hero title** — replaced manual `<Fluid>` + `wordShape()` with `<FluidText>`
@@ -56,6 +65,14 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Frame/roundedRect border-radius asymmetry** — rounded corners on `frame` and
+  `roundedRect` container shapes now appear circular in physical space (like CSS
+  `border-radius`), not elliptical. Applied aspect correction to all rounded-box
+  SDF computations in display, applyMask, and glass shaders, plus TypeScript
+  mirrors. Also fixed missing `uContainerAspect`/`uAspect` uniform for frame and
+  roundedRect in `FluidEngine.ts`.
+- **Dead "Docs" link** — header nav link changed from deleted `github.com/.../docs`
+  to `/docs`. Contributing link updated to point to root `CONTRIBUTING.md`.
 - **FluidStick auto-animate dimensions** — replaced `window.innerWidth/Height`
   with container dimensions via `bind:clientWidth/clientHeight`. Velocity now
   scales by actual canvas size, not viewport size.

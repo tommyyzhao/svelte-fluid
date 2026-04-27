@@ -205,6 +205,31 @@ gl.deleteTexture(texture);
 clean up probe artifacts. The amount of GPU memory is small; the
 principle is large.
 
+## New shader uniforms must be set in every engine code path that uses them
+
+**Symptom:** After adding `* uContainerAspect` to the frame/roundedRect
+branches of the display and applyMask shaders, all rounded-rect shapes
+rendered as completely black (mask = 0 everywhere).
+
+**Cause:** The `uContainerAspect` uniform was only set for `circle` and
+`annulus` in both `setContainerShapeUniforms` and `applyMask`. Frame and
+roundedRect never set it — the uniform defaulted to 0. Multiplying by 0
+collapsed the entire x-dimension of the SDF.
+
+With Vite HMR, the new shader source hot-reloaded (it reads
+`uContainerAspect` which is 0), but the engine constructor didn't re-run
+(so the uniform-setting code wasn't updated). This made the bug appear
+instantly on save without a page refresh.
+
+**Fix:** Added `gl.uniform1f(uniforms.uContainerAspect, width / height)`
+for frame and roundedRect in both `setContainerShapeUniforms` (display +
+glass) and the `applyMask` method.
+
+**Why this matters:** When adding a uniform read to a GLSL branch, audit
+every TypeScript code path that sets uniforms for that shader — not just
+the branch you're modifying. WebGL uniforms default to 0, and Vite HMR
+makes the failure mode deceptive (shader reloads, engine doesn't).
+
 ## `getResolution` reads `gl.drawingBufferWidth/Height`, not `canvas.width/height`
 
 **Symptom:** None — the upstream did this right and we kept it.

@@ -290,6 +290,29 @@ describe('containerMask — frame with innerCornerRadius', () => {
 		const val = containerMask(frameSharp, 0.7, 0.65, aspect);
 		expect(val).toBeCloseTo(0.5, 1);
 	});
+
+	it('aspect correction makes rounded corners circular in physical space', () => {
+		// On a 2:1 canvas, the corner arc is circular in physical space.
+		// A point near the bounding-box corner that's right at the arc
+		// boundary for aspect=1 is inside the arc for aspect=2 (the arc
+		// extends further in the UV-y direction on wider canvases).
+		const nearCorner = containerMask(frameRounded, 0.685, 0.635, 1.0);
+		const nearCornerWide = containerMask(frameRounded, 0.685, 0.635, 2.0);
+		// For aspect=1, this point is near the arc boundary (~0.5)
+		expect(nearCorner).toBeGreaterThan(0.3);
+		expect(nearCorner).toBeLessThan(0.7);
+		// For aspect=2, the arc is wider in UV-y, so this point is
+		// inside the cutout (mask ≈ 0, meaning fluid blocked)
+		expect(nearCornerWide).toBeLessThan(nearCorner);
+	});
+
+	it('straight edge is not affected by aspect (rounded frame)', () => {
+		// Right edge midpoint: always on the boundary regardless of aspect
+		const val1 = containerMask(frameRounded, 0.7, 0.5, 1.0);
+		const val2 = containerMask(frameRounded, 0.7, 0.5, 2.0);
+		expect(val1).toBeCloseTo(0.5, 1);
+		expect(val2).toBeCloseTo(0.5, 1);
+	});
 });
 
 /* ------------------------------------------------------------------ */
@@ -471,10 +494,32 @@ describe('roundedRectSDF', () => {
 		expect(roundedRectSDF(1, 1, cx, cy, halfW, halfH, cr, aspect)).toBe(0);
 	});
 
-	it('is independent of aspect ratio (operates in UV space)', () => {
+	it('aspect correction makes corners circular in physical space', () => {
+		// On a 2:1 canvas, a point at the bounding-box corner should be
+		// further from the corner arc than on a square canvas, because the
+		// arc is now circular in physical space (not UV space).
+		const corner1 = roundedRectSDF(0.7, 0.65, cx, cy, halfW, halfH, cr, 1.0);
+		const corner2 = roundedRectSDF(0.7, 0.65, cx, cy, halfW, halfH, cr, 2.0);
+		// Both should be outside (≈ 0) but at different distances
+		expect(corner1).toBeCloseTo(0.0, 1);
+		expect(corner2).toBeCloseTo(0.0, 1);
+	});
+
+	it('interior point is unaffected by aspect', () => {
+		// Deep inside the rect, far from corners — aspect has no effect
 		const val1 = roundedRectSDF(0.6, 0.55, cx, cy, halfW, halfH, cr, 1.0);
 		const val2 = roundedRectSDF(0.6, 0.55, cx, cy, halfW, halfH, cr, 2.0);
-		expect(val1).toBeCloseTo(val2, 5);
+		expect(val1).toBe(1);
+		expect(val2).toBe(1);
+	});
+
+	it('straight edge position is independent of aspect', () => {
+		// Right edge midpoint: x=0.7, y=0.5 — on the straight edge,
+		// not in the corner region. Should be ~0.5 regardless of aspect.
+		const val1 = roundedRectSDF(0.7, 0.5, cx, cy, halfW, halfH, cr, 1.0);
+		const val2 = roundedRectSDF(0.7, 0.5, cx, cy, halfW, halfH, cr, 2.0);
+		expect(val1).toBeCloseTo(0.5, 1);
+		expect(val2).toBeCloseTo(0.5, 1);
 	});
 });
 

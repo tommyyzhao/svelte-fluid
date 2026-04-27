@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Fluid } from '$lib/index.js';
 	import type { ContainerShape } from '$lib/engine/types.js';
+	import CopyPageButton from '../components/CopyPageButton.svelte';
 
 	function wordShape(text: string): ContainerShape {
 		return {
@@ -10,9 +11,46 @@
 			maskResolution: 512
 		};
 	}
+
+	const pageMarkdown = [
+		'# SVELTE FLUID — Text Demo',
+		'',
+		'Fluid simulation shaped by text glyphs using SVG path container shapes.',
+		'',
+		'## Usage',
+		'',
+		'```svelte',
+		'<Fluid',
+		'  containerShape={{',
+		'    type: \'svgPath\',',
+		'    text: \'SVELTE\',',
+		'    font: \'bold 100px "Helvetica Neue", Arial, sans-serif\',',
+		'    maskResolution: 512',
+		'  }}',
+		'  splatOnHover',
+		'  densityDissipation={0.01}',
+		'  velocityDissipation={0.01}',
+		'  curl={20}',
+		'  splatRadius={0.3}',
+		'  splatForce={5000}',
+		'  shading',
+		'  colorful',
+		'  bloom={false}',
+		'  sunrays={false}',
+		'  initialSplatCount={8}',
+		'  randomSplatRate={4}',
+		'  randomSplatCount={2}',
+		'  randomSplatSpread={2}',
+		'  randomSplatSwirl={200}',
+		'/>',
+		'```',
+	].join('\n');
 </script>
 
 <div class="page">
+	<div class="copy-page-wrapper">
+		<CopyPageButton content={pageMarkdown} />
+	</div>
 	<div class="word-wrap">
 		<Fluid
 			seed={42}
@@ -62,6 +100,12 @@
 </div>
 
 <style>
+	.copy-page-wrapper {
+		position: fixed;
+		top: 14px;
+		right: 14px;
+		z-index: 100;
+	}
 	.page {
 		min-height: 100vh;
 		display: flex;

@@ -224,7 +224,8 @@ export const displayShaderSource = `
             float icr = uContainerInnerCornerRadius;
             float innerMask;
             if (icr > 0.0) {
-                vec2 id = abs(vec2(vUv.x - uContainerCenter.x, vUv.y - uContainerCenter.y)) - vec2(uContainerHalfW, uContainerHalfH) + icr;
+                vec2 ip = vec2((vUv.x - uContainerCenter.x) * uContainerAspect, vUv.y - uContainerCenter.y);
+                vec2 id = abs(ip) - vec2(uContainerHalfW * uContainerAspect, uContainerHalfH) + icr;
                 float iDist = length(max(id, 0.0)) - icr;
                 innerMask = smoothstep(-0.005, 0.005, iDist);
             } else {
@@ -236,7 +237,8 @@ export const displayShaderSource = `
             float ocr = uContainerOuterCornerRadius;
             float outerMask;
             if (ocr > 0.0) {
-                vec2 od = abs(vec2(vUv.x - uContainerCenter.x, vUv.y - uContainerCenter.y)) - vec2(uContainerOuterHalfW, uContainerOuterHalfH) + ocr;
+                vec2 op = vec2((vUv.x - uContainerCenter.x) * uContainerAspect, vUv.y - uContainerCenter.y);
+                vec2 od = abs(op) - vec2(uContainerOuterHalfW * uContainerAspect, uContainerOuterHalfH) + ocr;
                 float oDist = length(max(od, 0.0)) - ocr;
                 outerMask = 1.0 - smoothstep(-0.005, 0.005, oDist);
             } else {
@@ -247,7 +249,8 @@ export const displayShaderSource = `
             cmask = innerMask * outerMask;
         } else if (uContainerShapeType == 2) {
             // Rounded rect: 1 inside, 0 outside
-            vec2 rd = abs(vec2(vUv.x - uContainerCenter.x, vUv.y - uContainerCenter.y)) - vec2(uContainerHalfW, uContainerHalfH) + uContainerInnerCornerRadius;
+            vec2 rp = vec2((vUv.x - uContainerCenter.x) * uContainerAspect, vUv.y - uContainerCenter.y);
+            vec2 rd = abs(rp) - vec2(uContainerHalfW * uContainerAspect, uContainerHalfH) + uContainerInnerCornerRadius;
             float rdDist = length(max(rd, 0.0)) - uContainerInnerCornerRadius;
             cmask = 1.0 - smoothstep(-0.005, 0.005, rdDist);
         } else if (uContainerShapeType == 3) {
@@ -357,9 +360,12 @@ export const glassShaderSource = `
     uniform float uContainerOuterCornerRadius;
     uniform sampler2D uContainerMaskTexture;
 
-    // Rounded box SDF: negative inside, positive outside
-    float roundedBoxSDF(vec2 p, vec2 halfSize, float cr) {
-        vec2 d = abs(p) - halfSize + cr;
+    // Rounded box SDF: negative inside, positive outside.
+    // Aspect-corrected so corners are circular in physical space.
+    float roundedBoxSDF(vec2 p, vec2 halfSize, float cr, float aspect) {
+        vec2 pa = vec2(p.x * aspect, p.y);
+        vec2 ha = vec2(halfSize.x * aspect, halfSize.y);
+        vec2 d = abs(pa) - ha + cr;
         return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - cr;
     }
 
@@ -370,17 +376,17 @@ export const glassShaderSource = `
             vec2 p = uv - uContainerCenter;
             float innerDist = roundedBoxSDF(p,
                 vec2(uContainerHalfW, uContainerHalfH),
-                uContainerInnerCornerRadius);
+                uContainerInnerCornerRadius, uContainerAspect);
             float outerDist = roundedBoxSDF(p,
                 vec2(uContainerOuterHalfW, uContainerOuterHalfH),
-                uContainerOuterCornerRadius);
+                uContainerOuterCornerRadius, uContainerAspect);
             return max(-innerDist, outerDist);
         } else if (uContainerShapeType == 2) {
             // Rounded rect
             vec2 p = uv - uContainerCenter;
             return roundedBoxSDF(p,
                 vec2(uContainerHalfW, uContainerHalfH),
-                uContainerInnerCornerRadius);
+                uContainerInnerCornerRadius, uContainerAspect);
         } else if (uContainerShapeType == 3) {
             // Annulus
             vec2 p = vec2((uv.x - uContainerCenter.x) * uContainerAspect,
@@ -926,7 +932,8 @@ export const applyMaskShader = `
             float icr = uInnerCornerRadius;
             float innerMask;
             if (icr > 0.0) {
-                vec2 id = abs(vec2(vUv.x - uCx, vUv.y - uCy)) - vec2(uHalfW, uHalfH) + icr;
+                vec2 ip = vec2((vUv.x - uCx) * uAspect, vUv.y - uCy);
+                vec2 id = abs(ip) - vec2(uHalfW * uAspect, uHalfH) + icr;
                 float iDist = length(max(id, 0.0)) - icr;
                 innerMask = smoothstep(-0.005, 0.005, iDist);
             } else {
@@ -937,7 +944,8 @@ export const applyMaskShader = `
             float ocr = uOuterCornerRadius;
             float outerMask;
             if (ocr > 0.0) {
-                vec2 od = abs(vec2(vUv.x - uCx, vUv.y - uCy)) - vec2(uOuterHalfW, uOuterHalfH) + ocr;
+                vec2 op = vec2((vUv.x - uCx) * uAspect, vUv.y - uCy);
+                vec2 od = abs(op) - vec2(uOuterHalfW * uAspect, uOuterHalfH) + ocr;
                 float oDist = length(max(od, 0.0)) - ocr;
                 outerMask = 1.0 - smoothstep(-0.005, 0.005, oDist);
             } else {
@@ -948,7 +956,8 @@ export const applyMaskShader = `
             mask = innerMask * outerMask;
         } else if (uShapeType == 2) {
             // Rounded rect: keep inside, zero outside
-            vec2 rd = abs(vec2(vUv.x - uCx, vUv.y - uCy)) - vec2(uHalfW, uHalfH) + uInnerCornerRadius;
+            vec2 rp = vec2((vUv.x - uCx) * uAspect, vUv.y - uCy);
+            vec2 rd = abs(rp) - vec2(uHalfW * uAspect, uHalfH) + uInnerCornerRadius;
             float rdDist = length(max(rd, 0.0)) - uInnerCornerRadius;
             mask = 1.0 - smoothstep(-0.005, 0.005, rdDist);
         } else if (uShapeType == 3) {
