@@ -20,7 +20,7 @@ Run `bun run test && bun run check` to confirm the codebase is clean. Report any
 ## 4. Quick orientation reads
 
 Read these files (skim, don't dump to user) to refresh your mental model:
-- `docs/architecture.md` (lines 1-100) — system design and module boundaries
+- `dev-docs/architecture.md` (lines 1-100) — system design and module boundaries
 - `src/lib/engine/types.ts` — current FluidConfig and ContainerShape definitions
 - `CLAUDE.md` — project conventions and invariants
 

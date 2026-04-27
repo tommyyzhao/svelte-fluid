@@ -130,6 +130,8 @@
 	}: FluidStickProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
+	let containerW = $state(0);
+	let containerH = $state(0);
 
 	let stickyMask = $derived.by((): StickyMask => ({
 		text,
@@ -177,8 +179,8 @@
 			const t = elapsed * autoAnimateSpeed;
 			const x = 0.5 - 0.45 * Math.sin(3.0 * t - 2);
 			const y = 0.5 + 0.15 * Math.sin(2.5 * t) + 0.12 * Math.cos(2.0 * t);
-			const dx = 3 * (x - prevX) * innerWidth;
-			const dy = 3 * (y - prevY) * innerHeight;
+			const dx = 3 * (x - prevX) * (containerW || 300);
+			const dy = 3 * (y - prevY) * (containerH || 300);
 			prevX = x;
 			prevY = y;
 			// Color-cycling splats: on-mask dye accumulates vivid
@@ -215,6 +217,8 @@
 	style:width={width != null ? `${width}px` : undefined}
 	style:height={height != null ? `${height}px` : undefined}
 	{style}
+	bind:clientWidth={containerW}
+	bind:clientHeight={containerH}
 	onpointerdown={onPointerActivity}
 	onpointermove={onPointerActivity}
 >

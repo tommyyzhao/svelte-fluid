@@ -15,9 +15,9 @@ Add entries under `[Unreleased]` in the appropriate subsections (Added, Changed,
 ## 4. Update docs if needed
 
 Check whether these need updating based on what changed:
-- `docs/architecture.md` — if new props, new handlers, new shaders, or bucket assignments changed
-- `docs/contributing.md` — if demo instance count changed, new hard rules, or workflow changes
-- `docs/learnings/presets.md` — if preset tuning changed
+- `dev-docs/architecture.md` — if new props, new handlers, new shaders, or bucket assignments changed
+- `CONTRIBUTING.md` — if demo instance count changed, new hard rules, or workflow changes
+- `dev-docs/learnings/presets.md` — if preset tuning changed
 - Consider whether an ADR is needed for engine-level changes (required by project convention)
 
 ## 5. Stage and commit

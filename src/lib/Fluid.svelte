@@ -100,6 +100,7 @@
 		initialSplatCountMin,
 		initialSplatCountMax,
 		pointerInput = true,
+		pointerTarget,
 		splatOnHover,
 		presetSplats,
 		randomSplatRate,
@@ -238,6 +239,7 @@
 			stickyPressure,
 			stickyAmplify,
 			pointerInput,
+			pointerTarget,
 			splatOnHover,
 			seed: stableSeed,
 			presetSplats: stablePresetSplats

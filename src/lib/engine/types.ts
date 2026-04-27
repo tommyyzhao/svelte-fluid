@@ -222,6 +222,17 @@ export interface FluidConfig {
 	/** Enable mouse / touch input. Default true. */
 	pointerInput?: boolean;
 	/**
+	 * Where to attach pointer event listeners.
+	 * - `'canvas'` (default): listens on the canvas element only.
+	 * - `'window'`: listens on `window`, so pointer activity anywhere
+	 *   on the page drives the simulation. Useful for background fluid
+	 *   where the canvas is behind other content.
+	 *
+	 * When `'window'`, touch listeners are registered as passive
+	 * (scrolling is not blocked). Bucket A (hot-updatable).
+	 */
+	pointerTarget?: 'canvas' | 'window';
+	/**
 	 * When true, moving the mouse over the canvas creates splats without
 	 * requiring a click. The splat velocity follows the cursor movement.
 	 * Has no effect when `pointerInput` is false. Default false.
@@ -500,6 +511,7 @@ export interface ResolvedConfig {
 	INITIAL_SPLAT_MIN: number;
 	INITIAL_SPLAT_MAX: number;
 	POINTER_INPUT: boolean;
+	POINTER_TARGET: 'canvas' | 'window';
 	SPLAT_ON_HOVER: boolean;
 	SEED: number;
 	RANDOM_SPLAT_RATE: number;
