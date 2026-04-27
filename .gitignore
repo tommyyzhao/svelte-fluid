@@ -26,3 +26,4 @@ vite.config.ts.timestamp-*
 # Claude session state (local-only)
 .claude/handoff.md
 .claude/worktrees/
+.claude/commands/
