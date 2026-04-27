@@ -121,23 +121,58 @@ svelte-fluid/
    correctly across all four hot-update buckets.
 4. Verify `bun run package` produces a clean `dist/`.
 
-### Publish a release
+### Add a changeset to your PR
 
-1. Bump the version in `package.json` following semver:
+Releases are driven by [Changesets](https://github.com/changesets/changesets).
+When you open a PR with user-visible changes, add a changeset describing the
+change and the version impact:
+
+```sh
+bun run changeset
+```
+
+The CLI will ask:
+
+1. **Bump type** — pick `patch`, `minor`, or `major`:
    - **patch** — bug fixes, doc fixes, internal refactors
    - **minor** — new presets, new props, additive engine features
-   - **major** — breaking API changes (renaming props, removing
-     exports, changing default behavior in a user-visible way)
-2. Add a new entry at the top of `CHANGELOG.md` with the version,
-   the date, and a short list of changes grouped by **Added**,
-   **Changed**, **Fixed**, **Removed**.
-3. `bun run check` — must be 0 errors, 0 warnings.
-4. `bun run prepack` — runs `svelte-package` and `publint`. publint
-   must report `All good!`.
-5. Inspect the generated `dist/` for sanity (all .d.ts files present,
-   no stray files).
-6. `bun publish` (if applicable).
-7. Tag the release: `git tag v<version>` and `git push --tags`.
+   - **major** — breaking API changes (renamed props, removed exports,
+     changed default behavior in a user-visible way)
+2. **Summary** — a one-line description of the change
+
+Commit the generated `.changeset/*.md` file with your PR. Changesets from
+multiple PRs accumulate and are combined into the next release.
+
+Internal-only changes (refactors invisible to consumers, dev-doc updates,
+CI tweaks) don't need a changeset.
+
+### How releases happen
+
+Releases run automatically through `.github/workflows/release.yml`:
+
+1. When changesets are present on `main`, the workflow opens a
+   **"Version Packages"** PR that bumps `package.json`, regenerates the
+   relevant section of `CHANGELOG.md`, and removes the changeset files.
+2. Merging that PR triggers the workflow again. With no changesets left,
+   it runs `bun run release` — which calls `changeset publish` to push to
+   npm with **provenance** (verified GitHub Actions build attestation) and
+   creates a GitHub release.
+
+You don't need to publish manually after the first release. The first
+publish (v0.1.0) is the one exception — see "First publish" below.
+
+### First publish (one-time only)
+
+The very first release predates the changesets workflow because the package
+isn't on npm yet. To ship v0.1.0:
+
+1. `bun run check && bun run test && bun run prepack` — verify clean build.
+2. `npm publish --access public` from your local machine.
+   *(Provenance only works from CI, so v0.1.0 ships without it. Every release
+   from v0.1.1 forward gets provenance via the workflow.)*
+3. `git tag v0.1.0 && git push --tags` and create a GitHub release manually.
+
+After v0.1.0 is on npm, all future releases use the changesets flow above.
 
 ## Verification checklist
 
