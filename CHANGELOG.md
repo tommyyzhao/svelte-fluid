@@ -444,8 +444,8 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
   loads image URLs asynchronously and uploads as GL texture. Handles CORS,
   stale load cancellation, and context restore re-loading.
 - **Demo: Distortion section** — 4 cards (Image distortion, Auto-distort,
-  Strong warp, Contained with shape) using Bosch's _Garden of Earthly
-  Delights_ (public domain, 1490–1500).
+  Strong warp, Contained with shape) using Bosch's *Garden of Earthly
+  Delights* (public domain, 1490–1500).
 - **14 new tests** (`distortion.test.ts`) — UV offset math, edge alpha,
   bleed remapping, config defaults, mutual exclusivity with REVEAL.
 - **ADR-0030** — documents FluidDistortion architecture decisions.
@@ -707,7 +707,7 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
   a "How it works" explainer. All cards are excluded from the fluid.
 - **Rounded rect shape card** on the main demo page — new "Rounded rect"
   card in the Container shapes section, using `containerShape: { type:
-'roundedRect' }`. Shapes section now has 6 cards (was 5) for symmetric
+  'roundedRect' }`. Shapes section now has 6 cards (was 5) for symmetric
   2-column layout.
 - **`splatOnHover` prop on shape presets** — `CircularFluid`, `FrameFluid`,
   `AnnularFluid`, and `SvgPathFluid` now accept and forward `splatOnHover`.
