@@ -1,6 +1,6 @@
 {
 	"name": "svelte-fluid",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "WebGL fluid simulation as a Svelte 5 component. Multi-instance, resize-stable, deterministic seeding. Port of Pavel Dobryakov's WebGL-Fluid-Simulation.",
 	"license": "MIT",
 	"author": "Tommy Zhao (https://github.com/tommyyzhao)",

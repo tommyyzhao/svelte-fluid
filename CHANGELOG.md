@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+### Patch Changes
+
+- [`5e297ef`](https://github.com/tommyyzhao/svelte-fluid/commit/5e297efadf5f3600469914b640e82e39b98d0724) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Fix public README and docs issues found while dogfooding v0.1.0.
+
 All notable changes to **svelte-fluid** are documented in this file.
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
