@@ -3,6 +3,21 @@
 
 	const SCRIPT_OPEN = '<' + 'script lang="ts">';
 	const SCRIPT_CLOSE = '</' + 'script>';
+	const VISIBLE_STARTER = `<div style="width: 100%; height: 400px">
+  <Fluid
+    seed={42}
+    initialSplatCount={20}
+    randomSplatRate={0.25}
+    randomSplatCount={2}
+    densityDissipation={0.35}
+    velocityDissipation={0.08}
+    curl={45}
+    splatRadius={0.35}
+    bloomIntensity={1.2}
+    sunraysWeight={0.6}
+    backColor={{ r: 6, g: 10, b: 26 }}
+  />
+</div>`;
 </script>
 
 <svelte:head>
@@ -38,6 +53,10 @@ yarn add svelte-fluid</code></pre>
 &lt;/div&gt;</code></pre>
 
 <p>Click and drag to create splats. The simulation runs on the GPU via WebGL, so it's fast even on mobile.</p>
+
+<p>For a blank scaffold, this starter config gives you an immediately visible canvas while you confirm the install:</p>
+
+<pre><code>{VISIBLE_STARTER}</code></pre>
 
 <h2>Use a preset</h2>
 

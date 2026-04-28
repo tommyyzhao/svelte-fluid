@@ -9,7 +9,7 @@
 WebGL fluid simulation as a Svelte 5 component library.
 
 <p align="center">
-  <img src="static/hero.webp" alt="svelte-fluid showcase: text-masked fluid, glass orb with chromatic refraction, reveal-scratch effect, and image distortion" width="720" />
+  <img src="https://raw.githubusercontent.com/tommyyzhao/svelte-fluid/main/static/hero.webp" alt="svelte-fluid showcase: text-masked fluid, glass orb with chromatic refraction, reveal-scratch effect, and image distortion" width="720" />
 </p>
 
 <p align="center">
@@ -56,6 +56,27 @@ bun add svelte-fluid
 
 That's the entire setup. The canvas fills its parent and tracks parent
 size via `ResizeObserver`.
+
+For a first-run screen that shows motion immediately in a blank app,
+start with a slightly brighter starter config:
+
+```svelte
+<div style="width:100%; height:100vh">
+  <Fluid
+    seed={42}
+    initialSplatCount={20}
+    randomSplatRate={0.25}
+    randomSplatCount={2}
+    densityDissipation={0.35}
+    velocityDissipation={0.08}
+    curl={45}
+    splatRadius={0.35}
+    bloomIntensity={1.2}
+    sunraysWeight={0.6}
+    backColor={{ r: 6, g: 10, b: 26 }}
+  />
+</div>
+```
 
 ### Fixed dimensions
 
@@ -166,7 +187,7 @@ The component also forwards any standard `<canvas>` attributes
 
 ## Presets
 
-Nine opinionated wrapper components ship alongside `<Fluid />`. Each one
+Ten opinionated wrapper components ship alongside `<Fluid />`. Each one
 hard-codes a physics + visual configuration and (for most of them) a
 hand-crafted set of opening splats so you can drop them in without any
 tuning:
@@ -178,6 +199,7 @@ tuning:
 | `<InkInWater />` | India ink sinking through dark water with volumetric bloom |
 | `<FrozenSwirl />` | An icy whirlpool frozen inside a circular vessel |
 | `<Aurora />` | Green, magenta, and pale-blue ribbons drifting like northern lights |
+| `<ToroidalTempest />` | Full-spectrum storm circulating in a high-velocity ring |
 | `<CircularFluid />` | Vivid swirling fluid contained inside a circle |
 | `<FrameFluid />` | Colorful fluid swirling around a rectangular inner cutout |
 | `<AnnularFluid />` | Ring-vortex fluid between two concentric circles |
@@ -185,7 +207,7 @@ tuning:
 
 ```svelte
 <script lang="ts">
-  import { LavaLamp, Plasma } from 'svelte-fluid';
+  import { LavaLamp, Plasma, ToroidalTempest } from 'svelte-fluid';
 </script>
 
 <div style="height: 100vh">
@@ -194,6 +216,7 @@ tuning:
 
 <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:16px">
   <Plasma />
+  <ToroidalTempest />
 </div>
 ```
 
@@ -327,6 +350,51 @@ shapes get rim refraction at the boundary.
 
 The specular highlight tracks the mouse cursor automatically. All
 highlights are driven by the fluid brightness — no fluid, no highlights.
+
+## FluidBackground composition
+
+`FluidBackground` is a page or screen wrapper, not a local card widget.
+Its fluid canvas is fixed to the viewport, and its slotted content sits
+above the canvas with `pointer-events: none` so window-level pointer
+input keeps feeding the simulation.
+
+Keep elements inside the slot when they should carve holes in the fluid
+via `exclude`. Add `pointer-events: auto` back to interactive children
+such as nav bars, cards, and forms:
+
+```svelte
+<script lang="ts">
+  import { FluidBackground } from 'svelte-fluid';
+</script>
+
+<FluidBackground class="fluid-screen" exclude=".site-nav, .panel" splatOnHover>
+  <nav class="site-nav">...</nav>
+  <main class="hero-copy">...</main>
+  <section class="panel">...</section>
+</FluidBackground>
+
+<style>
+  :global(.fluid-screen) {
+    min-height: 100vh;
+    isolation: isolate;
+  }
+
+  .site-nav,
+  .panel {
+    position: relative;
+    z-index: 2;
+    pointer-events: auto;
+  }
+
+  .hero-copy {
+    position: relative;
+    z-index: 1;
+  }
+</style>
+```
+
+For a local bounded canvas, use `<Fluid />` with a parent size or fixed
+`width` / `height` instead.
 
 ## Resize behavior
 
