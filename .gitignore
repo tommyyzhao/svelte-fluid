@@ -27,3 +27,6 @@ vite.config.ts.timestamp-*
 .claude/handoff.md
 .claude/worktrees/
 .claude/commands/
+
+# Release dogfood harnesses (local-only)
+/examples/dogfood-v010/

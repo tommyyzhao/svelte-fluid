@@ -3,6 +3,34 @@
 
 	const SCRIPT_OPEN = '<' + 'script lang="ts">';
 	const SCRIPT_CLOSE = '</' + 'script>';
+	const BACKGROUND_COMPOSITION_EXAMPLE = `${SCRIPT_OPEN}
+  import { FluidBackground } from 'svelte-fluid';
+${SCRIPT_CLOSE}
+
+<FluidBackground class="fluid-screen" exclude=".site-nav, .panel" splatOnHover>
+  <nav class="site-nav">...</nav>
+  <main class="hero-copy">...</main>
+  <section class="panel">...</section>
+</FluidBackground>
+
+<style>
+  :global(.fluid-screen) {
+    min-height: 100vh;
+    isolation: isolate;
+  }
+
+  .site-nav,
+  .panel {
+    position: relative;
+    z-index: 2;
+    pointer-events: auto;
+  }
+
+  .hero-copy {
+    position: relative;
+    z-index: 1;
+  }
+</style>`;
 </script>
 
 <svelte:head>
@@ -22,11 +50,13 @@
   import {'{'} Fluid {'}'} from 'svelte-fluid';
   import type {'{'} FluidHandle {'}'} from 'svelte-fluid';
 
-  let handle = $state&lt;FluidHandle&gt;();
+  let fluidRef = $state&lt;{'{'} handle: FluidHandle {'}'} | undefined&gt;();
 {SCRIPT_CLOSE}
 
+&lt;button onclick={'{'}() =&gt; fluidRef?.handle.randomSplats(8){'}'}&gt;Splat&lt;/button&gt;
+
 &lt;div style="height: 400px"&gt;
-  &lt;Fluid bind:this={'{'}handle{'}'} curl={'{'}30{'}'} bloom shading colorful /&gt;
+  &lt;Fluid bind:this={'{'}fluidRef{'}'} curl={'{'}30{'}'} bloom shading colorful /&gt;
 &lt;/div&gt;</code></pre>
 
 <p>Accepts all <a href="{base}/docs/configuration">FluidConfig</a> props plus:</p>
@@ -48,7 +78,7 @@
 <!-- ============================================================ -->
 <h2 id="fluidbackground">&lt;FluidBackground&gt;</h2>
 
-<p>Full-viewport fluid behind page content. Pointer events are captured from the window, so the fluid responds to cursor movement over cards, text, and other elements.</p>
+<p>Full-viewport fluid behind page content. Use this as a page or screen wrapper; the canvas is fixed to the viewport and the slotted content layer is stacked above it.</p>
 
 <pre><code>{SCRIPT_OPEN}
   import {'{'} FluidBackground {'}'} from 'svelte-fluid';
@@ -59,6 +89,12 @@
 &lt;/FluidBackground&gt;</code></pre>
 
 <p>DOM elements matching the <code>exclude</code> selector become physical "holes" — the fluid pools around them. The component observes scroll, resize, and DOM mutations to keep exclusion zones accurate.</p>
+
+<div class="callout">
+	<strong>Composition:</strong> Slot content defaults to <code>pointer-events: none</code> so window-level pointer input keeps feeding the fluid. Add <code>pointer-events: auto</code> back to interactive descendants, and keep nav/cards inside the slot when they should also be included in <code>exclude</code>.
+</div>
+
+<pre><code>{BACKGROUND_COMPOSITION_EXAMPLE}</code></pre>
 
 <table>
 	<thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>

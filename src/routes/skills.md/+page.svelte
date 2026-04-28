@@ -64,16 +64,35 @@ Exposes \`handle: FluidHandle\` via \`bind:this\`.
 
 ### 2. FluidBackground
 
-Full-viewport fluid behind page content. Pointer events captured from window.
+Page/screen wrapper for full-viewport fluid behind content. The canvas is fixed
+to the viewport. Slotted content is stacked above it with pointer-events none so
+window-level pointer input keeps feeding the fluid; set pointer-events auto on
+interactive descendants.
 
 \`\`\`svelte
 &lt;script&gt;
   import { FluidBackground } from 'svelte-fluid';
 &lt;/script&gt;
 
-&lt;FluidBackground exclude=".card" splatOnHover&gt;
-  &lt;div class="card"&gt;Content here&lt;/div&gt;
+&lt;FluidBackground class="fluid-screen" exclude=".site-nav, .panel" splatOnHover&gt;
+  &lt;nav class="site-nav"&gt;...&lt;/nav&gt;
+  &lt;main class="hero-copy"&gt;...&lt;/main&gt;
+  &lt;section class="panel"&gt;...&lt;/section&gt;
 &lt;/FluidBackground&gt;
+
+&lt;style&gt;
+  :global(.fluid-screen) {
+    min-height: 100vh;
+    isolation: isolate;
+  }
+
+  .site-nav,
+  .panel {
+    position: relative;
+    z-index: 2;
+    pointer-events: auto;
+  }
+&lt;/style&gt;
 \`\`\`
 
 **Props**: All FluidConfig fields plus:
@@ -553,6 +572,13 @@ Color range depends on context:
     &lt;div class="card"&gt;Content&lt;/div&gt;
   &lt;/main&gt;
 &lt;/FluidBackground&gt;
+
+&lt;style&gt;
+  .nav,
+  .card {
+    pointer-events: auto;
+  }
+&lt;/style&gt;
 \`\`\`
 
 ### Using a Preset

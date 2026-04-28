@@ -158,21 +158,9 @@ Releases run automatically through `.github/workflows/release.yml`:
    npm with **provenance** (verified GitHub Actions build attestation) and
    creates a GitHub release.
 
-You don't need to publish manually after the first release. The first
-publish (v0.1.0) is the one exception — see "First publish" below.
-
-### First publish (one-time only)
-
-The very first release predates the changesets workflow because the package
-isn't on npm yet. To ship v0.1.0:
-
-1. `bun run check && bun run test && bun run prepack` — verify clean build.
-2. `npm publish --access public` from your local machine.
-   *(Provenance only works from CI, so v0.1.0 ships without it. Every release
-   from v0.1.1 forward gets provenance via the workflow.)*
-3. `git tag v0.1.0 && git push --tags` and create a GitHub release manually.
-
-After v0.1.0 is on npm, all future releases use the changesets flow above.
+Do not publish manually. The initial `v0.1.0` bootstrap release is complete;
+all future releases should use the Changesets flow above so npm publishes
+include provenance.
 
 ## Verification checklist
 
