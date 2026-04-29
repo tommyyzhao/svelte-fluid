@@ -1103,6 +1103,7 @@ export class FluidEngine implements FluidHandle {
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 		gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+		gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
 		// Use R8/RED for WebGL2, LUMINANCE for WebGL1
 		if (this.ext.isWebGL2) {
 			const gl2 = gl as WebGL2RenderingContext;
@@ -1110,6 +1111,7 @@ export class FluidEngine implements FluidHandle {
 		} else {
 			gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, maskW, maskH, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, maskData);
 		}
+		gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
 		this.maskTexture = tex;
 	}
 

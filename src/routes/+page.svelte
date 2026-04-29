@@ -20,6 +20,7 @@
 	} from '$lib/index.js';
 	import type { ContainerShape, FluidHandle } from '$lib/engine/types.js';
 	import { base } from '$app/paths';
+	import { replaceState } from '$app/navigation';
 	import Card from './components/Card.svelte';
 	import ControlPanel, { D } from './components/ControlPanel.svelte';
 	import ShapePreview from './components/ShapePreview.svelte';
@@ -559,7 +560,7 @@
 			const s = serializeState();
 			const newHash = s ? `#pg=${s}` : '';
 			if (window.location.hash !== newHash) {
-				history.replaceState(null, '', newHash || window.location.pathname);
+				replaceState(newHash || window.location.pathname, {});
 			}
 		}, 300);
 	});
