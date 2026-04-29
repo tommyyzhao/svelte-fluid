@@ -175,7 +175,12 @@ export interface FluidConfig {
 	splatForce?: number;
 	/** 3D-style shading. Default true. */
 	shading?: boolean;
-	/** Cycle pointer color over time. Default true. */
+	/**
+	 * Rotate pointer/touch splat colors over time. Does not affect
+	 * hand-authored `presetSplats` colors. Automatic splats use their
+	 * own fresh generated colors unless `autoSplatColor` is set.
+	 * Default true.
+	 */
 	colorful?: boolean;
 	/** Color rotation rate (1/seconds). Default 10. */
 	colorUpdateSpeed?: number;
@@ -253,50 +258,54 @@ export interface FluidConfig {
 	 */
 	presetSplats?: ReadonlyArray<PresetSplat>;
 	/**
-	 * Continuous random splat generation. Splats per second; 0 = disabled.
+	 * Automatic splat generation. Splats per second; 0 = disabled.
 	 * Default 0. Bucket A (hot-updatable).
 	 */
-	randomSplatRate?: number;
-	/** Number of splats per continuous burst. Default 1. Bucket A. */
-	randomSplatCount?: number;
+	autoSplatRate?: number;
+	/** Number of splats emitted each automatic burst. Default 1. Bucket A. */
+	autoSplatCount?: number;
 	/**
-	 * Fixed color for continuous splats. Null = random via generateColor().
-	 * Components are in 0–1 linear range; the engine applies a 10× HDR
-	 * multiplier before injecting. Default null. Bucket A.
+	 * Fixed color for automatic splats. Null = fresh random color for
+	 * each splat via generateColor(). Components are in 0–1 linear range;
+	 * the engine applies a 10× HDR multiplier before injecting.
+	 * Default null. Bucket A.
 	 */
-	randomSplatColor?: RGB | null;
-	/** X velocity for continuous splats (raw, NOT scaled by splatForce). Default 0. Bucket A. */
-	randomSplatDx?: number;
-	/** Y velocity for continuous splats (raw, NOT scaled by splatForce). Negative = downward in DOM. Default 0. Bucket A. */
-	randomSplatDy?: number;
+	autoSplatColor?: RGB | null;
+	/** X velocity for automatic splats (raw, NOT scaled by splatForce). Ignored when `autoSplatSwirl` is nonzero. Default 0. Bucket A. */
+	autoSplatVelocityX?: number;
+	/** Y velocity for automatic splats (raw, NOT scaled by splatForce). Negative = downward in DOM. Ignored when `autoSplatSwirl` is nonzero. Default 0. Bucket A. */
+	autoSplatVelocityY?: number;
 	/**
-	 * Vertical spawn center for continuous splats, in 0–1 (bottom-to-top).
-	 * Default 0.5. The engine adds ±0.05 jitter around this value.
+	 * Vertical center of the automatic splat spawn band, in 0–1
+	 * (bottom-to-top): 0 = bottom edge, 0.5 = center, 1 = top edge.
+	 * Default 0.5. Actual y positions also use `autoSplatBandHeight`.
 	 * Bucket A.
 	 */
-	randomSplatSpawnY?: number;
+	autoSplatCenterY?: number;
 	/**
-	 * When true, distribute continuous splats evenly across the horizontal
-	 * axis instead of placing them at random x positions. The `randomSplatCount`
-	 * splats are spaced at `(i + 0.5) / count` for i in 0..count-1.
+	 * When true, each burst uses equal x positions across the horizontal
+	 * axis instead of random x positions. The `autoSplatCount` splats
+	 * are spaced at `(i + 0.5) / count` for i in 0..count-1.
 	 * Default false. Bucket A.
 	 */
-	randomSplatEvenSpacing?: boolean;
+	autoSplatEvenX?: boolean;
 	/**
-	 * When non-zero, random splats receive tangential velocity relative to
-	 * the container center (or canvas center if no container shape).
-	 * Positive = counter-clockwise, negative = clockwise.
-	 * The magnitude controls speed. Default 0. Bucket A.
+	 * When non-zero, automatic splats receive orbital velocity around the
+	 * container center (or canvas center if no container shape). Positive =
+	 * counter-clockwise, negative = clockwise. This replaces
+	 * `autoSplatVelocityX` / `autoSplatVelocityY`. The magnitude controls speed.
+	 * Default 0. Bucket A.
 	 */
-	randomSplatSwirl?: number;
+	autoSplatSwirl?: number;
 	/**
-	 * Vertical spread of continuous splat spawning. The y-coordinate is
-	 * `spawnY + (random - 0.5) * spread`, clamped to [0, 1].
-	 * Default 0.1 (±0.05 jitter). Set to 2.0 for full-canvas coverage
+	 * Height of the automatic splat spawn band. The y-coordinate is
+	 * `autoSplatCenterY + (random - 0.5) * autoSplatBandHeight`, clamped
+	 * to [0, 1]. Default 0.1 (±5% of canvas height). Set to 0 for a
+	 * single horizontal line or 2.0 for full-canvas coverage
 	 * (useful with container shapes where the mask discards out-of-bounds
 	 * splats naturally). Bucket A.
 	 */
-	randomSplatSpread?: number;
+	autoSplatBandHeight?: number;
 	/**
 	 * Confine the fluid to a geometric shape. The simulation physically
 	 * enforces the boundary — velocity is zeroed outside after every physics
@@ -514,15 +523,15 @@ export interface ResolvedConfig {
 	POINTER_TARGET: 'canvas' | 'window';
 	SPLAT_ON_HOVER: boolean;
 	SEED: number;
-	RANDOM_SPLAT_RATE: number;
-	RANDOM_SPLAT_COUNT: number;
-	RANDOM_SPLAT_COLOR: RGB | null;
-	RANDOM_SPLAT_DX: number;
-	RANDOM_SPLAT_DY: number;
-	RANDOM_SPLAT_SPAWN_Y: number;
-	RANDOM_SPLAT_EVEN_SPACING: boolean;
-	RANDOM_SPLAT_SWIRL: number;
-	RANDOM_SPLAT_SPREAD: number;
+	AUTO_SPLAT_RATE: number;
+	AUTO_SPLAT_COUNT: number;
+	AUTO_SPLAT_COLOR: RGB | null;
+	AUTO_SPLAT_VELOCITY_X: number;
+	AUTO_SPLAT_VELOCITY_Y: number;
+	AUTO_SPLAT_CENTER_Y: number;
+	AUTO_SPLAT_EVEN_X: boolean;
+	AUTO_SPLAT_SWIRL: number;
+	AUTO_SPLAT_BAND_HEIGHT: number;
 	CONTAINER_SHAPE: ContainerShape | null;
 	GLASS: boolean;
 	GLASS_THICKNESS: number;

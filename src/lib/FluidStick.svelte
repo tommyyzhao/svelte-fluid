@@ -120,10 +120,10 @@
 		initialSplatCount = 20,
 		backColor = { r: 0, g: 0, b: 0 },
 		transparent = false,
-		randomSplatRate = 0.4,
-		randomSplatCount = 3,
-		randomSplatSwirl = 500,
-		randomSplatSpread = 2.0,
+		autoSplatRate = 0.4,
+		autoSplatCount = 3,
+		autoSplatSwirl = 500,
+		autoSplatBandHeight = 2.0,
 		pointerInput = true,
 		splatOnHover = true,
 		...fluidProps
@@ -241,10 +241,10 @@
 		{initialSplatCount}
 		{backColor}
 		{transparent}
-		{randomSplatRate}
-		{randomSplatCount}
-		{randomSplatSwirl}
-		{randomSplatSpread}
+		{autoSplatRate}
+		{autoSplatCount}
+		{autoSplatSwirl}
+		{autoSplatBandHeight}
 		{pointerInput}
 		{splatOnHover}
 		{lazy}

@@ -54,8 +54,8 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 │   • randomSplats(count)                                         │
 │   • pause() / resume() / isPaused  ← RAF control               │
 │   • setConfig(partial)        ← 4-bucket hot update             │
-│   •   includes randomSplatSwirl, randomSplatEvenSpacing,        │
-│   •   randomSplatSpread (Bucket A)                              │
+│   •   includes autoSplatSwirl, autoSplatEvenX,        │
+│   •   autoSplatBandHeight (Bucket A)                              │
 │   • dispose()                 ← removes everything              │
 │                                                                 │
 │  Private (ports of script.js):                                  │
@@ -123,7 +123,7 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
    7. Create dithering texture (1x1 placeholder, async PNG decode).
    8. `updateKeywords()` selects display shader variant.
    9. `initFramebuffers()` allocates dye/velocity/divergence/curl/pressure/bloom*/sunrays*.
-   10. `multipleSplats(randomSplatCount())` paints the random initial scene.
+   10. `multipleSplats(initialRandomSplatCount())` paints the random initial scene.
    11. If `opts.config?.presetSplats` is set, replay each one through
        `splat(...)` to paint the deterministic preset opening scene
        (see ADR [`0015`](./decisions/0015-preset-components.md)).
@@ -163,7 +163,7 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 2. `buildConfig()` collects current values.
 3. `engine.setConfig(cfg)` walks the four buckets:
    - **A** scalars/booleans → write to `this.config.X`, picked up next frame.
-     Includes `randomSplatSwirl`, `randomSplatEvenSpacing`, `randomSplatSpread`,
+     Includes `autoSplatSwirl`, `autoSplatEvenX`, `autoSplatBandHeight`,
      `revealSensitivity`, `revealCurve`, `revealCoverColor`, `revealFringeColor`,
      `revealAccentColor`.
    - **B** SHADING/BLOOM/SUNRAYS/REVEAL/DISTORTION → `updateKeywords()` recompiles display shader.

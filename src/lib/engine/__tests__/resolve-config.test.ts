@@ -55,27 +55,27 @@ describe('resolveConfig', () => {
 			expect(r.SPLAT_ON_HOVER).toBe(true);
 		});
 
-		it('maps random splat fields', () => {
+		it('maps automatic splat fields', () => {
 			const r = resolveConfig({
-				randomSplatRate: 5,
-				randomSplatCount: 3,
-				randomSplatColor: { r: 1, g: 0, b: 0 },
-				randomSplatDx: 100,
-				randomSplatDy: -50,
-				randomSplatSpawnY: 0.7,
-				randomSplatEvenSpacing: true,
-				randomSplatSwirl: 200,
-				randomSplatSpread: 0.5
+				autoSplatRate: 5,
+				autoSplatCount: 3,
+				autoSplatColor: { r: 1, g: 0, b: 0 },
+				autoSplatVelocityX: 100,
+				autoSplatVelocityY: -50,
+				autoSplatCenterY: 0.7,
+				autoSplatEvenX: true,
+				autoSplatSwirl: 200,
+				autoSplatBandHeight: 0.5
 			}, DEFAULTS);
-			expect(r.RANDOM_SPLAT_RATE).toBe(5);
-			expect(r.RANDOM_SPLAT_COUNT).toBe(3);
-			expect(r.RANDOM_SPLAT_COLOR).toEqual({ r: 1, g: 0, b: 0 });
-			expect(r.RANDOM_SPLAT_DX).toBe(100);
-			expect(r.RANDOM_SPLAT_DY).toBe(-50);
-			expect(r.RANDOM_SPLAT_SPAWN_Y).toBe(0.7);
-			expect(r.RANDOM_SPLAT_EVEN_SPACING).toBe(true);
-			expect(r.RANDOM_SPLAT_SWIRL).toBe(200);
-			expect(r.RANDOM_SPLAT_SPREAD).toBe(0.5);
+			expect(r.AUTO_SPLAT_RATE).toBe(5);
+			expect(r.AUTO_SPLAT_COUNT).toBe(3);
+			expect(r.AUTO_SPLAT_COLOR).toEqual({ r: 1, g: 0, b: 0 });
+			expect(r.AUTO_SPLAT_VELOCITY_X).toBe(100);
+			expect(r.AUTO_SPLAT_VELOCITY_Y).toBe(-50);
+			expect(r.AUTO_SPLAT_CENTER_Y).toBe(0.7);
+			expect(r.AUTO_SPLAT_EVEN_X).toBe(true);
+			expect(r.AUTO_SPLAT_SWIRL).toBe(200);
+			expect(r.AUTO_SPLAT_BAND_HEIGHT).toBe(0.5);
 		});
 
 		it('maps glass parameters', () => {
@@ -219,10 +219,10 @@ describe('resolveConfig', () => {
 	});
 
 	describe('clamping and normalization', () => {
-		it('clamps randomSplatSpawnY to [0, 1]', () => {
-			expect(resolveConfig({ randomSplatSpawnY: -0.5 }, DEFAULTS).RANDOM_SPLAT_SPAWN_Y).toBe(0);
-			expect(resolveConfig({ randomSplatSpawnY: 1.5 }, DEFAULTS).RANDOM_SPLAT_SPAWN_Y).toBe(1);
-			expect(resolveConfig({ randomSplatSpawnY: 0.3 }, DEFAULTS).RANDOM_SPLAT_SPAWN_Y).toBe(0.3);
+		it('clamps autoSplatCenterY to [0, 1]', () => {
+			expect(resolveConfig({ autoSplatCenterY: -0.5 }, DEFAULTS).AUTO_SPLAT_CENTER_Y).toBe(0);
+			expect(resolveConfig({ autoSplatCenterY: 1.5 }, DEFAULTS).AUTO_SPLAT_CENTER_Y).toBe(1);
+			expect(resolveConfig({ autoSplatCenterY: 0.3 }, DEFAULTS).AUTO_SPLAT_CENTER_Y).toBe(0.3);
 		});
 
 		it('clamps distortion bleed to [0, 0.5]', () => {
@@ -313,7 +313,7 @@ describe('DEFAULTS', () => {
 		expect(DEFAULTS.CONTAINER_SHAPE).toBeNull();
 	});
 
-	it('has no random splats by default', () => {
-		expect(DEFAULTS.RANDOM_SPLAT_RATE).toBe(0);
+	it('has no automatic splats by default', () => {
+		expect(DEFAULTS.AUTO_SPLAT_RATE).toBe(0);
 	});
 });

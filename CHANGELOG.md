@@ -52,7 +52,7 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 - **Hero title** — replaced manual `<Fluid>` + `wordShape()` with `<FluidText>`
   components. Both words now render at equal font height. Splat tuning increased
   (`splatRadius` 0.3→0.6, `splatForce` 5000→8000, `initialSplatCount` 8→20,
-  `randomSplatRate` 4→6, `randomSplatCount` 2→4, `randomSplatSwirl` 200→300).
+  `autoSplatRate` 4→6, `autoSplatCount` 2→4, `autoSplatSwirl` 200→300).
 - **Code preview buttons** — replaced icon-only `</>` with labeled "View code" /
   "Hide code" toggle. Styled to match "Customize" button (filled background,
   `#1c2a3a` / `#2a4a6a` border). Added 180ms `slide` transition on code panel.
@@ -239,7 +239,7 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 - **Full prop passthrough for playground instances** — `FluidStick`, `FluidReveal`,
   and `FluidDistortion` playground components now receive all shared fluid props
   (pressure, bloomIntensity, sunraysWeight, splatOnHover, dyeResolution,
-  simResolution, paused, randomSplat*, backColor, glass*, transparent, etc.)
+  simResolution, paused, autoSplat*, backColor, glass*, transparent, etc.)
   so slider changes in shared accordions take effect immediately.
 - **Reveal preset color variety** — each reveal demo card now has distinct
   coverColor/accentColor: "Permanent reveal" (dark charcoal + gold), "Auto-reveal"
@@ -255,7 +255,7 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Mode-switch snapshot expanded** — snapshot now saves/restores 14 values (was 6):
-  added densityDissipation, splatOnHover, pressure, randomSplatRate/Count/Swirl/
+  added densityDissipation, splatOnHover, pressure, autoSplatRate/Count/Swirl/
   Spread, colorful. Each mode switch sets appropriate defaults for all params.
   `resetAllDefaults()` clears `fluidSnapshot` and `prevMode` to prevent stale
   snapshot restoration after Reset.
@@ -269,10 +269,10 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
   sunrays, shading, splatForce, pressure, etc.) when they differ from component
   defaults.
 - **maskPadding label** → "Text size" with hint explaining fill fraction semantics.
-- **Random Splat labels clarified** — randomSplatRate→"Rate (splats/sec)",
-  randomSplatCount→"Count per burst", randomSplatSwirl→"Swirl",
-  randomSplatSpread→"Spawn spread", randomSplatSpawnY→"Spawn height",
-  randomSplatDx/Dy→"Velocity X/Y".
+- **Automatic splat labels clarified** — autoSplatRate→"Rate (splats/sec)",
+  autoSplatCount→"Count per burst", autoSplatSwirl→"Swirl",
+  autoSplatBandHeight→"Spawn band height", autoSplatCenterY→"Spawn band center",
+  autoSplatVelocityX/Y→"Velocity X/Y".
 - **splatRadius slider max** — Fluid quick controls bumped from 1.0→2.0 to match
   shared accordion range.
 - **Frame outer controls in shared Shape section** — added outerHalfW, outerHalfH,
@@ -280,7 +280,7 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Paused doesn't stop random splats** — `accumulateRandomSplatTimer(dt)` was
+- **Paused doesn't stop automatic splats** — `accumulateAutoSplatTimer(dt)` was
   called before the `!PAUSED` check in `FluidEngine.update()`. Moved inside the
   `if (!PAUSED)` block so pausing truly freezes all simulation activity.
 - **"Loaded: Shared config" banner on fresh load** — URL hash auto-serialization
@@ -319,7 +319,7 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
   at 0.85 was 15%/frame (dye gone in ~300ms); 0.98 gives 2%/frame (~1–2s visible
   trails, matching standard Fluid feel). On-mask retention improved from 10%→74%
   after 5s.
-- **FluidStick random splat timing** — rate 0.6→0.4 (every ~2.5s), count 3→3,
+- **FluidStick automatic splat timing** — rate 0.6→0.4 (every ~2.5s), count 3→3,
   swirl 150→500 (stronger tangential velocity). Engine jitter widened from
   0.5–1.5× to 0.3–2.0× for organic "water dripping" timing.
 - **`/sticky-tuning` route removed** — functionality folded into the main
@@ -330,11 +330,11 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 - **`loadedPreset` not cleared on Reset** — `loadedPreset` was a read-only prop in
   ControlPanel; clicking "Clear"/"Reset" reset all values but the "Loaded: X"
   indicator persisted. Made `loadedPreset` `$bindable` and clear it in `reset()`.
-- **`randomSplatSwirl`/`randomSplatSpread` not passed to `<Fluid>`** — FluidStick
+- **`autoSplatSwirl`/`autoSplatBandHeight` not passed to `<Fluid>`** — FluidStick
   destructured these props (removing them from `...fluidProps`) but never forwarded
   them to the inner `<Fluid>` component. The engine used defaults: swirl=0 (zero
   velocity) and spread=0.1 (tiny band). Random splats were invisible. Added
-  `{randomSplatSwirl}` and `{randomSplatSpread}` to the template.
+  `{autoSplatSwirl}` and `{autoSplatBandHeight}` to the template.
 
 - **`StickyMask.padding` field / `maskPadding` prop** — controls how much of the
   mask texture the text fills (text mode only). Default 0.9. Use smaller values
@@ -343,9 +343,9 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
   mask (~80%/frame with strength=1.0). Negative `uStickyStrength` activates a
   damping branch: `dissipation * max(0, 1 + stickyVal * strength)`. Prevents dye
   from being advected off the mask by splat-injected velocity.
-- **FluidStick random splats** — default `randomSplatRate=0.6` (burst every ~1.7s),
-  `randomSplatCount=3`, `randomSplatSwirl=150` (gentle tangential velocity),
-  `randomSplatSpread=2.0` (full-canvas spawn). Keeps the sticky text alive with
+- **FluidStick automatic splats** — default `autoSplatRate=0.6` (burst every ~1.7s),
+  `autoSplatCount=3`, `autoSplatSwirl=150` (gentle tangential velocity),
+  `autoSplatBandHeight=2.0` (full-canvas spawn). Keeps the sticky text alive with
   intermittent color refreshes.
 - **`/sticky-tuning` test route** — 4 FluidStick cards with 5 preset buttons and
   live parameter sliders for tuning sticky physics interactively.
@@ -474,8 +474,8 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 - **Glass shape auto-switch not reversible** — enabling glass forced
   `containerShapeType` to `roundedRect` with no way back. Now remembers the
   pre-glass shape in `shapeBeforeGlass` and restores it when glass is unchecked.
-- **7 missing URL hash serialization variables** — `randomSplatDx`, `randomSplatDy`,
-  `randomSplatEvenSpacing`, `revealAutoRevealSpeed`, `revealContent`,
+- **7 missing URL hash serialization variables** — `autoSplatVelocityX`, `autoSplatVelocityY`,
+  `autoSplatEvenX`, `revealAutoRevealSpeed`, `revealContent`,
   `revealCoverColor`, `revealAccentColor` were silently lost when sharing
   playground URLs. Added to `serializeState()`, `deserializeState()`, and the
   hash-push `$effect` tracking array.
@@ -485,7 +485,7 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 - **Playground label overhaul** — all checkbox labels standardized to sentence
   case: bloom→Bloom, glass→Glass, shading→Shading, sunrays→Sunrays,
   transparent→Transparent, paused→Paused, splatOnHover→Splat on hover,
-  fadeBack→Fade back, autoReveal→Auto-reveal, colorful→Cycle colors.
+  fadeBack→Fade back, autoReveal→Auto-reveal, colorful→Cycle pointer colors.
   Shape dropdown: circle→Circle, frame→Frame, roundedRect→Rounded rect,
   annulus→Ring. "shape" label→"Shape". glassChromatic→"Color fringing".
   autoRevealSpeed→"Auto-reveal speed".
@@ -532,7 +532,7 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
   `<Fluid>` canvas and `<FluidReveal>` wrapping actual sample content
   (gradient+text or tile mosaic). Reveal mode shows the real scratch-to-reveal
   interaction with content underneath.
-- **Accordion ControlPanel** — 7 collapsible sections (Physics, Random Splats,
+- **Accordion ControlPanel** — 7 collapsible sections (Physics, Automatic Splats,
   Visuals, Resolution, Background, Container Shape, Glass) with blue "N changed"
   badges on each header. Pinned quick-controls bar always shows curl,
   splatRadius, densityDissipation, bloom, glass, shape picker.
@@ -579,7 +579,7 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
   showed transparency to the page background with nothing to reveal. Now uses
   actual `<FluidReveal>` wrapping sample content.
 - **`loadConfig` dirty state bleed** — loading a preset config left previous
-  state (e.g., randomSplatRate, glass settings) from prior customization.
+  state (e.g., autoSplatRate, glass settings) from prior customization.
   Now calls `resetAllDefaults()` before applying overrides.
 - **`buildRevealSnippet` wrong defaults** — compared against hardcoded
   FluidReveal defaults instead of the playground's `D.*` defaults, producing
@@ -600,12 +600,12 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Plasma preset reverted** to original rectangular canvas design — 8 inward
-  compass-point jets converging at center, `randomSplatRate={0.4}`, no container
+  compass-point jets converging at center, `autoSplatRate={0.4}`, no container
   shape. The annulus ring design moved to ToroidalTempest.
 - **PRESET_CONFIGS enriched** — added `initialDensityDissipation`,
   `initialDensityDissipationDuration` to LavaLamp/Plasma/ToroidalTempest;
-  `randomSplatSpread`/`randomSplatSwirl` to Crystal orb;
-  `randomSplatCount` to Soft lens.
+  `autoSplatBandHeight`/`autoSplatSwirl` to Crystal orb;
+  `autoSplatCount` to Soft lens.
 
 - **Multiplicative dissipation for reveal mode** (ADR-0028) — advection shader
   now supports `uniform float uMultiplicative`. When `reveal=true`, the engine
@@ -667,7 +667,7 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
 - **Demo page Container effects** — Crystal orb gets `glassThickness={0.08}`;
   Soft lens gets faster splats (`rate: 2.5`, `count: 2`, lower dissipation);
   Glass frame gets much faster splats (`rate: 3.0`, `count: 2`,
-  `randomSplatSwirl={350}`).
+  `autoSplatSwirl={350}`).
 - **Semantic language audit** — replaced "plasma", "energy field", "tokamak",
   "confined/confinement" with accurate fluid terminology across all presets,
   demo cards, types.ts JSDoc, README, CHANGELOG, ADRs, and learnings docs.
@@ -778,7 +778,7 @@ finalised. Kept as historical record; superseded by the consolidated entries abo
   glass is toggled on without a shape.
 - **Fluid-filled hero title** — home page `<h1>` replaced with two
   Fluid instances rendering "SVELTE" and "FLUID" as svgPath text
-  containers with vigorous random splats.
+  containers with vigorous automatic splats.
 - **Code snippets on demo cards** — Card component gains a `snippet`
   prop with `</>` toggle and Copy button. All 18 demo cards wired with
   copy-pasteable code showing the minimal props to reproduce each effect.
@@ -816,7 +816,7 @@ finalised. Kept as historical record; superseded by the consolidated entries abo
   preserving the path's own aspect ratio with centering.
 - Demo "Container shapes" section: 4 → 5 cards (added SVG path star).
   Description updated to mention SVG paths alongside analytical shapes.
-- `buildSnippet` in playground `ControlPanel` now emits `randomSplat*`,
+- `buildSnippet` in playground `ControlPanel` now emits `autoSplat*`,
   `initialDensity*`, and `splatOnHover` fields when non-default.
 - Bloom/sunrays auto-suppress on small canvases (<600px) now applies
   unconditionally — presets that explicitly pass `bloom={true}` no
@@ -832,7 +832,7 @@ finalised. Kept as historical record; superseded by the consolidated entries abo
   under Configuration, added `splatOnHover` to config example cards.
 - CircularFluid preset: `densityDissipation` 0.08 → 0.15, changed from
   5 splats every 2s to 1 splat every ~0.8s for more organic appearance.
-- InkInWater preset: `randomSplatRate` 0.5 → 0.167 (3× slower drops).
+- InkInWater preset: `autoSplatRate` 0.5 → 0.167 (3× slower drops).
 - README: added npm/pnpm install options alongside bun, deduplicated
   feature bullets into "Why this library?" section, added `splatOnHover`
   to props table.

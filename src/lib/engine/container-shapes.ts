@@ -10,7 +10,7 @@ import type { ContainerShape, StickyMask } from './types.js';
 
 /**
  * CPU-side mask data for svgPath shapes, used for rejection sampling
- * during random splat spawning. The engine rasterizes the SVG path into
+ * during automatic splat spawning. The engine rasterizes the SVG path into
  * this array and passes it through to containerMask().
  */
 export interface MaskContext {

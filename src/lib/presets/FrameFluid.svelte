@@ -96,9 +96,9 @@
 	initialSplatCount={0}
 	backColor={{ r: 0, g: 0, b: 0 }}
 	presetSplats={PRESET_SPLATS}
-	randomSplatRate={0.5}
-	randomSplatCount={6}
-	randomSplatSpawnY={0.5}
-	randomSplatSpread={2.0}
-	randomSplatSwirl={300}
+	autoSplatRate={0.5}
+	autoSplatCount={6}
+	autoSplatCenterY={0.5}
+	autoSplatBandHeight={2.0}
+	autoSplatSwirl={300}
 />

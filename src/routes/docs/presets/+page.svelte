@@ -31,6 +31,12 @@
 	for sizing, styling, and accessibility. Some also accept <code>splatOnHover</code>.
 </p>
 
+<p>
+	The examples below show the public wrapper API. The detailed tables describe the pinned
+	<code>&lt;Fluid&gt;</code> recipe, but hand-authored <code>presetSplats</code> arrays live in
+	the preset source so copy-paste examples stay small.
+</p>
+
 <hr />
 
 <h2>LavaLamp</h2>
@@ -111,9 +117,9 @@
 		<tr><td><code>sunraysWeight</code></td><td>0.5</td></tr>
 		<tr><td><code>backColor</code></td><td>{LB} r: 4, g: 2, b: 12 {RB}</td></tr>
 		<tr><td><code>initialSplatCount</code></td><td>0</td></tr>
-		<tr><td><code>randomSplatRate</code></td><td>0.4</td></tr>
-		<tr><td><code>randomSplatCount</code></td><td>4</td></tr>
-		<tr><td><code>randomSplatSpawnY</code></td><td>0.5</td></tr>
+		<tr><td><code>autoSplatRate</code></td><td>0.4</td></tr>
+		<tr><td><code>autoSplatCount</code></td><td>4</td></tr>
+		<tr><td><code>autoSplatCenterY</code></td><td>0.5</td></tr>
 		<tr><td><code>presetSplats</code></td><td>8 inward compass jets</td></tr>
 	</tbody>
 </table>
@@ -150,11 +156,11 @@
 		<tr><td><code>sunrays</code></td><td>false</td></tr>
 		<tr><td><code>backColor</code></td><td>{LB} r: 6, g: 8, b: 20 {RB}</td></tr>
 		<tr><td><code>initialSplatCount</code></td><td>0</td></tr>
-		<tr><td><code>randomSplatRate</code></td><td>0.2</td></tr>
-		<tr><td><code>randomSplatColor</code></td><td>{LB} r: 0.06, g: 0.07, b: 0.50 {RB}</td></tr>
-		<tr><td><code>randomSplatDx</code></td><td>0</td></tr>
-		<tr><td><code>randomSplatDy</code></td><td>-180</td></tr>
-		<tr><td><code>randomSplatSpawnY</code></td><td>0.90</td></tr>
+		<tr><td><code>autoSplatRate</code></td><td>0.2</td></tr>
+		<tr><td><code>autoSplatColor</code></td><td>{LB} r: 0.06, g: 0.07, b: 0.50 {RB}</td></tr>
+		<tr><td><code>autoSplatVelocityX</code></td><td>0</td></tr>
+		<tr><td><code>autoSplatVelocityY</code></td><td>-180</td></tr>
+		<tr><td><code>autoSplatCenterY</code></td><td>0.90</td></tr>
 		<tr><td><code>presetSplats</code></td><td>5 ink droplets near the top</td></tr>
 	</tbody>
 </table>
@@ -198,7 +204,7 @@
 
 <h2>Aurora</h2>
 
-<p>Northern lights — green, magenta, and pale-blue ribbons drifting laterally across a deep night sky. Heavy bloom and sunrays produce the characteristic atmospheric glow that slowly grows over time.</p>
+<p>Northern lights — green, magenta, and pale-blue ribbons layered across a deep night sky. The opening bands have a sideways push, then settle into a luminous steady wash while heavy bloom and sunrays grow the atmospheric glow over time.</p>
 
 <p><strong>Container shape:</strong> none (full canvas).</p>
 
@@ -274,7 +280,7 @@
 
 <h2>CircularFluid</h2>
 
-<p>Vivid swirling fluid contained inside a circle. Eight inward jets converge from the compass points, and the circular boundary reflects them back inward to produce a self-sustaining vortex. Continuous random splats with orbital swirl sustain the motion.</p>
+<p>Vivid swirling fluid contained inside a circle. Eight inward jets converge from the compass points, and the circular boundary reflects them back inward to produce a self-sustaining vortex. Automatic splats with orbital swirl sustain the motion.</p>
 
 <p><strong>Container shape:</strong> <code>circle</code> (cx: 0.5, cy: 0.5, radius: 0.45).</p>
 
@@ -308,11 +314,11 @@
 		<tr><td><code>sunrays</code></td><td>false</td></tr>
 		<tr><td><code>backColor</code></td><td>{LB} r: 4, g: 2, b: 12 {RB}</td></tr>
 		<tr><td><code>initialSplatCount</code></td><td>0</td></tr>
-		<tr><td><code>randomSplatRate</code></td><td>1.2</td></tr>
-		<tr><td><code>randomSplatCount</code></td><td>1</td></tr>
-		<tr><td><code>randomSplatSpawnY</code></td><td>0.5</td></tr>
-		<tr><td><code>randomSplatSpread</code></td><td>0.8</td></tr>
-		<tr><td><code>randomSplatSwirl</code></td><td>500</td></tr>
+		<tr><td><code>autoSplatRate</code></td><td>1.2</td></tr>
+		<tr><td><code>autoSplatCount</code></td><td>1</td></tr>
+		<tr><td><code>autoSplatCenterY</code></td><td>0.5</td></tr>
+		<tr><td><code>autoSplatBandHeight</code></td><td>0.8</td></tr>
+		<tr><td><code>autoSplatSwirl</code></td><td>500</td></tr>
 		<tr><td><code>presetSplats</code></td><td>8 inward compass jets</td></tr>
 	</tbody>
 </table>
@@ -355,11 +361,11 @@
 		<tr><td><code>sunrays</code></td><td>false</td></tr>
 		<tr><td><code>backColor</code></td><td>{LB} r: 0, g: 0, b: 0 {RB}</td></tr>
 		<tr><td><code>initialSplatCount</code></td><td>0</td></tr>
-		<tr><td><code>randomSplatRate</code></td><td>0.5</td></tr>
-		<tr><td><code>randomSplatCount</code></td><td>6</td></tr>
-		<tr><td><code>randomSplatSpawnY</code></td><td>0.5</td></tr>
-		<tr><td><code>randomSplatSpread</code></td><td>2.0</td></tr>
-		<tr><td><code>randomSplatSwirl</code></td><td>300</td></tr>
+		<tr><td><code>autoSplatRate</code></td><td>0.5</td></tr>
+		<tr><td><code>autoSplatCount</code></td><td>6</td></tr>
+		<tr><td><code>autoSplatCenterY</code></td><td>0.5</td></tr>
+		<tr><td><code>autoSplatBandHeight</code></td><td>2.0</td></tr>
+		<tr><td><code>autoSplatSwirl</code></td><td>300</td></tr>
 		<tr><td><code>presetSplats</code></td><td>4 edge jets + 4 corner jets</td></tr>
 	</tbody>
 </table>
@@ -368,7 +374,7 @@
 
 <h2>AnnularFluid</h2>
 
-<p>A ring-vortex of fluid contained between two concentric circles. Eight tangential jets establish a counter-clockwise ring vortex. Continuous random splats with orbital swirl sustain the motion.</p>
+<p>A ring-vortex of fluid contained between two concentric circles. Eight tangential jets establish a counter-clockwise ring vortex. Automatic splats with orbital swirl sustain the motion.</p>
 
 <p><strong>Container shape:</strong> <code>annulus</code> (cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.45).</p>
 
@@ -399,11 +405,11 @@
 		<tr><td><code>sunrays</code></td><td>false</td></tr>
 		<tr><td><code>backColor</code></td><td>{LB} r: 4, g: 2, b: 12 {RB}</td></tr>
 		<tr><td><code>initialSplatCount</code></td><td>0</td></tr>
-		<tr><td><code>randomSplatRate</code></td><td>0.5</td></tr>
-		<tr><td><code>randomSplatCount</code></td><td>5</td></tr>
-		<tr><td><code>randomSplatSpawnY</code></td><td>0.5</td></tr>
-		<tr><td><code>randomSplatSpread</code></td><td>0.8</td></tr>
-		<tr><td><code>randomSplatSwirl</code></td><td>600</td></tr>
+		<tr><td><code>autoSplatRate</code></td><td>0.5</td></tr>
+		<tr><td><code>autoSplatCount</code></td><td>5</td></tr>
+		<tr><td><code>autoSplatCenterY</code></td><td>0.5</td></tr>
+		<tr><td><code>autoSplatBandHeight</code></td><td>0.8</td></tr>
+		<tr><td><code>autoSplatSwirl</code></td><td>600</td></tr>
 		<tr><td><code>presetSplats</code></td><td>8 tangential ring jets</td></tr>
 	</tbody>
 </table>
@@ -439,10 +445,10 @@
 		<tr><td><code>sunrays</code></td><td>false</td></tr>
 		<tr><td><code>backColor</code></td><td>{LB} r: 2, g: 2, b: 8 {RB}</td></tr>
 		<tr><td><code>initialSplatCount</code></td><td>8</td></tr>
-		<tr><td><code>randomSplatRate</code></td><td>0.8</td></tr>
-		<tr><td><code>randomSplatCount</code></td><td>1</td></tr>
-		<tr><td><code>randomSplatSpread</code></td><td>2.0</td></tr>
-		<tr><td><code>randomSplatSwirl</code></td><td>400</td></tr>
+		<tr><td><code>autoSplatRate</code></td><td>0.8</td></tr>
+		<tr><td><code>autoSplatCount</code></td><td>1</td></tr>
+		<tr><td><code>autoSplatBandHeight</code></td><td>2.0</td></tr>
+		<tr><td><code>autoSplatSwirl</code></td><td>400</td></tr>
 	</tbody>
 </table>
 

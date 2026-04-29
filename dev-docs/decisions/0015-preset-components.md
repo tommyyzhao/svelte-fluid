@@ -53,7 +53,7 @@ Adopted Option B.
   field has no meaning after construction, so it stays out of the
   internal config shape.
 - `FluidEngine` constructor reads `opts.config?.presetSplats` directly
-  after `multipleSplats(randomSplatCount())` and calls `this.splat()`
+  after `multipleSplats(initialRandomSplatCount())` and calls `this.splat()`
   for each entry.
 - `Fluid.svelte` accepts a `presetSplats` prop and snapshots it once
   via `untrack` into `stablePresetSplats`, mirroring the

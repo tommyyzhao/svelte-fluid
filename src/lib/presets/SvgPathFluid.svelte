@@ -72,8 +72,8 @@
 	sunrays={false}
 	initialSplatCount={8}
 	backColor={{ r: 2, g: 2, b: 8 }}
-	randomSplatRate={0.8}
-	randomSplatCount={1}
-	randomSplatSpread={2.0}
-	randomSplatSwirl={400}
+	autoSplatRate={0.8}
+	autoSplatCount={1}
+	autoSplatBandHeight={2.0}
+	autoSplatSwirl={400}
 />

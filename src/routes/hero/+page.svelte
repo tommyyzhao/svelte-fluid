@@ -29,9 +29,9 @@
 				sunrays
 				densityDissipation={0.6}
 				initialSplatCount={18}
-				randomSplatRate={2.5}
-				randomSplatCount={2}
-				randomSplatSpread={2}
+				autoSplatRate={2.5}
+				autoSplatCount={2}
+				autoSplatBandHeight={2}
 			/>
 		</div>
 
@@ -50,9 +50,9 @@
 				colorful
 				densityDissipation={0.4}
 				initialSplatCount={14}
-				randomSplatRate={2}
-				randomSplatCount={1}
-				randomSplatSwirl={0.6}
+				autoSplatRate={2}
+				autoSplatCount={1}
+				autoSplatSwirl={0.6}
 			/>
 		</div>
 

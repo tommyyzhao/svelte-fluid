@@ -228,8 +228,8 @@ Fluid where dye "sticks" to a mask shape (text or SVG path).
 Default overrides: densityDissipation=0.98, velocityDissipation=0.2,
 curl=20, splatRadius=1.0, splatForce=6000, colorful=true,
 shading=true, bloom=false, sunrays=false, initialSplatCount=20,
-randomSplatRate=0.4, randomSplatCount=3, randomSplatSwirl=500,
-randomSplatSpread=2.0, pointerInput=true, splatOnHover=true.
+autoSplatRate=0.4, autoSplatCount=3, autoSplatSwirl=500,
+autoSplatBandHeight=2.0, pointerInput=true, splatOnHover=true.
 
 
 ### 6. FluidText
@@ -287,8 +287,8 @@ All fields are optional. The engine fills defaults at construction.
 | Field            | Type    | Default          | Description                               |
 |------------------|---------|------------------|-------------------------------------------|
 | shading          | boolean | true             | 3D-style shading.                         |
-| colorful         | boolean | true             | Cycle pointer color over time.            |
-| colorUpdateSpeed | number  | 10               | Color rotation rate (1/seconds).          |
+| colorful         | boolean | true             | Rotate pointer/touch splat colors over time. |
+| colorUpdateSpeed | number  | 10               | Pointer/touch color rotation rate (1/seconds). |
 | backColor        | RGB     | {r:0,g:0,b:0}   | Background color (0-255 CSS-style RGB).   |
 | transparent      | boolean | false            | Transparent background.                   |
 
@@ -329,19 +329,19 @@ All fields are optional. The engine fills defaults at construction.
 | seed                 | number                  | —       | 32-bit PRNG seed. Auto-generated if omitted.    |
 | presetSplats         | ReadonlyArray&lt;PresetSplat&gt; | —    | Hand-crafted initial splats. Construct-only.    |
 
-### Continuous Random Splats
+### Automatic Splats
 
 | Field                   | Type     | Default | Description                                       |
 |-------------------------|----------|---------|---------------------------------------------------|
-| randomSplatRate         | number   | 0       | Splats per second (0=disabled).                   |
-| randomSplatCount        | number   | 1       | Splats per burst.                                 |
-| randomSplatColor        | RGB|null | null    | Fixed color (null=random). 0-1 linear.            |
-| randomSplatDx           | number   | 0       | X velocity (raw, not scaled by splatForce).       |
-| randomSplatDy           | number   | 0       | Y velocity (raw). Negative=downward in DOM.       |
-| randomSplatSpawnY       | number   | 0.5     | Vertical spawn center (0-1, bottom-to-top).       |
-| randomSplatEvenSpacing  | boolean  | false   | Distribute splats evenly across horizontal axis.  |
-| randomSplatSwirl        | number   | 0       | Tangential velocity relative to center.           |
-| randomSplatSpread       | number   | 0.1     | Vertical spread of spawning.                      |
+| autoSplatRate         | number   | 0       | Automatic burst rate in splats/sec (0=disabled).  |
+| autoSplatCount        | number   | 1       | Splats emitted each automatic burst.              |
+| autoSplatColor        | RGB|null | null    | Fixed automatic-splat color; null=fresh random. 0-1 linear. |
+| autoSplatVelocityX           | number   | 0       | X velocity; ignored when autoSplatSwirl is nonzero. |
+| autoSplatVelocityY           | number   | 0       | Y velocity; negative=downward in DOM. Ignored when autoSplatSwirl is nonzero. |
+| autoSplatCenterY       | number   | 0.5     | Vertical center of the spawn band: 0=bottom, 0.5=center, 1=top. |
+| autoSplatEvenX  | boolean  | false   | In each burst, use equal x positions instead of random x positions. |
+| autoSplatSwirl        | number   | 0       | Orbital velocity around the container/canvas center; positive=CCW. |
+| autoSplatBandHeight       | number   | 0.1     | Height of the spawn band. 0=single line, 0.1=±5%, 2=full canvas. |
 
 ### Container Shape
 
@@ -492,7 +492,7 @@ width, height, class, style, seed, lazy, aria-label.
 | Plasma          | Vivid swirling plasma ball at center            | none (full canvas)           |
 | InkInWater      | Concentrated ink droplets sinking through water  | none                         |
 | FrozenSwirl     | Single icy vortex that freezes in place          | circle + glass               |
-| Aurora          | Northern lights ribbons drifting laterally        | none                         |
+| Aurora          | Layered northern-lights ribbons with heavy glow    | none                         |
 | ToroidalTempest | Violent full-spectrum storm in a ring             | annulus                      |
 | CircularFluid   | Vivid swirling fluid in a circle                  | circle                       |
 | FrameFluid      | Fluid around a rectangular cutout (picture frame) | frame                        |
@@ -507,7 +507,7 @@ width, height, class, style, seed, lazy, aria-label.
 
 Color range depends on context:
 - backColor: 0-255 (CSS-style). Normalized internally.
-- presetSplats / handle.splat / randomSplatColor: 0-1 (linear). Values &gt;1 are HDR.
+- presetSplats / handle.splat / autoSplatColor: 0-1 (linear). Values &gt;1 are HDR.
 - revealCoverColor / revealAccentColor / revealFringeColor: 0-1 (linear).
 
 ---

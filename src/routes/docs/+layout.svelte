@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { base } from '$app/paths';
+	import { tick } from 'svelte';
 
 	let { children } = $props();
 
 	let menuOpen = $state(false);
+	let contentEl: HTMLElement | undefined = $state();
 
 	const nav = [
 		{ label: 'Getting Started', href: `${base}/docs` },
@@ -19,6 +21,25 @@
 		if (href === `${base}/docs`) return path === `${base}/docs` || path === `${base}/docs/`;
 		return path.startsWith(href);
 	}
+
+	function labelDocsTables() {
+		if (!contentEl) return;
+		for (const table of contentEl.querySelectorAll<HTMLTableElement>('table')) {
+			const headers = Array.from(table.querySelectorAll('thead th'), (header) => header.textContent?.trim() ?? '');
+			if (headers.length === 0) continue;
+			table.dataset.mobileLabels = 'true';
+			for (const row of table.querySelectorAll('tbody tr')) {
+				Array.from(row.children).forEach((cell, index) => {
+					if (cell instanceof HTMLElement) cell.dataset.label = headers[index] ?? '';
+				});
+			}
+		}
+	}
+
+	$effect(() => {
+		$page.url.pathname;
+		void tick().then(labelDocsTables);
+	});
 </script>
 
 <div class="docs-shell">
@@ -56,7 +77,7 @@
 		</div>
 	</aside>
 
-	<main class="docs-content">
+	<main class="docs-content" bind:this={contentEl}>
 		{@render children?.()}
 	</main>
 </div>
@@ -277,6 +298,7 @@
 
 	.docs-content :global(table) {
 		width: 100%;
+		max-width: 100%;
 		border-collapse: collapse;
 		margin: 0 0 24px;
 		font-size: 0.82rem;
@@ -335,5 +357,73 @@
 
 	.docs-content :global(.callout strong) {
 		color: #b8c4d8;
+	}
+
+	@media (max-width: 640px) {
+		.docs-content :global(table:not([data-mobile-labels='true'])) {
+			display: block;
+			overflow-x: auto;
+			overscroll-behavior-x: contain;
+			-webkit-overflow-scrolling: touch;
+		}
+
+		.docs-content :global(table[data-mobile-labels='true']) {
+			display: block;
+			margin: 0 0 24px;
+			border-collapse: separate;
+			border-spacing: 0;
+		}
+
+		.docs-content :global(table[data-mobile-labels='true'] thead) {
+			display: none;
+		}
+
+		.docs-content :global(table[data-mobile-labels='true'] tbody) {
+			display: block;
+		}
+
+		.docs-content :global(table[data-mobile-labels='true'] tr) {
+			display: block;
+			padding: 10px 12px;
+			margin: 0 0 12px;
+			background: rgba(255, 255, 255, 0.025);
+			border: 1px solid rgba(30, 35, 48, 0.9);
+			border-radius: 8px;
+		}
+
+		.docs-content :global(table[data-mobile-labels='true'] td) {
+			display: grid;
+			grid-template-columns: minmax(5.5rem, 34%) minmax(0, 1fr);
+			gap: 12px;
+			padding: 6px 0;
+			border: 0;
+		}
+
+		.docs-content :global(table[data-mobile-labels='true'] td::before) {
+			content: attr(data-label);
+			color: #6f7a8e;
+			font-size: 0.72rem;
+			font-weight: 600;
+		}
+
+		.docs-content :global(table[data-mobile-labels='true'] td:first-child) {
+			grid-template-columns: 1fr;
+			gap: 4px;
+			padding-bottom: 8px;
+			margin-bottom: 2px;
+			border-bottom: 1px solid rgba(30, 35, 48, 0.7);
+		}
+
+		.docs-content :global(table[data-mobile-labels='true'] td code) {
+			white-space: normal;
+			overflow-wrap: anywhere;
+		}
+
+		.docs-content :global(table[data-mobile-labels='true'] td:first-child code) {
+			width: max-content;
+			max-width: 100%;
+			white-space: nowrap;
+			overflow-wrap: normal;
+		}
 	}
 </style>

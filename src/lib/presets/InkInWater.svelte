@@ -91,11 +91,11 @@
 	bloomIntensity={0.6}
 	bloomThreshold={0.4}
 	sunrays={false}
-	randomSplatRate={0.2}
-	randomSplatColor={{ r: 0.06, g: 0.07, b: 0.50 }}
-	randomSplatDx={0}
-	randomSplatDy={-180}
-	randomSplatSpawnY={0.90}
+	autoSplatRate={0.2}
+	autoSplatColor={{ r: 0.06, g: 0.07, b: 0.50 }}
+	autoSplatVelocityX={0}
+	autoSplatVelocityY={-180}
+	autoSplatCenterY={0.90}
 	initialSplatCount={0}
 	backColor={{ r: 6, g: 8, b: 20 }}
 	presetSplats={PRESET_SPLATS}

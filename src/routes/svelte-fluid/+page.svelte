@@ -38,10 +38,10 @@
 		'  bloom={false}',
 		'  sunrays={false}',
 		'  initialSplatCount={8}',
-		'  randomSplatRate={4}',
-		'  randomSplatCount={2}',
-		'  randomSplatSpread={2}',
-		'  randomSplatSwirl={200}',
+		'  autoSplatRate={4}',
+		'  autoSplatCount={2}',
+		'  autoSplatBandHeight={2}',
+		'  autoSplatSwirl={200}',
 		'/>',
 		'```',
 	].join('\n');
@@ -67,10 +67,10 @@
 			sunrays={false}
 			backColor={{ r: 0, g: 0, b: 0 }}
 			initialSplatCount={8}
-			randomSplatRate={4}
-			randomSplatCount={2}
-			randomSplatSpread={2}
-			randomSplatSwirl={200}
+			autoSplatRate={4}
+			autoSplatCount={2}
+			autoSplatBandHeight={2}
+			autoSplatSwirl={200}
 			aria-label="SVELTE"
 		/>
 	</div>
@@ -90,10 +90,10 @@
 			sunrays={false}
 			backColor={{ r: 0, g: 0, b: 0 }}
 			initialSplatCount={8}
-			randomSplatRate={4}
-			randomSplatCount={2}
-			randomSplatSpread={2}
-			randomSplatSwirl={200}
+			autoSplatRate={4}
+			autoSplatCount={2}
+			autoSplatBandHeight={2}
+			autoSplatSwirl={200}
 			aria-label="FLUID"
 		/>
 	</div>

@@ -7,8 +7,8 @@
   <Fluid
     seed={42}
     initialSplatCount={20}
-    randomSplatRate={0.25}
-    randomSplatCount={2}
+    autoSplatRate={0.25}
+    autoSplatCount={2}
     densityDissipation={0.35}
     velocityDissipation={0.08}
     curl={45}

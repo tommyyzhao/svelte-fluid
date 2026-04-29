@@ -13,7 +13,7 @@
   Eight inward preset jets converge from the compass points, establishing
   the initial convergence pattern. The circular boundary immediately
   reflects the jets back inward, producing a self-sustaining vortex.
-  `randomSplatRate` maintains fresh colour after the initial jets fade.
+  `autoSplatRate` maintains fresh colour after the initial jets fade.
 
   The background outside the circle uses the configured `backColor`
   (default black). For a transparent background — showing the CSS
@@ -54,7 +54,7 @@
 	//
 	// Color values are scaled down from the full-canvas Plasma preset
 	// because the circular area concentrates dye into ~35% of the canvas.
-	// The engine's random-splat path applies a 10× multiplier, so these
+	// The engine's automatic-splat path applies a 10× multiplier, so these
 	// moderate values prevent instant over-saturation inside the circle.
 	const PRESET_SPLATS: PresetSplat[] = [
 		{ x: 0.50, y: 0.85, dx:    0, dy: -500, color: { r: 0.9, g: 0.03, b: 0.05 } }, // N  → red
@@ -105,9 +105,9 @@
 	initialSplatCount={0}
 	backColor={{ r: 4, g: 2, b: 12 }}
 	presetSplats={PRESET_SPLATS}
-	randomSplatRate={1.2}
-	randomSplatCount={1}
-	randomSplatSpawnY={0.5}
-	randomSplatSpread={0.8}
-	randomSplatSwirl={500}
+	autoSplatRate={1.2}
+	autoSplatCount={1}
+	autoSplatCenterY={0.5}
+	autoSplatBandHeight={0.8}
+	autoSplatSwirl={500}
 />

@@ -104,15 +104,15 @@ export const DEFAULTS: ResolvedConfig = {
 	POINTER_TARGET: 'canvas' as const,
 	SPLAT_ON_HOVER: false,
 	SEED: 0,
-	RANDOM_SPLAT_RATE: 0,
-	RANDOM_SPLAT_COUNT: 1,
-	RANDOM_SPLAT_COLOR: null,
-	RANDOM_SPLAT_DX: 0,
-	RANDOM_SPLAT_DY: 0,
-	RANDOM_SPLAT_SPAWN_Y: 0.5,
-	RANDOM_SPLAT_EVEN_SPACING: false,
-	RANDOM_SPLAT_SWIRL: 0,
-	RANDOM_SPLAT_SPREAD: 0.1,
+	AUTO_SPLAT_RATE: 0,
+	AUTO_SPLAT_COUNT: 1,
+	AUTO_SPLAT_COLOR: null,
+	AUTO_SPLAT_VELOCITY_X: 0,
+	AUTO_SPLAT_VELOCITY_Y: 0,
+	AUTO_SPLAT_CENTER_Y: 0.5,
+	AUTO_SPLAT_EVEN_X: false,
+	AUTO_SPLAT_SWIRL: 0,
+	AUTO_SPLAT_BAND_HEIGHT: 0.1,
 	CONTAINER_SHAPE: null,
 	GLASS: false,
 	GLASS_THICKNESS: 0.04,
@@ -188,15 +188,15 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 	if (input.pointerTarget !== undefined) out.POINTER_TARGET = input.pointerTarget;
 	if (input.splatOnHover !== undefined) out.SPLAT_ON_HOVER = input.splatOnHover;
 	if (input.seed !== undefined) out.SEED = input.seed >>> 0;
-	if (input.randomSplatRate !== undefined) out.RANDOM_SPLAT_RATE = input.randomSplatRate;
-	if (input.randomSplatCount !== undefined) out.RANDOM_SPLAT_COUNT = input.randomSplatCount;
-	if (input.randomSplatColor !== undefined) out.RANDOM_SPLAT_COLOR = input.randomSplatColor;
-	if (input.randomSplatDx !== undefined) out.RANDOM_SPLAT_DX = input.randomSplatDx;
-	if (input.randomSplatDy !== undefined) out.RANDOM_SPLAT_DY = input.randomSplatDy;
-	if (input.randomSplatSpawnY !== undefined) out.RANDOM_SPLAT_SPAWN_Y = Math.max(0, Math.min(1, input.randomSplatSpawnY));
-	if (input.randomSplatEvenSpacing !== undefined) out.RANDOM_SPLAT_EVEN_SPACING = input.randomSplatEvenSpacing;
-	if (input.randomSplatSwirl !== undefined) out.RANDOM_SPLAT_SWIRL = input.randomSplatSwirl;
-	if (input.randomSplatSpread !== undefined) out.RANDOM_SPLAT_SPREAD = input.randomSplatSpread;
+	if (input.autoSplatRate !== undefined) out.AUTO_SPLAT_RATE = input.autoSplatRate;
+	if (input.autoSplatCount !== undefined) out.AUTO_SPLAT_COUNT = input.autoSplatCount;
+	if (input.autoSplatColor !== undefined) out.AUTO_SPLAT_COLOR = input.autoSplatColor;
+	if (input.autoSplatVelocityX !== undefined) out.AUTO_SPLAT_VELOCITY_X = input.autoSplatVelocityX;
+	if (input.autoSplatVelocityY !== undefined) out.AUTO_SPLAT_VELOCITY_Y = input.autoSplatVelocityY;
+	if (input.autoSplatCenterY !== undefined) out.AUTO_SPLAT_CENTER_Y = Math.max(0, Math.min(1, input.autoSplatCenterY));
+	if (input.autoSplatEvenX !== undefined) out.AUTO_SPLAT_EVEN_X = input.autoSplatEvenX;
+	if (input.autoSplatSwirl !== undefined) out.AUTO_SPLAT_SWIRL = input.autoSplatSwirl;
+	if (input.autoSplatBandHeight !== undefined) out.AUTO_SPLAT_BAND_HEIGHT = input.autoSplatBandHeight;
 	if (input.containerShape !== undefined) out.CONTAINER_SHAPE = input.containerShape ?? null;
 	if (input.glass !== undefined) out.GLASS = input.glass;
 	if (input.glassThickness !== undefined) out.GLASS_THICKNESS = input.glassThickness;
@@ -311,7 +311,7 @@ export class FluidEngine implements FluidHandle {
 	private lastUpdateTime = 0;
 	private engineStartTime = 0;
 	private colorUpdateTimer = 0;
-	private randomSplatTimer = 0;
+	private autoSplatTimer = 0;
 	private rafId = 0;
 	private disposed = false;
 	private pointerListenersInstalled = false;
@@ -352,7 +352,7 @@ export class FluidEngine implements FluidHandle {
 		if (this.config.DISTORTION_IMAGE_URL) {
 			this.loadDistortionImage(this.config.DISTORTION_IMAGE_URL);
 		}
-		this.multipleSplats(this.randomSplatCount());
+		this.multipleSplats(this.initialRandomSplatCount());
 
 		// Construct-only preset splats. Applied after the random initial
 		// splats so wrappers can either combine with or suppress them
@@ -558,7 +558,7 @@ export class FluidEngine implements FluidHandle {
 		if (this.config.DISTORTION_IMAGE_URL) {
 			this.loadDistortionImage(this.config.DISTORTION_IMAGE_URL);
 		}
-		this.multipleSplats(this.randomSplatCount());
+		this.multipleSplats(this.initialRandomSplatCount());
 		if (this.config.POINTER_INPUT && !this.pointerListenersInstalled) {
 			this.installPointerListeners();
 		}
@@ -1330,7 +1330,7 @@ export class FluidEngine implements FluidHandle {
 		this.updateColors(dt);
 		this.applyInputs();
 		if (!this.config.PAUSED) {
-			this.accumulateRandomSplatTimer(dt);
+			this.accumulateAutoSplatTimer(dt);
 			this.step(dt);
 		}
 		this.render(null);
@@ -1368,16 +1368,16 @@ export class FluidEngine implements FluidHandle {
 		}
 	}
 
-	private accumulateRandomSplatTimer(dt: number): void {
-		const rate = this.config.RANDOM_SPLAT_RATE;
-		if (rate <= 0) { this.randomSplatTimer = 0; return; }
-		this.randomSplatTimer += dt;
+	private accumulateAutoSplatTimer(dt: number): void {
+		const rate = this.config.AUTO_SPLAT_RATE;
+		if (rate <= 0) { this.autoSplatTimer = 0; return; }
+		this.autoSplatTimer += dt;
 		const baseInterval = 1 / rate;
 		// Cap accumulated time to prevent a burst avalanche when autoPause is
 		// false and the browser throttled RAF while the tab was hidden.
 		const maxAccumulation = baseInterval * 3.0;
-		if (this.randomSplatTimer > maxAccumulation) {
-			this.randomSplatTimer = maxAccumulation;
+		if (this.autoSplatTimer > maxAccumulation) {
+			this.autoSplatTimer = maxAccumulation;
 		}
 		const hdr = this.hdrMultiplier();
 		const shape = this.config.CONTAINER_SHAPE;
@@ -1387,21 +1387,21 @@ export class FluidEngine implements FluidHandle {
 		// timing — occasional quick double-drips and long pauses.
 		for (;;) {
 			const interval = baseInterval * (0.3 + this.rng() * 1.7);
-			if (this.randomSplatTimer < interval) break;
-			this.randomSplatTimer -= interval;
-			const count = this.config.RANDOM_SPLAT_COUNT;
-			const evenSpacing = this.config.RANDOM_SPLAT_EVEN_SPACING;
+			if (this.autoSplatTimer < interval) break;
+			this.autoSplatTimer -= interval;
+			const count = this.config.AUTO_SPLAT_COUNT;
+			const evenSpacing = this.config.AUTO_SPLAT_EVEN_X;
 			for (let i = 0; i < count; i++) {
 				let color: RGB;
-				if (this.config.RANDOM_SPLAT_COLOR) {
-					color = { ...this.config.RANDOM_SPLAT_COLOR };
+				if (this.config.AUTO_SPLAT_COLOR) {
+					color = { ...this.config.AUTO_SPLAT_COLOR };
 					color.r *= hdr; color.g *= hdr; color.b *= hdr;
 				} else {
 					color = generateColor(this.rng);
 					color.r *= hdr; color.g *= hdr; color.b *= hdr;
 				}
-				const spawnY = this.config.RANDOM_SPLAT_SPAWN_Y;
-				const spread = this.config.RANDOM_SPLAT_SPREAD;
+				const spawnY = this.config.AUTO_SPLAT_CENTER_Y;
+				const spread = this.config.AUTO_SPLAT_BAND_HEIGHT;
 				let x = evenSpacing ? (i + 0.5) / count : this.rng();
 				let y = Math.max(0, Math.min(1, spawnY + (this.rng() - 0.5) * spread));
 				if (shape) {
@@ -1414,9 +1414,9 @@ export class FluidEngine implements FluidHandle {
 					}
 					if (attempts === 0) continue;
 				}
-				let splatDx = this.config.RANDOM_SPLAT_DX;
-				let splatDy = this.config.RANDOM_SPLAT_DY;
-				const swirl = this.config.RANDOM_SPLAT_SWIRL;
+				let splatDx = this.config.AUTO_SPLAT_VELOCITY_X;
+				let splatDy = this.config.AUTO_SPLAT_VELOCITY_Y;
+				const swirl = this.config.AUTO_SPLAT_SWIRL;
 				if (swirl !== 0) {
 					const s = this.config.CONTAINER_SHAPE;
 					const cx = (s && s.type !== 'svgPath') ? s.cx : 0.5;
@@ -1942,7 +1942,7 @@ export class FluidEngine implements FluidHandle {
 		}
 	}
 
-	private randomSplatCount(): number {
+	private initialRandomSplatCount(): number {
 		const lo = this.config.INITIAL_SPLAT_MIN;
 		const hi = this.config.INITIAL_SPLAT_MAX;
 		if (lo === hi) return lo;
