@@ -1,6 +1,21 @@
 <script lang="ts">
+	import { base } from '$app/paths';
+	import { page } from '$app/stores';
+
 	let { children } = $props();
+
+	const siteUrl = 'https://tommyyzhao.github.io/svelte-fluid';
+	let canonicalUrl = $derived.by(() => {
+		const path = $page.url.pathname;
+		const localPath = base && path.startsWith(base) ? path.slice(base.length) || '/' : path;
+		return `${siteUrl}${localPath}`;
+	});
 </script>
+
+<svelte:head>
+	<link rel="canonical" href={canonicalUrl} />
+	<meta property="og:url" content={canonicalUrl} />
+</svelte:head>
 
 {@render children?.()}
 
