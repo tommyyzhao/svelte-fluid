@@ -5,7 +5,7 @@
 
 ## Context
 
-Presets with container shapes (CircularFluid, FrameFluid) needed richer continuous animation than the existing `randomSplatRate` + `randomSplatCount` system could provide. Three gaps:
+Presets with container shapes (CircularFluid, FrameFluid) needed richer continuous animation than the existing `autoSplatRate` + `autoSplatCount` system could provide. Three gaps:
 
 1. **Directionless splats.** Random splats had random velocity, causing fluid to pool in the center of bounded containers instead of circulating. Container presets needed per-splat tangential velocity to drive rotational flow.
 
@@ -19,13 +19,13 @@ Additionally, the 10x HDR color multiplier applied to all random splats caused o
 
 Four new Bucket A config parameters, plus an HDR scaling function:
 
-- **`randomSplatSwirl`** (number, default 0): Per-splat tangential velocity relative to container/canvas center. `dx = -(y - cy) * swirl`, `dy = (x - cx) * swirl`. Positive = CCW, negative = CW.
+- **`autoSplatSwirl`** (number, default 0): Per-splat tangential velocity relative to container/canvas center. `dx = -(y - cy) * swirl`, `dy = (x - cx) * swirl`. Positive = CCW, negative = CW.
 
-- **`randomSplatSpread`** (number, default 0.1): Controls vertical jitter range for spawn positions. `y = 0.5 + (rng() - 0.5) * spread`. Set to 2.0 for full-canvas scatter.
+- **`autoSplatBandHeight`** (number, default 0.1): Controls vertical jitter range for spawn positions. `y = 0.5 + (rng() - 0.5) * spread`. Set to 2.0 for full-canvas scatter.
 
-- **`randomSplatEvenSpacing`** (boolean, default false): When true, distributes splats evenly across the x-axis: `x = (i + 0.5) / count` instead of random x positions.
+- **`autoSplatEvenX`** (boolean, default false): When true, distributes splats evenly across the x-axis: `x = (i + 0.5) / count` instead of random x positions.
 
-- **Jittered timing**: The interval between random splat bursts is now `baseInterval * (0.5 + rng())`, giving +/-50% jitter for organic rhythm. Uses the seeded RNG so timing is still deterministic per seed.
+- **Jittered timing**: The interval between automatic splat bursts is now `baseInterval * (0.5 + rng())`, giving +/-50% jitter for organic rhythm. Uses the seeded RNG so timing is still deterministic per seed.
 
 - **`hdrMultiplier()` method**: Scales the 10x HDR base by `sqrt(containerArea)` for each shape type, clamped at 3x minimum. Prevents oversaturation in bounded containers (e.g., circle at radius 0.45 has area ~0.35 of canvas, so multiplier is ~5.9x instead of 10x).
 
@@ -36,7 +36,7 @@ All four config params are Bucket A (hot-updatable, picked up next frame). No sh
 **Positive:**
 - CircularFluid and FrameFluid presets now have rich, continuous rotational animation without any engine-level animation code or imperative splat calls.
 - The swirl + spread system is composable: any future container shape preset can use the same params.
-- Jittered timing eliminates visible pulsing artifacts across all presets that use `randomSplatRate`.
+- Jittered timing eliminates visible pulsing artifacts across all presets that use `autoSplatRate`.
 - HDR area scaling is automatic per container shape; preset authors don't need to manually compensate color values.
 
 **Negative:**

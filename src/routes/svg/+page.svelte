@@ -27,8 +27,8 @@
 					curl={25}
 					bloom
 					sunrays={false}
-					randomSplatRate={1}
-					randomSplatSpread={2.0}
+					autoSplatRate={1}
+					autoSplatBandHeight={2.0}
 					aria-label="Heart shape"
 				/>
 			</div>
@@ -56,8 +56,8 @@
 					densityDissipation={0.5}
 					bloom={false}
 					sunrays={false}
-					randomSplatRate={1}
-					randomSplatSpread={2.0}
+					autoSplatRate={1}
+					autoSplatBandHeight={2.0}
 					aria-label="Star evenodd"
 				/>
 			</div>

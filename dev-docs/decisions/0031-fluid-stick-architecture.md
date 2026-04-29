@@ -111,10 +111,10 @@ Wraps `<Fluid>` with `sticky={true}` and tuned defaults:
 | `splatRadius` | 1.0 | 0.25 | Large splats cover mask area |
 | `stickyStrength` | 0.95 | 0.9 | Strong persistence |
 | `stickyAmplify` | 2.0 | 0.3 | Aggressive mask filling |
-| `randomSplatRate` | 0.4 | 0 | Continuous dye supply |
-| `randomSplatCount` | 3 | 1 | Multiple per burst |
-| `randomSplatSwirl` | 500 | 0 | Tangential velocity |
-| `randomSplatSpread` | 2.0 | 0.1 | Full-canvas coverage |
+| `autoSplatRate` | 0.4 | 0 | Continuous dye supply |
+| `autoSplatCount` | 3 | 1 | Multiple per burst |
+| `autoSplatSwirl` | 500 | 0 | Tangential velocity |
+| `autoSplatBandHeight` | 2.0 | 0.1 | Full-canvas coverage |
 | `splatOnHover` | true | false | Interactive by default |
 | `bloom` / `sunrays` | false | true | Clean text appearance |
 

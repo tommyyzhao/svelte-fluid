@@ -5,9 +5,9 @@
 		densityDissipation: number; initialDensityDissipation: number;
 		initialDensityDissipationDuration: number; velocityDissipation: number;
 		pressure: number; bloomIntensity: number; sunraysWeight: number;
-		randomSplatRate: number; randomSplatCount: number; randomSplatDx: number;
-		randomSplatDy: number; randomSplatSpawnY: number; randomSplatEvenSpacing: boolean;
-		randomSplatSwirl: number; randomSplatSpread: number; splatOnHover: boolean;
+		autoSplatRate: number; autoSplatCount: number; autoSplatVelocityX: number;
+		autoSplatVelocityY: number; autoSplatCenterY: number; autoSplatEvenX: boolean;
+		autoSplatSwirl: number; autoSplatBandHeight: number; splatOnHover: boolean;
 		shading: boolean; bloom: boolean; sunrays: boolean; colorful: boolean;
 		paused: boolean; dyeResolution: number; simResolution: number;
 		backColorR: number; backColorG: number; backColorB: number;
@@ -45,14 +45,14 @@
 		pressure: 0.8,
 		bloomIntensity: 0.8,
 		sunraysWeight: 1,
-		randomSplatRate: 0,
-		randomSplatCount: 1,
-		randomSplatDx: 0,
-		randomSplatDy: 0,
-		randomSplatSpawnY: 0.5,
-		randomSplatEvenSpacing: false,
-		randomSplatSwirl: 0,
-		randomSplatSpread: 0.1,
+		autoSplatRate: 0,
+		autoSplatCount: 1,
+		autoSplatVelocityX: 0,
+		autoSplatVelocityY: 0,
+		autoSplatCenterY: 0.5,
+		autoSplatEvenX: false,
+		autoSplatSwirl: 0,
+		autoSplatBandHeight: 0.1,
 		splatOnHover: false,
 		shading: true,
 		bloom: true,
@@ -123,14 +123,14 @@
 		pressure = $bindable(D.pressure),
 		bloomIntensity = $bindable(D.bloomIntensity),
 		sunraysWeight = $bindable(D.sunraysWeight),
-		randomSplatRate = $bindable(D.randomSplatRate),
-		randomSplatCount = $bindable(D.randomSplatCount),
-		randomSplatDx = $bindable(D.randomSplatDx),
-		randomSplatDy = $bindable(D.randomSplatDy),
-		randomSplatSpawnY = $bindable(D.randomSplatSpawnY),
-		randomSplatEvenSpacing = $bindable(D.randomSplatEvenSpacing),
-		randomSplatSwirl = $bindable(D.randomSplatSwirl),
-		randomSplatSpread = $bindable(D.randomSplatSpread),
+		autoSplatRate = $bindable(D.autoSplatRate),
+		autoSplatCount = $bindable(D.autoSplatCount),
+		autoSplatVelocityX = $bindable(D.autoSplatVelocityX),
+		autoSplatVelocityY = $bindable(D.autoSplatVelocityY),
+		autoSplatCenterY = $bindable(D.autoSplatCenterY),
+		autoSplatEvenX = $bindable(D.autoSplatEvenX),
+		autoSplatSwirl = $bindable(D.autoSplatSwirl),
+		autoSplatBandHeight = $bindable(D.autoSplatBandHeight),
 		initialDensityDissipation = $bindable(D.initialDensityDissipation),
 		initialDensityDissipationDuration = $bindable(D.initialDensityDissipationDuration),
 		splatOnHover = $bindable(D.splatOnHover),
@@ -205,14 +205,14 @@
 		pressure?: number;
 		bloomIntensity?: number;
 		sunraysWeight?: number;
-		randomSplatRate?: number;
-		randomSplatCount?: number;
-		randomSplatDx?: number;
-		randomSplatDy?: number;
-		randomSplatSpawnY?: number;
-		randomSplatEvenSpacing?: boolean;
-		randomSplatSwirl?: number;
-		randomSplatSpread?: number;
+		autoSplatRate?: number;
+		autoSplatCount?: number;
+		autoSplatVelocityX?: number;
+		autoSplatVelocityY?: number;
+		autoSplatCenterY?: number;
+		autoSplatEvenX?: boolean;
+		autoSplatSwirl?: number;
+		autoSplatBandHeight?: number;
 		initialDensityDissipation?: number;
 		initialDensityDissipationDuration?: number;
 		splatOnHover?: boolean;
@@ -295,10 +295,10 @@
 		[initialDensityDissipationDuration, D.initialDensityDissipationDuration]
 	]));
 	let splatChanges = $derived(countChanges([
-		[randomSplatRate, D.randomSplatRate], [randomSplatCount, D.randomSplatCount],
-		[randomSplatSwirl, D.randomSplatSwirl], [randomSplatSpread, D.randomSplatSpread],
-		[randomSplatSpawnY, D.randomSplatSpawnY], [randomSplatDx, D.randomSplatDx],
-		[randomSplatDy, D.randomSplatDy], [randomSplatEvenSpacing, D.randomSplatEvenSpacing]
+		[autoSplatRate, D.autoSplatRate], [autoSplatCount, D.autoSplatCount],
+		[autoSplatSwirl, D.autoSplatSwirl], [autoSplatBandHeight, D.autoSplatBandHeight],
+		[autoSplatCenterY, D.autoSplatCenterY], [autoSplatVelocityX, D.autoSplatVelocityX],
+		[autoSplatVelocityY, D.autoSplatVelocityY], [autoSplatEvenX, D.autoSplatEvenX]
 	]));
 	let visualChanges = $derived(countChanges([
 		[shading, D.shading], [bloom, D.bloom], [sunrays, D.sunrays],
@@ -350,14 +350,14 @@
 		pressure = D.pressure;
 		bloomIntensity = D.bloomIntensity;
 		sunraysWeight = D.sunraysWeight;
-		randomSplatRate = D.randomSplatRate;
-		randomSplatCount = D.randomSplatCount;
-		randomSplatDx = D.randomSplatDx;
-		randomSplatDy = D.randomSplatDy;
-		randomSplatSpawnY = D.randomSplatSpawnY;
-		randomSplatEvenSpacing = D.randomSplatEvenSpacing;
-		randomSplatSwirl = D.randomSplatSwirl;
-		randomSplatSpread = D.randomSplatSpread;
+		autoSplatRate = D.autoSplatRate;
+		autoSplatCount = D.autoSplatCount;
+		autoSplatVelocityX = D.autoSplatVelocityX;
+		autoSplatVelocityY = D.autoSplatVelocityY;
+		autoSplatCenterY = D.autoSplatCenterY;
+		autoSplatEvenX = D.autoSplatEvenX;
+		autoSplatSwirl = D.autoSplatSwirl;
+		autoSplatBandHeight = D.autoSplatBandHeight;
 		initialDensityDissipation = D.initialDensityDissipation;
 		initialDensityDissipationDuration = D.initialDensityDissipationDuration;
 		splatOnHover = D.splatOnHover;
@@ -448,14 +448,14 @@
 		fmt('pressure', pressure, D.pressure);
 		fmt('bloomIntensity', bloomIntensity, D.bloomIntensity);
 		fmt('sunraysWeight', sunraysWeight, D.sunraysWeight);
-		fmt('randomSplatRate', randomSplatRate, D.randomSplatRate);
-		fmt('randomSplatCount', randomSplatCount, D.randomSplatCount);
-		fmt('randomSplatDx', randomSplatDx, D.randomSplatDx);
-		fmt('randomSplatDy', randomSplatDy, D.randomSplatDy);
-		fmt('randomSplatSpawnY', randomSplatSpawnY, D.randomSplatSpawnY);
-		fmt('randomSplatEvenSpacing', randomSplatEvenSpacing, D.randomSplatEvenSpacing);
-		fmt('randomSplatSwirl', randomSplatSwirl, D.randomSplatSwirl);
-		fmt('randomSplatSpread', randomSplatSpread, D.randomSplatSpread);
+		fmt('autoSplatRate', autoSplatRate, D.autoSplatRate);
+		fmt('autoSplatCount', autoSplatCount, D.autoSplatCount);
+		fmt('autoSplatVelocityX', autoSplatVelocityX, D.autoSplatVelocityX);
+		fmt('autoSplatVelocityY', autoSplatVelocityY, D.autoSplatVelocityY);
+		fmt('autoSplatCenterY', autoSplatCenterY, D.autoSplatCenterY);
+		fmt('autoSplatEvenX', autoSplatEvenX, D.autoSplatEvenX);
+		fmt('autoSplatSwirl', autoSplatSwirl, D.autoSplatSwirl);
+		fmt('autoSplatBandHeight', autoSplatBandHeight, D.autoSplatBandHeight);
 		fmt('initialDensityDissipation', initialDensityDissipation, D.initialDensityDissipation);
 		fmt('initialDensityDissipationDuration', initialDensityDissipationDuration, D.initialDensityDissipationDuration);
 		fmt('splatOnHover', splatOnHover, D.splatOnHover);
@@ -691,41 +691,45 @@
 		{/if}
 
 		<button class="accordion-header" onclick={() => toggleSection('splats')}>
-			<span>Random Splats</span>
+			<span>Automatic Splats</span>
 			{#if splatChanges > 0}<span class="badge">{splatChanges}</span>{/if}
 			<span class="chevron" class:open={openSections.has('splats')}></span>
 		</button>
 		{#if openSections.has('splats')}
 			<section class="accordion-body">
+				<p class="field-hint">Automatic splats are timed dye/velocity bursts. Set the rate above 0 to keep injecting motion without pointer input.</p>
 				<label>
-					<span>Rate (splats/sec) <em>{randomSplatRate.toFixed(1)}</em></span>
-					<input type="range" min="0" max="5" step="0.1" bind:value={randomSplatRate} />
+					<span>Burst rate/sec <em>{autoSplatRate.toFixed(1)}</em></span>
+					<input type="range" min="0" max="5" step="0.1" bind:value={autoSplatRate} />
 				</label>
 				<label>
-					<span>Count per burst <em>{randomSplatCount}</em></span>
-					<input type="range" min="1" max="10" step="1" bind:value={randomSplatCount} />
+					<span>Splats per burst <em>{autoSplatCount}</em></span>
+					<input type="range" min="1" max="10" step="1" bind:value={autoSplatCount} />
 				</label>
 				<label>
-					<span>Swirl <em>{randomSplatSwirl}</em></span>
-					<input type="range" min="-1000" max="1000" step="50" bind:value={randomSplatSwirl} />
+					<span>Orbital velocity <em>{autoSplatSwirl}</em></span>
+					<input type="range" min="-1000" max="1000" step="50" bind:value={autoSplatSwirl} />
+				</label>
+				<p class="field-hint">Orbital velocity makes splats move around the canvas center. Positive turns counter-clockwise; negative turns clockwise. When nonzero, it replaces X/Y velocity.</p>
+				<label>
+					<span>Spawn band height <em>{autoSplatBandHeight.toFixed(2)}</em></span>
+					<input type="range" min="0" max="3" step="0.05" bind:value={autoSplatBandHeight} />
 				</label>
 				<label>
-					<span>Spawn spread <em>{randomSplatSpread.toFixed(2)}</em></span>
-					<input type="range" min="0" max="3" step="0.05" bind:value={randomSplatSpread} />
+					<span>Spawn band center <em>{autoSplatCenterY.toFixed(2)}</em></span>
+					<input type="range" min="0" max="1" step="0.05" bind:value={autoSplatCenterY} />
+				</label>
+				<p class="field-hint">The center is vertical: 0 bottom, 0.5 middle, 1 top. Band height is the vertical range around it: 0 is one line, 0.1 is +/-5%, 2 covers the full canvas.</p>
+				<label>
+					<span>Velocity X <em>{autoSplatVelocityX}</em></span>
+					<input type="range" min="-1000" max="1000" step="50" bind:value={autoSplatVelocityX} />
 				</label>
 				<label>
-					<span>Spawn height <em>{randomSplatSpawnY.toFixed(2)}</em></span>
-					<input type="range" min="0" max="1" step="0.05" bind:value={randomSplatSpawnY} />
+					<span>Velocity Y <em>{autoSplatVelocityY}</em></span>
+					<input type="range" min="-1000" max="1000" step="50" bind:value={autoSplatVelocityY} />
 				</label>
-				<label>
-					<span>Velocity X <em>{randomSplatDx}</em></span>
-					<input type="range" min="-1000" max="1000" step="50" bind:value={randomSplatDx} />
-				</label>
-				<label>
-					<span>Velocity Y <em>{randomSplatDy}</em></span>
-					<input type="range" min="-1000" max="1000" step="50" bind:value={randomSplatDy} />
-				</label>
-				<label class="check"><input type="checkbox" bind:checked={randomSplatEvenSpacing} /> Even spacing</label>
+				<label class="check"><input type="checkbox" bind:checked={autoSplatEvenX} /> Even X positions</label>
+				<p class="field-hint">Even X positions affects multi-splat bursts: instead of random x coordinates, the burst is spread across the width at equal intervals.</p>
 			</section>
 		{/if}
 
@@ -738,7 +742,8 @@
 			<section class="accordion-body">
 				<label class="check"><input type="checkbox" bind:checked={shading} /> Shading</label>
 				<label class="check"><input type="checkbox" bind:checked={sunrays} /> Sunrays</label>
-				<label class="check"><input type="checkbox" bind:checked={colorful} /> Cycle colors</label>
+				<label class="check"><input type="checkbox" bind:checked={colorful} /> Cycle pointer colors</label>
+				<p class="field-hint">Affects mouse/touch splats. Automatic splats already pick fresh random colors unless you set <code>autoSplatColor</code> in code.</p>
 				{#if bloom}
 				<label>
 					<span>bloomIntensity <em>{bloomIntensity.toFixed(2)}</em></span>
@@ -1071,41 +1076,45 @@
 		{/if}
 
 		<button class="accordion-header" onclick={() => toggleSection('splats')}>
-			<span>Random Splats</span>
+			<span>Automatic Splats</span>
 			{#if splatChanges > 0}<span class="badge">{splatChanges}</span>{/if}
 			<span class="chevron" class:open={openSections.has('splats')}></span>
 		</button>
 		{#if openSections.has('splats')}
 			<section class="accordion-body">
+				<p class="field-hint">Automatic splats are timed dye/velocity bursts. Set the rate above 0 to keep injecting motion without pointer input.</p>
 				<label>
-					<span>Rate (splats/sec) <em>{randomSplatRate.toFixed(1)}</em></span>
-					<input type="range" min="0" max="5" step="0.1" bind:value={randomSplatRate} />
+					<span>Burst rate/sec <em>{autoSplatRate.toFixed(1)}</em></span>
+					<input type="range" min="0" max="5" step="0.1" bind:value={autoSplatRate} />
 				</label>
 				<label>
-					<span>Count per burst <em>{randomSplatCount}</em></span>
-					<input type="range" min="1" max="10" step="1" bind:value={randomSplatCount} />
+					<span>Splats per burst <em>{autoSplatCount}</em></span>
+					<input type="range" min="1" max="10" step="1" bind:value={autoSplatCount} />
 				</label>
 				<label>
-					<span>Swirl <em>{randomSplatSwirl}</em></span>
-					<input type="range" min="-1000" max="1000" step="50" bind:value={randomSplatSwirl} />
+					<span>Orbital velocity <em>{autoSplatSwirl}</em></span>
+					<input type="range" min="-1000" max="1000" step="50" bind:value={autoSplatSwirl} />
+				</label>
+				<p class="field-hint">Orbital velocity makes splats move around the canvas center. Positive turns counter-clockwise; negative turns clockwise. When nonzero, it replaces X/Y velocity.</p>
+				<label>
+					<span>Spawn band height <em>{autoSplatBandHeight.toFixed(2)}</em></span>
+					<input type="range" min="0" max="3" step="0.05" bind:value={autoSplatBandHeight} />
 				</label>
 				<label>
-					<span>Spawn spread <em>{randomSplatSpread.toFixed(2)}</em></span>
-					<input type="range" min="0" max="3" step="0.05" bind:value={randomSplatSpread} />
+					<span>Spawn band center <em>{autoSplatCenterY.toFixed(2)}</em></span>
+					<input type="range" min="0" max="1" step="0.05" bind:value={autoSplatCenterY} />
+				</label>
+				<p class="field-hint">The center is vertical: 0 bottom, 0.5 middle, 1 top. Band height is the vertical range around it: 0 is one line, 0.1 is +/-5%, 2 covers the full canvas.</p>
+				<label>
+					<span>Velocity X <em>{autoSplatVelocityX}</em></span>
+					<input type="range" min="-1000" max="1000" step="50" bind:value={autoSplatVelocityX} />
 				</label>
 				<label>
-					<span>Spawn height <em>{randomSplatSpawnY.toFixed(2)}</em></span>
-					<input type="range" min="0" max="1" step="0.05" bind:value={randomSplatSpawnY} />
+					<span>Velocity Y <em>{autoSplatVelocityY}</em></span>
+					<input type="range" min="-1000" max="1000" step="50" bind:value={autoSplatVelocityY} />
 				</label>
-				<label>
-					<span>Velocity X <em>{randomSplatDx}</em></span>
-					<input type="range" min="-1000" max="1000" step="50" bind:value={randomSplatDx} />
-				</label>
-				<label>
-					<span>Velocity Y <em>{randomSplatDy}</em></span>
-					<input type="range" min="-1000" max="1000" step="50" bind:value={randomSplatDy} />
-				</label>
-				<label class="check"><input type="checkbox" bind:checked={randomSplatEvenSpacing} /> Even spacing</label>
+				<label class="check"><input type="checkbox" bind:checked={autoSplatEvenX} /> Even X positions</label>
+				<p class="field-hint">Even X positions affects multi-splat bursts: instead of random x coordinates, the burst is spread across the width at equal intervals.</p>
 			</section>
 		{/if}
 
@@ -1119,7 +1128,8 @@
 				<label class="check"><input type="checkbox" bind:checked={shading} /> Shading</label>
 				<label class="check"><input type="checkbox" bind:checked={bloom} /> Bloom</label>
 				<label class="check"><input type="checkbox" bind:checked={sunrays} /> Sunrays</label>
-				<label class="check"><input type="checkbox" bind:checked={colorful} /> Cycle colors</label>
+				<label class="check"><input type="checkbox" bind:checked={colorful} /> Cycle pointer colors</label>
+				<p class="field-hint">Affects mouse/touch splats. Automatic splats already pick fresh random colors unless you set <code>autoSplatColor</code> in code.</p>
 				{#if bloom}
 				<label>
 					<span>bloomIntensity <em>{bloomIntensity.toFixed(2)}</em></span>
@@ -1299,7 +1309,7 @@
 
 	<div class="actions">
 		{#if playgroundMode === 'fluid'}
-			<button type="button" onclick={() => onRandomSplats?.()}>Random Splats</button>
+			<button type="button" onclick={() => onRandomSplats?.()}>Add Random Splats</button>
 		{/if}
 		{#if playgroundMode === 'sticky'}
 			<button type="button" onclick={() => onRemountSticky?.()}>Restart Animation</button>
@@ -1467,6 +1477,12 @@
 		background: #111;
 		border-radius: 4px;
 		border-left: 2px solid #333;
+	}
+	.field-hint code {
+		color: #aaa;
+		background: #1a1a1a;
+		padding: 1px 4px;
+		border-radius: 3px;
 	}
 	.hint-btn {
 		padding: 6px 10px !important;

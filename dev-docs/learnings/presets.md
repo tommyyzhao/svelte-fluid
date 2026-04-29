@@ -32,7 +32,7 @@ priorities, or page-load conditions.
 
 **Fix:** Don't try to inject from a wrapper. Add a construct-only
 `presetSplats` field to `FluidConfig` that the engine constructor reads
-right after `multipleSplats(randomSplatCount())`. The splats land in
+right after `multipleSplats(initialRandomSplatCount())`. The splats land in
 the same code path as the random initial splats, before the first
 frame is rendered. See ADR
 [`0015`](../decisions/0015-preset-components.md).
@@ -363,19 +363,19 @@ simulation, not a UI speed slider. If you want gentler motion, lower
 the *force*. If you want longer-lasting motion, lower the *dissipation*.
 The two knobs are independent and the names make it easy to confuse them.
 
-## Continuous random splats: `randomSplatRate` and friends
+## Automatic splats: `autoSplatRate` and friends
 
-**What it is:** Six new config fields (`randomSplatRate`, `randomSplatCount`, `randomSplatColor`, `randomSplatDx`, `randomSplatDy`, `randomSplatSpawnY`) that make the engine emit splats continuously at a configurable rate.
+**What it is:** Six new config fields (`autoSplatRate`, `autoSplatCount`, `autoSplatColor`, `autoSplatVelocityX`, `autoSplatVelocityY`, `autoSplatCenterY`) that make the engine emit splats continuously at a configurable rate.
 
 **Design decisions worth preserving:**
 
-- The timer accumulates delta time in `accumulateRandomSplatTimer()`, called from `update()` before `step()`. This keeps timing in the engine's single RAF loop rather than splitting it across a Svelte `$effect` + `setInterval`.
-- Accumulation happens even while paused (timer keeps running). The splats are still queued via `splatStack` and consumed by `applyInputs()` on the next unpaused frame. This means re-enabling after pause doesn't produce a burst — the timer ran ahead but `applyInputs()` only fires when `!PAUSED`.
-- When `randomSplatColor` is set, the same 10× HDR multiplier applied to `generateColor` output is applied to the fixed color. See the HDR splat colors entry above for why.
-- Velocity fields (`randomSplatDx`, `randomSplatDy`) are passed directly to `splat()` raw — they are NOT scaled by `splatForce`. This is consistent with `PresetSplat.dx/dy` semantics.
-- All six fields are Bucket A: hot-updatable without teardown. Setting `randomSplatRate = 0` stops generation and resets the timer.
+- The timer accumulates delta time in `accumulateAutoSplatTimer()`, called from `update()` before `step()`. This keeps timing in the engine's single RAF loop rather than splitting it across a Svelte `$effect` + `setInterval`.
+- Accumulation happens only while unpaused, so `paused` freezes the visual state and does not queue a delayed burst for resume.
+- When `autoSplatColor` is set, the same 10× HDR multiplier applied to `generateColor` output is applied to the fixed color. See the HDR splat colors entry above for why.
+- Velocity fields (`autoSplatVelocityX`, `autoSplatVelocityY`) are passed directly to `splat()` raw — they are NOT scaled by `splatForce`. This is consistent with `PresetSplat.dx/dy` semantics.
+- All six fields are Bucket A: hot-updatable without teardown. Setting `autoSplatRate = 0` stops generation and resets the timer.
 
-**Why this matters:** Previously, continuous effects required imperative calls to `handle.randomSplats()`. Now presets like `InkInWater` can declaratively specify a "drops in water" look. The `randomSplatColor` + `randomSplatDx/Dy` fields allow fixed color+velocity matching the initial preset splats, rather than the fully-random `multipleSplats()` behavior.
+**Why this matters:** Previously, continuous effects required imperative calls to `handle.randomSplats()`. Now presets like `InkInWater` can declaratively specify a "drops in water" look. The `autoSplatColor` + `autoSplatVelocityX/Y` fields allow fixed color+velocity matching the initial preset splats, rather than the fully-random `multipleSplats()` behavior.
 
 ## Galaxy preset was removed
 
@@ -455,7 +455,7 @@ Jets must be positioned in UV space accounting for the canvas aspect ratio. The 
 
 ## Dye concentration in bounded containers
 
-The engine's random-splat path applies a **10× HDR multiplier** to all random splat colors (both `generateColor()` and `randomSplatColor`). On a full canvas, this creates vivid bloom highlights. In a bounded container (~35% of canvas area), the same dye concentrates into fewer pixels, quickly oversaturating the dye.
+The engine's automatic-splat path applies a **10× HDR multiplier** to all random splat colors (both `generateColor()` and `autoSplatColor`). On a full canvas, this creates vivid bloom highlights. In a bounded container (~35% of canvas area), the same dye concentrates into fewer pixels, quickly oversaturating the dye.
 
 Mitigations for `CircularFluid`:
 - Preset splat colors use moderate values (0.5–1.1) instead of Plasma's HDR (1.5–2.2)
@@ -478,17 +478,17 @@ This is now handled by `hdrMultiplier()` in `FluidEngine.ts`, which scales the 1
 
 ## Randomized burst timing
 
-Fixed-interval spawning of random splat bursts creates a metronome effect that looks artificial. Jittering the interval by +/-50% via `baseInterval * (0.5 + rng())` makes the bursts feel organic. The RNG is seeded, so the jitter pattern is still deterministic for a given seed -- the "randomness" is in the timing rhythm, not the reproducibility.
+Fixed-interval spawning of automatic splat bursts creates a metronome effect that looks artificial. Jittering the interval by +/-50% via `baseInterval * (0.5 + rng())` makes the bursts feel organic. The RNG is seeded, so the jitter pattern is still deterministic for a given seed -- the "randomness" is in the timing rhythm, not the reproducibility.
 
-## Tangential velocity via randomSplatSwirl
+## Tangential velocity via autoSplatSwirl
 
 For container-bounded presets, per-splat tangential velocity creates natural rotational flow that prevents the fluid from pooling at the center. The formula is `dx = -(y - cy) * swirl`, `dy = (x - cx) * swirl`, where `(cx, cy)` is the container center. Positive swirl = CCW, negative = CW.
 
 CircularFluid uses `swirl: 500` (aggressive, drives a visible vortex), FrameFluid uses `swirl: 300` (gentler -- complex geometry with corners needs less force to maintain visual motion).
 
-## Full-canvas scatter with randomSplatSpread
+## Full-canvas scatter with autoSplatBandHeight
 
-The `randomSplatSpread` config controls vertical jitter range for random splat spawn positions (default 0.1 = +/-0.05). For frame shapes, the default narrow spawn band often falls inside the masked-out cutout, so splats are immediately zeroed by the mask and produce no visible effect.
+The `autoSplatBandHeight` config controls vertical jitter range for automatic splat spawn positions (default 0.1 = +/-0.05). For frame shapes, the default narrow spawn band often falls inside the masked-out cutout, so splats are immediately zeroed by the mask and produce no visible effect.
 
 Setting `spread: 2.0` scatters splats across the entire canvas. The container mask naturally discards any splats that land outside the fluid domain, so only the in-bounds ones contribute. This is wasteful (many splats are discarded) but simple and correct.
 
@@ -510,4 +510,4 @@ The annulus confines fluid between two concentric circles. The SDF `max(d - oute
 
 Aspect correction matches the circle shape exactly: `px = (uvX - cx) * aspect`. Both radii are in height-normalized space, so the ring appears circular on any aspect ratio. The degenerate case (innerR >= outerR) naturally produces sdf >= 0 everywhere, so the mask is zero with no special-case code needed.
 
-The AnnularFluid preset uses 8 tangential jets at the midpoint radius to establish a ring-vortex pattern. High `randomSplatSwirl: 600` sustains the orbital motion. Like CircularFluid, moderate `spread: 0.8` scatters random splats broadly; the mask discards out-of-band ones.
+The AnnularFluid preset uses 8 tangential jets at the midpoint radius to establish a ring-vortex pattern. High `autoSplatSwirl: 600` sustains the orbital motion. Like CircularFluid, moderate `spread: 0.8` scatters random splats broadly; the mask discards out-of-band ones.

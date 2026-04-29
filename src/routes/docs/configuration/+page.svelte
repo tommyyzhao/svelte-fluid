@@ -129,7 +129,7 @@
 
 <!-- ================================================================ -->
 <h2>Visuals</h2>
-<p>Shading, color cycling, pause, and background.</p>
+<p>Shading, pointer color cycling, pause, and background.</p>
 
 <table>
 	<thead>
@@ -151,13 +151,13 @@
 			<td><code>colorful</code></td>
 			<td><code>boolean</code></td>
 			<td><code>true</code></td>
-			<td>Cycle pointer color over time.</td>
+			<td>Rotate pointer/touch splat colors over time. Does not change hand-authored <code>presetSplats</code>.</td>
 		</tr>
 		<tr>
 			<td><code>colorUpdateSpeed</code></td>
 			<td><code>number</code></td>
 			<td><code>10</code></td>
-			<td>Color rotation rate (1/seconds).</td>
+			<td>Pointer/touch color rotation rate (1/seconds). Only matters when <code>colorful</code> is true.</td>
 		</tr>
 		<tr>
 			<td><code>paused</code></td>
@@ -316,8 +316,11 @@
 </table>
 
 <!-- ================================================================ -->
-<h2>Continuous Splats</h2>
-<p>Automatic splat generation that runs every frame. Useful for ambient motion without pointer input.</p>
+<h2>Automatic Splats</h2>
+<p>
+	Automatic splat generation for ambient motion without pointer input.
+	Think of it as a timer that injects small bursts of dye and velocity.
+</p>
 
 <table>
 	<thead>
@@ -330,58 +333,58 @@
 	</thead>
 	<tbody>
 		<tr>
-			<td><code>randomSplatRate</code></td>
+			<td><code>autoSplatRate</code></td>
 			<td><code>number</code></td>
 			<td><code>0</code></td>
-			<td>Splats per second. 0 = disabled.</td>
+			<td>Automatic burst rate in splats per second. 0 = disabled.</td>
 		</tr>
 		<tr>
-			<td><code>randomSplatCount</code></td>
+			<td><code>autoSplatCount</code></td>
 			<td><code>number</code></td>
 			<td><code>1</code></td>
-			<td>Number of splats per burst.</td>
+			<td>Number of splats emitted each automatic burst.</td>
 		</tr>
 		<tr>
-			<td><code>randomSplatColor</code></td>
+			<td><code>autoSplatColor</code></td>
 			<td><code>RGB | null</code></td>
 			<td><code>null</code></td>
-			<td>Fixed color for continuous splats (0-1 linear range). <code>null</code> = random color each burst.</td>
+			<td>Fixed color for automatic splats (0-1 linear range). <code>null</code> = fresh random color per splat.</td>
 		</tr>
 		<tr>
-			<td><code>randomSplatDx</code></td>
+			<td><code>autoSplatVelocityX</code></td>
 			<td><code>number</code></td>
 			<td><code>0</code></td>
-			<td>X velocity for continuous splats (raw, not scaled by <code>splatForce</code>).</td>
+			<td>X velocity for automatic splats (raw, not scaled by <code>splatForce</code>). Ignored when <code>autoSplatSwirl</code> is nonzero.</td>
 		</tr>
 		<tr>
-			<td><code>randomSplatDy</code></td>
+			<td><code>autoSplatVelocityY</code></td>
 			<td><code>number</code></td>
 			<td><code>0</code></td>
-			<td>Y velocity for continuous splats (raw). Negative = downward in DOM.</td>
+			<td>Y velocity for automatic splats (raw). Negative = downward in DOM. Ignored when <code>autoSplatSwirl</code> is nonzero.</td>
 		</tr>
 		<tr>
-			<td><code>randomSplatSpawnY</code></td>
+			<td><code>autoSplatCenterY</code></td>
 			<td><code>number</code></td>
 			<td><code>0.5</code></td>
-			<td>Vertical spawn center in 0-1 (bottom to top).</td>
+			<td>Vertical center of the spawn band: <code>0</code> = bottom, <code>0.5</code> = center, <code>1</code> = top.</td>
 		</tr>
 		<tr>
-			<td><code>randomSplatEvenSpacing</code></td>
+			<td><code>autoSplatEvenX</code></td>
 			<td><code>boolean</code></td>
 			<td><code>false</code></td>
-			<td>Distribute splats evenly across the horizontal axis instead of random x positions.</td>
+			<td>Within each burst, use equal x positions such as 25%, 50%, 75% instead of random x positions.</td>
 		</tr>
 		<tr>
-			<td><code>randomSplatSwirl</code></td>
+			<td><code>autoSplatSwirl</code></td>
 			<td><code>number</code></td>
 			<td><code>0</code></td>
-			<td>Tangential velocity relative to center. Positive = counter-clockwise.</td>
+			<td>Orbital velocity around the container/canvas center. Positive = counter-clockwise; negative = clockwise.</td>
 		</tr>
 		<tr>
-			<td><code>randomSplatSpread</code></td>
+			<td><code>autoSplatBandHeight</code></td>
 			<td><code>number</code></td>
 			<td><code>0.1</code></td>
-			<td>Vertical spread of spawn positions. Set to 2.0 for full-canvas coverage.</td>
+			<td>Height of the spawn band. <code>0</code> = one horizontal line, <code>0.1</code> = ±5%, <code>2.0</code> = full canvas.</td>
 		</tr>
 	</tbody>
 </table>
@@ -634,7 +637,7 @@
 	Zero overhead. Most numeric props live here: <code>densityDissipation</code>,
 	<code>velocityDissipation</code>, <code>pressure</code>, <code>curl</code>,
 	<code>splatRadius</code>, <code>splatForce</code>, <code>colorUpdateSpeed</code>,
-	<code>bloomIntensity</code>, <code>sunraysWeight</code>, all <code>randomSplat*</code> props,
+	<code>bloomIntensity</code>, <code>sunraysWeight</code>, all <code>autoSplat*</code> props,
 	all <code>glass*</code> scalars, all <code>reveal*</code> scalars, all <code>distortion*</code>
 	scalars, <code>stickyStrength</code>, <code>stickyPressure</code>, <code>stickyAmplify</code>,
 	<code>pointerTarget</code>, and <code>openBoundary</code>.

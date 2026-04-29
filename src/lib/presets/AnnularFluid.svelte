@@ -9,7 +9,7 @@
   The annulus is centered at (0.5, 0.5) with innerRadius 0.15 and
   outerRadius 0.45. Eight tangential preset jets are positioned at the
   midpoint radius (0.30) to establish a counter-clockwise ring vortex.
-  `randomSplatSwirl` sustains the orbital motion after the initial jets
+  `autoSplatSwirl` sustains the orbital motion after the initial jets
   fade.
 -->
 
@@ -94,9 +94,9 @@
 	initialSplatCount={0}
 	backColor={{ r: 4, g: 2, b: 12 }}
 	presetSplats={PRESET_SPLATS}
-	randomSplatRate={0.5}
-	randomSplatCount={5}
-	randomSplatSpawnY={0.5}
-	randomSplatSpread={0.8}
-	randomSplatSwirl={600}
+	autoSplatRate={0.5}
+	autoSplatCount={5}
+	autoSplatCenterY={0.5}
+	autoSplatBandHeight={0.8}
+	autoSplatSwirl={600}
 />

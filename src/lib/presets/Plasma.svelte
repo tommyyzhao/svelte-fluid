@@ -24,7 +24,7 @@
     center stays bright. This maintains the radial brightness gradient (bright
     core, dark periphery) that reads as confinement. Without it, all colors
     accumulate uniformly and grey-wash the canvas.
-  - **Continuous random splats (rate: 0.4 /s, spawnY 0.5).** Fresh HDR color
+  - **Automatic splats (rate: 0.4 /s, centered vertically).** Fresh HDR color
     is injected into the center-height strip. The existing vortex carries new
     blobs into the swirling core, preventing the plasma from fading over time.
   - **Dark background { 4, 2, 12 }.** Near-black deep purple maximizes the
@@ -113,8 +113,8 @@
 	initialSplatCount={0}
 	backColor={{ r: 4, g: 2, b: 12 }}
 	presetSplats={PRESET_SPLATS}
-	randomSplatRate={0.4}
-	randomSplatCount={4}
-	randomSplatEvenSpacing={false}
-	randomSplatSpawnY={0.5}
+	autoSplatRate={0.4}
+	autoSplatCount={4}
+	autoSplatEvenX={false}
+	autoSplatCenterY={0.5}
 />

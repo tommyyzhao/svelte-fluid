@@ -57,7 +57,7 @@
 		dyeResolution = 512,
 		pressureIterations = 6,
 		bloomIterations = 4,
-		randomSplatRate = 0,
+		autoSplatRate = 0,
 		initialSplatCount = 0,
 		backColor = { r: 8, g: 8, b: 16 },
 		pointerTarget = 'window' as const,
@@ -172,7 +172,7 @@
 			{dyeResolution}
 			{pressureIterations}
 			{bloomIterations}
-			{randomSplatRate}
+			{autoSplatRate}
 			{initialSplatCount}
 			{backColor}
 			{pointerTarget}

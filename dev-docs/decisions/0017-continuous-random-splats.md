@@ -13,7 +13,7 @@ array is consumed once at construction and cannot simulate ongoing
 random events.
 
 Users also want to control this behavior declaratively (e.g.,
-`randomSplatRate={0.5}` for one drop every 2 seconds) without touching
+`autoSplatRate={0.5}` for one drop every 2 seconds) without touching
 the imperative API.
 
 Furthermore, presets like `InkInWater` need continuous splats to match
@@ -27,35 +27,35 @@ Add six new config fields to `FluidConfig` / `ResolvedConfig`:
 
 | camelCase | SCREAMING_CASE | Type | Default | Meaning |
 | --- | --- | --- | --- | --- |
-| `randomSplatRate` | `RANDOM_SPLAT_RATE` | `number` | `0` | Splats per second. 0 = disabled. |
-| `randomSplatCount` | `RANDOM_SPLAT_COUNT` | `number` | `1` | Number of splats per burst. |
-| `randomSplatColor` | `RANDOM_SPLAT_COLOR` | `RGB \| null` | `null` | Fixed color for continuous splats. Null = random. |
-| `randomSplatDx` | `RANDOM_SPLAT_DX` | `number` | `0` | X velocity for continuous splats. |
-| `randomSplatDy` | `RANDOM_SPLAT_DY` | `number` | `0` | Y velocity for continuous splats. |
-| `randomSplatSpawnY` | `RANDOM_SPLAT_SPAWN_Y` | `number` | `0.5` | Normalized Y position (0–1, clamped) for continuous splats. |
+| `autoSplatRate` | `AUTO_SPLAT_RATE` | `number` | `0` | Splats per second. 0 = disabled. |
+| `autoSplatCount` | `AUTO_SPLAT_COUNT` | `number` | `1` | Number of splats per burst. |
+| `autoSplatColor` | `AUTO_SPLAT_COLOR` | `RGB \| null` | `null` | Fixed color for continuous splats. Null = random. |
+| `autoSplatVelocityX` | `AUTO_SPLAT_VELOCITY_X` | `number` | `0` | X velocity for continuous splats. |
+| `autoSplatVelocityY` | `AUTO_SPLAT_VELOCITY_Y` | `number` | `0` | Y velocity for continuous splats. |
+| `autoSplatCenterY` | `AUTO_SPLAT_CENTER_Y` | `number` | `0.5` | Normalized Y position (0–1, clamped) for continuous splats. |
 
 Implementation lives entirely inside `FluidEngine` — a private method
-`accumulateRandomSplatTimer(dt)` is called from `update()`. It
+`accumulateAutoSplatTimer(dt)` is called from `update()`. It
 accumulates delta time; when the accumulated time exceeds
-`1 / RANDOM_SPLAT_RATE`, it creates `RANDOM_SPLAT_COUNT` splats at
+`1 / AUTO_SPLAT_RATE`, it creates `AUTO_SPLAT_COUNT` splats at
 random x/y positions with the configured color and velocity.
 
-When `RANDOM_SPLAT_COLOR` is `null`, the color is randomly generated
+When `AUTO_SPLAT_COLOR` is `null`, the color is randomly generated
 via `generateColor(rng)` (matching `multipleSplats()`). When set, the
 provided RGB is used directly (with the same 10× HDR multiplier applied
 to `generateColor` output).
 
-Velocity fields (`RANDOM_SPLAT_DX`, `RANDOM_SPLAT_DY`) are passed
+Velocity fields (`AUTO_SPLAT_VELOCITY_X`, `AUTO_SPLAT_VELOCITY_Y`) are passed
 directly to `splat()`, same as `PresetSplat.dx/dy` — not scaled by
 `splatForce`.
 
 All six fields are **Bucket A** (hot-updatable scalar). Rate changes
-take effect next frame. Setting `randomSplatRate = 0` at runtime stops
+take effect next frame. Setting `autoSplatRate = 0` at runtime stops
 continuous generation and resets the timer.
 
 The timer respects:
-- `PAUSED` — accumulation continues (so re-enabling doesn't burst),
-  but splats are still queued and consumed by `applyInputs()`.
+- `PAUSED` — accumulation stops while paused, so pausing freezes the
+  simulation without queuing a delayed burst for resume.
 - `lazy` — engine doesn't tick when off-screen (already handled by
   teardown/reconcile).
 
@@ -63,8 +63,8 @@ The timer respects:
 
 **Positive:**
 - Presets like `InkInWater` can declaratively enable "drops in water"
-  with matching color and velocity: `randomSplatColor={{ r: 0.05, g: 0.09, b: 0.53 }}`, `randomSplatDy={-320}`.
-- Hot-updatable: users can bind `randomSplatRate` to a slider and
+  with matching color and velocity: `autoSplatColor={{ r: 0.05, g: 0.09, b: 0.53 }}`, `autoSplatVelocityY={-320}`.
+- Hot-updatable: users can bind `autoSplatRate` to a slider and
   change density at runtime.
 - Zero cost when disabled (rate = 0): the timer path is a single
   `if` check.

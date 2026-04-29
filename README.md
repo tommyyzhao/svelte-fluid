@@ -21,7 +21,7 @@ WebGL fluid simulation as a Svelte 5 component library.
 Other WebGL fluid packages are vanilla JS wrappers around the same upstream
 simulation. svelte-fluid is purpose-built for Svelte 5:
 
-- **True component API** — `<Fluid />` with 40+ typed props, live reactive updates, and full cleanup on unmount
+- **True component API** — `<Fluid />` with 70+ typed props, live reactive updates, and full cleanup on unmount
 - **Multiple independent instances** per page — no shared GL state
 - **Deterministic seeding** — same `seed` reproduces the same splat pattern across resizes
 - **10 presets** — drop-in `<LavaLamp />`, `<Aurora />`, `<CircularFluid />`, `<SvgPathFluid />`, etc.
@@ -65,8 +65,8 @@ start with a slightly brighter starter config:
   <Fluid
     seed={42}
     initialSplatCount={20}
-    randomSplatRate={0.25}
-    randomSplatCount={2}
+    autoSplatRate={0.25}
+    autoSplatCount={2}
     densityDissipation={0.35}
     velocityDissipation={0.08}
     curl={45}
@@ -143,8 +143,8 @@ config from the upstream project.
 | `splatRadius` | `number` | `0.25` | hot |
 | `splatForce` | `number` | `6000` | hot |
 | `shading` | `boolean` | `true` | **shader recompile** |
-| `colorful` | `boolean` | `true` | hot |
-| `colorUpdateSpeed` | `number` | `10` | hot |
+| `colorful` | `boolean` | `true` | hot; rotate pointer/touch splat colors over time |
+| `colorUpdateSpeed` | `number` | `10` | hot; pointer/touch color rotation rate |
 | `paused` | `boolean` | `false` | hot |
 | `backColor` | `{r,g,b}` | `{0,0,0}` | 0–255 RGB; hot |
 | `transparent` | `boolean` | `false` | hot |
@@ -160,15 +160,15 @@ config from the upstream project.
 | `initialSplatCount` | `number` | — | exact count for the first frame |
 | `initialSplatCountMin` | `number` | `5` | min of random range |
 | `initialSplatCountMax` | `number` | `25` | max of random range |
-| `randomSplatRate` | `number` | `0` | continuous splats/sec; 0 = disabled (Bucket A) |
-| `randomSplatCount` | `number` | `1` | splats per continuous burst (Bucket A) |
-| `randomSplatColor` | `{r,g,b}` | `null` | fixed color for continuous splats; null = random (Bucket A) |
-| `randomSplatDx` | `number` | `0` | x velocity for continuous splats (Bucket A) |
-| `randomSplatDy` | `number` | `0` | y velocity for continuous splats (Bucket A) |
-| `randomSplatSpawnY` | `number` | `0.5` | normalized y position for continuous splats (0–1, clamped) (Bucket A) |
-| `randomSplatEvenSpacing` | `boolean` | `false` | distribute continuous splats evenly across x axis |
-| `randomSplatSwirl` | `number` | `0` | tangential velocity relative to center; positive = CCW |
-| `randomSplatSpread` | `number` | `0.1` | vertical spread of spawn positions; 2.0 = full canvas |
+| `autoSplatRate` | `number` | `0` | automatic burst rate in splats/sec; 0 = disabled (Bucket A) |
+| `autoSplatCount` | `number` | `1` | number of splats emitted each burst (Bucket A) |
+| `autoSplatColor` | `{r,g,b}` | `null` | fixed color for automatic splats; null = fresh random color per splat (Bucket A) |
+| `autoSplatVelocityX` | `number` | `0` | x velocity for automatic splats; ignored when `autoSplatSwirl` is nonzero (Bucket A) |
+| `autoSplatVelocityY` | `number` | `0` | y velocity for automatic splats; negative moves downward in DOM space (Bucket A) |
+| `autoSplatCenterY` | `number` | `0.5` | vertical center of the spawn band: 0 = bottom, 0.5 = center, 1 = top (Bucket A) |
+| `autoSplatEvenX` | `boolean` | `false` | within each burst, use equal x positions instead of random x positions |
+| `autoSplatSwirl` | `number` | `0` | orbital velocity around the container/canvas center; positive = CCW |
+| `autoSplatBandHeight` | `number` | `0.1` | height of the spawn band; 0 = single line, 0.1 = ±5%, 2.0 = full canvas |
 | `pointerInput` | `boolean` | `true` | hot; toggles canvas + window listeners |
 | `splatOnHover` | `boolean` | `false` | hot; splat on mousemove without click |
 | `containerShape` | `ContainerShape` | `null` | confine fluid to a shape; see [Container shapes](#container-shapes) |
@@ -195,10 +195,10 @@ tuning:
 | Component | Look |
 | --- | --- |
 | `<LavaLamp />` | Warm blobs in a glass vessel with rim refraction |
-| `<Plasma />` | Full-spectrum fluid circulating in a toroidal ring |
+| `<Plasma />` | Full-spectrum jets converging into a bright plasma core |
 | `<InkInWater />` | India ink sinking through dark water with volumetric bloom |
 | `<FrozenSwirl />` | An icy whirlpool frozen inside a circular vessel |
-| `<Aurora />` | Green, magenta, and pale-blue ribbons drifting like northern lights |
+| `<Aurora />` | Green, magenta, and pale-blue ribbons glowing like northern lights |
 | `<ToroidalTempest />` | Full-spectrum storm circulating in a high-velocity ring |
 | `<CircularFluid />` | Vivid swirling fluid contained inside a circle |
 | `<FrameFluid />` | Colorful fluid swirling around a rectangular inner cutout |
@@ -220,10 +220,12 @@ tuning:
 </div>
 ```
 
-Each preset accepts only `width`, `height`, `class`, `style`, `seed`,
-`lazy`, and `aria-label` — the rest of the configuration is intentionally fixed. They all
-re-expose the imperative `handle` so you can still call `splat()` /
-`randomSplats()` from outside via `bind:this`.
+Each preset forwards a small common set of props: `width`, `height`,
+`class`, `style`, `seed`, `lazy`, and `aria-label`. Some shape presets
+also expose small shape-specific knobs such as `splatOnHover` or corner
+radii. The main physics recipe is intentionally fixed. They all re-expose
+the imperative `handle` so you can still call `splat()` / `randomSplats()`
+from outside via `bind:this`.
 
 ### Building your own preset
 

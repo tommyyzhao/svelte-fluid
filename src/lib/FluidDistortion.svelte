@@ -332,6 +332,9 @@
 	.svelte-fluid-distortion {
 		position: relative;
 		overflow: hidden;
+		overflow: clip;
+		contain: layout paint;
+		isolation: isolate;
 		width: 100%;
 		height: 100%;
 	}

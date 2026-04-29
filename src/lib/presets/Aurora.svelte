@@ -2,14 +2,16 @@
   svelte-fluid — Aurora preset
 
   Visual intent: northern lights — green, magenta, and pale-blue ribbons
-  drifting laterally across a deep night sky. Five horizontal-band
-  splats with sideways velocity create the cross-canvas drift; high
-  bloom and sunrays produce the characteristic glow.
+  layered across a deep night sky. Five horizontal-band splats give the
+  initial composition a sideways push, then velocity dissipation lets the
+  bands settle into a luminous steady wash; high bloom and sunrays
+  produce the characteristic glow.
 
   Trade-offs:
   - `densityDissipation: 0` so the ribbons persist and layer onto each
-    other. The mid velocity dissipation (0.3) softens the lateral motion
-    so the bands meander rather than fly across.
+    other. The mid velocity dissipation (0.3) damps the opening push
+    quickly, so the preset reads as a glowing aurora field rather than a
+    continuously moving marquee.
   - `colorful: false` because the carefully picked aurora palette would
     be drowned out by the engine's seeded color rotation.
   - Heavy bloom (`bloomIntensity: 1.5`) is the look — without it the
