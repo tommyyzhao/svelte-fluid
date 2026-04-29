@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0
+
+### Minor Changes
+
+- [`af72b3b`](https://github.com/tommyyzhao/svelte-fluid/commit/af72b3b04b1168f09f96ec76a39f12594fcf2f86) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Rename automatic splat configuration props from `randomSplat*` to clearer `autoSplat*` names.
+
+### Patch Changes
+
+- [`df0c7e0`](https://github.com/tommyyzhao/svelte-fluid/commit/df0c7e01bd7ebd7f55267d7984373cd129a43a75) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Fix single-channel mask texture uploads on WebGL drivers that require byte-aligned rows.
+
 ## 0.1.1
 
 ### Patch Changes
@@ -444,8 +454,8 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
   loads image URLs asynchronously and uploads as GL texture. Handles CORS,
   stale load cancellation, and context restore re-loading.
 - **Demo: Distortion section** — 4 cards (Image distortion, Auto-distort,
-  Strong warp, Contained with shape) using Bosch's *Garden of Earthly
-  Delights* (public domain, 1490–1500).
+  Strong warp, Contained with shape) using Bosch's _Garden of Earthly
+  Delights_ (public domain, 1490–1500).
 - **14 new tests** (`distortion.test.ts`) — UV offset math, edge alpha,
   bleed remapping, config defaults, mutual exclusivity with REVEAL.
 - **ADR-0030** — documents FluidDistortion architecture decisions.
@@ -707,7 +717,7 @@ and this project adheres to [semantic versioning](https://semver.org/spec/v2.0.0
   a "How it works" explainer. All cards are excluded from the fluid.
 - **Rounded rect shape card** on the main demo page — new "Rounded rect"
   card in the Container shapes section, using `containerShape: { type:
-  'roundedRect' }`. Shapes section now has 6 cards (was 5) for symmetric
+'roundedRect' }`. Shapes section now has 6 cards (was 5) for symmetric
   2-column layout.
 - **`splatOnHover` prop on shape presets** — `CircularFluid`, `FrameFluid`,
   `AnnularFluid`, and `SvgPathFluid` now accept and forward `splatOnHover`.
