@@ -1,4 +1,5 @@
 <script lang="ts" module>
+	import { base } from '$app/paths';
 	// Engine defaults — kept in sync with FluidEngine.DEFAULTS.
 	export const D: {
 		curl: number; splatRadius: number; splatForce: number;
@@ -104,7 +105,7 @@
 		stickyPressure: 0.15,
 		stickyAutoAnimateSpeed: 2.0,
 		stickyAutoAnimateDuration: 5.0,
-		distortionSrc: '/bosch-garden.jpg',
+		distortionSrc: `${base}/bosch-garden.jpg`,
 		distortionStrength: 0.4,
 		distortionIntensity: 24,
 		distortionAutoDistort: false,
