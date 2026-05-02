@@ -1,15 +1,26 @@
 <!--
   /hero — banner capture route.
 
-  Fixed 1280×640 layout, 2×2 grid showcasing the four headline
-  capabilities: text-masked fluid, glass refraction, reveal scratch,
-  image distortion. Deterministic seeds and auto-* animations so
-  the scene records cleanly without pointer input.
+  Fixed 1280×640 layout, 2×2 grid on a white background (matches npmjs):
+  - Top-left: FluidStick "fluid" text, infinite Lissajous cursor
+  - Top-right: plain Fluid, delayed auto-splats that "arrive" from left panel
+  - Bottom-left: FluidReveal, vigorous auto-reveal, iridescent accents, white cover
+  - Bottom-right: FluidText "fluid", correctly centred, vigorous swirling splats
 -->
 
 <script lang="ts">
-	import { Fluid, FluidText, FluidReveal, FluidDistortion } from '$lib/index.js';
-	import { base } from '$app/paths';
+	import { onMount } from 'svelte';
+	import { Fluid, FluidStick, FluidReveal, FluidText } from '$lib/index.js';
+
+	// Top-right starts silent, then "arrives" from the left panel 1 s before
+	// capture begins (capture script warms up for 2.5 s total).
+	let rightSplatRate = $state(0);
+
+	onMount(() => {
+		setTimeout(() => {
+			rightSplatRate = 4;
+		}, 1500);
+	});
 </script>
 
 <svelte:head>
@@ -18,76 +29,82 @@
 
 <div class="stage">
 	<div class="grid">
-		<!-- Top-left: text-masked fluid -->
+		<!-- Top-left: sticky "svelte" — Lissajous cursor runs forever -->
 		<div class="cell">
-			<FluidText
-				text="fluid"
-				font="900 220px 'Helvetica Neue', Arial, sans-serif"
+			<FluidStick
+				text="svelte"
+				font="900 180px 'Helvetica Neue', Arial, sans-serif"
 				seed={101}
 				colorful
-				bloom
-				sunrays
-				densityDissipation={0.6}
-				initialSplatCount={18}
-				autoSplatRate={2.5}
-				autoSplatCount={2}
-				autoSplatBandHeight={2}
+				backColor={{ r: 255, g: 255, b: 255 }}
+				autoAnimate
+				autoAnimateSpeed={2.5}
+				autoAnimateDuration={0}
+				strength={0.97}
+				amplify={3.0}
+				densityDissipation={0.97}
+				initialSplatCount={5}
 			/>
 		</div>
 
-		<!-- Top-right: glass orb -->
+		<!-- Top-right: open fluid, splats arrive 1.5 s in with rightward push -->
 		<div class="cell">
 			<Fluid
 				seed={202}
-				containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.42 }}
-				glass
-				glassThickness={0.05}
-				glassRefraction={0.55}
-				glassReflectivity={0.18}
-				glassChromatic={0.25}
-				bloom
-				sunrays
 				colorful
-				densityDissipation={0.4}
-				initialSplatCount={14}
-				autoSplatRate={2}
-				autoSplatCount={1}
-				autoSplatSwirl={0.6}
+				backColor={{ r: 255, g: 255, b: 255 }}
+				densityDissipation={0.7}
+				velocityDissipation={0.9}
+				initialSplatCount={3}
+				autoSplatRate={rightSplatRate}
+				autoSplatCount={2}
+				autoSplatVelocityX={700}
+				autoSplatBandHeight={0.6}
+				autoSplatCenterY={0.5}
 			/>
 		</div>
 
-		<!-- Bottom-left: reveal scratch over a tagline -->
+		<!-- Bottom-left: vigorous reveal, iridescent fringes, solid white cover.
+		     curve=0.8 gives a wide soft gradient fringe so both teal (outer) and
+		     magenta (inner) colours show up against the white cover. sensitivity=0.25
+		     saturates the fringe colours so they read as vivid, not blue-gray. -->
 		<div class="cell reveal-cell">
 			<FluidReveal
 				seed={303}
 				autoReveal
-				autoRevealSpeed={1.2}
-				sensitivity={0.18}
-				curve={0.5}
+				autoRevealSpeed={2.5}
+				sensitivity={0.25}
+				curve={0.8}
 				fadeBack
-				coverColor={{ r: 0.07, g: 0.07, b: 0.08 }}
-				fringeColor={{ r: 0.85, g: 0.55, b: 0.95 }}
-				accentColor={{ r: 0.25, g: 0.45, b: 0.95 }}
+				coverColor={{ r: 1, g: 1, b: 1 }}
+				fringeColor={{ r: 0.2, g: 0.95, b: 0.85 }}
+				accentColor={{ r: 0.88, g: 0.2, b: 0.95 }}
 			>
 				<div class="reveal-content">
-					<div class="kicker">scratch &amp; reveal</div>
-					<div class="headline">WebGL fluid<br />for Svelte 5</div>
+					<div class="kicker">fluid reveal</div>
+					<div class="headline">WebGL fluid components<br />for Svelte 5</div>
 				</div>
 			</FluidReveal>
 		</div>
 
-		<!-- Bottom-right: image distortion -->
-		<div class="cell">
-			<FluidDistortion
+		<!-- Bottom-right: FluidText "fluid", centred, vigorous splats.
+		     densityDissipation=0.7 so dye persists long enough to be visible on
+		     the transparent canvas; curl=30 for extra turbulence inside letters. -->
+		<div class="cell center-cell">
+			<FluidText
+				text="fluid"
+				font="900 220px 'Helvetica Neue', Arial, sans-serif"
 				seed={404}
-				src="{base}/bosch-garden.jpg"
-				autoDistort
-				autoDistortSpeed={1.0}
-				strength={0.32}
-				intensity={18}
-				initialSplats={3}
-				fit="cover"
-				scale={1.15}
+				colorful
+				densityDissipation={0.7}
+				velocityDissipation={0.8}
+				curl={30}
+				initialSplatCount={25}
+				autoSplatRate={3}
+				autoSplatCount={2}
+				autoSplatBandHeight={2}
+				autoSplatSwirl={450}
+				style="width: 100%"
 			/>
 		</div>
 	</div>
@@ -95,14 +112,16 @@
 
 <style>
 	:global(html, body) {
-		background: #0a0a0a;
+		background: #ffffff;
+		margin: 0;
+		padding: 0;
 	}
 
 	.stage {
 		width: 1280px;
 		height: 640px;
 		margin: 0;
-		background: #0a0a0a;
+		background: #ffffff;
 		overflow: hidden;
 	}
 
@@ -121,7 +140,15 @@
 	}
 
 	.reveal-cell {
-		background: #0a0a0a;
+		background: #ffffff;
+	}
+
+	/* Vertically centre FluidText within its cell. FluidText is inline-block
+	   with a computed aspect-ratio, so flex centering is needed here. */
+	.center-cell {
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 
 	.reveal-content {
@@ -134,14 +161,14 @@
 		gap: 12px;
 		text-align: center;
 		padding: 24px;
-		color: #f5f5f7;
+		color: #1a1a1a;
 	}
 
 	.kicker {
 		font-size: 13px;
 		letter-spacing: 0.18em;
 		text-transform: uppercase;
-		color: #a8a8b3;
+		color: #6b6b7b;
 	}
 
 	.headline {

@@ -6,7 +6,7 @@
 
 # svelte-fluid
 
-WebGL fluid simulation as a Svelte 5 component library.
+Fluid simulation for Svelte 5.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/tommyyzhao/svelte-fluid/main/static/hero.webp" alt="svelte-fluid showcase: text-masked fluid, glass orb with chromatic refraction, reveal-scratch effect, and image distortion" width="720" />
@@ -16,15 +16,15 @@ WebGL fluid simulation as a Svelte 5 component library.
   <strong><a href="https://tommyyzhao.github.io/svelte-fluid/">Live demo</a></strong>
 </p>
 
-### Why this library?
+### Why svelte-fluid?
 
-Other WebGL fluid packages are vanilla JS wrappers around the same upstream
-simulation. svelte-fluid is purpose-built for Svelte 5:
+Most fluid packages are vanilla JS with a Svelte wrapper bolted on.
+This one is built for Svelte 5 from the ground up:
 
 - **True component API** — `<Fluid />` with 70+ typed props, live reactive updates, and full cleanup on unmount
 - **Multiple independent instances** per page — no shared GL state
 - **Deterministic seeding** — same `seed` reproduces the same splat pattern across resizes
-- **10 presets** — drop-in `<LavaLamp />`, `<Aurora />`, `<CircularFluid />`, `<SvgPathFluid />`, etc.
+- **10 example presets** — reference configurations showing the range of what's possible
 - **5 container shapes** — circle, frame, roundedRect, annulus, and arbitrary SVG paths / text via mask texture
 - **Glass post-processing** — refraction, specular highlights, and chromatic aberration on any container shape
 - **Lazy loading + auto-pause** — defer engine creation until viewport entry
@@ -54,8 +54,7 @@ bun add svelte-fluid
 </div>
 ```
 
-That's the entire setup. The canvas fills its parent and tracks parent
-size via `ResizeObserver`.
+That's it. Canvas fills its parent, resize handled automatically.
 
 For a first-run screen that shows motion immediately in a blank app,
 start with a slightly brighter starter config:
@@ -187,10 +186,8 @@ The component also forwards any standard `<canvas>` attributes
 
 ## Presets
 
-Ten opinionated wrapper components ship alongside `<Fluid />`. Each one
-hard-codes a physics + visual configuration and (for most of them) a
-hand-crafted set of opening splats so you can drop them in without any
-tuning:
+Ten reference configurations demonstrating different physics setups and
+container shapes. Useful as starting points for building your own:
 
 | Component | Look |
 | --- | --- |
@@ -400,17 +397,13 @@ For a local bounded canvas, use `<Fluid />` with a parent size or fixed
 
 ## Resize behavior
 
-A `ResizeObserver` watches the wrapper container. Whenever the CSS
-dimensions change, the engine is fully torn down and reinstantiated with
-the same `seed`, so the initial splat pattern is identical. If you don't
-provide a `seed`, the component generates one once at mount and reuses
-it across resizes.
+On resize, the engine rebuilds from the same `seed` — same opening pattern,
+no flicker. Omit `seed` and the component picks one at mount and holds onto it.
 
 ## Multiple instances
 
 Each `<Fluid />` owns its own WebGL context, framebuffers, RAF loop,
-listeners, and pointer state. Browsers cap simultaneous WebGL contexts
-at 8–16 per tab, so plan accordingly for very dense layouts.
+listeners, and pointer state. Browsers cap simultaneous WebGL contexts at 8–16 per tab.
 
 For pages with more than ~6 simultaneous instances, pass `lazy={true}`
 on each one. The component will then defer engine creation until the
@@ -422,13 +415,12 @@ down when it leaves, keeping the live context count bounded:
 <Plasma lazy />
 ```
 
-The cost is a one-time shader-recompile pause (~100–500ms) when an
-instance scrolls back into view. For demo / showcase pages this is
-hidden behind the user's scroll momentum and rarely noticed.
+The ~100–500ms shader recompile happens off-screen while the user is
+still scrolling, so it lands before they get there.
 
 ## Programmatic engine
 
-If you need raw control without the Svelte component:
+Not using the Svelte component? The raw engine works standalone:
 
 ```ts
 import { FluidEngine } from 'svelte-fluid';
@@ -469,11 +461,8 @@ changes.
 
 ## Acknowledgments
 
-This library is a derivative work of
-[PavelDoGreat/WebGL-Fluid-Simulation](https://github.com/PavelDoGreat/WebGL-Fluid-Simulation),
-the original 2017 WebGL implementation by Pavel Dobryakov. The shader
-sources are reused unchanged. Both the upstream project and this port
-are MIT-licensed; see `LICENSE` for the full notices.
+Built on [PavelDoGreat/WebGL-Fluid-Simulation](https://github.com/PavelDoGreat/WebGL-Fluid-Simulation),
+Pavel Dobryakov's iconic 2017 fluid sim. Shaders reused unchanged; both MIT-licensed.
 
 The reveal and distortion effects were inspired by
 [Ksenia Kondrashova's](https://codepen.io/ksenia-k) creative WebGL

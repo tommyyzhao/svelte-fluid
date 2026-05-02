@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1
+
+### Patch Changes
+
+- Refresh hero animation (white background, svelte sticky text, fluid reveal, fluid text panels) and revise README copy.
+
 ## 0.2.0
 
 ### Minor Changes
