@@ -106,7 +106,7 @@
 	let stickyRemountKey = $state(0);
 
 	// ---- Distortion state ----
-	let distortionSrc = $state('/bosch-garden.jpg');
+	let distortionSrc = $state(`${base}/bosch-garden.jpg`);
 	let distortionStrength = $state(0.4);
 	let distortionIntensity = $state(24);
 	let distortionAutoDistort = $state(false);
@@ -1527,7 +1527,7 @@
 			<Card title="Image distortion" description="Cursor movement warps the image like liquid glass. The velocity field bends UV coordinates." onCustomize={() => loadConfig(PRESET_CONFIGS['Image distortion'], 'Image distortion')} snippet={`<FluidDistortion\n  src="/bosch-garden.jpg"\n  strength={0.4}\n  intensity={24}\n/>`}>
 				<FluidDistortion
 					lazy
-					src="/bosch-garden.jpg"
+					src="{base}/bosch-garden.jpg"
 					strength={0.4}
 					intensity={24}
 				/>
@@ -1535,7 +1535,7 @@
 			<Card title="Auto-distort" description="An automated cursor creates a continuous ripple effect. Touch or click to take over." onCustomize={() => loadConfig(PRESET_CONFIGS['Auto-distort'], 'Auto-distort')} snippet={`<FluidDistortion\n  src="/bosch-garden.jpg"\n  autoDistort\n  autoDistortSpeed={1.0}\n  strength={0.3}\n  intensity={20}\n/>`}>
 				<FluidDistortion
 					lazy
-					src="/bosch-garden.jpg"
+					src="{base}/bosch-garden.jpg"
 					autoDistort
 					autoDistortSpeed={1.0}
 					strength={0.3}
@@ -1545,7 +1545,7 @@
 			<Card title="Strong warp" description="High distortion power and intensity for dramatic liquid warping." onCustomize={() => loadConfig(PRESET_CONFIGS['Strong warp'], 'Strong warp')} snippet={`<FluidDistortion\n  src="/bosch-garden.jpg"\n  strength={0.8}\n  intensity={50}\n  velocityDissipation={0.95}\n/>`}>
 				<FluidDistortion
 					lazy
-					src="/bosch-garden.jpg"
+					src="{base}/bosch-garden.jpg"
 					strength={0.8}
 					intensity={50}
 					velocityDissipation={0.95}
@@ -1554,7 +1554,7 @@
 			<Card title="Contained with shape" description="Distortion confined to a circular container shape." onCustomize={() => loadConfig(PRESET_CONFIGS['Contained distortion'], 'Contained distortion')} snippet={`<FluidDistortion\n  src="/bosch-garden.jpg"\n  strength={0.4}\n  intensity={24}\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5,\n    radius: 0.45\n  }}\n/>`}>
 				<FluidDistortion
 					lazy
-					src="/bosch-garden.jpg"
+					src="{base}/bosch-garden.jpg"
 					strength={0.4}
 					intensity={24}
 					containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
