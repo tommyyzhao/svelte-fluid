@@ -1,6 +1,6 @@
 {
 	"name": "svelte-fluid",
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"description": "Fluid simulation for Svelte 5. Six WebGL components and ten presets for backgrounds, reveals, distortion, and sticky text.",
 	"license": "MIT",
 	"author": "Tommy Zhao (https://github.com/tommyyzhao)",
