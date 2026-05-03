@@ -1,7 +1,7 @@
 {
 	"name": "svelte-fluid",
 	"version": "0.2.1",
-	"description": "WebGL fluid simulation as a Svelte 5 component. Multi-instance, resize-stable, deterministic seeding. Port of Pavel Dobryakov's WebGL-Fluid-Simulation.",
+	"description": "Fluid simulation for Svelte 5. Six WebGL components and ten presets for backgrounds, reveals, distortion, and sticky text.",
 	"license": "MIT",
 	"author": "Tommy Zhao (https://github.com/tommyyzhao)",
 	"repository": {
@@ -70,16 +70,18 @@
 	"keywords": [
 		"svelte",
 		"svelte5",
+		"sveltekit",
 		"svelte-component",
 		"webgl",
 		"fluid",
-		"simulation",
-		"canvas",
-		"shader",
+		"fluid-simulation",
 		"navier-stokes",
-		"animation",
-		"background",
 		"glsl",
-		"interactive"
+		"background",
+		"animation",
+		"reveal",
+		"distortion",
+		"image-effects",
+		"creative-coding"
 	]
 }
