@@ -1014,6 +1014,16 @@ export class FluidEngine implements FluidHandle {
 				// Context lost between check and GL calls — silently ignore
 			}
 		};
+		image.onerror = () => {
+			if (this.disposed || this.contextLost) return;
+			if (this.config.DISTORTION_IMAGE_URL !== url) return;
+			if (this.distortionTexture) {
+				gl.deleteTexture(this.distortionTexture);
+				this.distortionTexture = null;
+			}
+			this.distortionLoadedUrl = null;
+			this.initDistortionFallback();
+		};
 		image.src = url;
 	}
 
