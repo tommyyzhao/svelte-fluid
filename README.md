@@ -1,7 +1,7 @@
 [![CI](https://github.com/tommyyzhao/svelte-fluid/actions/workflows/ci.yml/badge.svg)](https://github.com/tommyyzhao/svelte-fluid/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/svelte-fluid)](https://www.npmjs.com/package/svelte-fluid)
 [![npm downloads](https://img.shields.io/npm/dm/svelte-fluid)](https://www.npmjs.com/package/svelte-fluid)
-[![bundle size](https://img.shields.io/bundlephobia/minzip/svelte-fluid)](https://bundlephobia.com/package/svelte-fluid)
+[![install size](https://packagephobia.com/badge?p=svelte-fluid)](https://packagephobia.com/result?p=svelte-fluid)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 # svelte-fluid
