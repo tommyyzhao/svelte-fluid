@@ -484,7 +484,7 @@ Exposed via \`bind:this\` on any component.
 ## Presets
 
 Pre-configured \`&lt;Fluid /&gt;\` wrappers with opinionated physics. All accept:
-width, height, class, style, seed, lazy, aria-label.
+width, height, class, style, seed, lazy, splatOnHover, aria-label.
 
 | Preset          | Visual                                          | Container Shape              |
 |-----------------|------------------------------------------------|------------------------------|

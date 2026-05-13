@@ -26,7 +26,7 @@
 	/** Props consumed by `<ToroidalTempest />`. Sizing/seed/styling are forwarded; all other physics props are hard-coded. */
 	export type ToroidalTempestProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'aria-label'
+		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label'
 	>;
 </script>
 
@@ -42,6 +42,7 @@
 		style,
 		seed,
 		lazy,
+		splatOnHover,
 		'aria-label': ariaLabel
 	}: ToroidalTempestProps = $props();
 
@@ -95,6 +96,7 @@
 	{style}
 	{seed}
 	{lazy}
+	{splatOnHover}
 	aria-label={ariaLabel}
 	containerShape={{ type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.42 }}
 	curl={50}

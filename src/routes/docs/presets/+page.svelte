@@ -27,8 +27,8 @@
 
 <p>
 	All presets accept <code>width</code>, <code>height</code>, <code>class</code>,
-	<code>style</code>, <code>seed</code>, <code>lazy</code>, and <code>aria-label</code> props
-	for sizing, styling, and accessibility. Some also accept <code>splatOnHover</code>.
+	<code>style</code>, <code>seed</code>, <code>lazy</code>, <code>splatOnHover</code>, and
+	<code>aria-label</code> props for sizing, styling, accessibility, and interactive splatting.
 </p>
 
 <p>
@@ -475,6 +475,5 @@
 <p>
 	Some presets expose additional props beyond the common set. For example,
 	<code>&lt;FrameFluid&gt;</code> accepts <code>innerCornerRadius</code> and
-	<code>outerCornerRadius</code>, and several shape presets accept <code>splatOnHover</code>.
-	Check the preset's exported type for the full list.
+	<code>outerCornerRadius</code>. Check the preset's exported type for the full list.
 </p>

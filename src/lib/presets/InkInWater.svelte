@@ -31,7 +31,7 @@
 	/** Props consumed by `<InkInWater />`. */
 	export type InkInWaterProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'aria-label'
+		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label'
 	>;
 </script>
 
@@ -46,6 +46,7 @@
 		style,
 		seed,
 		lazy,
+		splatOnHover,
 		'aria-label': ariaLabel
 	}: InkInWaterProps = $props();
 
@@ -78,6 +79,7 @@
 	{style}
 	{seed}
 	{lazy}
+	{splatOnHover}
 	aria-label={ariaLabel}
 	curl={8}
 	densityDissipation={0.3}
