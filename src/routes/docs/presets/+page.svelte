@@ -39,7 +39,7 @@
 
 <hr />
 
-<h2>LavaLamp</h2>
+<h2 id="lavalamp">LavaLamp</h2>
 
 <p>Warm, slow-rising blobs inside a glass rounded-rect vessel on a light-silver background. The blobs never fade and sway with lazy buoyant motion, like real molten wax in a lava lamp.</p>
 
@@ -83,7 +83,7 @@
 
 <hr />
 
-<h2>Plasma</h2>
+<h2 id="plasma">Plasma</h2>
 
 <p>A vivid plasma ball with full-spectrum colors converging from all compass directions and churning at the center. Eight inward jets establish a magnetic-pinch convergence zone with intense bloom glow on a near-black backdrop.</p>
 
@@ -126,7 +126,7 @@
 
 <hr />
 
-<h2>InkInWater</h2>
+<h2 id="inkinwater">InkInWater</h2>
 
 <p>Concentrated ink droplets sinking through dark water, blooming outward as they fall. Modeled after india ink in a deep tank with organic tendrils from gentle Rayleigh-Taylor instability.</p>
 
@@ -167,7 +167,7 @@
 
 <hr />
 
-<h2>FrozenSwirl</h2>
+<h2 id="frozenswirl">FrozenSwirl</h2>
 
 <p>A single dramatic icy whirlpool in a circular vessel that spins itself out and comes to rest. High velocity dissipation freezes the motion fast, leaving a permanent crystalline curl on a deep navy backdrop.</p>
 
@@ -202,7 +202,7 @@
 
 <hr />
 
-<h2>Aurora</h2>
+<h2 id="aurora">Aurora</h2>
 
 <p>Northern lights — green, magenta, and pale-blue ribbons layered across a deep night sky. The opening bands have a sideways push, then settle into a luminous steady wash while heavy bloom and sunrays grow the atmospheric glow over time.</p>
 
@@ -238,7 +238,7 @@
 
 <hr />
 
-<h2>ToroidalTempest</h2>
+<h2 id="toroidaltempest">ToroidalTempest</h2>
 
 <p>A violent full-spectrum storm circulating in a toroidal ring. Eight high-velocity dye blobs orbit inside an annular container with fierce counter-clockwise flow. Periodic re-injection every 2 seconds keeps the ring fed with fresh color.</p>
 
