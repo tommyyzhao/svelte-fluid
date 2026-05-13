@@ -22,7 +22,7 @@
 	/** Props consumed by `<FrozenSwirl />`. */
 	export type FrozenSwirlProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'aria-label'
+		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label'
 	>;
 </script>
 
@@ -37,6 +37,7 @@
 		style,
 		seed,
 		lazy,
+		splatOnHover,
 		'aria-label': ariaLabel
 	}: FrozenSwirlProps = $props();
 
@@ -69,6 +70,7 @@
 	{style}
 	{seed}
 	{lazy}
+	{splatOnHover}
 	aria-label={ariaLabel}
 	containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
 	curl={50}

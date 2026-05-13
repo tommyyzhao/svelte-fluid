@@ -33,7 +33,7 @@
 	/** Props consumed by `<Aurora />`. */
 	export type AuroraProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'aria-label'
+		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label'
 	>;
 </script>
 
@@ -48,6 +48,7 @@
 		style,
 		seed,
 		lazy,
+		splatOnHover,
 		'aria-label': ariaLabel
 	}: AuroraProps = $props();
 
@@ -81,6 +82,7 @@
 	{style}
 	{seed}
 	{lazy}
+	{splatOnHover}
 	aria-label={ariaLabel}
 	curl={40}
 	densityDissipation={0}

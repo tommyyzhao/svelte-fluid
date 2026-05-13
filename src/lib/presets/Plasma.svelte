@@ -41,7 +41,7 @@
 	/** Props consumed by `<Plasma />`. Sizing/seed/styling are forwarded; all other physics props are hard-coded. */
 	export type PlasmaProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'aria-label'
+		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label'
 	>;
 </script>
 
@@ -56,6 +56,7 @@
 		style,
 		seed,
 		lazy,
+		splatOnHover,
 		'aria-label': ariaLabel
 	}: PlasmaProps = $props();
 
@@ -93,6 +94,7 @@
 	{style}
 	{seed}
 	{lazy}
+	{splatOnHover}
 	aria-label={ariaLabel}
 	curl={40}
 	densityDissipation={0.12}
