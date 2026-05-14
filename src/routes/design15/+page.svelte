@@ -267,26 +267,26 @@
 			bloomIterations={8}
 			sticky={true}
 			stickyMask={{
-				text: 'svelte-fluid',
-				font: '900 220px Inter',
-				padding: 0.94,
+				text: 'FLUID',
+				font: '900 280px "Geist", "Inter", system-ui, sans-serif',
+				padding: 0.92,
 				blur: 2,
 				maskResolution: 1024
 			}}
 			stickyStrength={0.95}
 			stickyPressure={0.15}
-			stickyAmplify={2.0}
+			stickyAmplify={1.2}
 			colorful
 			shading
 			bloom
-			bloomIntensity={0.4}
+			bloomIntensity={0.18}
 			splatOnHover
-			densityDissipation={0.98}
+			densityDissipation={0.94}
 			velocityDissipation={0.2}
 			curl={20}
-			splatRadius={1.0}
-			splatForce={6000}
-			initialSplatCount={reducedMotion ? 5 : 30}
+			splatRadius={0.5}
+			splatForce={4500}
+			initialSplatCount={reducedMotion ? 5 : 18}
 			exclude=".hero-meta, .top-strip"
 			excludeRadius={8}
 		>
