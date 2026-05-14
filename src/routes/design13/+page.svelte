@@ -279,6 +279,8 @@
 	<title>svelte-fluid — WebGL fluid as a Svelte 5 component</title>
 </svelte:head>
 
+<a class="competition-back" href="{base}/design-competition">← Competition</a>
+
 <div class="page">
 	<header class="nav-bar">
 		<div class="nav-inner">
@@ -1137,6 +1139,30 @@
 </div>
 
 <style>
+	.competition-back {
+		position: fixed;
+		top: 1rem;
+		left: 1rem;
+		z-index: 200;
+		font-size: 0.75rem;
+		font-weight: 500;
+		letter-spacing: 0.05em;
+		color: rgba(255, 255, 255, 0.45);
+		text-decoration: none;
+		background: rgba(0, 0, 0, 0.55);
+		backdrop-filter: blur(8px);
+		-webkit-backdrop-filter: blur(8px);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: 6px;
+		padding: 0.35rem 0.7rem;
+		transition: color 0.15s, border-color 0.15s;
+	}
+
+	.competition-back:hover {
+		color: rgba(255, 255, 255, 0.85);
+		border-color: rgba(255, 255, 255, 0.2);
+	}
+
 	:global(html) {
 		scroll-behavior: smooth;
 	}
