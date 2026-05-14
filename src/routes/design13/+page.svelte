@@ -305,9 +305,9 @@
 				densityDissipation={0.96}
 				velocityDissipation={0.55}
 				curl={36}
-				splatRadius={0.05}
-				splatForce={3200}
-				initialSplatCount={15}
+				splatRadius={0.18}
+				splatForce={5000}
+				initialSplatCount={28}
 				exclude=".card, .nav-bar, .footer-bar"
 				excludeRadius={20}
 			/>
@@ -788,10 +788,12 @@
 								font={s.font}
 								seed={s.seed}
 								autoAnimate={stickyAutoAnimate}
-								autoAnimateDuration={6}
+								autoAnimateDuration={4}
 								colorful
 								shading
-								bloom
+								bloom={false}
+								densityDissipation={0.92}
+								splatRadius={0.18}
 								lazy
 							/>
 						</div>
@@ -1153,6 +1155,16 @@
 		font-feature-settings: 'ss01', 'cv11';
 		-webkit-font-smoothing: antialiased;
 		letter-spacing: -0.005em;
+	}
+
+	/* Scrim behind every post-hero section to block FluidBackground bleed.
+	   The hero section has no `.reveal` class, so it stays untouched.
+	   Applied as the section's own background — using a ::before with z-index:-1
+	   does not composite reliably above the fixed FluidBackground canvas. */
+	section.reveal {
+		position: relative;
+		z-index: 1;
+		background-color: rgba(8, 8, 12, 0.86);
 	}
 
 	.nav-bar {
