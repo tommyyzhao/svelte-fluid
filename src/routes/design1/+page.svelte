@@ -193,11 +193,18 @@
 		<article class="cell hero">
 			<div class="hero-fluid">
 				<FluidText
-					text="svelte-fluid"
+					text="FLUID"
+					font='900 200px "Geist", "Inter", system-ui, sans-serif'
 					seed={7}
-					bloom={true}
-					sunrays={true}
-					colorful={true}
+					bloom
+					sunrays
+					colorful
+					shading
+					splatOnHover
+					initialSplatCount={20}
+					autoSplatRate={6}
+					autoSplatCount={4}
+					autoSplatSwirl={300}
 				/>
 			</div>
 			<p class="tagline">

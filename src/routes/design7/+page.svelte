@@ -1019,12 +1019,14 @@
 		margin: 0;
 		padding: 0;
 		background: #0a0a0a;
+		height: 100%;
+		overflow: hidden;
 	}
 
 	.scroll-root {
 		scroll-snap-type: y mandatory;
 		overflow-y: scroll;
-		height: 100vh;
+		height: 100%;
 		font-family: 'Inter', 'Söhne', system-ui, -apple-system, sans-serif;
 		color: #f5f1e8;
 	}

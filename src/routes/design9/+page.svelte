@@ -221,6 +221,7 @@
 				<div class="hero-fluid">
 					<FluidText
 						text="FLUID"
+						font='900 180px "Geist", "Inter", system-ui, sans-serif'
 						seed={7}
 						splatOnHover
 						colorful
@@ -961,6 +962,9 @@
 		background: #050505;
 		border: 1px solid var(--inset-hair);
 		position: relative;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 
 	.hero-foot {

@@ -299,14 +299,14 @@
 			colorful
 			shading
 			bloom
-			bloomIntensity={0.4}
+			bloomIntensity={0.18}
 			splatOnHover
-			densityDissipation={0.98}
+			densityDissipation={0.94}
 			velocityDissipation={0.2}
 			curl={20}
-			splatRadius={1.0}
-			splatForce={6000}
-			initialSplatCount={reducedMotion ? 5 : 30}
+			splatRadius={0.5}
+			splatForce={4500}
+			initialSplatCount={reducedMotion ? 5 : 18}
 			sticky
 			stickyMask={{
 				text: 'FLUID',
@@ -317,7 +317,7 @@
 			}}
 			stickyStrength={0.95}
 			stickyPressure={0.15}
-			stickyAmplify={2.0}
+			stickyAmplify={1.2}
 			exclude=".hero-overlay-card, .nav-bar"
 			excludeRadius={20}
 		/>
