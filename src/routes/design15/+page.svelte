@@ -292,10 +292,10 @@
 		>
 			<div class="hero-meta">
 				<div class="eyebrow">§ 01 / TITLE</div>
-				<p class="hero-tagline">
+				<h1 class="hero-tagline">
 					WebGL fluid simulation as a Svelte 5 component. Multi-instance, resize-stable,
 					<em>deterministic</em> seeding.
-				</p>
+				</h1>
 				<div class="hero-links">
 					<a class="hero-link" href="{base}/docs">→ Read the docs</a>
 					<a

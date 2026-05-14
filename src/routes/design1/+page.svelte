@@ -191,7 +191,7 @@
 
 	<section class="bento">
 		<article class="cell hero">
-			<div class="hero-fluid">
+			<div class="hero-fluid" aria-hidden="true">
 				<FluidText
 					text="FLUID"
 					font='900 200px "Geist", "Inter", system-ui, sans-serif'
@@ -207,10 +207,10 @@
 					autoSplatSwirl={300}
 				/>
 			</div>
-			<p class="tagline">
+			<h1 class="tagline">
 				WebGL fluid simulation as a Svelte 5 component. Multi-instance, resize-stable,
 				deterministic seeding.
-			</p>
+			</h1>
 			<div class="cta-row">
 				<a class="cta primary" href="{base}/docs">Read the docs</a>
 				<a
@@ -274,7 +274,7 @@
 		<div class="section-header">
 			<span class="section-eyebrow">§ SHAPES</span>
 			<h2 class="section-title">shapes</h2>
-			<p class="section-sub">Six container primitives — circle, rounded rect, frame, annulus, SVG path, text glyph. Hover to splat.</p>
+			<p class="section-sub">Pick a boundary. The simulation stays inside it. Circles, frames, annuli, arbitrary SVG paths, and live text glyphs.</p>
 		</div>
 		<div class="shape-grid">
 			<article class="cell shape-cell">
@@ -434,7 +434,7 @@
 		<div class="section-header">
 			<span class="section-eyebrow">§ GLASS</span>
 			<h2 class="section-title">glass</h2>
-			<p class="section-sub">Adds a lens layer — refraction at the wall, chromatic fringes at the edge. Works with any container shape.</p>
+			<p class="section-sub">A thin optical layer over the container. Light bends at the rim and splits into color at thickness boundaries.</p>
 		</div>
 		<div class="glass-grid">
 			<article class="cell glass-cell">
@@ -589,7 +589,7 @@
 		<div class="section-header">
 			<span class="section-eyebrow">§ STICKY</span>
 			<h2 class="section-title">sticky</h2>
-			<p class="section-sub">FluidStick masks the simulation with text or SVG paths. Hover to engage.</p>
+			<p class="section-sub">Pin the dye to a shape. Trace the cursor across the mask and the fluid follows the contour.</p>
 		</div>
 		<div class="sticky-grid">
 			<article class="cell sticky-cell">
@@ -640,7 +640,7 @@
 		<div class="section-header">
 			<span class="section-eyebrow">§ REVEAL</span>
 			<h2 class="section-title">reveal</h2>
-			<p class="section-sub">FluidReveal uses the simulation as an opacity mask. Move the cursor to uncover what's underneath.</p>
+			<p class="section-sub">A layer sits over a second image. Where the dye lands, the layer clears.</p>
 		</div>
 		<div class="reveal-grid">
 			<article class="cell reveal-cell">
@@ -685,7 +685,7 @@
 		<div class="section-header">
 			<span class="section-eyebrow">§ DISTORTION</span>
 			<h2 class="section-title">distortion</h2>
-			<p class="section-sub">FluidDistortion warps any image source with the velocity field. Hover to engage.</p>
+			<p class="section-sub">The velocity field bends an image in place. Stills become liquid; motion settles back to grid.</p>
 		</div>
 		<div class="distort-grid">
 			<article class="cell distort-cell">

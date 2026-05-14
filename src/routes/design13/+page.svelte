@@ -335,10 +335,10 @@
 					splatForce={8000}
 				/>
 			</div>
-			<p class="tagline">
+			<h1 class="tagline">
 				WebGL fluid simulation as a Svelte 5 component.
 				<span class="italic-accent">Multi-instance</span>, resize-stable, deterministic seeding.
-			</p>
+			</h1>
 			<div class="cta-row">
 				<a class="cta primary" href="{base}/docs">Read the docs</a>
 				<a

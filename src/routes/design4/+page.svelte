@@ -416,10 +416,11 @@
 		<section class="shapes-section">
 			<div class="section-head">
 				<span class="eyebrow">Shapes</span>
-				<h2>Confine fluid to any container.</h2>
+				<h2>Container shape API.</h2>
 				<p class="section-sub">
-					Six primitives — circle, rounded rect, frame, annulus, SVG path, and text glyph. Hover to
-					splat.
+					The <code>containerShape</code> prop accepts six variants — circle, rounded rect, frame,
+					annulus, SVG path, and text glyph — each backed by an analytical SDF or a rasterized
+					mask texture.
 				</p>
 			</div>
 			<div class="shape-grid">
@@ -499,10 +500,10 @@
 		<section class="glass-section">
 			<div class="section-head">
 				<span class="eyebrow">Glass</span>
-				<h2>Refract through a fluid lens.</h2>
+				<h2>Refractive container walls.</h2>
 				<p class="section-sub">
-					Glass adds a lens — refraction at the wall, chromatic fringes at the edge. Use with any
-					container shape.
+					Setting <code>glass</code> samples the scene behind the canvas and refracts it through the
+					container boundary, with configurable IOR and chromatic dispersion.
 				</p>
 			</div>
 			<div class="glass-grid">
@@ -666,9 +667,10 @@
 		<section class="sticky-section">
 			<div class="section-head">
 				<span class="eyebrow">Sticky</span>
-				<h2>Make dye cling to letterforms.</h2>
+				<h2>Text-shape dye masks.</h2>
 				<p class="section-sub">
-					FluidStick masks the simulation with text or SVG paths. Hover to engage.
+					<code>&lt;FluidStick&gt;</code> rasterizes a string or SVG path to a sticky mask, clipping
+					the simulation to the resulting glyph silhouette.
 				</p>
 			</div>
 			<div class="sticky-grid">
@@ -708,10 +710,11 @@
 		<section class="reveal-section">
 			<div class="section-head">
 				<span class="eyebrow">Reveal</span>
-				<h2>Uncover with FluidReveal.</h2>
+				<h2>Velocity-driven opacity masks.</h2>
 				<p class="section-sub">
-					FluidReveal uses the simulation as an opacity mask. Move the cursor to uncover what's
-					underneath.
+					<code>&lt;FluidReveal&gt;</code> wraps arbitrary child content and exposes it where the
+					simulation's density field exceeds a threshold. Supports cursor-driven and
+					auto-revealing modes via props.
 				</p>
 			</div>
 			<div class="reveal-grid">
@@ -747,9 +750,11 @@
 		<section class="distort-section">
 			<div class="section-head">
 				<span class="eyebrow">Distortion</span>
-				<h2>Distort an image.</h2>
+				<h2>Velocity-field image warp.</h2>
 				<p class="section-sub">
-					FluidDistortion warps any source with the velocity field. Hover to engage.
+					<code>&lt;FluidDistortion&gt;</code> samples an image source and displaces its UVs by the
+					live velocity field. Tune <code>strength</code> and <code>intensity</code> to dial
+					between subtle ripple and full liquefy.
 				</p>
 			</div>
 			<div class="distort-grid">
@@ -790,8 +795,11 @@
 			<div class="play-inner">
 				<div class="section-head center">
 					<span class="eyebrow">Playground</span>
-					<h2>Try it live.</h2>
-					<p class="section-sub">Drag the knobs. The fluid updates in real time.</p>
+					<h2>Live prop inspector.</h2>
+					<p class="section-sub">
+						Adjust physics and visual props on a mounted <code>&lt;Fluid&gt;</code> instance.
+						Changes hot-reload through <code>setConfig</code> without remounting the canvas.
+					</p>
 				</div>
 
 				<div class="preset-chips" role="tablist" aria-label="Quick-start presets">

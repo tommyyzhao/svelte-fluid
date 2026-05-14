@@ -365,8 +365,8 @@
 		<div class="gutter">§ 07</div>
 		<div class="section-head">
 			<div class="section-numeral">07</div>
-			<h2 class="serif section-h2">Container shapes.</h2>
-			<p class="section-sub muted">Six primitives — circle, rounded rect, frame, annulus, SVG path, and text glyph. Hover to splat.</p>
+			<h2 class="serif section-h2">A vocabulary of <em>vessels</em>.</h2>
+			<p class="section-sub muted">Six primitives — disc, rounded rectangle, frame, annulus, traced path, glyph. The fluid honors each boundary as if it had always known it.</p>
 		</div>
 		<div class="shapes-grid">
 			<article class="shape-cell">
@@ -440,8 +440,8 @@
 		<div class="gutter">§ 08</div>
 		<div class="section-head">
 			<div class="section-numeral">08</div>
-			<h2 class="serif section-h2">Physics controls.</h2>
-			<p class="section-sub muted">Every prop is optional. Drop in a tag for a finished look; reach for props when you want your own physics.</p>
+			<h2 class="serif section-h2">A studied <em>physics</em>.</h2>
+			<p class="section-sub muted">Curl, dissipation, splat force, pressure — each parameter a knob on the same instrument. Four registers below; the rest is yours to compose.</p>
 		</div>
 		<div class="physics-grid">
 			<article class="physics-cell">
@@ -507,8 +507,8 @@
 		<div class="gutter">§ 09</div>
 		<div class="section-head">
 			<div class="section-numeral">09</div>
-			<h2 class="serif section-h2">Refraction.</h2>
-			<p class="section-sub muted">Glass adds a lens — refraction at the wall, chromatic fringes at the edge. Use with any container shape.</p>
+			<h2 class="serif section-h2">The vessel as <em>lens</em>.</h2>
+			<p class="section-sub muted">A pass of optics laid over the simulation — refraction along the wall, chromatic dispersion at the rim. Any shape can be made to read as glass.</p>
 		</div>
 		<div class="glass-grid">
 			<article class="glass-cell">
@@ -655,8 +655,8 @@
 		<div class="gutter">§ 10</div>
 		<div class="section-head">
 			<div class="section-numeral">10</div>
-			<h2 class="serif section-h2">Sticky text masks.</h2>
-			<p class="section-sub muted">FluidStick masks the simulation with text or SVG paths. Hover to engage.</p>
+			<h2 class="serif section-h2">Fluid, held by <em>letterform</em>.</h2>
+			<p class="section-sub muted">FluidStick confines the simulation inside a glyph or traced path. The fluid fills the form; the form remembers it touched.</p>
 		</div>
 		<div class="sticky-grid">
 			<article class="sticky-cell">
@@ -703,8 +703,8 @@
 		<div class="gutter">§ 11</div>
 		<div class="section-head">
 			<div class="section-numeral">11</div>
-			<h2 class="serif section-h2">FluidReveal.</h2>
-			<p class="section-sub muted">FluidReveal uses the simulation as an opacity mask. Move the cursor to uncover what's underneath.</p>
+			<h2 class="serif section-h2">A scrim, gradually <em>parted</em>.</h2>
+			<p class="section-sub muted">FluidReveal reads the simulation as opacity — wherever the fluid passes, the surface gives way. What lies beneath was always there.</p>
 		</div>
 		<div class="reveal-grid">
 			<article class="reveal-cell">
@@ -741,8 +741,8 @@
 		<div class="gutter">§ 12</div>
 		<div class="section-head">
 			<div class="section-numeral">12</div>
-			<h2 class="serif section-h2">Image distortion.</h2>
-			<p class="section-sub muted">FluidDistortion warps any source with the velocity field. Hover to engage.</p>
+			<h2 class="serif section-h2">The image, set in <em>motion</em>.</h2>
+			<p class="section-sub muted">FluidDistortion treats any source — photograph, painting, plate — as a surface and the velocity field as a current beneath it. The picture remains; only its composure is loosened.</p>
 		</div>
 		<div class="distort-grid">
 			<article class="distort-cell">

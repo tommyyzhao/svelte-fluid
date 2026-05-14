@@ -65,8 +65,8 @@
 
 	const lightning = 'M 55 5 L 25 55 L 45 55 L 35 95 L 75 40 L 55 40 L 70 5 Z';
 
-	const totalSections = 21;
 	let sections: HTMLElement[] = $state([]);
+	const totalSections = $derived(sections.filter(Boolean).length || 21);
 
 	$effect(() => {
 		if (typeof IntersectionObserver === 'undefined') return;

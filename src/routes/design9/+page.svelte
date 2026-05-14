@@ -236,10 +236,10 @@
 					/>
 				</div>
 				<div class="hero-foot">
-					<p class="tagline">
+					<h1 class="tagline">
 						WebGL fluid simulation as a Svelte 5 component. Multi-instance, resize-stable,
 						deterministic seeding.
-					</p>
+					</h1>
 					<div class="cta-row">
 						<a class="cta primary" href="{base}/docs">
 							Get Started <span class="arrow">→</span>

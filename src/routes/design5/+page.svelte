@@ -209,11 +209,11 @@
 				<br />
 				as a Svelte component.
 			</h1>
-			<p class="tagline">
+			<h1 class="tagline">
 				WebGL fluid simulation as a Svelte 5 component. Multi-instance,
 				resize-stable, deterministic seeding. Drop one component in. Get a
 				beautiful, interactive fluid simulation. That's it.
-			</p>
+			</h1>
 			<div class="cta-row">
 				<a class="btn btn-primary" href="{base}/docs">Read the docs</a>
 				<a
@@ -474,9 +474,9 @@
 	<section class="glass-section panel-pink">
 		<div class="panel-inner">
 			<p class="kicker">Glass effects</p>
-			<h2 class="serif-heading"><em>Refract</em></h2>
+			<h2 class="serif-heading">Through <em>glass</em></h2>
 			<p class="panel-sub">
-				Glass adds a lens — refraction at the wall, chromatic fringes at the edge. Use with any container shape.
+				A thin lens bends the colors as they drift past, softening every edge with a faint, prismatic blush.
 			</p>
 			<div class="glass-grid">
 				<figure class="glass-cell">
@@ -628,8 +628,8 @@
 	<section class="sticky-section panel-lavender">
 		<div class="panel-inner">
 			<p class="kicker">Sticky text masks</p>
-			<h2 class="serif-heading"><em>Letterforms</em></h2>
-			<p class="panel-sub">FluidStick masks the simulation with text or SVG paths. Hover to engage.</p>
+			<h2 class="serif-heading">Through <em>letterforms</em></h2>
+			<p class="panel-sub">Dye settles quietly into the shape of a word, pooling in the curves of each serif like ink finding its way through paper.</p>
 			<div class="sticky-grid">
 				<figure class="sticky-cell">
 					<div class="sticky-canvas">
@@ -674,8 +674,8 @@
 	<section class="reveal-section panel-sage">
 		<div class="panel-inner">
 			<p class="kicker">Scratch to reveal</p>
-			<h2 class="serif-heading"><em>Uncover</em></h2>
-			<p class="panel-sub">FluidReveal uses the simulation as an opacity mask. Move the cursor to uncover what's underneath.</p>
+			<h2 class="serif-heading">Gently <em>uncover</em></h2>
+			<p class="panel-sub">A soft veil rests over the page, parting wherever a hand passes through — slow, deliberate, almost shy.</p>
 			<div class="reveal-grid">
 				<figure class="reveal-cell">
 					<div class="reveal-canvas" aria-label="Scratch-to-reveal demo">
@@ -714,8 +714,8 @@
 	<section class="distort-section panel-pink">
 		<div class="panel-inner">
 			<p class="kicker">Image distortion</p>
-			<h2 class="serif-heading"><em>Distort</em></h2>
-			<p class="panel-sub">FluidDistortion warps any source with the velocity field. Hover to engage.</p>
+			<h2 class="serif-heading">A painting, gently <em>stirred</em></h2>
+			<p class="panel-sub">An image becomes a pond — currents of color slipping under the surface, the picture half-remembered as it moves.</p>
 			<div class="distort-grid">
 				<figure class="distort-cell">
 					<div class="distort-canvas">
@@ -1927,6 +1927,147 @@
 		}
 		.playground-grid {
 			grid-template-columns: 1fr;
+		}
+	}
+
+	@media (max-width: 640px) {
+		.page {
+			padding: 1rem 1rem 3rem;
+		}
+		.hero-card {
+			padding: 2.5rem 1.5rem;
+			border-radius: 32px;
+		}
+		h1 {
+			font-size: clamp(1.85rem, 7vw, 2.5rem);
+		}
+		.serif-heading {
+			font-size: clamp(1.65rem, 6vw, 2.25rem);
+		}
+		.closer-card h2 {
+			font-size: clamp(1.5rem, 5vw, 2rem);
+		}
+		.shape-grid {
+			grid-template-columns: 1fr;
+		}
+		.shapes-section,
+		.physics-section,
+		.glass-section,
+		.sticky-section,
+		.reveal-section,
+		.distort-section,
+		.play-section {
+			padding: 2rem 1.25rem;
+			border-radius: 32px;
+		}
+		.panel-sub {
+			margin: 0 0 1.75rem;
+		}
+		.why {
+			padding: 2rem 1.25rem;
+			border-radius: 32px;
+		}
+		.install-card,
+		.usage-card {
+			padding: 1.75rem 1.25rem;
+			border-radius: 28px;
+		}
+		.closer-card {
+			padding: 2rem 1.25rem;
+			border-radius: 32px;
+		}
+		.playground-panel {
+			padding: 1rem;
+		}
+		.knob-row {
+			grid-template-columns: 6.5rem 1fr 2.5rem;
+		}
+	}
+
+	@media (max-width: 480px) {
+		.page {
+			padding: 0.75rem 0.75rem 2.5rem;
+			overflow-x: hidden;
+		}
+		.hero-card {
+			padding: 2rem 1.1rem;
+			border-radius: 28px;
+		}
+		h1 {
+			font-size: clamp(1.6rem, 8vw, 2.1rem);
+			max-width: none;
+		}
+		.tagline {
+			font-size: 1rem;
+		}
+		.serif-heading {
+			font-size: clamp(1.4rem, 7vw, 1.9rem);
+		}
+		.cta-row {
+			flex-direction: column;
+			align-items: stretch;
+		}
+		.cta-row .btn {
+			width: 100%;
+		}
+		.btn {
+			padding: 0.75rem 1.1rem;
+			font-size: 0.9rem;
+		}
+		.snippet {
+			flex-wrap: wrap;
+			padding: 0.5rem;
+		}
+		.snippet code {
+			font-size: 0.78rem;
+		}
+		.code {
+			font-size: 0.72rem;
+			padding: 1rem 1rem;
+		}
+		.preset-canvas,
+		.shape-canvas,
+		.physics-canvas,
+		.glass-canvas,
+		.sticky-canvas,
+		.reveal-canvas,
+		.distort-canvas {
+			height: 220px;
+		}
+		.playground-canvas {
+			height: 300px;
+		}
+		.shapes-section,
+		.physics-section,
+		.glass-section,
+		.sticky-section,
+		.reveal-section,
+		.distort-section,
+		.play-section,
+		.why,
+		.install-card,
+		.usage-card,
+		.closer-card {
+			padding: 1.5rem 1rem;
+			border-radius: 24px;
+		}
+		.preset {
+			border-radius: 24px;
+		}
+		.arrow-hint {
+			font-size: 0.85rem;
+		}
+		.knob-row {
+			grid-template-columns: 5.5rem 1fr 2.25rem;
+			gap: 0.4rem;
+		}
+		.knob-label,
+		.knob-value {
+			font-size: 0.72rem;
+		}
+		.preset-chip {
+			font-size: 0.75rem;
+			padding: 0.28rem 0.7rem;
 		}
 	}
 </style>

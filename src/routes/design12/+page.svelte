@@ -304,10 +304,10 @@
 						velocityDissipation={0.55}
 					/>
 				</div>
-				<p class="tagline">
+				<h1 class="tagline">
 					WebGL fluid simulation as a Svelte 5 component. Multi-instance, resize-stable,
 					deterministic seeding.
-				</p>
+				</h1>
 				<div class="cta-row">
 					<a class="cta primary" href="{base}/docs">Read the docs</a>
 					<a
@@ -445,10 +445,11 @@
 			<div class="shape-inner">
 				<div class="eyebrow centered">Container shapes</div>
 				<h2 class="serif-display center-heading">
-					Confine fluid to <span class="italic">any shape</span>.
+					Then the <span class="italic">walls</span> appear.
 				</h2>
 				<p class="section-sub">
-					Six primitives — circle, rounded rect, frame, annulus, SVG path, and text glyph. Hover to splat.
+					Six primitives draw the boundary — circle, rounded rect, frame, annulus, SVG path, glyph.
+					The fluid bends to fit, never spills.
 				</p>
 				<div class="shape-grid">
 					<figure class="shape-cell">
@@ -529,11 +530,11 @@
 			<div class="physics-inner">
 				<div class="eyebrow centered">Physics props</div>
 				<h2 class="serif-display center-heading">
-					Build with <span class="italic">&lt;Fluid /&gt;</span>.
+					Now the <span class="italic">dials</span> turn.
 				</h2>
 				<p class="section-sub">
-					Every prop is optional. Drop in a tag for a finished look; reach for props when you want
-					your own physics.
+					A single tag is enough to begin. Tune curl, dissipation, pressure — and the same fluid
+					takes on a different temperament.
 				</p>
 				<div class="physics-grid">
 					<figure class="physics-cell">
@@ -605,11 +606,11 @@
 			<div class="glass-inner">
 				<div class="eyebrow centered">Glass effect</div>
 				<h2 class="serif-display center-heading">
-					Refract through <span class="italic">glass</span>.
+					A lens <span class="italic">settles</span> over it.
 				</h2>
 				<p class="section-sub">
-					Glass adds a lens — refraction at the wall, chromatic fringes at the edge. Use with any
-					container shape.
+					The wall thickens into glass. Light bends as it crosses, edges break into colored fringes,
+					and the motion behind the surface starts to feel a room deeper.
 				</p>
 				<div class="glass-grid">
 					<figure class="glass-cell">
@@ -762,9 +763,12 @@
 			<div class="sticky-inner">
 				<div class="eyebrow centered">Sticky text</div>
 				<h2 class="serif-display center-heading">
-					Make dye cling to <span class="italic">letterforms</span>.
+					The dye finds <span class="italic">letters</span>.
 				</h2>
-				<p class="section-sub">FluidStick masks the simulation with text or SVG paths. Hover to engage.</p>
+				<p class="section-sub">
+					What was free across the canvas now collects inside the shape of a word. The simulation
+					keeps running underneath; only the mask decides what you see.
+				</p>
 				<div class="sticky-grid">
 					<div class="sticky-canvas">
 						<FluidStick
@@ -804,11 +808,11 @@
 			<div class="fr-inner">
 				<div class="eyebrow centered">FluidReveal</div>
 				<h2 class="serif-display center-heading">
-					Uncover with <span class="italic">FluidReveal</span>.
+					Something is <span class="italic">underneath</span>.
 				</h2>
 				<p class="section-sub">
-					FluidReveal uses the simulation as an opacity mask. Move the cursor to uncover what's
-					underneath.
+					The fluid becomes a cover that thins where it has been touched. Trace the cursor across,
+					and whatever was hidden a moment ago surfaces in the wake.
 				</p>
 				<div class="fr-grid">
 					<figure class="fr-cell">
@@ -849,10 +853,11 @@
 			<div class="distort-inner">
 				<div class="eyebrow centered">Image distortion</div>
 				<h2 class="serif-display center-heading">
-					Distort an <span class="italic">image</span>.
+					A still image <span class="italic">breathes</span>.
 				</h2>
 				<p class="section-sub">
-					FluidDistortion warps any source with the velocity field. Hover to engage.
+					Pixels ride the velocity field. The painting holds its composition while the surface
+					ripples, like a reflection caught in slow water.
 				</p>
 				<div class="distort-grid">
 					<figure class="distort-cell">
@@ -1286,6 +1291,8 @@
 		line-height: 1.55;
 		color: #c7c7c7;
 		margin: 0 0 2.2rem;
+		font-weight: 400;
+		font-family: inherit;
 	}
 
 	.cta-row {
