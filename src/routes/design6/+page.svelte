@@ -254,6 +254,7 @@
 
 		<div class="screen">
 			<section class="hero">
+				<h1 class="sr-only">svelte-fluid — WebGL fluid simulation as a Svelte 5 component</h1>
 				<pre class="block prompt-block">
 <span class="prompt">$</span> bun add svelte-fluid
 <span class="ok">✓</span> Installed svelte-fluid in 0.42s
@@ -1077,6 +1078,18 @@
 <style>
 	:global(html, body) {
 		background: #0a0a0a;
+	}
+
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
 	}
 
 	.competition-back {

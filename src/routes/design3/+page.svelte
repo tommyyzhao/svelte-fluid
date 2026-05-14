@@ -258,7 +258,7 @@
 
 		<section class="install glass-section">
 			<header class="section-head">
-				<h2>Install</h2>
+				<h2 class="section-label">INSTALL</h2>
 				<p class="muted">Bun, pnpm, and yarn also work — no native deps, zero runtime cost.</p>
 			</header>
 			<div class="glass-code install-code">
@@ -271,7 +271,7 @@
 
 		<section class="usage glass-section">
 			<header class="section-head">
-				<h2>Drop one in</h2>
+				<h2 class="section-label">USAGE</h2>
 				<p class="muted">A sized container is all you need. The engine handles the rest.</p>
 			</header>
 			<div class="glass-code usage-code">
@@ -284,7 +284,7 @@
 
 		<section class="presets">
 			<header class="section-head">
-				<h2>Presets</h2>
+				<h2 class="section-label">PRESETS</h2>
 				<p class="muted">Ten opinionated themes. Six shown here. Drop-in replacements for &lt;Fluid /&gt;.</p>
 			</header>
 

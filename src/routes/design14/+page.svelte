@@ -327,10 +327,10 @@
 		<div class="hero-eyebrow">WebGL · Svelte 5 · MIT</div>
 
 		<div class="hero-overlay-card">
-			<p class="tagline">
+			<h1 class="tagline">
 				WebGL fluid simulation as a Svelte 5 component.
 				<span class="italic">Multi-instance, resize-stable, deterministic seeding.</span>
-			</p>
+			</h1>
 			<div class="cta-row">
 				<a class="cta primary" href="{base}/docs">Read the docs</a>
 				<a
@@ -1249,7 +1249,7 @@
 	}
 
 	.eyebrow.muted {
-		color: rgba(255, 255, 255, 0.5);
+		color: rgba(255, 255, 255, 0.65);
 	}
 
 	.eyebrow.centered {
@@ -1428,7 +1428,7 @@
 		font-size: 0.7rem;
 		letter-spacing: 0.2em;
 		text-transform: uppercase;
-		color: rgba(255, 255, 255, 0.5);
+		color: rgba(255, 255, 255, 0.65);
 		border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 	}
 
@@ -1704,7 +1704,7 @@
 		font-style: normal;
 		font-size: 0.38em;
 		letter-spacing: 0.2em;
-		color: rgba(255, 255, 255, 0.5);
+		color: rgba(255, 255, 255, 0.65);
 		min-width: 2.5em;
 	}
 
@@ -1745,7 +1745,7 @@
 		font-family: ui-monospace, 'Geist Mono', monospace;
 		font-size: 0.74rem;
 		letter-spacing: 0.14em;
-		color: rgba(255, 255, 255, 0.5);
+		color: rgba(255, 255, 255, 0.65);
 	}
 
 	.footer-grid {
@@ -1767,7 +1767,7 @@
 		font-size: 0.68rem;
 		letter-spacing: 0.22em;
 		text-transform: uppercase;
-		color: rgba(255, 255, 255, 0.45);
+		color: rgba(255, 255, 255, 0.65);
 		margin-bottom: 0.4rem;
 	}
 
@@ -1786,7 +1786,7 @@
 		margin: 0;
 		font-size: 0.76rem;
 		line-height: 1.55;
-		color: rgba(255, 255, 255, 0.5);
+		color: rgba(255, 255, 255, 0.65);
 	}
 
 	.footer-credit-body a {
@@ -1803,7 +1803,7 @@
 		max-width: 1280px;
 		margin: 2.4rem auto 0;
 		font-size: 0.74rem;
-		color: rgba(255, 255, 255, 0.4);
+		color: rgba(255, 255, 255, 0.65);
 	}
 
 	/* Competition back-link */
@@ -1815,7 +1815,7 @@
 		font-size: 0.75rem;
 		font-weight: 500;
 		letter-spacing: 0.05em;
-		color: rgba(255, 255, 255, 0.45);
+		color: rgba(255, 255, 255, 0.65);
 		text-decoration: none;
 		background: rgba(0, 0, 0, 0.55);
 		backdrop-filter: blur(8px);
@@ -2240,7 +2240,7 @@
 		font-size: 0.66rem;
 		letter-spacing: 0.2em;
 		text-transform: uppercase;
-		color: rgba(255, 255, 255, 0.5);
+		color: rgba(255, 255, 255, 0.65);
 	}
 
 	.snippet-code {

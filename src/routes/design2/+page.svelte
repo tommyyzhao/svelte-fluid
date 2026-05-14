@@ -188,10 +188,10 @@
 		<div class="margin-mark">§ 00</div>
 		<div class="kicker">A Svelte 5 component library / Issue No. 1</div>
 		<h1 class="display">svelte<span class="dash">‑</span>fluid</h1>
-		<p class="tagline">
+		<h1 class="tagline">
 			WebGL fluid simulation as a Svelte 5 component. Multi-instance, resize-stable,
 			deterministic seeding.
-		</p>
+		</h1>
 
 		<div class="install-row">
 			<div class="install-tabs">
@@ -226,7 +226,7 @@
 	<section class="section index-section">
 		<div class="section-head">
 			<div class="margin-mark">§ 01</div>
-			<h2 class="section-title">Index / Manifesto</h2>
+			<h2 class="section-title">01. INDEX — A MANIFESTO</h2>
 		</div>
 		<ol class="manifesto">
 			{#each features as f (f.n)}
@@ -242,7 +242,7 @@
 	<section class="section usage-section">
 		<div class="section-head">
 			<div class="margin-mark">§ 02</div>
-			<h2 class="section-title">Minimum Viable Fluid</h2>
+			<h2 class="section-title">02. INSTALL — A MINIMUM</h2>
 		</div>
 		<div class="usage-grid">
 			<pre class="snippet"><code>{usage}</code></pre>
@@ -268,7 +268,7 @@
 	<section class="section presets-section">
 		<div class="section-head">
 			<div class="margin-mark">§ 04</div>
-			<h2 class="section-title">The Presets, Plated</h2>
+			<h2 class="section-title">03. PRESETS — A SAMPLER</h2>
 			<p class="section-sub">Six of ten. Each fills its parent. Each accepts a seed.</p>
 		</div>
 		<div class="preset-grid">
@@ -309,7 +309,7 @@
 		<div class="invert-grid">
 			<div class="invert-text">
 				<div class="margin-mark light">§ 05</div>
-				<h2 class="invert-title">Plasma, after midnight.</h2>
+				<h2 class="invert-title">04. PLASMA — AFTER MIDNIGHT</h2>
 				<p class="invert-body">
 					Inverted, the fluid reads as type. Set against cream it argues with the
 					page. Set against black it argues with the void. Same engine, two columns.
@@ -325,7 +325,7 @@
 	<section class="section shapes-section">
 		<div class="section-head">
 			<div class="margin-mark">§ 06</div>
-			<h2 class="section-title">06. SHAPES — A TYPOLOGY</h2>
+			<h2 class="section-title">05. SHAPES — A TYPOLOGY</h2>
 			<p class="section-sub">Six primitives. Confine the dye. Hover to splat.</p>
 		</div>
 		<div class="shape-grid">
@@ -401,7 +401,7 @@
 	<section class="section physics-section">
 		<div class="section-head">
 			<div class="margin-mark">§ 07</div>
-			<h2 class="section-title">07. PHYSICS — A STUDY</h2>
+			<h2 class="section-title">06. PHYSICS — A STUDY</h2>
 			<p class="section-sub">Every prop optional. Drop the tag; reach for props when you want your own physics.</p>
 		</div>
 		<div class="physics-grid">
@@ -472,8 +472,8 @@
 	<section class="section glass-section">
 		<div class="section-head">
 			<div class="margin-mark">§ 08</div>
-			<h2 class="section-title">08. REFRACTION — A FOOTNOTE</h2>
-			<p class="section-sub">Glass adds a lens — refraction at the wall, chromatic fringes at the edge.</p>
+			<h2 class="section-title">07. REFRACTION — A FOOTNOTE</h2>
+			<p class="section-sub">A lens at the wall. Chromatic fringes at the edge. Pairs with any shape.</p>
 		</div>
 		<div class="glass-grid">
 			<article class="glass-cell">
@@ -608,8 +608,8 @@
 	<section class="section sticky-section">
 		<div class="section-head">
 			<div class="margin-mark">§ 09</div>
-			<h2 class="section-title">09. LETTERFORMS — A STUDY</h2>
-			<p class="section-sub">FluidStick masks the simulation with text. Hover to engage.</p>
+			<h2 class="section-title">08. LETTERFORMS — A STUDY</h2>
+			<p class="section-sub">Dye accumulates inside the letterforms. Try the cursor.</p>
 		</div>
 		<div class="sticky-grid">
 			<article class="sticky-cell">
@@ -654,8 +654,8 @@
 	<section class="section reveal-section">
 		<div class="section-head">
 			<div class="margin-mark">§ 10</div>
-			<h2 class="section-title">10. REVEAL — A CURTAIN</h2>
-			<p class="section-sub">FluidReveal uses the simulation as an opacity mask. Move the cursor to uncover.</p>
+			<h2 class="section-title">09. REVEAL — A CURTAIN</h2>
+			<p class="section-sub">The fluid serves as an opacity mask. Drag to uncover what lies beneath.</p>
 		</div>
 		<div class="reveal-grid">
 			<article class="reveal-cell">
@@ -694,8 +694,8 @@
 	<section class="section distort-section">
 		<div class="section-head">
 			<div class="margin-mark">§ 11</div>
-			<h2 class="section-title">11. DISTORTION — AN IMAGE</h2>
-			<p class="section-sub">FluidDistortion warps any source with the velocity field. Hover to engage.</p>
+			<h2 class="section-title">10. DISTORTION — AN IMAGE</h2>
+			<p class="section-sub">The velocity field warps the source image. Move the cursor across the plate.</p>
 		</div>
 		<div class="distort-grid">
 			<article class="distort-cell">
@@ -734,7 +734,7 @@
 	<section class="section close-section">
 		<div class="section-head">
 			<div class="margin-mark">§ 12</div>
-			<h2 class="section-title">Specifications</h2>
+			<h2 class="section-title">11. SPECIFICATIONS — A LEDGER</h2>
 		</div>
 		<dl class="spec-list">
 			<div class="spec-row">
@@ -769,8 +769,8 @@
 	<section class="section playground-section">
 		<div class="section-head">
 			<div class="margin-mark">§ 13</div>
-			<h2 class="section-title">13. PLAYGROUND — AN INSTRUMENT</h2>
-			<p class="section-sub">Drag the knobs. The fluid updates in real time. Copy the snippet.</p>
+			<h2 class="section-title">12. PLAYGROUND — AN INSTRUMENT</h2>
+			<p class="section-sub">Turn the knobs. The fluid responds in real time. Take the snippet with you.</p>
 		</div>
 
 		<div class="preset-chips" role="tablist" aria-label="Quick-start presets">
@@ -1671,6 +1671,128 @@
 		.playground-canvas {
 			border-right: 0;
 			border-bottom: 2px solid var(--ink);
+		}
+	}
+
+	@media (max-width: 640px) {
+		.page {
+			font-size: 13px;
+			padding: 0 16px;
+		}
+		.display {
+			font-size: clamp(3rem, 16vw, 6rem);
+		}
+		.tagline {
+			font-size: 1rem;
+			margin: 20px 0 28px;
+		}
+		.section {
+			padding: 40px 0;
+		}
+		.section-title {
+			font-size: clamp(1.6rem, 7vw, 2.4rem);
+		}
+		.invert-title {
+			font-size: clamp(1.8rem, 7.5vw, 2.6rem);
+		}
+		.shape-grid,
+		.physics-grid,
+		.glass-grid,
+		.preset-grid,
+		.reveal-grid,
+		.distort-grid,
+		.sticky-grid {
+			grid-template-columns: 1fr;
+		}
+		.open-quote {
+			font-size: clamp(5rem, 18vw, 8rem);
+		}
+		.pull-quote {
+			padding-left: 48px;
+		}
+		.pull-quote p {
+			font-size: clamp(1.2rem, 4.5vw, 1.8rem);
+		}
+		.invert-text {
+			padding: 32px 20px;
+		}
+		.cell-canvas,
+		.shape-canvas,
+		.physics-canvas,
+		.glass-canvas,
+		.sticky-canvas,
+		.reveal-canvas,
+		.distort-canvas {
+			height: 260px;
+		}
+		.playground-canvas {
+			min-height: 360px;
+		}
+		.invert-canvas {
+			min-height: 360px;
+		}
+	}
+
+	@media (max-width: 480px) {
+		.page {
+			padding: 0 12px;
+		}
+		.section {
+			padding: 32px 0;
+		}
+		.hero {
+			padding: 24px 0 40px;
+		}
+		.kicker {
+			font-size: 10px;
+			letter-spacing: 0.22em;
+			margin: 10px 0 24px;
+		}
+		.margin-mark {
+			font-size: 10px;
+			letter-spacing: 0.12em;
+		}
+		.knob-group-title,
+		.cell-label,
+		.physics-snippet,
+		.snippet-head {
+			font-size: 9px;
+			letter-spacing: 0.18em;
+		}
+		.install-row {
+			flex-direction: column;
+		}
+		.install-tabs {
+			border-right: 2px solid var(--ink);
+			border-bottom: 0;
+		}
+		.install-box {
+			border-top: 0;
+		}
+		.hero-links {
+			gap: 20px;
+			flex-wrap: wrap;
+		}
+		.manifesto li {
+			grid-template-columns: 36px 1fr;
+			padding: 12px 0;
+		}
+		.manifesto .d {
+			padding-left: 48px;
+		}
+		.knob-row {
+			grid-template-columns: 100px 1fr 40px;
+		}
+		.playground-panel {
+			padding: 16px;
+			max-height: none;
+		}
+		.snippet {
+			padding: 14px;
+			font-size: 12px;
+		}
+		.section-head {
+			margin-bottom: 20px;
 		}
 	}
 </style>

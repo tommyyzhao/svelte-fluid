@@ -442,9 +442,9 @@
 
 		<section class="shapes-section">
 			<p class="eyebrow">Shapes</p>
-			<h2 class="section-title">Confine fluid to any shape.</h2>
+			<h2 class="section-title">Shape primitives.</h2>
 			<p class="section-lede">
-				Six primitives — circle, rounded rect, frame, annulus, SVG path, and text glyph. Hover to splat.
+				Six container types — circle, rounded rect, frame, annulus, SVG path, and text glyph. Pass a <code>containerShape</code> prop and the simulation is clipped to the SDF.
 			</p>
 			<div class="shapes-grid">
 				<figure class="shape-card">
@@ -524,9 +524,9 @@
 
 		<section class="physics-section">
 			<p class="eyebrow">Physics</p>
-			<h2 class="section-title">Build with &lt;Fluid /&gt;.</h2>
+			<h2 class="section-title">Physics, prop by prop.</h2>
 			<p class="section-lede">
-				Every prop is optional. Drop in a tag for a finished look; reach for props when you want your own physics.
+				Every prop has a sensible default. Override <code>curl</code>, <code>splatRadius</code>, <code>splatForce</code>, and dissipation to shape the simulation to your design.
 			</p>
 			<div class="physics-grid">
 				<figure class="physics-card">
@@ -597,9 +597,9 @@
 
 		<section class="glass-section">
 			<p class="eyebrow">Glass</p>
-			<h2 class="section-title">Refract through glass.</h2>
+			<h2 class="section-title">Glass refraction.</h2>
 			<p class="section-lede">
-				Glass adds a lens — refraction at the wall, chromatic fringes at the edge. Use with any container shape.
+				Enable <code>glass</code> to render the fluid behind a refractive surface. Tune <code>glassRefraction</code>, <code>glassReflectivity</code>, and <code>glassChromatic</code> for lens behavior on any container shape.
 			</p>
 			<div class="glass-grid">
 				<figure class="glass-card">
@@ -751,9 +751,9 @@
 
 		<section class="sticky-section">
 			<p class="eyebrow">Sticky</p>
-			<h2 class="section-title">Make dye cling to letterforms.</h2>
+			<h2 class="section-title">Sticky masks.</h2>
 			<p class="section-lede">
-				FluidStick masks the simulation with text or SVG paths. Hover to engage.
+				<code>FluidStick</code> confines dye to a text string or SVG path. Pair with <code>autoAnimate</code> for ambient motion or leave it cursor-driven.
 			</p>
 			<div class="sticky-grid">
 				<figure class="sticky-card">
@@ -799,9 +799,9 @@
 
 		<section class="reveal-section">
 			<p class="eyebrow">Reveal</p>
-			<h2 class="section-title">Uncover with FluidReveal.</h2>
+			<h2 class="section-title">Reveal layers.</h2>
 			<p class="section-lede">
-				FluidReveal uses the simulation as an opacity mask. Move the cursor to uncover what's underneath.
+				<code>FluidReveal</code> wraps any slot and drives its opacity from the velocity field. Use <code>autoReveal</code> for hands-off animation or let pointer motion clear the cover.
 			</p>
 			<div class="reveal-grid">
 				<figure class="reveal-card">
@@ -837,9 +837,9 @@
 
 		<section class="distort-section">
 			<p class="eyebrow">Distortion</p>
-			<h2 class="section-title">Distort an image.</h2>
+			<h2 class="section-title">Velocity-field distortion.</h2>
 			<p class="section-lede">
-				FluidDistortion warps any source with the velocity field. Hover to engage.
+				<code>FluidDistortion</code> samples an image through the live velocity field. Control the warp with <code>strength</code> and <code>intensity</code>; <code>fit</code> matches CSS conventions.
 			</p>
 			<div class="distort-grid">
 				<figure class="distort-card">

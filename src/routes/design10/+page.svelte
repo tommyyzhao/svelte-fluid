@@ -284,12 +284,12 @@
 						autoSplatSwirl={300}
 					/>
 				</div>
-				<p class="tagline">
+				<h1 class="tagline">
 					WebGL fluid simulation as a Svelte 5 component.
 					<span class="tag-accent"
 						>Multi-instance, resize-stable, deterministic seeding.</span
 					>
-				</p>
+				</h1>
 				<div class="cta-row">
 					<a class="btn primary" href="{base}/docs">Get Started</a>
 					<a
@@ -359,8 +359,8 @@
 			<section class="shapes-section">
 				<div class="section-head">
 					<span class="eyebrow">Shapes</span>
-					<h2>Confine fluid to any shape.</h2>
-					<p class="section-sub">Six primitives — circle, rounded rect, frame, annulus, SVG path, and text glyph. Hover to splat.</p>
+					<h2>Container primitives.</h2>
+					<p class="section-sub">Six analytical SDFs ship in-engine: circle, rounded rect, frame, annulus, plus SVG path and text glyph rasterized to a mask texture.</p>
 				</div>
 				<div class="shape-grid">
 					<article class="card shape-card">
@@ -439,8 +439,8 @@
 			<section class="physics-section">
 				<div class="section-head">
 					<span class="eyebrow">Physics</span>
-					<h2>Build with &lt;Fluid /&gt;.</h2>
-					<p class="section-sub">Every prop is optional. Drop in a tag for a finished look; reach for props when you want your own physics.</p>
+					<h2>Tunable simulation.</h2>
+					<p class="section-sub">Sensible defaults out of the box. Override curl, dissipation, splat radius, and force to dial in the look — every prop is optional.</p>
 				</div>
 				<div class="physics-grid">
 					<article class="card physics-card">
@@ -518,8 +518,8 @@
 			<section class="glass-section">
 				<div class="section-head">
 					<span class="eyebrow">Glass</span>
-					<h2>Refract through glass.</h2>
-					<p class="section-sub">Lens refraction at the wall, chromatic fringes at the edge. Use with any container shape.</p>
+					<h2>Lens refraction.</h2>
+					<p class="section-sub">Enable the glass pass to bend the scene at the container wall with tunable thickness, reflectivity, and chromatic dispersion. Composes with any shape.</p>
 				</div>
 				<div class="glass-grid">
 					<article class="card glass-card">
@@ -670,8 +670,8 @@
 			<section class="sticky-section">
 				<div class="section-head">
 					<span class="eyebrow">Sticky</span>
-					<h2>Make dye cling to letterforms.</h2>
-					<p class="section-sub">FluidStick masks the simulation with text or SVG paths. Hover to engage.</p>
+					<h2>Masked dye fields.</h2>
+					<p class="section-sub">FluidStick binds the dye to a text or SVG path mask. The simulation runs full-bleed; only pixels inside the mask retain color.</p>
 				</div>
 				<div class="sticky-grid">
 					<article class="card sticky-card">
@@ -716,8 +716,8 @@
 			<section class="reveal-section">
 				<div class="section-head">
 					<span class="eyebrow">Reveal</span>
-					<h2>Uncover with FluidReveal.</h2>
-					<p class="section-sub">FluidReveal uses the simulation as an opacity mask. Move the cursor to uncover what's underneath.</p>
+					<h2>Opacity-mask overlay.</h2>
+					<p class="section-sub">FluidReveal renders the dye field as an alpha channel over arbitrary child content. Pointer motion or auto-reveal clears the cover.</p>
 				</div>
 				<div class="reveal-grid">
 					<article class="card reveal-card">
@@ -756,8 +756,8 @@
 			<section class="distort-section">
 				<div class="section-head">
 					<span class="eyebrow">Distortion</span>
-					<h2>Distort an image.</h2>
-					<p class="section-sub">FluidDistortion warps any source with the velocity field. Hover to engage.</p>
+					<h2>Velocity-warped imagery.</h2>
+					<p class="section-sub">FluidDistortion samples a source image through the live velocity field. Tune strength and intensity for subtle ripples or heavy turbulence.</p>
 				</div>
 				<div class="distort-grid">
 					<article class="card distort-card">
