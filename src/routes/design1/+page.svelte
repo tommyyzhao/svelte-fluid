@@ -202,7 +202,7 @@
 					shading
 					splatOnHover
 					initialSplatCount={20}
-					autoSplatRate={6}
+					autoSplatRate={stickyAutoAnimate ? 6 : 0}
 					autoSplatCount={4}
 					autoSplatSwirl={300}
 				/>

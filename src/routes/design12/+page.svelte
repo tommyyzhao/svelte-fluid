@@ -276,7 +276,7 @@
 					bloom
 					sunrays
 					shading
-					autoSplatRate={3}
+					autoSplatRate={stickyAutoAnimate ? 3 : 0}
 					autoSplatCount={2}
 					autoSplatSwirl={220}
 					densityDissipation={0.97}
@@ -296,7 +296,7 @@
 						shading
 						bloom
 						sunrays
-						autoSplatRate={6}
+						autoSplatRate={stickyAutoAnimate ? 6 : 0}
 						autoSplatCount={4}
 						autoSplatSwirl={300}
 						initialSplatCount={20}

@@ -260,8 +260,8 @@
 			<div class="hero-stage">
 				<Fluid
 					seed={7}
-					autoSplatRate={6}
-					autoSplatCount={4}
+					autoSplatRate={stickyAutoAnimate ? 2 : 0}
+					autoSplatCount={2}
 					autoSplatSwirl={300}
 					splatOnHover
 					colorful

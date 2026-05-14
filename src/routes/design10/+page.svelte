@@ -248,7 +248,7 @@
 	splatRadius={0.05}
 	splatForce={3000}
 	splatOnHover
-	autoSplatRate={2}
+	autoSplatRate={stickyAutoAnimate ? 2 : 0}
 	autoSplatCount={2}
 	exclude=".card, .panel, .nav-bar, .footer-bar"
 	excludeRadius={20}
@@ -279,7 +279,7 @@
 						bloom
 						splatOnHover
 						initialSplatCount={20}
-						autoSplatRate={6}
+						autoSplatRate={stickyAutoAnimate ? 6 : 0}
 						autoSplatCount={4}
 						autoSplatSwirl={300}
 					/>
