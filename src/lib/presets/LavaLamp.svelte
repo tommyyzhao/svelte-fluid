@@ -55,7 +55,7 @@
 	/** Props consumed by `<LavaLamp />`. Sizing/seed/styling are forwarded; all other physics props are hard-coded. */
 	export type LavaLampProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label'
+		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 	>;
 </script>
 
@@ -71,7 +71,8 @@
 		seed,
 		lazy,
 		splatOnHover,
-		'aria-label': ariaLabel
+		'aria-label': ariaLabel,
+		backColor
 	}: LavaLampProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
@@ -134,6 +135,6 @@
 	bloom={false}
 	sunrays={false}
 	initialSplatCount={0}
-	backColor={{ r: 222, g: 218, b: 215 }}
+	backColor={backColor ?? { r: 222, g: 218, b: 215 }}
 	presetSplats={PRESET_SPLATS}
 />

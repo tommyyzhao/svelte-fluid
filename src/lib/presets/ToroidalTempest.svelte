@@ -26,7 +26,7 @@
 	/** Props consumed by `<ToroidalTempest />`. Sizing/seed/styling are forwarded; all other physics props are hard-coded. */
 	export type ToroidalTempestProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label'
+		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 	>;
 </script>
 
@@ -43,7 +43,8 @@
 		seed,
 		lazy,
 		splatOnHover,
-		'aria-label': ariaLabel
+		'aria-label': ariaLabel,
+		backColor
 	}: ToroidalTempestProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
@@ -116,6 +117,6 @@
 	sunrays
 	sunraysWeight={0.6}
 	initialSplatCount={0}
-	backColor={{ r: 2, g: 2, b: 10 }}
+	backColor={backColor ?? { r: 2, g: 2, b: 10 }}
 	presetSplats={PRESET_SPLATS}
 />

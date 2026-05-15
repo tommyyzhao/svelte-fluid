@@ -304,39 +304,39 @@
 			<div class="margin-mark">§ 04 · PRESETS</div>
 			<h2 class="section-title"><em>A taxonomy of the dye</em></h2>
 			<p class="section-sub">
-				<em>Note —</em> each preset ships its own ink: dark plates set into wine
-				frames, like jewels in velvet boxes.
+				<em>Note —</em> six on file. Each adapts to the page so the ink finds its
+				room.
 			</p>
 		</div>
 		<div class="preset-grid">
 			<article class="preset-cell">
 				<div class="cell-label">§ 04 / I · LAVA LAMP</div>
-				<div class="cell-canvas"><LavaLamp seed={11} aria-label="LavaLamp preset" /></div>
+				<div class="cell-canvas"><LavaLamp seed={11} backColor={surfaceColor} aria-label="LavaLamp preset" /></div>
 			</article>
 			<article class="preset-cell">
 				<div class="cell-label">§ 04 / II · PLASMA</div>
-				<div class="cell-canvas"><Plasma seed={22} aria-label="Plasma preset" /></div>
+				<div class="cell-canvas"><Plasma seed={22} backColor={surfaceColor} aria-label="Plasma preset" /></div>
 			</article>
 			<article class="preset-cell">
 				<div class="cell-label">§ 04 / III · INK IN WATER</div>
 				<div class="cell-canvas">
-					<InkInWater seed={33} lazy aria-label="InkInWater preset" />
+					<InkInWater seed={33} lazy backColor={surfaceColor} aria-label="InkInWater preset" />
 				</div>
 			</article>
 			<article class="preset-cell">
 				<div class="cell-label">§ 04 / IV · FROZEN SWIRL</div>
 				<div class="cell-canvas">
-					<FrozenSwirl seed={44} lazy aria-label="FrozenSwirl preset" />
+					<FrozenSwirl seed={44} lazy backColor={surfaceColor} aria-label="FrozenSwirl preset" />
 				</div>
 			</article>
 			<article class="preset-cell">
 				<div class="cell-label">§ 04 / V · AURORA</div>
-				<div class="cell-canvas"><Aurora seed={55} lazy aria-label="Aurora preset" /></div>
+				<div class="cell-canvas"><Aurora seed={55} lazy backColor={surfaceColor} aria-label="Aurora preset" /></div>
 			</article>
 			<article class="preset-cell">
 				<div class="cell-label">§ 04 / VI · TOROIDAL TEMPEST</div>
 				<div class="cell-canvas">
-					<ToroidalTempest seed={66} lazy aria-label="ToroidalTempest preset" />
+					<ToroidalTempest seed={66} lazy backColor={surfaceColor} aria-label="ToroidalTempest preset" />
 				</div>
 			</article>
 		</div>
@@ -352,7 +352,7 @@
 			<article class="shape-cell">
 				<div class="cell-label">§ 05 / I · CIRCLE</div>
 				<div class="shape-canvas">
-					<CircularFluid seed={601} lazy splatOnHover aria-label="Circle container shape" />
+					<CircularFluid seed={601} lazy backColor={surfaceColor} splatOnHover aria-label="Circle container shape" />
 				</div>
 			</article>
 			<article class="shape-cell">
@@ -375,13 +375,13 @@
 			<article class="shape-cell">
 				<div class="cell-label">§ 05 / III · FRAME</div>
 				<div class="shape-canvas">
-					<FrameFluid seed={603} lazy splatOnHover aria-label="Frame container shape" />
+					<FrameFluid seed={603} lazy backColor={surfaceColor} splatOnHover aria-label="Frame container shape" />
 				</div>
 			</article>
 			<article class="shape-cell">
 				<div class="cell-label">§ 05 / IV · ANNULUS</div>
 				<div class="shape-canvas">
-					<AnnularFluid seed={604} lazy splatOnHover aria-label="Annulus container shape" />
+					<AnnularFluid seed={604} lazy backColor={surfaceColor} splatOnHover aria-label="Annulus container shape" />
 				</div>
 			</article>
 			<article class="shape-cell">

@@ -22,7 +22,7 @@
 	/** Props consumed by `<FrozenSwirl />`. */
 	export type FrozenSwirlProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label'
+		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 	>;
 </script>
 
@@ -38,7 +38,8 @@
 		seed,
 		lazy,
 		splatOnHover,
-		'aria-label': ariaLabel
+		'aria-label': ariaLabel,
+		backColor
 	}: FrozenSwirlProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
@@ -85,6 +86,6 @@
 	bloomIntensity={1.0}
 	sunrays={false}
 	initialSplatCount={0}
-	backColor={{ r: 4, g: 8, b: 24 }}
+	backColor={backColor ?? { r: 4, g: 8, b: 24 }}
 	presetSplats={PRESET_SPLATS}
 />

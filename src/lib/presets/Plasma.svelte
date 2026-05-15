@@ -38,10 +38,10 @@
 <script lang="ts" module>
 	import type { FluidProps } from '../Fluid.svelte';
 
-	/** Props consumed by `<Plasma />`. Sizing/seed/styling are forwarded; all other physics props are hard-coded. */
+	/** Props consumed by `<Plasma />`. Sizing/seed/styling are forwarded, and `backColor` may be overridden so the preset adapts to its host page; all other physics props are hard-coded. */
 	export type PlasmaProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label'
+		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 	>;
 </script>
 
@@ -57,7 +57,8 @@
 		seed,
 		lazy,
 		splatOnHover,
-		'aria-label': ariaLabel
+		'aria-label': ariaLabel,
+		backColor
 	}: PlasmaProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
@@ -113,7 +114,7 @@
 	sunrays
 	sunraysWeight={0.5}
 	initialSplatCount={0}
-	backColor={{ r: 4, g: 2, b: 12 }}
+	backColor={backColor ?? { r: 4, g: 2, b: 12 }}
 	presetSplats={PRESET_SPLATS}
 	autoSplatRate={0.4}
 	autoSplatCount={4}

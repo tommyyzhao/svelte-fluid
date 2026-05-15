@@ -19,7 +19,7 @@
 	/** Props consumed by `<FrameFluid />`. */
 	export type FrameFluidProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label'
+		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 	> & { innerCornerRadius?: number; outerCornerRadius?: number };
 </script>
 
@@ -37,7 +37,8 @@
 		'aria-label': ariaLabel,
 		innerCornerRadius,
 		outerCornerRadius,
-		splatOnHover
+		splatOnHover,
+		backColor
 	}: FrameFluidProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
@@ -94,7 +95,7 @@
 	bloomIntensity={0.9}
 	sunrays={false}
 	initialSplatCount={0}
-	backColor={{ r: 0, g: 0, b: 0 }}
+	backColor={backColor ?? { r: 0, g: 0, b: 0 }}
 	presetSplats={PRESET_SPLATS}
 	autoSplatRate={0.5}
 	autoSplatCount={6}

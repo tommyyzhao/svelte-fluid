@@ -33,7 +33,7 @@
 	/** Props consumed by `<Aurora />`. */
 	export type AuroraProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label'
+		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 	>;
 </script>
 
@@ -49,7 +49,8 @@
 		seed,
 		lazy,
 		splatOnHover,
-		'aria-label': ariaLabel
+		'aria-label': ariaLabel,
+		backColor
 	}: AuroraProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
@@ -97,6 +98,6 @@
 	sunrays
 	sunraysWeight={1.4}
 	initialSplatCount={0}
-	backColor={{ r: 2, g: 4, b: 18 }}
+	backColor={backColor ?? { r: 2, g: 4, b: 18 }}
 	presetSplats={PRESET_SPLATS}
 />

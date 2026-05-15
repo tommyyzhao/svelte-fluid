@@ -26,7 +26,7 @@
 	/** Props consumed by `<CircularFluid />`. */
 	export type CircularFluidProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label'
+		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 	>;
 </script>
 
@@ -42,7 +42,8 @@
 		seed,
 		lazy,
 		'aria-label': ariaLabel,
-		splatOnHover
+		splatOnHover,
+		backColor
 	}: CircularFluidProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
@@ -103,7 +104,7 @@
 	bloomIntensity={1.0}
 	sunrays={false}
 	initialSplatCount={0}
-	backColor={{ r: 4, g: 2, b: 12 }}
+	backColor={backColor ?? { r: 4, g: 2, b: 12 }}
 	presetSplats={PRESET_SPLATS}
 	autoSplatRate={1.2}
 	autoSplatCount={1}
