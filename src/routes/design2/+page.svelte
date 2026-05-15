@@ -31,7 +31,7 @@
 <\/script>
 
 <div style="width: 100%; height: 480px;">
-  <Fluid seed={42} splatOnHover />
+  <Fluid seed={42} splatOnHover backColor={{ r: 245, g: 241, b: 234 }} />
 </div>`;
 
 	const features = [
@@ -61,6 +61,8 @@
 
 	type RGB = { r: number; g: number; b: number };
 
+	const paperColor: RGB = { r: 245, g: 241, b: 234 };
+
 	const PLAYGROUND_DEFAULTS = {
 		curl: 30,
 		splatRadius: 0.25,
@@ -70,7 +72,7 @@
 		bloom: true,
 		shading: true,
 		colorful: true,
-		backColor: { r: 0, g: 0, b: 0 } as RGB
+		backColor: { ...paperColor } as RGB
 	};
 
 	const PLAYGROUND_PRESETS: Record<string, Partial<typeof PLAYGROUND_DEFAULTS>> = {
@@ -248,7 +250,7 @@
 			<pre class="snippet"><code>{usage}</code></pre>
 			<div class="usage-preview">
 				<div class="cell-label">PREVIEW</div>
-				<div class="fluid-host"><Fluid seed={42} splatOnHover /></div>
+				<div class="fluid-host"><Fluid seed={42} splatOnHover backColor={paperColor} /></div>
 			</div>
 		</div>
 	</section>
@@ -346,6 +348,7 @@
 						splatOnHover
 						initialSplatCount={15}
 						containerShape={{ type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.42, halfH: 0.42, cornerRadius: 0.08 }}
+						backColor={paperColor}
 						lazy
 						aria-label="Rounded rect container shape"
 					/>
@@ -374,6 +377,7 @@
 						splatOnHover
 						initialSplatCount={15}
 						containerShape={{ type: 'svgPath', d: lightning, viewBox: [0, 0, 100, 100] }}
+						backColor={paperColor}
 						lazy
 						aria-label="SVG path container shape"
 					/>
@@ -390,6 +394,7 @@
 						splatOnHover
 						initialSplatCount={15}
 						containerShape={{ type: 'svgPath', text: '&', font: '900 280px Georgia, serif' }}
+						backColor={paperColor}
 						lazy
 						aria-label="Text glyph container shape"
 					/>
@@ -412,6 +417,7 @@
 						seed={1234}
 						initialSplatCount={12}
 						splatOnHover
+						backColor={paperColor}
 						lazy
 						aria-label="Default fluid configuration"
 					/>
@@ -428,6 +434,7 @@
 						densityDissipation={0.4}
 						initialSplatCount={10}
 						splatOnHover
+						backColor={paperColor}
 						lazy
 						aria-label="Flat fluid with low curl"
 					/>
@@ -444,6 +451,7 @@
 						splatForce={9000}
 						initialSplatCount={8}
 						splatOnHover
+						backColor={paperColor}
 						lazy
 						aria-label="Fluid with large bold splats"
 					/>
@@ -488,7 +496,7 @@
 						glassChromatic={0.5}
 						glassThickness={0.08}
 						containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
-						backColor={{ r: 4, g: 2, b: 12 }}
+						backColor={paperColor}
 						curl={35}
 						densityDissipation={0.15}
 						velocityDissipation={0.06}
@@ -518,7 +526,7 @@
 						glassReflectivity={0.06}
 						glassChromatic={0.1}
 						containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
-						backColor={{ r: 0, g: 0, b: 0 }}
+						backColor={paperColor}
 						curl={30}
 						densityDissipation={0.4}
 						velocityDissipation={0.12}
@@ -550,7 +558,7 @@
 						glassReflectivity={0.15}
 						glassChromatic={0.7}
 						containerShape={{ type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.42 }}
-						backColor={{ r: 2, g: 4, b: 14 }}
+						backColor={paperColor}
 						curl={40}
 						densityDissipation={0.3}
 						velocityDissipation={0.1}
@@ -581,7 +589,7 @@
 						glassReflectivity={0.18}
 						glassChromatic={0.4}
 						containerShape={{ type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.22, halfH: 0.22, innerCornerRadius: 0.06, outerHalfW: 0.48, outerHalfH: 0.48, outerCornerRadius: 0.04 }}
-						backColor={{ r: 6, g: 3, b: 16 }}
+						backColor={paperColor}
 						curl={25}
 						densityDissipation={0.25}
 						velocityDissipation={0.1}
@@ -626,6 +634,7 @@
 						bloom={false}
 						densityDissipation={0.92}
 						splatRadius={0.18}
+						backColor={paperColor}
 						lazy
 					/>
 				</div>
@@ -644,6 +653,7 @@
 						bloom={false}
 						densityDissipation={0.92}
 						splatRadius={0.18}
+						backColor={paperColor}
 						lazy
 					/>
 				</div>
@@ -1287,7 +1297,7 @@
 	.glass-canvas {
 		height: 340px;
 		position: relative;
-		background: #0a0a14;
+		background: var(--paper);
 	}
 
 	/* Sticky */

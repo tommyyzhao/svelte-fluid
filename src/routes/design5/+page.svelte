@@ -59,6 +59,8 @@
 
 	type RGB = { r: number; g: number; b: number };
 
+	const paperColor: RGB = { r: 251, g: 245, b: 238 };
+
 	const PLAYGROUND_DEFAULTS = {
 		curl: 30,
 		splatRadius: 0.25,
@@ -68,7 +70,7 @@
 		bloom: true,
 		shading: true,
 		colorful: true,
-		backColor: { r: 0, g: 0, b: 0 } as RGB
+		backColor: { ...paperColor } as RGB
 	};
 
 	const PLAYGROUND_PRESETS: Record<string, Partial<typeof PLAYGROUND_DEFAULTS>> = {
@@ -344,6 +346,7 @@
 								halfH: 0.42,
 								cornerRadius: 0.08
 							}}
+							backColor={paperColor}
 							lazy
 							aria-label="Rounded rect container demo"
 						/>
@@ -370,6 +373,7 @@
 							bloom={false}
 							splatOnHover
 							containerShape={{ type: 'svgPath', d: lightning, viewBox: [0, 0, 100, 100] }}
+							backColor={paperColor}
 							lazy
 							aria-label="SVG path lightning container demo"
 						/>
@@ -388,6 +392,7 @@
 								text: '&',
 								font: '900 280px Georgia, serif'
 							}}
+							backColor={paperColor}
 							lazy
 							aria-label="Text glyph container demo"
 						/>
@@ -412,6 +417,7 @@
 							seed={1234}
 							initialSplatCount={12}
 							splatOnHover
+							backColor={paperColor}
 							lazy
 							aria-label="Default fluid configuration"
 						/>
@@ -428,6 +434,7 @@
 							densityDissipation={0.4}
 							initialSplatCount={10}
 							splatOnHover
+							backColor={paperColor}
 							lazy
 							aria-label="Flat fluid with low curl"
 						/>
@@ -444,6 +451,7 @@
 							splatForce={9000}
 							initialSplatCount={8}
 							splatOnHover
+							backColor={paperColor}
 							lazy
 							aria-label="Fluid with large bold splats"
 						/>
@@ -490,7 +498,7 @@
 							glassChromatic={0.5}
 							glassThickness={0.08}
 							containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
-							backColor={{ r: 24, g: 16, b: 28 }}
+							backColor={paperColor}
 							curl={35}
 							densityDissipation={0.15}
 							velocityDissipation={0.06}
@@ -520,7 +528,7 @@
 							glassReflectivity={0.06}
 							glassChromatic={0.1}
 							containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
-							backColor={{ r: 12, g: 18, b: 28 }}
+							backColor={paperColor}
 							curl={30}
 							densityDissipation={0.4}
 							velocityDissipation={0.12}
@@ -558,7 +566,7 @@
 								innerRadius: 0.15,
 								outerRadius: 0.42
 							}}
-							backColor={{ r: 18, g: 12, b: 28 }}
+							backColor={paperColor}
 							curl={40}
 							densityDissipation={0.3}
 							velocityDissipation={0.1}
@@ -599,7 +607,7 @@
 								outerHalfH: 0.48,
 								outerCornerRadius: 0.04
 							}}
-							backColor={{ r: 20, g: 14, b: 30 }}
+							backColor={paperColor}
 							curl={25}
 							densityDissipation={0.25}
 							velocityDissipation={0.1}
@@ -644,6 +652,7 @@
 							bloom={false}
 							densityDissipation={0.92}
 							splatRadius={0.18}
+							backColor={paperColor}
 							lazy
 						/>
 					</div>
@@ -662,6 +671,7 @@
 							bloom={false}
 							densityDissipation={0.92}
 							splatRadius={0.18}
+							backColor={paperColor}
 							lazy
 						/>
 					</div>
@@ -1296,7 +1306,7 @@
 	.preset-canvas {
 		height: 320px;
 		width: 100%;
-		background: #1a1815;
+		background: #fbf5ee;
 		position: relative;
 	}
 
@@ -1451,7 +1461,7 @@
 
 	.physics-canvas {
 		height: 260px;
-		background: #1a1815;
+		background: #fbf5ee;
 		border-radius: 24px;
 		overflow: hidden;
 		box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
@@ -1494,7 +1504,7 @@
 
 	.glass-canvas {
 		height: 280px;
-		background: #1a1815;
+		background: #fbf5ee;
 		border-radius: 24px;
 		overflow: hidden;
 		box-shadow: 0 2px 16px rgba(0, 0, 0, 0.15);
@@ -1525,7 +1535,7 @@
 
 	.sticky-canvas {
 		height: 260px;
-		background: #1a1815;
+		background: #fbf5ee;
 		border-radius: 24px;
 		overflow: hidden;
 		box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
@@ -1651,7 +1661,7 @@
 
 	.playground-canvas {
 		height: 400px;
-		background: #1a1815;
+		background: #fbf5ee;
 		border-radius: 24px;
 		overflow: hidden;
 		box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);

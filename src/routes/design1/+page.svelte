@@ -56,6 +56,8 @@
 
 	type RGB = { r: number; g: number; b: number };
 
+	const paperColor: RGB = { r: 250, g: 248, b: 245 };
+
 	const PLAYGROUND_DEFAULTS = {
 		curl: 30,
 		splatRadius: 0.25,
@@ -65,7 +67,7 @@
 		bloom: true,
 		shading: true,
 		colorful: true,
-		backColor: { r: 0, g: 0, b: 0 } as RGB
+		backColor: { ...paperColor } as RGB
 	};
 
 	const PLAYGROUND_PRESETS: Record<string, Partial<typeof PLAYGROUND_DEFAULTS>> = {
@@ -294,6 +296,7 @@
 						bloom
 						splatOnHover
 						containerShape={{ type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.42, halfH: 0.42, cornerRadius: 0.08 }}
+						backColor={paperColor}
 						lazy
 						aria-label="Rounded rect container demo"
 					/>
@@ -327,6 +330,7 @@
 						bloom
 						splatOnHover
 						containerShape={{ type: 'svgPath', d: lightning, viewBox: [0, 0, 100, 100] }}
+						backColor={paperColor}
 						lazy
 						aria-label="SVG path container demo"
 					/>
@@ -344,6 +348,7 @@
 						bloom
 						splatOnHover
 						containerShape={{ type: 'svgPath', text: '&', font: '900 280px Georgia, serif' }}
+						backColor={paperColor}
 						lazy
 						aria-label="Text glyph container demo"
 					/>
@@ -365,7 +370,7 @@
 		<div class="physics-grid">
 			<article class="cell physics-cell">
 				<div class="canvas-wrap dark">
-					<Fluid seed={1234} initialSplatCount={12} splatOnHover lazy aria-label="Default fluid configuration" />
+					<Fluid seed={1234} initialSplatCount={12} splatOnHover backColor={paperColor} lazy aria-label="Default fluid configuration" />
 				</div>
 				<div class="caption">
 					<span class="label">default</span>
@@ -381,6 +386,7 @@
 						densityDissipation={0.4}
 						initialSplatCount={10}
 						splatOnHover
+						backColor={paperColor}
 						lazy
 						aria-label="Flat fluid with low curl"
 					/>
@@ -399,6 +405,7 @@
 						splatForce={9000}
 						initialSplatCount={8}
 						splatOnHover
+						backColor={paperColor}
 						lazy
 						aria-label="Fluid with large bold splats"
 					/>
@@ -448,7 +455,7 @@
 						glassChromatic={0.5}
 						glassThickness={0.08}
 						containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
-						backColor={{ r: 4, g: 2, b: 12 }}
+						backColor={paperColor}
 						curl={35}
 						densityDissipation={0.15}
 						velocityDissipation={0.06}
@@ -480,7 +487,7 @@
 						glassReflectivity={0.06}
 						glassChromatic={0.1}
 						containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
-						backColor={{ r: 0, g: 0, b: 0 }}
+						backColor={paperColor}
 						curl={30}
 						densityDissipation={0.4}
 						velocityDissipation={0.12}
@@ -514,7 +521,7 @@
 						glassReflectivity={0.15}
 						glassChromatic={0.7}
 						containerShape={{ type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.42 }}
-						backColor={{ r: 2, g: 4, b: 14 }}
+						backColor={paperColor}
 						curl={40}
 						densityDissipation={0.3}
 						velocityDissipation={0.1}
@@ -557,7 +564,7 @@
 							outerHalfH: 0.48,
 							outerCornerRadius: 0.04
 						}}
-						backColor={{ r: 6, g: 3, b: 16 }}
+						backColor={paperColor}
 						curl={25}
 						densityDissipation={0.25}
 						velocityDissipation={0.1}
@@ -605,6 +612,7 @@
 						bloom={false}
 						densityDissipation={0.92}
 						splatRadius={0.18}
+						backColor={paperColor}
 						lazy
 					/>
 				</div>
@@ -625,6 +633,7 @@
 						bloom={false}
 						densityDissipation={0.92}
 						splatRadius={0.18}
+						backColor={paperColor}
 						lazy
 					/>
 				</div>
@@ -644,7 +653,7 @@
 		</div>
 		<div class="reveal-grid">
 			<article class="cell reveal-cell">
-				<div class="canvas-wrap" style="background: #f0ece6;">
+				<div class="canvas-wrap" style="background: #faf8f5;">
 					<FluidReveal
 						lazy
 						velocityDissipation={0.95}
@@ -658,7 +667,7 @@
 				</div>
 			</article>
 			<article class="cell reveal-cell">
-				<div class="canvas-wrap" style="background: #f0ece6;">
+				<div class="canvas-wrap" style="background: #faf8f5;">
 					<FluidReveal
 						lazy
 						autoReveal={stickyAutoAnimate}
@@ -1161,7 +1170,7 @@
 	}
 
 	.canvas-wrap.dark {
-		background: #0a0a0a;
+		background: #faf8f5;
 	}
 
 	.caption {
@@ -1411,7 +1420,7 @@
 	.playground-canvas {
 		border-radius: 16px;
 		overflow: hidden;
-		background: #0a0a0a;
+		background: #faf8f5;
 		position: relative;
 	}
 
