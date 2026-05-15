@@ -16,6 +16,11 @@
 		ToroidalTempest
 	} from '$lib/index.js';
 
+	type RGB = { r: number; g: number; b: number };
+
+	const pageColor: RGB = { r: 58, g: 31, b: 44 };
+	const surfaceColor: RGB = { r: 74, g: 42, b: 55 };
+
 	let installTab = $state<'npm' | 'bun' | 'pnpm'>('npm');
 
 	const installCmd = $derived(
@@ -26,22 +31,33 @@
 				: 'pnpm add svelte-fluid'
 	);
 
+	let installCopied = $state(false);
+	async function copyInstall() {
+		try {
+			await navigator.clipboard.writeText(installCmd);
+			installCopied = true;
+			setTimeout(() => (installCopied = false), 1200);
+		} catch {
+			installCopied = false;
+		}
+	}
+
 	const usage = `<script>
   import { Fluid } from 'svelte-fluid';
 <\/script>
 
 <div style="width: 100%; height: 480px;">
-  <Fluid seed={42} splatOnHover backColor={{ r: 245, g: 241, b: 234 }} />
+  <Fluid seed={42} splatOnHover backColor={{ r: 58, g: 31, b: 44 }} />
 </div>`;
 
 	const features = [
-		{ n: '01', t: 'Multi-instance', d: 'Many engines coexist on one page. No shared globals.' },
-		{ n: '02', t: 'Resize-stable', d: 'Survives ResizeObserver storms. FBOs rebuild on stable size.' },
+		{ n: '01', t: 'Multi-instance', d: 'Many engines coexist on one page. No shared globals, no jealousy.' },
+		{ n: '02', t: 'Resize-stable', d: 'Survives ResizeObserver storms. FBOs rebuild only on stable size.' },
 		{ n: '03', t: 'Deterministic seeding', d: 'A seed in. The same fluid out. Frame for frame.' },
-		{ n: '04', t: 'MIT licensed', d: 'Derivative of PavelDoGreat. Use it. Ship it.' },
+		{ n: '04', t: 'MIT licensed', d: 'Derivative of PavelDoGreat. Take it home.' },
 		{ n: '05', t: 'Zero runtime deps', d: 'Pure Svelte 5 and WebGL. Nothing else in your bundle.' },
-		{ n: '06', t: '70+ configuration props', d: 'Bloom, sunrays, curl, dissipation, splat radius. All hot-swappable.' },
-		{ n: '07', t: 'Ten built-in presets', d: 'Editorial fluid wallpaper out of the box.' }
+		{ n: '06', t: '70+ configuration props', d: 'Bloom, sunrays, curl, dissipation. All hot-swappable, all hours.' },
+		{ n: '07', t: 'Ten built-in presets', d: 'Editorial fluid wallpaper. Pour and serve.' }
 	];
 
 	const lightning = 'M 55 5 L 25 55 L 45 55 L 35 95 L 75 40 L 55 40 L 70 5 Z';
@@ -59,10 +75,6 @@
 
 	const stickyAutoAnimate = $derived(!reducedMotion);
 
-	type RGB = { r: number; g: number; b: number };
-
-	const paperColor: RGB = { r: 245, g: 241, b: 234 };
-
 	const PLAYGROUND_DEFAULTS = {
 		curl: 30,
 		splatRadius: 0.25,
@@ -72,7 +84,7 @@
 		bloom: true,
 		shading: true,
 		colorful: true,
-		backColor: { ...paperColor } as RGB
+		backColor: { ...pageColor } as RGB
 	};
 
 	const PLAYGROUND_PRESETS: Record<string, Partial<typeof PLAYGROUND_DEFAULTS>> = {
@@ -180,23 +192,23 @@
 </script>
 
 <svelte:head>
-	<title>svelte-fluid — WebGL fluid as a Svelte 5 component</title>
+	<title>svelte-fluid — Velvet</title>
 </svelte:head>
 
 <a class="competition-back" href="{base}/design-competition">← Competition</a>
 
 <main class="page">
 	<header class="hero">
-		<div class="margin-mark">§ 00</div>
-		<div class="kicker">A Svelte 5 component library / Issue No. 1</div>
-		<h1 class="display">svelte<span class="dash">‑</span>fluid</h1>
+		<div class="margin-mark">§ 00 · ISSUE NO. XVI</div>
+		<div class="kicker">A Svelte 5 component library / Late edition</div>
+		<h1 class="display"><em>velvet</em><span class="dash">,</span> <em>after</em> <em>hours</em></h1>
 		<h1 class="tagline">
-			WebGL fluid simulation as a Svelte 5 component. Multi-instance, resize-stable,
-			deterministic seeding.
+			WebGL fluid simulation as a Svelte 5 component. Slow swirling pigment, served
+			between the dark and the light.
 		</h1>
 
 		<div class="install-row">
-			<div class="install-tabs">
+			<div class="install-tabs" role="tablist" aria-label="Package manager">
 				<button
 					class="tab"
 					class:active={installTab === 'npm'}
@@ -216,19 +228,33 @@
 			<div class="install-box">
 				<span class="prompt">↳</span>
 				<code>{installCmd}</code>
+				<button class="install-copy" onclick={copyInstall} aria-label="Copy install command">
+					{installCopied ? 'Copied' : 'Copy'}
+				</button>
 			</div>
 		</div>
 
-		<nav class="hero-links">
+		<nav class="hero-links" aria-label="Primary">
 			<a class="hero-link" href="https://github.com/tommyyzhao/svelte-fluid">→ GitHub</a>
 			<a class="hero-link" href="{base}/docs">→ Documentation</a>
+			<a class="hero-link" href="{base}/design-competition">→ All designs</a>
 		</nav>
+
+		<div class="feature-pills">
+			{#each features as f (f.n)}
+				<span class="pill"><span class="pill-num">{f.n}</span>{f.t}</span>
+			{/each}
+		</div>
 	</header>
 
 	<section class="section index-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 01</div>
-			<h2 class="section-title">01. INDEX — A MANIFESTO</h2>
+			<div class="margin-mark">§ 01 · INDEX</div>
+			<h2 class="section-title"><em>An index of small mercies</em></h2>
+			<p class="section-sub">
+				Seven reasons to pour something dark, sit close to the screen, and let the
+				engine do the moving.
+			</p>
 		</div>
 		<ol class="manifesto">
 			{#each features as f (f.n)}
@@ -243,102 +269,94 @@
 
 	<section class="section usage-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 02</div>
-			<h2 class="section-title">02. INSTALL — A MINIMUM</h2>
+			<div class="margin-mark">§ 02 · INSTALL</div>
+			<h2 class="section-title"><em>Open the bottle</em></h2>
+			<p class="section-sub">One line. Then the page begins to breathe.</p>
+		</div>
+		<div class="install-box install-box--standalone">
+			<span class="prompt">↳</span>
+			<code>{installCmd}</code>
+			<button class="install-copy" onclick={copyInstall} aria-label="Copy install command">
+				{installCopied ? 'Copied' : 'Copy'}
+			</button>
+		</div>
+	</section>
+
+	<section class="section usage-section">
+		<div class="section-head">
+			<div class="margin-mark">§ 03 · USAGE</div>
+			<h2 class="section-title"><em>A first pour</em></h2>
+			<p class="section-sub">Drop the tag. Reach for props when you want your own physics.</p>
 		</div>
 		<div class="usage-grid">
 			<pre class="snippet"><code>{usage}</code></pre>
 			<div class="usage-preview">
-				<div class="cell-label">PREVIEW</div>
-				<div class="fluid-host"><Fluid seed={42} splatOnHover backColor={paperColor} /></div>
+				<div class="cell-label">§ 03 · PREVIEW</div>
+				<div class="fluid-host">
+					<Fluid seed={42} splatOnHover backColor={surfaceColor} lazy aria-label="Velvet usage preview" />
+				</div>
 			</div>
 		</div>
-	</section>
-
-	<section class="section quote-section">
-		<div class="margin-mark">§ 03</div>
-		<blockquote class="pull-quote">
-			<span class="open-quote" aria-hidden="true">&ldquo;</span>
-			<p>
-				A seed in. The same fluid out. Frame for frame, render for render — pixels
-				stable across reloads, machines, and time.
-			</p>
-			<footer class="quote-cite">— ON DETERMINISTIC SEEDING</footer>
-		</blockquote>
 	</section>
 
 	<section class="section presets-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 04</div>
-			<h2 class="section-title">03. PRESETS — A SAMPLER</h2>
-			<p class="section-sub">Six of ten. Each fills its parent. Each accepts a seed.</p>
+			<div class="margin-mark">§ 04 · PRESETS</div>
+			<h2 class="section-title"><em>A taxonomy of the dye</em></h2>
+			<p class="section-sub">
+				<em>Note —</em> each preset ships its own ink: dark plates set into wine
+				frames, like jewels in velvet boxes.
+			</p>
 		</div>
 		<div class="preset-grid">
 			<article class="preset-cell">
-				<div class="cell-label">§ 04 / LAVA LAMP</div>
-				<div class="cell-canvas"><LavaLamp seed={1} aria-label="LavaLamp preset" /></div>
+				<div class="cell-label">§ 04 / I · LAVA LAMP</div>
+				<div class="cell-canvas"><LavaLamp seed={11} aria-label="LavaLamp preset" /></div>
 			</article>
 			<article class="preset-cell">
-				<div class="cell-label">§ 04 / PLASMA</div>
-				<div class="cell-canvas"><Plasma seed={2} aria-label="Plasma preset" /></div>
+				<div class="cell-label">§ 04 / II · PLASMA</div>
+				<div class="cell-canvas"><Plasma seed={22} aria-label="Plasma preset" /></div>
 			</article>
 			<article class="preset-cell">
-				<div class="cell-label">§ 04 / INK IN WATER</div>
+				<div class="cell-label">§ 04 / III · INK IN WATER</div>
 				<div class="cell-canvas">
-					<InkInWater seed={3} lazy aria-label="InkInWater preset" />
+					<InkInWater seed={33} lazy aria-label="InkInWater preset" />
 				</div>
 			</article>
 			<article class="preset-cell">
-				<div class="cell-label">§ 04 / FROZEN SWIRL</div>
+				<div class="cell-label">§ 04 / IV · FROZEN SWIRL</div>
 				<div class="cell-canvas">
-					<FrozenSwirl seed={4} lazy aria-label="FrozenSwirl preset" />
+					<FrozenSwirl seed={44} lazy aria-label="FrozenSwirl preset" />
 				</div>
 			</article>
 			<article class="preset-cell">
-				<div class="cell-label">§ 04 / AURORA</div>
-				<div class="cell-canvas"><Aurora seed={5} lazy aria-label="Aurora preset" /></div>
+				<div class="cell-label">§ 04 / V · AURORA</div>
+				<div class="cell-canvas"><Aurora seed={55} lazy aria-label="Aurora preset" /></div>
 			</article>
 			<article class="preset-cell">
-				<div class="cell-label">§ 04 / TOROIDAL TEMPEST</div>
+				<div class="cell-label">§ 04 / VI · TOROIDAL TEMPEST</div>
 				<div class="cell-canvas">
-					<ToroidalTempest seed={6} lazy aria-label="ToroidalTempest preset" />
+					<ToroidalTempest seed={66} lazy aria-label="ToroidalTempest preset" />
 				</div>
 			</article>
-		</div>
-	</section>
-
-	<section class="section invert-section">
-		<div class="invert-grid">
-			<div class="invert-text">
-				<div class="margin-mark light">§ 05</div>
-				<h2 class="invert-title">04. PLASMA — AFTER MIDNIGHT</h2>
-				<p class="invert-body">
-					Inverted, the fluid reads as type. Set against cream it argues with the
-					page. Set against black it argues with the void. Same engine, two columns.
-				</p>
-				<a class="invert-link" href="{base}/docs">→ Read the docs</a>
-			</div>
-			<div class="invert-canvas">
-				<Plasma seed={99} lazy aria-label="Plasma preset, inverted" />
-			</div>
 		</div>
 	</section>
 
 	<section class="section shapes-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 06</div>
-			<h2 class="section-title">05. SHAPES — A TYPOLOGY</h2>
-			<p class="section-sub">Six primitives. Confine the dye. Hover to splat.</p>
+			<div class="margin-mark">§ 05 · SHAPES</div>
+			<h2 class="section-title"><em>The shape of containment</em></h2>
+			<p class="section-sub">Six vessels for the dye. Hover, and the dye answers.</p>
 		</div>
 		<div class="shape-grid">
 			<article class="shape-cell">
-				<div class="cell-label">CIRCLE</div>
+				<div class="cell-label">§ 05 / I · CIRCLE</div>
 				<div class="shape-canvas">
 					<CircularFluid seed={601} lazy splatOnHover aria-label="Circle container shape" />
 				</div>
 			</article>
 			<article class="shape-cell">
-				<div class="cell-label">ROUNDED RECT</div>
+				<div class="cell-label">§ 05 / II · ROUNDED RECT</div>
 				<div class="shape-canvas">
 					<Fluid
 						seed={602}
@@ -348,26 +366,26 @@
 						splatOnHover
 						initialSplatCount={15}
 						containerShape={{ type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.42, halfH: 0.42, cornerRadius: 0.08 }}
-						backColor={paperColor}
+						backColor={surfaceColor}
 						lazy
 						aria-label="Rounded rect container shape"
 					/>
 				</div>
 			</article>
 			<article class="shape-cell">
-				<div class="cell-label">FRAME</div>
+				<div class="cell-label">§ 05 / III · FRAME</div>
 				<div class="shape-canvas">
 					<FrameFluid seed={603} lazy splatOnHover aria-label="Frame container shape" />
 				</div>
 			</article>
 			<article class="shape-cell">
-				<div class="cell-label">ANNULUS</div>
+				<div class="cell-label">§ 05 / IV · ANNULUS</div>
 				<div class="shape-canvas">
 					<AnnularFluid seed={604} lazy splatOnHover aria-label="Annulus container shape" />
 				</div>
 			</article>
 			<article class="shape-cell">
-				<div class="cell-label">SVG PATH</div>
+				<div class="cell-label">§ 05 / V · LIGHTNING</div>
 				<div class="shape-canvas">
 					<Fluid
 						seed={605}
@@ -377,14 +395,14 @@
 						splatOnHover
 						initialSplatCount={15}
 						containerShape={{ type: 'svgPath', d: lightning, viewBox: [0, 0, 100, 100] }}
-						backColor={paperColor}
+						backColor={surfaceColor}
 						lazy
-						aria-label="SVG path container shape"
+						aria-label="Lightning SVG path container shape"
 					/>
 				</div>
 			</article>
 			<article class="shape-cell">
-				<div class="cell-label">TEXT GLYPH</div>
+				<div class="cell-label">§ 05 / VI · AMPERSAND</div>
 				<div class="shape-canvas">
 					<Fluid
 						seed={606}
@@ -394,9 +412,9 @@
 						splatOnHover
 						initialSplatCount={15}
 						containerShape={{ type: 'svgPath', text: '&', font: '900 280px Georgia, serif' }}
-						backColor={paperColor}
+						backColor={surfaceColor}
 						lazy
-						aria-label="Text glyph container shape"
+						aria-label="Ampersand text glyph container shape"
 					/>
 				</div>
 			</article>
@@ -405,19 +423,22 @@
 
 	<section class="section physics-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 07</div>
-			<h2 class="section-title">06. PHYSICS — A STUDY</h2>
-			<p class="section-sub">Every prop optional. Drop the tag; reach for props when you want your own physics.</p>
+			<div class="margin-mark">§ 06 · PHYSICS</div>
+			<h2 class="section-title"><em>Four moods, one engine</em></h2>
+			<p class="section-sub">
+				Every prop optional. Each cell is the same component, dressed for a different
+				hour of the night.
+			</p>
 		</div>
 		<div class="physics-grid">
 			<article class="physics-cell">
-				<div class="cell-label">DEFAULT</div>
+				<div class="cell-label">§ 06 / I · DEFAULT</div>
 				<div class="physics-canvas">
 					<Fluid
 						seed={1234}
 						initialSplatCount={12}
 						splatOnHover
-						backColor={paperColor}
+						backColor={pageColor}
 						lazy
 						aria-label="Default fluid configuration"
 					/>
@@ -425,7 +446,7 @@
 				<code class="physics-snippet">{'<Fluid />'}</code>
 			</article>
 			<article class="physics-cell">
-				<div class="cell-label">FLAT + SOFT</div>
+				<div class="cell-label">§ 06 / II · FLAT + SOFT</div>
 				<div class="physics-canvas">
 					<Fluid
 						seed={5678}
@@ -434,7 +455,7 @@
 						densityDissipation={0.4}
 						initialSplatCount={10}
 						splatOnHover
-						backColor={paperColor}
+						backColor={pageColor}
 						lazy
 						aria-label="Flat fluid with low curl"
 					/>
@@ -442,7 +463,7 @@
 				<code class="physics-snippet">{'bloom={false} curl={5} densityDissipation={0.4}'}</code>
 			</article>
 			<article class="physics-cell">
-				<div class="cell-label">BOLD SPLATS</div>
+				<div class="cell-label">§ 06 / III · BOLD SPLATS</div>
 				<div class="physics-canvas">
 					<Fluid
 						seed={9012}
@@ -451,7 +472,7 @@
 						splatForce={9000}
 						initialSplatCount={8}
 						splatOnHover
-						backColor={paperColor}
+						backColor={pageColor}
 						lazy
 						aria-label="Fluid with large bold splats"
 					/>
@@ -459,7 +480,7 @@
 				<code class="physics-snippet">{'shading={false} splatRadius={0.8} splatForce={9000}'}</code>
 			</article>
 			<article class="physics-cell">
-				<div class="cell-label">SLOW + TRANSPARENT</div>
+				<div class="cell-label">§ 06 / IV · SLOW + TRANSPARENT</div>
 				<div class="physics-canvas">
 					<Fluid
 						seed={3456}
@@ -479,13 +500,13 @@
 
 	<section class="section glass-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 08</div>
-			<h2 class="section-title">07. REFRACTION — A FOOTNOTE</h2>
-			<p class="section-sub">A lens at the wall. Chromatic fringes at the edge. Pairs with any shape.</p>
+			<div class="margin-mark">§ 07 · GLASS</div>
+			<h2 class="section-title"><em>Refraction, after dark</em></h2>
+			<p class="section-sub">A lens at the wall. Chromatic fringes at the edge. Wine reads through it.</p>
 		</div>
 		<div class="glass-grid">
 			<article class="glass-cell">
-				<div class="cell-label">CRYSTAL ORB</div>
+				<div class="cell-label">§ 07 / I · CRYSTAL ORB</div>
 				<div class="glass-canvas">
 					<Fluid
 						seed={1111}
@@ -496,7 +517,7 @@
 						glassChromatic={0.5}
 						glassThickness={0.08}
 						containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
-						backColor={paperColor}
+						backColor={pageColor}
 						curl={35}
 						densityDissipation={0.15}
 						velocityDissipation={0.06}
@@ -516,7 +537,7 @@
 				</div>
 			</article>
 			<article class="glass-cell">
-				<div class="cell-label">SOFT LENS</div>
+				<div class="cell-label">§ 07 / II · SOFT LENS</div>
 				<div class="glass-canvas">
 					<Fluid
 						seed={1212}
@@ -526,7 +547,7 @@
 						glassReflectivity={0.06}
 						glassChromatic={0.1}
 						containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
-						backColor={paperColor}
+						backColor={pageColor}
 						curl={30}
 						densityDissipation={0.4}
 						velocityDissipation={0.12}
@@ -547,7 +568,7 @@
 				</div>
 			</article>
 			<article class="glass-cell">
-				<div class="cell-label">PORTAL RING</div>
+				<div class="cell-label">§ 07 / III · PORTAL RING</div>
 				<div class="glass-canvas">
 					<Fluid
 						seed={1313}
@@ -558,7 +579,7 @@
 						glassReflectivity={0.15}
 						glassChromatic={0.7}
 						containerShape={{ type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.42 }}
-						backColor={paperColor}
+						backColor={pageColor}
 						curl={40}
 						densityDissipation={0.3}
 						velocityDissipation={0.1}
@@ -578,7 +599,7 @@
 				</div>
 			</article>
 			<article class="glass-cell">
-				<div class="cell-label">GLASS FRAME</div>
+				<div class="cell-label">§ 07 / IV · GLASS FRAME</div>
 				<div class="glass-canvas">
 					<Fluid
 						seed={1414}
@@ -589,7 +610,7 @@
 						glassReflectivity={0.18}
 						glassChromatic={0.4}
 						containerShape={{ type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.22, halfH: 0.22, innerCornerRadius: 0.06, outerHalfW: 0.48, outerHalfH: 0.48, outerCornerRadius: 0.04 }}
-						backColor={paperColor}
+						backColor={pageColor}
 						curl={25}
 						densityDissipation={0.25}
 						velocityDissipation={0.1}
@@ -615,17 +636,17 @@
 
 	<section class="section sticky-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 09</div>
-			<h2 class="section-title">08. LETTERFORMS — A STUDY</h2>
-			<p class="section-sub">Dye accumulates inside the letterforms. Try the cursor.</p>
+			<div class="margin-mark">§ 08 · STICKY</div>
+			<h2 class="section-title"><em>Letterforms in the dark</em></h2>
+			<p class="section-sub">Dye accumulates inside the glyphs. The page wears its own name.</p>
 		</div>
 		<div class="sticky-grid">
 			<article class="sticky-cell">
-				<div class="cell-label">GEIST · 900</div>
+				<div class="cell-label">§ 08 / I · PLAYFAIR · 900</div>
 				<div class="sticky-canvas">
 					<FluidStick
-						text="FLUID"
-						font="900 100px Georgia, serif"
+						text="VELVET"
+						font="900 100px 'Playfair Display', Georgia, serif"
 						seed={211}
 						autoAnimate={stickyAutoAnimate}
 						autoAnimateDuration={4}
@@ -634,13 +655,13 @@
 						bloom={false}
 						densityDissipation={0.92}
 						splatRadius={0.18}
-						backColor={paperColor}
+						backColor={surfaceColor}
 						lazy
 					/>
 				</div>
 			</article>
 			<article class="sticky-cell">
-				<div class="cell-label">GEORGIA · ∞</div>
+				<div class="cell-label">§ 08 / II · GEORGIA · ∞</div>
 				<div class="sticky-canvas">
 					<FluidStick
 						text="∞"
@@ -653,7 +674,7 @@
 						bloom={false}
 						densityDissipation={0.92}
 						splatRadius={0.18}
-						backColor={paperColor}
+						backColor={surfaceColor}
 						lazy
 					/>
 				</div>
@@ -663,15 +684,22 @@
 
 	<section class="section reveal-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 10</div>
-			<h2 class="section-title">09. REVEAL — A CURTAIN</h2>
-			<p class="section-sub">The fluid serves as an opacity mask. Drag to uncover what lies beneath.</p>
+			<div class="margin-mark">§ 09 · REVEAL</div>
+			<h2 class="section-title"><em>What lies beneath the curtain</em></h2>
+			<p class="section-sub">The fluid serves as a mask. Drag, and the wine parts.</p>
 		</div>
 		<div class="reveal-grid">
 			<article class="reveal-cell">
-				<div class="cell-label">SCRATCH TO REVEAL</div>
+				<div class="cell-label">§ 09 / I · SCRATCH</div>
 				<div class="reveal-canvas">
-					<FluidReveal lazy velocityDissipation={0.95} pressureIterations={10}>
+					<FluidReveal
+						lazy
+						velocityDissipation={0.95}
+						pressureIterations={10}
+						coverColor={{ r: 0.227, g: 0.122, b: 0.173 }}
+						fringeColor={{ r: 0.6, g: 0.45, b: 0.55 }}
+						accentColor={{ r: 0.83, g: 0.72, b: 0.59 }}
+					>
 						<div class="reveal-content">
 							<span class="reveal-label">Revealed</span>
 						</div>
@@ -679,7 +707,7 @@
 				</div>
 			</article>
 			<article class="reveal-cell">
-				<div class="cell-label">AUTO REVEAL</div>
+				<div class="cell-label">§ 09 / II · AUTO</div>
 				<div class="reveal-canvas">
 					<FluidReveal
 						lazy
@@ -688,12 +716,12 @@
 						fadeBack={false}
 						velocityDissipation={0.95}
 						sensitivity={0.15}
-						coverColor={{ r: 0.05, g: 0.08, b: 0.13 }}
-						fringeColor={{ r: 0.15, g: 0.35, b: 0.55 }}
-						accentColor={{ r: 0, g: 0.78, b: 1 }}
+						coverColor={{ r: 0.227, g: 0.122, b: 0.173 }}
+						fringeColor={{ r: 0.6, g: 0.45, b: 0.55 }}
+						accentColor={{ r: 0.83, g: 0.72, b: 0.59 }}
 					>
 						<div class="reveal-content reveal-content--dark">
-							<span class="reveal-label reveal-label--light">Auto Reveal</span>
+							<span class="reveal-label reveal-label--light"><em>Auto reveal</em></span>
 						</div>
 					</FluidReveal>
 				</div>
@@ -703,13 +731,13 @@
 
 	<section class="section distort-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 11</div>
-			<h2 class="section-title">10. DISTORTION — AN IMAGE</h2>
-			<p class="section-sub">The velocity field warps the source image. Move the cursor across the plate.</p>
+			<div class="margin-mark">§ 10 · DISTORTION</div>
+			<h2 class="section-title"><em>The garden, rearranged</em></h2>
+			<p class="section-sub">The velocity field warps the source. Hover to disturb.</p>
 		</div>
 		<div class="distort-grid">
 			<article class="distort-cell">
-				<div class="cell-label">SUBTLE · STRENGTH 0.3</div>
+				<div class="cell-label">§ 10 / I · SUBTLE · 0.3</div>
 				<div class="distort-canvas">
 					<FluidDistortion
 						src="{base}/bosch-garden.jpg"
@@ -724,7 +752,7 @@
 				</div>
 			</article>
 			<article class="distort-cell">
-				<div class="cell-label">STRONG · STRENGTH 0.45</div>
+				<div class="cell-label">§ 10 / II · STRONG · 0.45</div>
 				<div class="distort-canvas">
 					<FluidDistortion
 						src="{base}/bosch-garden.jpg"
@@ -741,46 +769,11 @@
 		</div>
 	</section>
 
-	<section class="section close-section">
-		<div class="section-head">
-			<div class="margin-mark">§ 12</div>
-			<h2 class="section-title">11. SPECIFICATIONS — A LEDGER</h2>
-		</div>
-		<dl class="spec-list">
-			<div class="spec-row">
-				<dt>License</dt>
-				<dd>MIT</dd>
-			</div>
-			<div class="spec-row">
-				<dt>Framework</dt>
-				<dd>Svelte 5 (runes)</dd>
-			</div>
-			<div class="spec-row">
-				<dt>Runtime dependencies</dt>
-				<dd>Zero</dd>
-			</div>
-			<div class="spec-row">
-				<dt>Configuration props</dt>
-				<dd>70+</dd>
-			</div>
-			<div class="spec-row">
-				<dt>Built-in presets</dt>
-				<dd>10</dd>
-			</div>
-			<div class="spec-row">
-				<dt>Source</dt>
-				<dd>
-					<a href="https://github.com/tommyyzhao/svelte-fluid">github.com/tommyyzhao/svelte-fluid</a>
-				</dd>
-			</div>
-		</dl>
-	</section>
-
 	<section class="section playground-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 13</div>
-			<h2 class="section-title">12. PLAYGROUND — AN INSTRUMENT</h2>
-			<p class="section-sub">Turn the knobs. The fluid responds in real time. Take the snippet with you.</p>
+			<div class="margin-mark">§ 11 · PLAYGROUND</div>
+			<h2 class="section-title"><em>An instrument for the host</em></h2>
+			<p class="section-sub">Turn the knobs. Take the snippet home.</p>
 		</div>
 
 		<div class="preset-chips" role="tablist" aria-label="Quick-start presets">
@@ -801,7 +794,7 @@
 		</div>
 
 		<div class="playground-grid">
-			<div class="playground-canvas" aria-label="Interactive playground stage">
+			<div class="playground-canvas">
 				<Fluid
 					seed={4242}
 					lazy
@@ -892,9 +885,9 @@
 	<footer class="page-footer">
 		<hr />
 		<div class="footer-row">
-			<div class="footer-left">SVELTE&nbsp;·&nbsp;FLUID</div>
+			<div class="footer-left">SVELTE&nbsp;·&nbsp;FLUID&nbsp;·&nbsp;VELVET</div>
 			<div class="footer-mid">
-				Derivative work of PavelDoGreat / WebGL-Fluid-Simulation by Pavel Dobryakov (c) 2017.
+				<em>Derivative work of PavelDoGreat / WebGL-Fluid-Simulation by Pavel Dobryakov (c) 2017.</em>
 			</div>
 			<div class="footer-right">M&nbsp;I&nbsp;T&nbsp;&nbsp;·&nbsp;&nbsp;2 0 2 6</div>
 		</div>
@@ -905,7 +898,7 @@
 	:global(html, body) {
 		margin: 0;
 		padding: 0;
-		background: #f5f1ea;
+		background: #3a1f2c;
 	}
 
 	.competition-back {
@@ -916,266 +909,329 @@
 		font-size: 0.75rem;
 		font-weight: 500;
 		letter-spacing: 0.05em;
-		color: rgba(0, 0, 0, 0.55);
+		color: rgba(245, 232, 212, 0.75);
 		text-decoration: none;
-		background: rgba(245, 241, 234, 0.9);
+		background: rgba(74, 42, 55, 0.85);
 		backdrop-filter: blur(8px);
 		-webkit-backdrop-filter: blur(8px);
-		border: 1px solid rgba(0, 0, 0, 0.12);
+		border: 1px solid rgba(212, 184, 150, 0.35);
 		border-radius: 4px;
 		padding: 0.35rem 0.7rem;
-		font-family: var(--mono, monospace);
-		transition: color 0.15s;
+		font-family: ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+		transition: color 0.15s, border-color 0.15s;
 	}
 	.competition-back:hover {
-		color: rgba(0, 0, 0, 0.85);
+		color: #d4b896;
+		border-color: #d4b896;
 	}
 
 	.page {
-		--paper: #f5f1ea;
-		--ink: #0a0a0a;
-		--accent: #ff2d2d;
-		background: var(--paper);
+		--wine: #3a1f2c;
+		--wine-surface: #4a2a37;
+		--wine-deep: #2a1620;
+		--ink: #f5e8d4;
+		--ink-soft: rgba(245, 232, 212, 0.65);
+		--ink-faint: rgba(245, 232, 212, 0.18);
+		--gold: #d4b896;
+		--mono: ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+		background: var(--wine);
 		color: var(--ink);
-		font-family: ui-monospace, 'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+		font-family: 'Inter', system-ui, sans-serif;
 		font-size: 14px;
-		line-height: 1.55;
+		line-height: 1.6;
 		max-width: 1400px;
 		margin: 0 auto;
 		padding: 0 24px 0;
 	}
 
 	.margin-mark {
-		font-family: ui-monospace, 'JetBrains Mono', monospace;
+		font-family: var(--mono);
 		font-size: 11px;
-		letter-spacing: 0.15em;
+		letter-spacing: 0.25em;
 		text-transform: uppercase;
-		color: var(--ink);
-	}
-	.margin-mark.light {
-		color: var(--paper);
+		color: var(--gold);
 	}
 
 	.hero {
-		border-bottom: 2px solid var(--ink);
-		padding: 32px 0 56px;
+		border-bottom: 1px solid var(--ink-faint);
+		padding: 56px 0 64px;
 		position: relative;
 	}
 
 	.kicker {
+		font-family: var(--mono);
 		font-size: 11px;
 		text-transform: uppercase;
 		letter-spacing: 0.3em;
-		border-top: 2px solid var(--ink);
-		border-bottom: 2px solid var(--ink);
-		padding: 6px 0;
-		margin: 12px 0 32px;
+		border-top: 1px solid var(--ink-faint);
+		border-bottom: 1px solid var(--ink-faint);
+		padding: 8px 0;
+		margin: 16px 0 40px;
+		color: var(--ink-soft);
 	}
 
 	.display {
-		font-family: 'Times New Roman', Georgia, 'Playfair Display', serif;
+		font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;
 		font-weight: 900;
-		font-size: clamp(4rem, 13vw, 12rem);
-		line-height: 0.88;
-		letter-spacing: -0.04em;
+		font-style: italic;
+		font-size: clamp(3.5rem, 11vw, 9.5rem);
+		line-height: 0.92;
+		letter-spacing: -0.03em;
 		margin: 0;
+		color: var(--ink);
+	}
+	.display em {
+		font-style: italic;
 	}
 	.display .dash {
-		letter-spacing: -0.12em;
-		color: var(--accent);
+		font-style: normal;
+		letter-spacing: -0.02em;
+		color: var(--gold);
+		font-weight: 400;
+		margin: 0 -0.05em 0 -0.1em;
 	}
 
 	.tagline {
-		font-size: clamp(1rem, 1.4vw, 1.25rem);
+		font-family: 'Playfair Display', Georgia, serif;
+		font-style: italic;
+		font-weight: 400;
+		font-size: clamp(1.05rem, 1.5vw, 1.35rem);
 		max-width: 640px;
-		margin: 28px 0 36px;
+		margin: 32px 0 36px;
+		color: var(--ink-soft);
+		line-height: 1.5;
 	}
 
 	.install-row {
 		display: flex;
 		align-items: stretch;
 		gap: 0;
-		max-width: 640px;
+		max-width: 720px;
 	}
 	.install-tabs {
 		display: flex;
-		border: 2px solid var(--ink);
+		border: 1px solid var(--gold);
 		border-right: 0;
 	}
 	.tab {
-		background: var(--paper);
-		color: var(--ink);
+		background: transparent;
+		color: var(--ink-soft);
 		border: 0;
-		border-right: 2px solid var(--ink);
+		border-right: 1px solid var(--gold);
 		padding: 0 14px;
 		font: inherit;
+		font-family: var(--mono);
 		font-size: 11px;
 		letter-spacing: 0.2em;
 		cursor: pointer;
+		transition: background 0.15s, color 0.15s;
 	}
 	.tab:last-child {
 		border-right: 0;
 	}
 	.tab.active {
-		background: var(--ink);
-		color: var(--paper);
+		background: var(--gold);
+		color: var(--wine);
 	}
 	.install-box {
 		flex: 1;
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		border: 2px solid var(--ink);
+		border: 1px solid var(--gold);
 		padding: 8px 14px;
-		background: var(--paper);
-		font-size: 14px;
+		background: var(--wine-surface);
+		font-family: var(--mono);
+		font-size: 13px;
+		color: var(--ink);
 	}
 	.install-box .prompt {
-		color: var(--accent);
+		color: var(--gold);
+	}
+	.install-box code {
+		flex: 1;
+	}
+	.install-box--standalone {
+		max-width: 720px;
+		padding: 12px 16px;
+	}
+	.install-copy {
+		background: transparent;
+		color: var(--gold);
+		border: 1px solid var(--gold);
+		padding: 2px 10px;
+		font: inherit;
+		font-family: var(--mono);
+		font-size: 10px;
+		letter-spacing: 0.15em;
+		text-transform: uppercase;
+		cursor: pointer;
+		transition: background 0.15s, color 0.15s;
+	}
+	.install-copy:hover {
+		background: var(--gold);
+		color: var(--wine);
 	}
 
 	.hero-links {
-		margin-top: 32px;
+		margin-top: 36px;
 		display: flex;
-		gap: 32px;
-		font-size: 13px;
+		gap: 28px;
+		font-family: var(--mono);
+		font-size: 12px;
+		letter-spacing: 0.1em;
+		flex-wrap: wrap;
 	}
 	.hero-link {
 		color: var(--ink);
 		text-decoration: none;
-		border-bottom: 2px solid var(--ink);
+		border-bottom: 1px solid var(--ink-faint);
 		padding-bottom: 2px;
+		transition: color 0.15s, border-color 0.15s;
 	}
 	.hero-link:hover {
-		color: var(--accent);
-		border-color: var(--accent);
+		color: var(--gold);
+		border-color: var(--gold);
+	}
+
+	.feature-pills {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		margin-top: 40px;
+	}
+	.pill {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 6px 14px;
+		border: 1px solid var(--ink-faint);
+		border-radius: 999px;
+		font-family: var(--mono);
+		font-size: 11px;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--ink-soft);
+		background: rgba(74, 42, 55, 0.4);
+	}
+	.pill-num {
+		color: var(--gold);
+		font-weight: 700;
 	}
 
 	.section {
-		border-bottom: 2px solid var(--ink);
-		padding: 56px 0;
+		border-bottom: 1px solid var(--ink-faint);
+		padding: 64px 0;
 	}
 	.section-head {
-		margin-bottom: 32px;
+		margin-bottom: 36px;
+		max-width: 880px;
 	}
 	.section-title {
-		font-family: 'Times New Roman', Georgia, serif;
-		font-weight: 900;
-		font-size: clamp(2rem, 5vw, 4rem);
-		line-height: 1;
-		letter-spacing: -0.02em;
-		margin: 8px 0 0;
+		font-family: 'Playfair Display', Georgia, serif;
+		font-weight: 500;
+		font-style: italic;
+		font-size: clamp(2rem, 4.6vw, 3.6rem);
+		line-height: 1.05;
+		letter-spacing: -0.015em;
+		margin: 12px 0 0;
+		color: var(--ink);
 	}
 	.section-sub {
-		margin: 12px 0 0;
-		max-width: 540px;
+		margin: 16px 0 0;
+		max-width: 560px;
+		color: var(--ink-soft);
+		font-family: 'Playfair Display', Georgia, serif;
+		font-style: italic;
+		font-size: 1.05rem;
+		line-height: 1.55;
+	}
+	.section-sub em {
+		color: var(--gold);
+		font-style: italic;
 	}
 
 	.manifesto {
 		list-style: none;
 		margin: 0;
 		padding: 0;
-		border-top: 2px solid var(--ink);
+		border-top: 1px solid var(--ink-faint);
 	}
 	.manifesto li {
 		display: grid;
 		grid-template-columns: 64px 240px 1fr;
 		gap: 16px;
 		align-items: baseline;
-		padding: 16px 0;
-		border-bottom: 2px solid var(--ink);
+		padding: 18px 0;
+		border-bottom: 1px solid var(--ink-faint);
 	}
 	.manifesto .num {
+		font-family: var(--mono);
 		font-weight: 700;
-		color: var(--accent);
+		color: var(--gold);
+		font-size: 12px;
 	}
 	.manifesto .t {
+		font-family: var(--mono);
 		text-transform: uppercase;
-		letter-spacing: 0.15em;
-		font-weight: 700;
-		font-size: 13px;
+		letter-spacing: 0.18em;
+		font-weight: 600;
+		font-size: 12px;
+		color: var(--ink);
 	}
 	.manifesto .d {
 		font-size: 14px;
+		color: var(--ink-soft);
 	}
 
 	.usage-grid {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		border: 2px solid var(--ink);
+		border: 1px solid var(--ink-faint);
+		background: var(--wine-surface);
 	}
 	.snippet {
 		margin: 0;
-		padding: 20px;
-		border-right: 2px solid var(--ink);
-		background: var(--paper);
+		padding: 22px;
+		border-right: 1px solid var(--ink-faint);
+		background: var(--wine-deep);
 		overflow-x: auto;
-		font-size: 13px;
-		line-height: 1.6;
+		font-family: var(--mono);
+		font-size: 12.5px;
+		line-height: 1.65;
+		color: var(--ink-soft);
 	}
 	.usage-preview {
 		display: flex;
 		flex-direction: column;
 	}
 	.cell-label {
+		font-family: var(--mono);
 		font-size: 10px;
 		letter-spacing: 0.25em;
 		text-transform: uppercase;
-		padding: 8px 12px;
-		border-bottom: 2px solid var(--ink);
-		background: var(--paper);
+		padding: 10px 14px;
+		border-bottom: 1px solid var(--ink-faint);
+		background: var(--wine-surface);
+		color: var(--gold);
 	}
 	.fluid-host {
 		flex: 1;
-		min-height: 320px;
+		min-height: 360px;
 		position: relative;
-	}
-
-	.quote-section {
-		padding: 80px 0;
-	}
-	.pull-quote {
-		margin: 0;
-		max-width: 980px;
-		position: relative;
-		padding-left: 120px;
-	}
-	.open-quote {
-		font-family: 'Times New Roman', Georgia, serif;
-		font-weight: 900;
-		font-size: clamp(8rem, 16vw, 14rem);
-		line-height: 0.7;
-		color: var(--accent);
-		position: absolute;
-		left: 0;
-		top: -10px;
-	}
-	.pull-quote p {
-		font-family: 'Times New Roman', Georgia, serif;
-		font-style: italic;
-		font-weight: 500;
-		font-size: clamp(1.5rem, 3.2vw, 2.6rem);
-		line-height: 1.2;
-		margin: 0;
-	}
-	.quote-cite {
-		font-family: ui-monospace, 'JetBrains Mono', monospace;
-		font-style: normal;
-		font-size: 11px;
-		letter-spacing: 0.3em;
-		margin-top: 24px;
 	}
 
 	.preset-grid {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
-		border: 2px solid var(--ink);
+		border: 1px solid var(--ink-faint);
+		background: var(--wine-surface);
 	}
 	.preset-cell {
 		display: flex;
 		flex-direction: column;
-		border-right: 2px solid var(--ink);
-		border-bottom: 2px solid var(--ink);
+		border-right: 1px solid var(--ink-faint);
+		border-bottom: 1px solid var(--ink-faint);
 	}
 	.preset-cell:nth-child(3n) {
 		border-right: 0;
@@ -1188,58 +1244,17 @@
 		position: relative;
 	}
 
-	.invert-section {
-		background: var(--ink);
-		color: var(--paper);
-		padding: 0;
-		border-bottom: 2px solid var(--ink);
-		margin: 0 -24px;
-	}
-	.invert-grid {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-	}
-	.invert-text {
-		padding: 64px 56px;
-		border-right: 2px solid var(--paper);
-	}
-	.invert-title {
-		font-family: 'Times New Roman', Georgia, serif;
-		font-weight: 900;
-		font-size: clamp(2.4rem, 5.5vw, 4.5rem);
-		line-height: 1;
-		letter-spacing: -0.02em;
-		margin: 24px 0 24px;
-	}
-	.invert-body {
-		max-width: 480px;
-		font-size: 15px;
-		line-height: 1.6;
-	}
-	.invert-link {
-		display: inline-block;
-		margin-top: 32px;
-		color: var(--paper);
-		text-decoration: none;
-		border-bottom: 2px solid var(--accent);
-		padding-bottom: 2px;
-	}
-	.invert-canvas {
-		min-height: 480px;
-		position: relative;
-	}
-
-	/* Shapes */
 	.shape-grid {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
-		border: 2px solid var(--ink);
+		border: 1px solid var(--ink-faint);
+		background: var(--wine-surface);
 	}
 	.shape-cell {
 		display: flex;
 		flex-direction: column;
-		border-right: 2px solid var(--ink);
-		border-bottom: 2px solid var(--ink);
+		border-right: 1px solid var(--ink-faint);
+		border-bottom: 1px solid var(--ink-faint);
 	}
 	.shape-cell:nth-child(3n) {
 		border-right: 0;
@@ -1250,18 +1265,19 @@
 	.shape-canvas {
 		height: 300px;
 		position: relative;
+		background: var(--wine-surface);
 	}
 
-	/* Physics */
 	.physics-grid {
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
-		border: 2px solid var(--ink);
+		border: 1px solid var(--ink-faint);
+		background: var(--wine);
 	}
 	.physics-cell {
 		display: flex;
 		flex-direction: column;
-		border-right: 2px solid var(--ink);
+		border-right: 1px solid var(--ink-faint);
 	}
 	.physics-cell:last-child {
 		border-right: 0;
@@ -1271,25 +1287,27 @@
 		position: relative;
 	}
 	.physics-snippet {
+		font-family: var(--mono);
 		font-size: 10px;
-		letter-spacing: 0.05em;
-		padding: 8px 12px;
-		border-top: 2px solid var(--ink);
-		background: var(--paper);
+		letter-spacing: 0.04em;
+		padding: 10px 12px;
+		border-top: 1px solid var(--ink-faint);
+		background: var(--wine-deep);
+		color: var(--ink-soft);
 		word-break: break-all;
 		white-space: pre-wrap;
 	}
 
-	/* Glass */
 	.glass-grid {
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
-		border: 2px solid var(--ink);
+		border: 1px solid var(--ink-faint);
+		background: var(--wine);
 	}
 	.glass-cell {
 		display: flex;
 		flex-direction: column;
-		border-right: 2px solid var(--ink);
+		border-right: 1px solid var(--ink-faint);
 	}
 	.glass-cell:last-child {
 		border-right: 0;
@@ -1297,44 +1315,44 @@
 	.glass-canvas {
 		height: 340px;
 		position: relative;
-		background: var(--paper);
+		background: var(--wine);
 	}
 
-	/* Sticky */
 	.sticky-grid {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
-		border: 2px solid var(--ink);
+		border: 1px solid var(--ink-faint);
+		background: var(--wine-surface);
 	}
 	.sticky-cell {
 		display: flex;
 		flex-direction: column;
-		border-right: 2px solid var(--ink);
+		border-right: 1px solid var(--ink-faint);
 	}
 	.sticky-cell:last-child {
 		border-right: 0;
 	}
 	.sticky-canvas {
-		height: 340px;
+		height: 360px;
 		position: relative;
 	}
 
-	/* Reveal */
 	.reveal-grid {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
-		border: 2px solid var(--ink);
+		border: 1px solid var(--ink-faint);
+		background: var(--wine-surface);
 	}
 	.reveal-cell {
 		display: flex;
 		flex-direction: column;
-		border-right: 2px solid var(--ink);
+		border-right: 1px solid var(--ink-faint);
 	}
 	.reveal-cell:last-child {
 		border-right: 0;
 	}
 	.reveal-canvas {
-		height: 340px;
+		height: 360px;
 		position: relative;
 	}
 	.reveal-content {
@@ -1342,43 +1360,42 @@
 		align-items: center;
 		justify-content: center;
 		height: 100%;
-		background: linear-gradient(135deg, #f5f1ea 0%, #e8dfd0 100%);
+		background: linear-gradient(135deg, #2a1620 0%, #4a2a37 100%);
 	}
 	.reveal-content--dark {
-		background: linear-gradient(135deg, #0a0e1a 0%, #0d1833 100%);
+		background: linear-gradient(135deg, #1a0c12 0%, #3a1f2c 100%);
 	}
 	.reveal-label {
-		font-family: 'Times New Roman', Georgia, serif;
-		font-size: 1.5rem;
+		font-family: 'Playfair Display', Georgia, serif;
+		font-size: 1.6rem;
 		font-style: italic;
 		color: var(--ink);
 	}
 	.reveal-label--light {
-		color: rgba(255, 255, 255, 0.9);
+		color: var(--gold);
 	}
 
-	/* Distortion */
 	.distort-grid {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
-		border: 2px solid var(--ink);
+		border: 1px solid var(--ink-faint);
+		background: var(--wine-surface);
 	}
 	.distort-cell {
 		display: flex;
 		flex-direction: column;
-		border-right: 2px solid var(--ink);
+		border-right: 1px solid var(--ink-faint);
 	}
 	.distort-cell:last-child {
 		border-right: 0;
 	}
 	.distort-canvas {
-		height: 340px;
+		height: 360px;
 		position: relative;
 	}
 
-	/* Playground */
 	.playground-section {
-		border-bottom: 2px solid var(--ink);
+		border-bottom: 1px solid var(--ink-faint);
 	}
 	.preset-chips {
 		display: flex;
@@ -1387,48 +1404,52 @@
 		margin-bottom: 24px;
 	}
 	.preset-chip {
-		background: var(--paper);
-		color: var(--ink);
-		border: 2px solid var(--ink);
-		padding: 4px 12px;
+		background: transparent;
+		color: var(--ink-soft);
+		border: 1px solid var(--ink-faint);
+		padding: 5px 14px;
 		font: inherit;
+		font-family: var(--mono);
 		font-size: 11px;
 		letter-spacing: 0.15em;
 		text-transform: uppercase;
 		cursor: pointer;
-		transition: background 0.1s, color 0.1s;
+		border-radius: 999px;
+		transition: background 0.15s, color 0.15s, border-color 0.15s;
 	}
 	.preset-chip:hover,
 	.preset-chip.active {
-		background: var(--ink);
-		color: var(--paper);
+		background: var(--gold);
+		color: var(--wine);
+		border-color: var(--gold);
 	}
 	.preset-chip.reset {
-		border-color: var(--accent);
-		color: var(--accent);
+		border-color: var(--gold);
+		color: var(--gold);
 	}
 	.preset-chip.reset:hover {
-		background: var(--accent);
-		color: var(--paper);
+		background: var(--gold);
+		color: var(--wine);
 	}
 	.playground-grid {
 		display: grid;
-		grid-template-columns: 1fr 320px;
-		border: 2px solid var(--ink);
+		grid-template-columns: 1fr 340px;
+		border: 1px solid var(--ink-faint);
+		background: var(--wine-surface);
 		gap: 0;
 	}
 	.playground-canvas {
-		min-height: 480px;
+		min-height: 520px;
 		position: relative;
-		border-right: 2px solid var(--ink);
+		border-right: 1px solid var(--ink-faint);
 	}
 	.playground-panel {
-		padding: 20px;
+		padding: 22px;
 		display: flex;
 		flex-direction: column;
-		gap: 20px;
+		gap: 22px;
 		overflow-y: auto;
-		max-height: 600px;
+		max-height: 640px;
 	}
 	.knob-group {
 		display: flex;
@@ -1436,34 +1457,40 @@
 		gap: 10px;
 	}
 	.knob-group-title {
+		font-family: var(--mono);
 		font-size: 10px;
 		letter-spacing: 0.3em;
 		text-transform: uppercase;
 		font-weight: 700;
-		border-bottom: 1px solid var(--ink);
-		padding-bottom: 4px;
+		color: var(--gold);
+		border-bottom: 1px solid var(--ink-faint);
+		padding-bottom: 6px;
 	}
 	.knob-row {
 		display: grid;
-		grid-template-columns: 130px 1fr 48px;
+		grid-template-columns: 140px 1fr 48px;
 		align-items: center;
 		gap: 8px;
 		cursor: pointer;
 	}
 	.knob-label {
+		font-family: var(--mono);
 		font-size: 11px;
 		letter-spacing: 0.05em;
+		color: var(--ink-soft);
 	}
 	.knob-value {
+		font-family: var(--mono);
 		font-size: 11px;
 		text-align: right;
+		color: var(--ink);
 	}
 	.knob-value.mono {
-		font-family: ui-monospace, 'JetBrains Mono', monospace;
+		font-family: var(--mono);
 	}
 	input[type='range'] {
 		width: 100%;
-		accent-color: var(--ink);
+		accent-color: var(--gold);
 	}
 	.toggle-row {
 		display: flex;
@@ -1477,11 +1504,11 @@
 	.toggle-pill {
 		width: 32px;
 		height: 16px;
-		background: rgba(0, 0, 0, 0.15);
-		border: 1.5px solid var(--ink);
+		background: rgba(245, 232, 212, 0.12);
+		border: 1px solid var(--ink-faint);
 		border-radius: 8px;
 		position: relative;
-		transition: background 0.15s;
+		transition: background 0.15s, border-color 0.15s;
 		flex-shrink: 0;
 	}
 	.toggle-pill::after {
@@ -1491,16 +1518,17 @@
 		left: 1px;
 		width: 10px;
 		height: 10px;
-		background: var(--ink);
+		background: var(--ink-soft);
 		border-radius: 50%;
-		transition: transform 0.15s;
+		transition: transform 0.15s, background 0.15s;
 	}
 	.toggle-row input[type='checkbox']:checked ~ .toggle-pill {
-		background: var(--ink);
+		background: var(--gold);
+		border-color: var(--gold);
 	}
 	.toggle-row input[type='checkbox']:checked ~ .toggle-pill::after {
 		transform: translateX(16px);
-		background: var(--paper);
+		background: var(--wine);
 	}
 	.color-row {
 		display: flex;
@@ -1511,7 +1539,7 @@
 	.color-row input[type='color'] {
 		width: 32px;
 		height: 24px;
-		border: 1.5px solid var(--ink);
+		border: 1px solid var(--ink-faint);
 		padding: 1px;
 		background: none;
 		cursor: pointer;
@@ -1520,113 +1548,92 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
+		font-family: var(--mono);
 		font-size: 10px;
-		letter-spacing: 0.2em;
+		letter-spacing: 0.25em;
 		text-transform: uppercase;
-		border-bottom: 1px solid var(--ink);
-		padding-bottom: 4px;
+		color: var(--gold);
+		border-bottom: 1px solid var(--ink-faint);
+		padding-bottom: 6px;
 	}
 	.copy-btn {
-		background: var(--paper);
-		color: var(--ink);
-		border: 1.5px solid var(--ink);
-		padding: 2px 8px;
+		background: transparent;
+		color: var(--gold);
+		border: 1px solid var(--gold);
+		padding: 3px 10px;
 		font: inherit;
+		font-family: var(--mono);
 		font-size: 10px;
-		letter-spacing: 0.1em;
+		letter-spacing: 0.12em;
 		cursor: pointer;
+		transition: background 0.15s, color 0.15s;
 	}
 	.copy-btn:hover {
-		background: var(--ink);
-		color: var(--paper);
+		background: var(--gold);
+		color: var(--wine);
 	}
 	.snippet-code {
 		margin: 0;
+		font-family: var(--mono);
 		font-size: 11px;
-		line-height: 1.6;
+		line-height: 1.65;
 		white-space: pre-wrap;
 		word-break: break-all;
-		background: var(--paper);
-	}
-
-	/* Specs */
-	.spec-list {
-		margin: 0;
-		padding: 0;
-		border-top: 2px solid var(--ink);
-	}
-	.spec-row {
-		display: grid;
-		grid-template-columns: 280px 1fr;
-		gap: 24px;
-		padding: 14px 0;
-		border-bottom: 2px solid var(--ink);
-	}
-	.spec-row dt {
-		text-transform: uppercase;
-		letter-spacing: 0.2em;
-		font-size: 11px;
-		font-weight: 700;
-	}
-	.spec-row dd {
-		margin: 0;
-		font-size: 14px;
-	}
-	.spec-row a {
-		color: var(--accent);
-		text-decoration: none;
-		border-bottom: 1px solid var(--accent);
+		background: var(--wine-deep);
+		color: var(--ink-soft);
+		padding: 12px;
+		border: 1px solid var(--ink-faint);
 	}
 
 	.page-footer {
-		padding: 40px 0 64px;
+		padding: 48px 0 72px;
 	}
 	.page-footer hr {
 		border: 0;
-		border-top: 2px solid var(--ink);
-		margin: 0 0 24px;
+		border-top: 1px solid var(--ink-faint);
+		margin: 0 0 28px;
 	}
 	.footer-row {
 		display: grid;
 		grid-template-columns: 1fr 2fr 1fr;
 		gap: 24px;
+		font-family: var(--mono);
 		font-size: 11px;
-		letter-spacing: 0.2em;
+		letter-spacing: 0.22em;
 		text-transform: uppercase;
+		color: var(--ink-soft);
 	}
 	.footer-mid {
 		text-align: center;
 		text-transform: none;
-		letter-spacing: 0.05em;
-		font-size: 11px;
+		letter-spacing: 0.04em;
+		font-family: 'Playfair Display', Georgia, serif;
+		font-style: italic;
+		font-size: 12px;
+		color: var(--ink-soft);
 	}
 	.footer-right {
 		text-align: right;
+		color: var(--gold);
 	}
 
 	@media (max-width: 900px) {
 		.usage-grid,
-		.preset-grid,
-		.invert-grid {
+		.preset-grid {
 			grid-template-columns: 1fr;
 		}
 		.snippet {
 			border-right: 0;
-			border-bottom: 2px solid var(--ink);
+			border-bottom: 1px solid var(--ink-faint);
 		}
 		.preset-cell {
 			border-right: 0;
 		}
 		.preset-cell:nth-child(n) {
-			border-bottom: 2px solid var(--ink);
+			border-bottom: 1px solid var(--ink-faint);
 		}
 		.preset-cell:last-child {
 			border-bottom: 0;
-		}
-		.invert-text {
-			border-right: 0;
-			border-bottom: 2px solid var(--paper);
-			padding: 40px 24px;
 		}
 		.manifesto li {
 			grid-template-columns: 48px 1fr;
@@ -1634,13 +1641,6 @@
 		.manifesto .d {
 			grid-column: 1 / -1;
 			padding-left: 64px;
-		}
-		.pull-quote {
-			padding-left: 64px;
-		}
-		.spec-row {
-			grid-template-columns: 1fr;
-			gap: 4px;
 		}
 		.footer-row {
 			grid-template-columns: 1fr;
@@ -1665,7 +1665,7 @@
 		.reveal-cell,
 		.distort-cell {
 			border-right: 0;
-			border-bottom: 2px solid var(--ink);
+			border-bottom: 1px solid var(--ink-faint);
 		}
 		.shape-cell:last-child,
 		.physics-cell:last-child,
@@ -1680,7 +1680,7 @@
 		}
 		.playground-canvas {
 			border-right: 0;
-			border-bottom: 2px solid var(--ink);
+			border-bottom: 1px solid var(--ink-faint);
 		}
 	}
 
@@ -1690,41 +1690,17 @@
 			padding: 0 16px;
 		}
 		.display {
-			font-size: clamp(3rem, 16vw, 6rem);
+			font-size: clamp(2.6rem, 14vw, 5.5rem);
 		}
 		.tagline {
 			font-size: 1rem;
-			margin: 20px 0 28px;
+			margin: 24px 0 28px;
 		}
 		.section {
-			padding: 40px 0;
+			padding: 44px 0;
 		}
 		.section-title {
 			font-size: clamp(1.6rem, 7vw, 2.4rem);
-		}
-		.invert-title {
-			font-size: clamp(1.8rem, 7.5vw, 2.6rem);
-		}
-		.shape-grid,
-		.physics-grid,
-		.glass-grid,
-		.preset-grid,
-		.reveal-grid,
-		.distort-grid,
-		.sticky-grid {
-			grid-template-columns: 1fr;
-		}
-		.open-quote {
-			font-size: clamp(5rem, 18vw, 8rem);
-		}
-		.pull-quote {
-			padding-left: 48px;
-		}
-		.pull-quote p {
-			font-size: clamp(1.2rem, 4.5vw, 1.8rem);
-		}
-		.invert-text {
-			padding: 32px 20px;
 		}
 		.cell-canvas,
 		.shape-canvas,
@@ -1733,13 +1709,10 @@
 		.sticky-canvas,
 		.reveal-canvas,
 		.distort-canvas {
-			height: 260px;
+			height: 280px;
 		}
 		.playground-canvas {
-			min-height: 360px;
-		}
-		.invert-canvas {
-			min-height: 360px;
+			min-height: 380px;
 		}
 	}
 
@@ -1751,16 +1724,16 @@
 			padding: 32px 0;
 		}
 		.hero {
-			padding: 24px 0 40px;
+			padding: 36px 0 48px;
 		}
 		.kicker {
 			font-size: 10px;
 			letter-spacing: 0.22em;
-			margin: 10px 0 24px;
+			margin: 12px 0 28px;
 		}
 		.margin-mark {
 			font-size: 10px;
-			letter-spacing: 0.12em;
+			letter-spacing: 0.18em;
 		}
 		.knob-group-title,
 		.cell-label,
@@ -1773,7 +1746,7 @@
 			flex-direction: column;
 		}
 		.install-tabs {
-			border-right: 2px solid var(--ink);
+			border-right: 1px solid var(--gold);
 			border-bottom: 0;
 		}
 		.install-box {
@@ -1785,24 +1758,24 @@
 		}
 		.manifesto li {
 			grid-template-columns: 36px 1fr;
-			padding: 12px 0;
+			padding: 14px 0;
 		}
 		.manifesto .d {
 			padding-left: 48px;
 		}
 		.knob-row {
-			grid-template-columns: 100px 1fr 40px;
+			grid-template-columns: 110px 1fr 40px;
 		}
 		.playground-panel {
 			padding: 16px;
 			max-height: none;
 		}
 		.snippet {
-			padding: 14px;
+			padding: 16px;
 			font-size: 12px;
 		}
 		.section-head {
-			margin-bottom: 20px;
+			margin-bottom: 24px;
 		}
 	}
 </style>

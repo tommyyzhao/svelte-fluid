@@ -16,7 +16,7 @@
 		ToroidalTempest
 	} from '$lib/index.js';
 
-	let installTab = $state<'npm' | 'bun' | 'pnpm'>('npm');
+	let installTab = $state<'npm' | 'bun' | 'pnpm'>('bun');
 
 	const installCmd = $derived(
 		installTab === 'npm'
@@ -31,17 +31,17 @@
 <\/script>
 
 <div style="width: 100%; height: 480px;">
-  <Fluid seed={42} splatOnHover backColor={{ r: 245, g: 241, b: 234 }} />
+  <Fluid seed={42} curl={50} colorful bloom splatOnHover />
 </div>`;
 
 	const features = [
-		{ n: '01', t: 'Multi-instance', d: 'Many engines coexist on one page. No shared globals.' },
-		{ n: '02', t: 'Resize-stable', d: 'Survives ResizeObserver storms. FBOs rebuild on stable size.' },
-		{ n: '03', t: 'Deterministic seeding', d: 'A seed in. The same fluid out. Frame for frame.' },
-		{ n: '04', t: 'MIT licensed', d: 'Derivative of PavelDoGreat. Use it. Ship it.' },
-		{ n: '05', t: 'Zero runtime deps', d: 'Pure Svelte 5 and WebGL. Nothing else in your bundle.' },
-		{ n: '06', t: '70+ configuration props', d: 'Bloom, sunrays, curl, dissipation, splat radius. All hot-swappable.' },
-		{ n: '07', t: 'Ten built-in presets', d: 'Editorial fluid wallpaper out of the box.' }
+		{ n: '01', t: 'Multi-instance', d: 'Many engines on one page. No globals. No collisions.' },
+		{ n: '02', t: 'Resize-stable', d: 'Survives ResizeObserver storms. FBOs rebuild on calm.' },
+		{ n: '03', t: 'Deterministic seed', d: 'Same seed in. Same vortex out. Frame for frame.' },
+		{ n: '04', t: 'MIT', d: 'Take it. Twist it. Ship it.' },
+		{ n: '05', t: 'Zero deps', d: 'Pure Svelte 5 + WebGL. Nothing else in the bundle.' },
+		{ n: '06', t: '70+ props', d: 'Curl, dissipation, bloom, splat. All hot-swappable.' },
+		{ n: '07', t: 'Ten presets', d: 'Plug-and-play vortices. Drop them in.' }
 	];
 
 	const lightning = 'M 55 5 L 25 55 L 45 55 L 35 95 L 75 40 L 55 40 L 70 5 Z';
@@ -61,10 +61,11 @@
 
 	type RGB = { r: number; g: number; b: number };
 
-	const paperColor: RGB = { r: 245, g: 241, b: 234 };
+	const pageColor: RGB = { r: 58, g: 31, b: 92 };
+	const surfaceColor: RGB = { r: 74, g: 42, b: 114 };
 
 	const PLAYGROUND_DEFAULTS = {
-		curl: 30,
+		curl: 50,
 		splatRadius: 0.25,
 		splatForce: 6000,
 		densityDissipation: 1.0,
@@ -72,7 +73,7 @@
 		bloom: true,
 		shading: true,
 		colorful: true,
-		backColor: { ...paperColor } as RGB
+		backColor: { ...surfaceColor } as RGB
 	};
 
 	const PLAYGROUND_PRESETS: Record<string, Partial<typeof PLAYGROUND_DEFAULTS>> = {
@@ -180,60 +181,88 @@
 </script>
 
 <svelte:head>
-	<title>svelte-fluid — WebGL fluid as a Svelte 5 component</title>
+	<title>svelte-fluid // VORTEX</title>
 </svelte:head>
 
 <a class="competition-back" href="{base}/design-competition">← Competition</a>
 
 <main class="page">
 	<header class="hero">
-		<div class="margin-mark">§ 00</div>
-		<div class="kicker">A Svelte 5 component library / Issue No. 1</div>
-		<h1 class="display">svelte<span class="dash">‑</span>fluid</h1>
-		<h1 class="tagline">
-			WebGL fluid simulation as a Svelte 5 component. Multi-instance, resize-stable,
-			deterministic seeding.
-		</h1>
-
-		<div class="install-row">
-			<div class="install-tabs">
-				<button
-					class="tab"
-					class:active={installTab === 'npm'}
-					onclick={() => (installTab = 'npm')}>NPM</button
-				>
-				<button
-					class="tab"
-					class:active={installTab === 'bun'}
-					onclick={() => (installTab = 'bun')}>BUN</button
-				>
-				<button
-					class="tab"
-					class:active={installTab === 'pnpm'}
-					onclick={() => (installTab = 'pnpm')}>PNPM</button
-				>
-			</div>
-			<div class="install-box">
-				<span class="prompt">↳</span>
-				<code>{installCmd}</code>
-			</div>
+		<div class="hero-bg" aria-hidden="true">
+			<Fluid
+				seed={1909}
+				colorful
+				curl={50}
+				bloom
+				bloomIntensity={1.6}
+				splatRadius={0.32}
+				densityDissipation={0.3}
+				velocityDissipation={0.08}
+				initialSplatCount={28}
+				autoSplatRate={stickyAutoAnimate ? 1.6 : 0}
+				autoSplatSwirl={550}
+				autoSplatBandHeight={1.6}
+				backColor={pageColor}
+			/>
 		</div>
+		<div class="hero-scrim" aria-hidden="true"></div>
+		<div class="hero-inner">
+			<div class="kicker">// VORTEX // ISSUE 019 // RAVE EDITION</div>
+			<h1 class="display">FLUID<span class="slash">//</span>SVELTE</h1>
+			<p class="tagline">
+				WebGL Navier–Stokes for Svelte 5. Spin the field. Bend the light. Mask the type.
+			</p>
 
-		<nav class="hero-links">
-			<a class="hero-link" href="https://github.com/tommyyzhao/svelte-fluid">→ GitHub</a>
-			<a class="hero-link" href="{base}/docs">→ Documentation</a>
-		</nav>
+			<div class="install-row">
+				<div class="install-tabs">
+					<button
+						class="tab"
+						class:active={installTab === 'npm'}
+						onclick={() => (installTab = 'npm')}>NPM</button
+					>
+					<button
+						class="tab"
+						class:active={installTab === 'bun'}
+						onclick={() => (installTab = 'bun')}>BUN</button
+					>
+					<button
+						class="tab"
+						class:active={installTab === 'pnpm'}
+						onclick={() => (installTab = 'pnpm')}>PNPM</button
+					>
+				</div>
+				<div class="install-box">
+					<span class="prompt">$</span>
+					<code>{installCmd}</code>
+				</div>
+			</div>
+
+			<nav class="hero-links">
+				<a class="cta cta-fill" href="{base}/docs">ENTER THE DOCS &rarr;</a>
+				<a class="cta cta-out" href="https://github.com/tommyyzhao/svelte-fluid">GITHUB &rarr;</a>
+			</nav>
+
+			<ul class="pill-row">
+				<li class="pill">SVELTE 5</li>
+				<li class="pill">WEBGL</li>
+				<li class="pill">MIT</li>
+				<li class="pill">ZERO DEPS</li>
+				<li class="pill">70+ PROPS</li>
+				<li class="pill">10 PRESETS</li>
+			</ul>
+		</div>
 	</header>
 
 	<section class="section index-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 01</div>
-			<h2 class="section-title">01. INDEX — A MANIFESTO</h2>
+			<div class="margin-mark">// 01 — INDEX</div>
+			<h2 class="section-title">SEVEN VECTORS</h2>
+			<p class="section-sub">Manifesto, in seven turns.</p>
 		</div>
 		<ol class="manifesto">
 			{#each features as f (f.n)}
 				<li>
-					<span class="num">{f.n}.</span>
+					<span class="num">{f.n}</span>
 					<span class="t">{f.t}</span>
 					<span class="d">— {f.d}</span>
 				</li>
@@ -243,160 +272,153 @@
 
 	<section class="section usage-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 02</div>
-			<h2 class="section-title">02. INSTALL — A MINIMUM</h2>
+			<div class="margin-mark">// 02 — INSTALL &amp; USAGE</div>
+			<h2 class="section-title">DROP THE TAG</h2>
+			<p class="section-sub">One import. One tag. One vortex.</p>
 		</div>
 		<div class="usage-grid">
 			<pre class="snippet"><code>{usage}</code></pre>
 			<div class="usage-preview">
-				<div class="cell-label">PREVIEW</div>
-				<div class="fluid-host"><Fluid seed={42} splatOnHover backColor={paperColor} /></div>
+				<div class="cell-label">// LIVE</div>
+				<div class="fluid-host">
+					<Fluid
+						seed={42}
+						colorful
+						curl={50}
+						bloom
+						bloomIntensity={1.5}
+						splatOnHover
+						initialSplatCount={20}
+						backColor={surfaceColor}
+						lazy
+					/>
+				</div>
 			</div>
 		</div>
-	</section>
-
-	<section class="section quote-section">
-		<div class="margin-mark">§ 03</div>
-		<blockquote class="pull-quote">
-			<span class="open-quote" aria-hidden="true">&ldquo;</span>
-			<p>
-				A seed in. The same fluid out. Frame for frame, render for render — pixels
-				stable across reloads, machines, and time.
-			</p>
-			<footer class="quote-cite">— ON DETERMINISTIC SEEDING</footer>
-		</blockquote>
 	</section>
 
 	<section class="section presets-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 04</div>
-			<h2 class="section-title">03. PRESETS — A SAMPLER</h2>
-			<p class="section-sub">Six of ten. Each fills its parent. Each accepts a seed.</p>
+			<div class="margin-mark">// 03 — PRESETS</div>
+			<h2 class="section-title">VINYL SINGLES</h2>
+			<p class="section-sub">Six of ten. Presets ship their own ink. Patch them in like vinyl singles.</p>
 		</div>
 		<div class="preset-grid">
 			<article class="preset-cell">
-				<div class="cell-label">§ 04 / LAVA LAMP</div>
-				<div class="cell-canvas"><LavaLamp seed={1} aria-label="LavaLamp preset" /></div>
-			</article>
-			<article class="preset-cell">
-				<div class="cell-label">§ 04 / PLASMA</div>
-				<div class="cell-canvas"><Plasma seed={2} aria-label="Plasma preset" /></div>
-			</article>
-			<article class="preset-cell">
-				<div class="cell-label">§ 04 / INK IN WATER</div>
+				<div class="cell-label">// LAVALAMP</div>
 				<div class="cell-canvas">
-					<InkInWater seed={3} lazy aria-label="InkInWater preset" />
+					<LavaLamp seed={11} aria-label="LavaLamp preset" />
 				</div>
 			</article>
 			<article class="preset-cell">
-				<div class="cell-label">§ 04 / FROZEN SWIRL</div>
+				<div class="cell-label">// PLASMA</div>
 				<div class="cell-canvas">
-					<FrozenSwirl seed={4} lazy aria-label="FrozenSwirl preset" />
+					<Plasma seed={22} aria-label="Plasma preset" />
 				</div>
 			</article>
 			<article class="preset-cell">
-				<div class="cell-label">§ 04 / AURORA</div>
-				<div class="cell-canvas"><Aurora seed={5} lazy aria-label="Aurora preset" /></div>
-			</article>
-			<article class="preset-cell">
-				<div class="cell-label">§ 04 / TOROIDAL TEMPEST</div>
+				<div class="cell-label">// INK IN WATER</div>
 				<div class="cell-canvas">
-					<ToroidalTempest seed={6} lazy aria-label="ToroidalTempest preset" />
+					<InkInWater seed={33} lazy aria-label="InkInWater preset" />
 				</div>
 			</article>
-		</div>
-	</section>
-
-	<section class="section invert-section">
-		<div class="invert-grid">
-			<div class="invert-text">
-				<div class="margin-mark light">§ 05</div>
-				<h2 class="invert-title">04. PLASMA — AFTER MIDNIGHT</h2>
-				<p class="invert-body">
-					Inverted, the fluid reads as type. Set against cream it argues with the
-					page. Set against black it argues with the void. Same engine, two columns.
-				</p>
-				<a class="invert-link" href="{base}/docs">→ Read the docs</a>
-			</div>
-			<div class="invert-canvas">
-				<Plasma seed={99} lazy aria-label="Plasma preset, inverted" />
-			</div>
+			<article class="preset-cell">
+				<div class="cell-label">// FROZEN SWIRL</div>
+				<div class="cell-canvas">
+					<FrozenSwirl seed={44} lazy aria-label="FrozenSwirl preset" />
+				</div>
+			</article>
+			<article class="preset-cell">
+				<div class="cell-label">// AURORA</div>
+				<div class="cell-canvas">
+					<Aurora seed={55} lazy aria-label="Aurora preset" />
+				</div>
+			</article>
+			<article class="preset-cell">
+				<div class="cell-label">// TOROIDAL TEMPEST</div>
+				<div class="cell-canvas">
+					<ToroidalTempest seed={66} lazy aria-label="ToroidalTempest preset" />
+				</div>
+			</article>
 		</div>
 	</section>
 
 	<section class="section shapes-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 06</div>
-			<h2 class="section-title">05. SHAPES — A TYPOLOGY</h2>
-			<p class="section-sub">Six primitives. Confine the dye. Hover to splat.</p>
+			<div class="margin-mark">>> SHAPES</div>
+			<h2 class="section-title">CONFINE THE FIELD</h2>
+			<p class="section-sub">Six containers. Hover to splat. Watch the dye crash the wall.</p>
 		</div>
 		<div class="shape-grid">
 			<article class="shape-cell">
-				<div class="cell-label">CIRCLE</div>
+				<div class="cell-label">// CIRCLE</div>
 				<div class="shape-canvas">
 					<CircularFluid seed={601} lazy splatOnHover aria-label="Circle container shape" />
 				</div>
 			</article>
 			<article class="shape-cell">
-				<div class="cell-label">ROUNDED RECT</div>
+				<div class="cell-label">// ROUNDED RECT</div>
 				<div class="shape-canvas">
 					<Fluid
 						seed={602}
 						colorful
+						curl={50}
 						shading
 						bloom
 						splatOnHover
 						initialSplatCount={15}
 						containerShape={{ type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.42, halfH: 0.42, cornerRadius: 0.08 }}
-						backColor={paperColor}
+						backColor={surfaceColor}
 						lazy
 						aria-label="Rounded rect container shape"
 					/>
 				</div>
 			</article>
 			<article class="shape-cell">
-				<div class="cell-label">FRAME</div>
+				<div class="cell-label">// FRAME</div>
 				<div class="shape-canvas">
 					<FrameFluid seed={603} lazy splatOnHover aria-label="Frame container shape" />
 				</div>
 			</article>
 			<article class="shape-cell">
-				<div class="cell-label">ANNULUS</div>
+				<div class="cell-label">// ANNULUS</div>
 				<div class="shape-canvas">
 					<AnnularFluid seed={604} lazy splatOnHover aria-label="Annulus container shape" />
 				</div>
 			</article>
 			<article class="shape-cell">
-				<div class="cell-label">SVG PATH</div>
+				<div class="cell-label">// LIGHTNING</div>
 				<div class="shape-canvas">
 					<Fluid
 						seed={605}
 						colorful
+						curl={50}
 						shading
 						bloom
 						splatOnHover
 						initialSplatCount={15}
 						containerShape={{ type: 'svgPath', d: lightning, viewBox: [0, 0, 100, 100] }}
-						backColor={paperColor}
+						backColor={surfaceColor}
 						lazy
-						aria-label="SVG path container shape"
+						aria-label="Lightning bolt container shape"
 					/>
 				</div>
 			</article>
 			<article class="shape-cell">
-				<div class="cell-label">TEXT GLYPH</div>
+				<div class="cell-label">// INFINITY</div>
 				<div class="shape-canvas">
 					<Fluid
 						seed={606}
 						colorful
+						curl={50}
 						shading
 						bloom
 						splatOnHover
 						initialSplatCount={15}
-						containerShape={{ type: 'svgPath', text: '&', font: '900 280px Georgia, serif' }}
-						backColor={paperColor}
+						containerShape={{ type: 'svgPath', text: '∞', font: '200px Georgia, serif' }}
+						backColor={surfaceColor}
 						lazy
-						aria-label="Text glyph container shape"
+						aria-label="Infinity glyph container shape"
 					/>
 				</div>
 			</article>
@@ -405,19 +427,19 @@
 
 	<section class="section physics-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 07</div>
-			<h2 class="section-title">06. PHYSICS — A STUDY</h2>
-			<p class="section-sub">Every prop optional. Drop the tag; reach for props when you want your own physics.</p>
+			<div class="margin-mark">// PHYSICS</div>
+			<h2 class="section-title">ROTATE THE FIELD</h2>
+			<p class="section-sub">Crank the curl. Choke the dissipation. Same engine, four moods.</p>
 		</div>
 		<div class="physics-grid">
 			<article class="physics-cell">
-				<div class="cell-label">DEFAULT</div>
+				<div class="cell-label">// DEFAULT</div>
 				<div class="physics-canvas">
 					<Fluid
 						seed={1234}
 						initialSplatCount={12}
 						splatOnHover
-						backColor={paperColor}
+						backColor={surfaceColor}
 						lazy
 						aria-label="Default fluid configuration"
 					/>
@@ -425,41 +447,40 @@
 				<code class="physics-snippet">{'<Fluid />'}</code>
 			</article>
 			<article class="physics-cell">
-				<div class="cell-label">FLAT + SOFT</div>
+				<div class="cell-label">// SWIRLY</div>
 				<div class="physics-canvas">
 					<Fluid
 						seed={5678}
-						bloom={false}
-						curl={5}
-						densityDissipation={0.4}
-						initialSplatCount={10}
+						curl={50}
+						velocityDissipation={0.05}
+						colorful
+						initialSplatCount={14}
 						splatOnHover
-						backColor={paperColor}
+						backColor={surfaceColor}
 						lazy
-						aria-label="Flat fluid with low curl"
+						aria-label="Swirly fluid with high curl"
 					/>
 				</div>
-				<code class="physics-snippet">{'bloom={false} curl={5} densityDissipation={0.4}'}</code>
+				<code class="physics-snippet">{'curl={50} velocityDissipation={0.05}'}</code>
 			</article>
 			<article class="physics-cell">
-				<div class="cell-label">BOLD SPLATS</div>
+				<div class="cell-label">// BOLD SPLATS</div>
 				<div class="physics-canvas">
 					<Fluid
 						seed={9012}
-						shading={false}
 						splatRadius={0.8}
 						splatForce={9000}
 						initialSplatCount={8}
 						splatOnHover
-						backColor={paperColor}
+						backColor={surfaceColor}
 						lazy
 						aria-label="Fluid with large bold splats"
 					/>
 				</div>
-				<code class="physics-snippet">{'shading={false} splatRadius={0.8} splatForce={9000}'}</code>
+				<code class="physics-snippet">{'splatRadius={0.8} splatForce={9000}'}</code>
 			</article>
 			<article class="physics-cell">
-				<div class="cell-label">SLOW + TRANSPARENT</div>
+				<div class="cell-label">// SLOW + CLEAR</div>
 				<div class="physics-canvas">
 					<Fluid
 						seed={3456}
@@ -472,20 +493,20 @@
 						aria-label="Slow-motion transparent fluid"
 					/>
 				</div>
-				<code class="physics-snippet">{'velocityDissipation={0.05} densityDissipation={0.5} transparent'}</code>
+				<code class="physics-snippet">{'velocityDissipation={0.05} transparent'}</code>
 			</article>
 		</div>
 	</section>
 
 	<section class="section glass-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 08</div>
-			<h2 class="section-title">07. REFRACTION — A FOOTNOTE</h2>
-			<p class="section-sub">A lens at the wall. Chromatic fringes at the edge. Pairs with any shape.</p>
+			<div class="margin-mark">// GLASS</div>
+			<h2 class="section-title">BEND THE LIGHT</h2>
+			<p class="section-sub">Refraction at the wall. Chromatic fringes at the edge. Pairs with any shape.</p>
 		</div>
 		<div class="glass-grid">
 			<article class="glass-cell">
-				<div class="cell-label">CRYSTAL ORB</div>
+				<div class="cell-label">// CRYSTAL ORB</div>
 				<div class="glass-canvas">
 					<Fluid
 						seed={1111}
@@ -496,8 +517,9 @@
 						glassChromatic={0.5}
 						glassThickness={0.08}
 						containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
-						backColor={paperColor}
-						curl={35}
+						backColor={surfaceColor}
+						colorful
+						curl={50}
 						densityDissipation={0.15}
 						velocityDissipation={0.06}
 						splatRadius={0.38}
@@ -506,7 +528,7 @@
 						bloom
 						sunrays={false}
 						initialSplatCount={12}
-						autoSplatRate={stickyAutoAnimate ? 1.2 : 0}
+						autoSplatRate={stickyAutoAnimate ? 2.5 : 0}
 						autoSplatCenterY={0.5}
 						autoSplatBandHeight={0.8}
 						autoSplatSwirl={500}
@@ -516,7 +538,7 @@
 				</div>
 			</article>
 			<article class="glass-cell">
-				<div class="cell-label">SOFT LENS</div>
+				<div class="cell-label">// SOFT LENS</div>
 				<div class="glass-canvas">
 					<Fluid
 						seed={1212}
@@ -526,8 +548,9 @@
 						glassReflectivity={0.06}
 						glassChromatic={0.1}
 						containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
-						backColor={paperColor}
-						curl={30}
+						backColor={surfaceColor}
+						colorful
+						curl={50}
 						densityDissipation={0.4}
 						velocityDissipation={0.12}
 						splatRadius={0.25}
@@ -547,7 +570,7 @@
 				</div>
 			</article>
 			<article class="glass-cell">
-				<div class="cell-label">PORTAL RING</div>
+				<div class="cell-label">// PORTAL RING</div>
 				<div class="glass-canvas">
 					<Fluid
 						seed={1313}
@@ -558,8 +581,9 @@
 						glassReflectivity={0.15}
 						glassChromatic={0.7}
 						containerShape={{ type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.42 }}
-						backColor={paperColor}
-						curl={40}
+						backColor={surfaceColor}
+						colorful
+						curl={50}
 						densityDissipation={0.3}
 						velocityDissipation={0.1}
 						splatRadius={0.3}
@@ -568,7 +592,7 @@
 						bloom
 						sunrays={false}
 						initialSplatCount={10}
-						autoSplatRate={stickyAutoAnimate ? 1.5 : 0}
+						autoSplatRate={stickyAutoAnimate ? 2.5 : 0}
 						autoSplatCenterY={0.5}
 						autoSplatBandHeight={0.6}
 						autoSplatSwirl={400}
@@ -578,7 +602,7 @@
 				</div>
 			</article>
 			<article class="glass-cell">
-				<div class="cell-label">GLASS FRAME</div>
+				<div class="cell-label">// GLASS FRAME</div>
 				<div class="glass-canvas">
 					<Fluid
 						seed={1414}
@@ -589,8 +613,9 @@
 						glassReflectivity={0.18}
 						glassChromatic={0.4}
 						containerShape={{ type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.22, halfH: 0.22, innerCornerRadius: 0.06, outerHalfW: 0.48, outerHalfH: 0.48, outerCornerRadius: 0.04 }}
-						backColor={paperColor}
-						curl={25}
+						backColor={surfaceColor}
+						colorful
+						curl={50}
 						densityDissipation={0.25}
 						velocityDissipation={0.1}
 						splatRadius={0.35}
@@ -600,7 +625,7 @@
 						bloomIntensity={1.0}
 						sunrays={false}
 						initialSplatCount={10}
-						autoSplatRate={stickyAutoAnimate ? 3.0 : 0}
+						autoSplatRate={stickyAutoAnimate ? 2.5 : 0}
 						autoSplatCount={2}
 						autoSplatCenterY={0.5}
 						autoSplatBandHeight={1.5}
@@ -615,45 +640,45 @@
 
 	<section class="section sticky-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 09</div>
-			<h2 class="section-title">08. LETTERFORMS — A STUDY</h2>
-			<p class="section-sub">Dye accumulates inside the letterforms. Try the cursor.</p>
+			<div class="margin-mark">// STICKY</div>
+			<h2 class="section-title">MASK THE TYPE</h2>
+			<p class="section-sub">Dye accumulates inside the letterforms. Drag the cursor across the glyphs.</p>
 		</div>
 		<div class="sticky-grid">
 			<article class="sticky-cell">
-				<div class="cell-label">GEIST · 900</div>
+				<div class="cell-label">// VORTEX · 900</div>
 				<div class="sticky-canvas">
 					<FluidStick
-						text="FLUID"
-						font="900 100px Georgia, serif"
+						text="VORTEX"
+						font="900 100px 'Inter', system-ui, sans-serif"
 						seed={211}
 						autoAnimate={stickyAutoAnimate}
-						autoAnimateDuration={4}
+						autoAnimateDuration={3}
 						colorful
 						shading
 						bloom={false}
 						densityDissipation={0.92}
 						splatRadius={0.18}
-						backColor={paperColor}
+						backColor={surfaceColor}
 						lazy
 					/>
 				</div>
 			</article>
 			<article class="sticky-cell">
-				<div class="cell-label">GEORGIA · ∞</div>
+				<div class="cell-label">// GEORGIA · ∞</div>
 				<div class="sticky-canvas">
 					<FluidStick
 						text="∞"
 						font="200px Georgia, serif"
 						seed={222}
 						autoAnimate={stickyAutoAnimate}
-						autoAnimateDuration={4}
+						autoAnimateDuration={3}
 						colorful
 						shading
 						bloom={false}
 						densityDissipation={0.92}
 						splatRadius={0.18}
-						backColor={paperColor}
+						backColor={surfaceColor}
 						lazy
 					/>
 				</div>
@@ -663,23 +688,30 @@
 
 	<section class="section reveal-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 10</div>
-			<h2 class="section-title">09. REVEAL — A CURTAIN</h2>
+			<div class="margin-mark">// REVEAL</div>
+			<h2 class="section-title">SCRATCH THE SURFACE</h2>
 			<p class="section-sub">The fluid serves as an opacity mask. Drag to uncover what lies beneath.</p>
 		</div>
 		<div class="reveal-grid">
 			<article class="reveal-cell">
-				<div class="cell-label">SCRATCH TO REVEAL</div>
+				<div class="cell-label">// SCRATCH</div>
 				<div class="reveal-canvas">
-					<FluidReveal lazy velocityDissipation={0.95} pressureIterations={10}>
+					<FluidReveal
+						lazy
+						velocityDissipation={0.95}
+						pressureIterations={10}
+						coverColor={{ r: 0.227, g: 0.122, b: 0.36 }}
+						fringeColor={{ r: 1.0, g: 0.23, b: 0.64 }}
+						accentColor={{ r: 0.48, g: 1.0, b: 0.54 }}
+					>
 						<div class="reveal-content">
-							<span class="reveal-label">Revealed</span>
+							<span class="reveal-label">REVEALED</span>
 						</div>
 					</FluidReveal>
 				</div>
 			</article>
 			<article class="reveal-cell">
-				<div class="cell-label">AUTO REVEAL</div>
+				<div class="cell-label">// AUTO</div>
 				<div class="reveal-canvas">
 					<FluidReveal
 						lazy
@@ -688,12 +720,12 @@
 						fadeBack={false}
 						velocityDissipation={0.95}
 						sensitivity={0.15}
-						coverColor={{ r: 0.05, g: 0.08, b: 0.13 }}
-						fringeColor={{ r: 0.15, g: 0.35, b: 0.55 }}
-						accentColor={{ r: 0, g: 0.78, b: 1 }}
+						coverColor={{ r: 0.227, g: 0.122, b: 0.36 }}
+						fringeColor={{ r: 1.0, g: 0.23, b: 0.64 }}
+						accentColor={{ r: 0.48, g: 1.0, b: 0.54 }}
 					>
-						<div class="reveal-content reveal-content--dark">
-							<span class="reveal-label reveal-label--light">Auto Reveal</span>
+						<div class="reveal-content">
+							<span class="reveal-label">AUTO REVEAL</span>
 						</div>
 					</FluidReveal>
 				</div>
@@ -703,13 +735,13 @@
 
 	<section class="section distort-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 11</div>
-			<h2 class="section-title">10. DISTORTION — AN IMAGE</h2>
-			<p class="section-sub">The velocity field warps the source image. Move the cursor across the plate.</p>
+			<div class="margin-mark">// DISTORTION</div>
+			<h2 class="section-title">WARP THE WORLD</h2>
+			<p class="section-sub">The velocity field warps the source. Drag across the plate.</p>
 		</div>
 		<div class="distort-grid">
 			<article class="distort-cell">
-				<div class="cell-label">SUBTLE · STRENGTH 0.3</div>
+				<div class="cell-label">// SUBTLE · 0.30</div>
 				<div class="distort-canvas">
 					<FluidDistortion
 						src="{base}/bosch-garden.jpg"
@@ -724,7 +756,7 @@
 				</div>
 			</article>
 			<article class="distort-cell">
-				<div class="cell-label">STRONG · STRENGTH 0.45</div>
+				<div class="cell-label">// STRONG · 0.45</div>
 				<div class="distort-canvas">
 					<FluidDistortion
 						src="{base}/bosch-garden.jpg"
@@ -741,46 +773,11 @@
 		</div>
 	</section>
 
-	<section class="section close-section">
-		<div class="section-head">
-			<div class="margin-mark">§ 12</div>
-			<h2 class="section-title">11. SPECIFICATIONS — A LEDGER</h2>
-		</div>
-		<dl class="spec-list">
-			<div class="spec-row">
-				<dt>License</dt>
-				<dd>MIT</dd>
-			</div>
-			<div class="spec-row">
-				<dt>Framework</dt>
-				<dd>Svelte 5 (runes)</dd>
-			</div>
-			<div class="spec-row">
-				<dt>Runtime dependencies</dt>
-				<dd>Zero</dd>
-			</div>
-			<div class="spec-row">
-				<dt>Configuration props</dt>
-				<dd>70+</dd>
-			</div>
-			<div class="spec-row">
-				<dt>Built-in presets</dt>
-				<dd>10</dd>
-			</div>
-			<div class="spec-row">
-				<dt>Source</dt>
-				<dd>
-					<a href="https://github.com/tommyyzhao/svelte-fluid">github.com/tommyyzhao/svelte-fluid</a>
-				</dd>
-			</div>
-		</dl>
-	</section>
-
 	<section class="section playground-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 13</div>
-			<h2 class="section-title">12. PLAYGROUND — AN INSTRUMENT</h2>
-			<p class="section-sub">Turn the knobs. The fluid responds in real time. Take the snippet with you.</p>
+			<div class="margin-mark">// 11 — PLAYGROUND</div>
+			<h2 class="section-title">TURN THE KNOBS</h2>
+			<p class="section-sub">Real-time props. Take the snippet with you.</p>
 		</div>
 
 		<div class="preset-chips" role="tablist" aria-label="Quick-start presets">
@@ -822,7 +819,7 @@
 
 			<aside class="playground-panel">
 				<div class="knob-group">
-					<div class="knob-group-title">Physics</div>
+					<div class="knob-group-title">// PHYSICS</div>
 					<label class="knob-row">
 						<span class="knob-label">curl</span>
 						<input type="range" min="0" max="50" step="1" bind:value={pgCurl} oninput={markCustomEdit} />
@@ -851,7 +848,7 @@
 				</div>
 
 				<div class="knob-group">
-					<div class="knob-group-title">Visuals</div>
+					<div class="knob-group-title">// VISUALS</div>
 					<label class="toggle-row">
 						<input type="checkbox" bind:checked={pgBloom} onchange={markCustomEdit} />
 						<span class="toggle-pill" aria-hidden="true"></span>
@@ -870,7 +867,7 @@
 				</div>
 
 				<div class="knob-group">
-					<div class="knob-group-title">Background</div>
+					<div class="knob-group-title">// BACKGROUND</div>
 					<label class="color-row">
 						<span class="knob-label">backColor</span>
 						<input type="color" value={pgBackColorHex} oninput={onBackColorInput} aria-label="Background color" />
@@ -879,9 +876,9 @@
 				</div>
 
 				<div class="snippet-head">
-					<span>snippet</span>
+					<span>// SNIPPET</span>
 					<button class="copy-btn" onclick={copySnippet} aria-label="Copy playground snippet">
-						{copiedSnippet ? 'Copied!' : 'Copy'}
+						{copiedSnippet ? 'COPIED' : 'COPY'}
 					</button>
 				</div>
 				<pre class="snippet-code"><code>{playgroundSnippet}</code></pre>
@@ -892,11 +889,11 @@
 	<footer class="page-footer">
 		<hr />
 		<div class="footer-row">
-			<div class="footer-left">SVELTE&nbsp;·&nbsp;FLUID</div>
+			<div class="footer-left">SVELTE // FLUID</div>
 			<div class="footer-mid">
-				Derivative work of PavelDoGreat / WebGL-Fluid-Simulation by Pavel Dobryakov (c) 2017.
+				DERIVATIVE OF PAVELDOGREAT / WEBGL-FLUID-SIMULATION (C) 2017
 			</div>
-			<div class="footer-right">M&nbsp;I&nbsp;T&nbsp;&nbsp;·&nbsp;&nbsp;2 0 2 6</div>
+			<div class="footer-right">M I T // 2 0 2 6</div>
 		</div>
 	</footer>
 </main>
@@ -905,7 +902,7 @@
 	:global(html, body) {
 		margin: 0;
 		padding: 0;
-		background: #f5f1ea;
+		background: #3a1f5c;
 	}
 
 	.competition-back {
@@ -913,82 +910,134 @@
 		top: 1rem;
 		left: 1rem;
 		z-index: 200;
-		font-size: 0.75rem;
-		font-weight: 500;
-		letter-spacing: 0.05em;
-		color: rgba(0, 0, 0, 0.55);
+		font-size: 0.7rem;
+		font-weight: 600;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+		color: #f0e8ff;
 		text-decoration: none;
-		background: rgba(245, 241, 234, 0.9);
-		backdrop-filter: blur(8px);
-		-webkit-backdrop-filter: blur(8px);
-		border: 1px solid rgba(0, 0, 0, 0.12);
-		border-radius: 4px;
-		padding: 0.35rem 0.7rem;
-		font-family: var(--mono, monospace);
-		transition: color 0.15s;
+		background: rgba(74, 42, 114, 0.85);
+		backdrop-filter: blur(10px);
+		-webkit-backdrop-filter: blur(10px);
+		border: 1px solid #ff3aa3;
+		box-shadow: 0 0 0 1px rgba(255, 58, 163, 0.25), 0 0 14px rgba(255, 58, 163, 0.35);
+		border-radius: 999px;
+		padding: 0.4rem 0.85rem;
+		font-family: ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+		transition: color 0.15s, box-shadow 0.15s;
 	}
 	.competition-back:hover {
-		color: rgba(0, 0, 0, 0.85);
+		color: #7aff8a;
+		box-shadow: 0 0 0 1px rgba(122, 255, 138, 0.4), 0 0 18px rgba(122, 255, 138, 0.45);
 	}
 
 	.page {
-		--paper: #f5f1ea;
-		--ink: #0a0a0a;
-		--accent: #ff2d2d;
-		background: var(--paper);
+		--page: #3a1f5c;
+		--surface: #4a2a72;
+		--ink: #f0e8ff;
+		--ink-soft: rgba(240, 232, 255, 0.72);
+		--ink-faint: rgba(240, 232, 255, 0.18);
+		--pink: #ff3aa3;
+		--green: #7aff8a;
+		--mono: ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+		background: var(--page);
 		color: var(--ink);
-		font-family: ui-monospace, 'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+		font-family: 'Inter', system-ui, -apple-system, sans-serif;
 		font-size: 14px;
 		line-height: 1.55;
 		max-width: 1400px;
 		margin: 0 auto;
 		padding: 0 24px 0;
-	}
-
-	.margin-mark {
-		font-family: ui-monospace, 'JetBrains Mono', monospace;
-		font-size: 11px;
-		letter-spacing: 0.15em;
-		text-transform: uppercase;
-		color: var(--ink);
-	}
-	.margin-mark.light {
-		color: var(--paper);
-	}
-
-	.hero {
-		border-bottom: 2px solid var(--ink);
-		padding: 32px 0 56px;
 		position: relative;
 	}
 
+	/* subtle rave grid backdrop */
+	.page::before {
+		content: '';
+		position: fixed;
+		inset: 0;
+		pointer-events: none;
+		background-image:
+			linear-gradient(rgba(240, 232, 255, 0.04) 1px, transparent 1px),
+			linear-gradient(90deg, rgba(240, 232, 255, 0.04) 1px, transparent 1px);
+		background-size: 48px 48px;
+		z-index: 0;
+	}
+
+	.margin-mark {
+		font-family: var(--mono);
+		font-size: 11px;
+		letter-spacing: 0.22em;
+		text-transform: uppercase;
+		color: var(--pink);
+	}
+
+	/* HERO */
+	.hero {
+		position: relative;
+		padding: 32px 0 56px;
+		border-bottom: 1px solid var(--ink-faint);
+		isolation: isolate;
+		overflow: hidden;
+	}
+	.hero-bg {
+		position: absolute;
+		inset: -2px;
+		z-index: 0;
+		filter: saturate(1.15);
+	}
+	.hero-scrim {
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		background:
+			radial-gradient(ellipse at 50% 60%, rgba(58, 31, 92, 0.15) 0%, rgba(58, 31, 92, 0.6) 60%, rgba(58, 31, 92, 0.92) 100%),
+			linear-gradient(180deg, rgba(58, 31, 92, 0.25) 0%, rgba(58, 31, 92, 0.85) 100%);
+		pointer-events: none;
+	}
+	.hero-inner {
+		position: relative;
+		z-index: 2;
+		padding: 40px 0 0;
+	}
+
 	.kicker {
+		font-family: var(--mono);
 		font-size: 11px;
 		text-transform: uppercase;
-		letter-spacing: 0.3em;
-		border-top: 2px solid var(--ink);
-		border-bottom: 2px solid var(--ink);
-		padding: 6px 0;
+		letter-spacing: 0.32em;
+		color: var(--green);
+		border-top: 1px solid var(--ink-faint);
+		border-bottom: 1px solid var(--ink-faint);
+		padding: 8px 0;
 		margin: 12px 0 32px;
 	}
 
 	.display {
-		font-family: 'Times New Roman', Georgia, 'Playfair Display', serif;
+		font-family: 'Inter', system-ui, sans-serif;
 		font-weight: 900;
-		font-size: clamp(4rem, 13vw, 12rem);
-		line-height: 0.88;
+		font-size: clamp(3.5rem, 12vw, 11rem);
+		line-height: 0.86;
 		letter-spacing: -0.04em;
+		text-transform: uppercase;
 		margin: 0;
+		color: var(--ink);
+		text-shadow: 0 0 28px rgba(255, 58, 163, 0.35), 0 0 1px rgba(122, 255, 138, 0.6);
 	}
-	.display .dash {
-		letter-spacing: -0.12em;
-		color: var(--accent);
+	.display .slash {
+		color: var(--pink);
+		letter-spacing: -0.06em;
+		padding: 0 0.05em;
+		text-shadow: 0 0 14px rgba(255, 58, 163, 0.65);
 	}
 
 	.tagline {
+		font-family: 'Inter', system-ui, sans-serif;
 		font-size: clamp(1rem, 1.4vw, 1.25rem);
 		max-width: 640px;
 		margin: 28px 0 36px;
+		color: var(--ink-soft);
+		line-height: 1.5;
 	}
 
 	.install-row {
@@ -999,16 +1048,18 @@
 	}
 	.install-tabs {
 		display: flex;
-		border: 2px solid var(--ink);
+		border: 1px solid var(--ink-faint);
 		border-right: 0;
+		background: rgba(74, 42, 114, 0.7);
+		backdrop-filter: blur(8px);
 	}
 	.tab {
-		background: var(--paper);
-		color: var(--ink);
+		background: transparent;
+		color: var(--ink-soft);
 		border: 0;
-		border-right: 2px solid var(--ink);
+		border-right: 1px solid var(--ink-faint);
 		padding: 0 14px;
-		font: inherit;
+		font-family: var(--mono);
 		font-size: 11px;
 		letter-spacing: 0.2em;
 		cursor: pointer;
@@ -1017,113 +1068,177 @@
 		border-right: 0;
 	}
 	.tab.active {
-		background: var(--ink);
-		color: var(--paper);
+		background: var(--pink);
+		color: #2a0e3f;
+		font-weight: 700;
 	}
 	.install-box {
 		flex: 1;
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		border: 2px solid var(--ink);
+		border: 1px solid var(--ink-faint);
 		padding: 8px 14px;
-		background: var(--paper);
+		background: rgba(74, 42, 114, 0.7);
+		backdrop-filter: blur(8px);
+		font-family: var(--mono);
 		font-size: 14px;
+		color: var(--ink);
 	}
 	.install-box .prompt {
-		color: var(--accent);
+		color: var(--green);
+		font-weight: 700;
 	}
 
 	.hero-links {
 		margin-top: 32px;
 		display: flex;
-		gap: 32px;
+		gap: 16px;
 		font-size: 13px;
+		flex-wrap: wrap;
 	}
-	.hero-link {
-		color: var(--ink);
+	.cta {
+		font-family: var(--mono);
+		font-size: 12px;
+		letter-spacing: 0.2em;
+		text-transform: uppercase;
 		text-decoration: none;
-		border-bottom: 2px solid var(--ink);
-		padding-bottom: 2px;
+		padding: 12px 22px;
+		border-radius: 2px;
+		font-weight: 700;
+		transition: transform 0.12s, box-shadow 0.15s, background 0.12s, color 0.12s;
 	}
-	.hero-link:hover {
-		color: var(--accent);
-		border-color: var(--accent);
+	.cta-fill {
+		background: var(--pink);
+		color: #2a0e3f;
+		box-shadow: 0 0 0 1px var(--pink), 0 0 22px rgba(255, 58, 163, 0.45);
+	}
+	.cta-fill:hover {
+		transform: translateY(-1px);
+		box-shadow: 0 0 0 1px var(--pink), 0 0 30px rgba(255, 58, 163, 0.7);
+	}
+	.cta-out {
+		background: transparent;
+		color: var(--green);
+		border: 1px solid var(--green);
+		box-shadow: 0 0 14px rgba(122, 255, 138, 0.18);
+	}
+	.cta-out:hover {
+		background: var(--green);
+		color: #102a14;
+		box-shadow: 0 0 24px rgba(122, 255, 138, 0.55);
 	}
 
+	.pill-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		margin: 32px 0 0;
+		padding: 0;
+		list-style: none;
+	}
+	.pill {
+		font-family: var(--mono);
+		font-size: 10px;
+		letter-spacing: 0.22em;
+		text-transform: uppercase;
+		color: var(--ink-soft);
+		padding: 5px 10px;
+		border: 1px solid var(--ink-faint);
+		border-radius: 999px;
+		background: rgba(74, 42, 114, 0.45);
+	}
+
+	/* SECTIONS */
 	.section {
-		border-bottom: 2px solid var(--ink);
-		padding: 56px 0;
+		border-bottom: 1px solid var(--ink-faint);
+		padding: 64px 0;
+		position: relative;
+		z-index: 1;
 	}
 	.section-head {
 		margin-bottom: 32px;
 	}
 	.section-title {
-		font-family: 'Times New Roman', Georgia, serif;
+		font-family: 'Inter', system-ui, sans-serif;
 		font-weight: 900;
 		font-size: clamp(2rem, 5vw, 4rem);
 		line-height: 1;
-		letter-spacing: -0.02em;
+		letter-spacing: -0.04em;
+		text-transform: uppercase;
 		margin: 8px 0 0;
+		color: var(--ink);
 	}
 	.section-sub {
-		margin: 12px 0 0;
+		margin: 14px 0 0;
 		max-width: 540px;
+		color: var(--ink-soft);
 	}
 
+	/* MANIFESTO */
 	.manifesto {
 		list-style: none;
 		margin: 0;
 		padding: 0;
-		border-top: 2px solid var(--ink);
+		border-top: 1px solid var(--ink-faint);
 	}
 	.manifesto li {
 		display: grid;
 		grid-template-columns: 64px 240px 1fr;
 		gap: 16px;
 		align-items: baseline;
-		padding: 16px 0;
-		border-bottom: 2px solid var(--ink);
+		padding: 18px 0;
+		border-bottom: 1px solid var(--ink-faint);
 	}
 	.manifesto .num {
+		font-family: var(--mono);
 		font-weight: 700;
-		color: var(--accent);
+		color: var(--green);
+		letter-spacing: 0.1em;
 	}
 	.manifesto .t {
 		text-transform: uppercase;
-		letter-spacing: 0.15em;
-		font-weight: 700;
+		letter-spacing: 0.18em;
+		font-weight: 800;
 		font-size: 13px;
+		color: var(--ink);
 	}
 	.manifesto .d {
 		font-size: 14px;
+		color: var(--ink-soft);
 	}
 
+	/* USAGE */
 	.usage-grid {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		border: 2px solid var(--ink);
+		border: 1px solid var(--ink-faint);
+		background: var(--surface);
 	}
 	.snippet {
 		margin: 0;
 		padding: 20px;
-		border-right: 2px solid var(--ink);
-		background: var(--paper);
+		border-right: 1px solid var(--ink-faint);
+		background: rgba(0, 0, 0, 0.2);
 		overflow-x: auto;
+		font-family: var(--mono);
 		font-size: 13px;
 		line-height: 1.6;
+		color: var(--ink);
 	}
 	.usage-preview {
 		display: flex;
 		flex-direction: column;
 	}
 	.cell-label {
+		font-family: var(--mono);
 		font-size: 10px;
 		letter-spacing: 0.25em;
 		text-transform: uppercase;
 		padding: 8px 12px;
-		border-bottom: 2px solid var(--ink);
-		background: var(--paper);
+		border-bottom: 1px solid var(--ink-faint);
+		background: rgba(0, 0, 0, 0.18);
+		color: var(--green);
 	}
 	.fluid-host {
 		flex: 1;
@@ -1131,207 +1246,130 @@
 		position: relative;
 	}
 
-	.quote-section {
-		padding: 80px 0;
-	}
-	.pull-quote {
-		margin: 0;
-		max-width: 980px;
-		position: relative;
-		padding-left: 120px;
-	}
-	.open-quote {
-		font-family: 'Times New Roman', Georgia, serif;
-		font-weight: 900;
-		font-size: clamp(8rem, 16vw, 14rem);
-		line-height: 0.7;
-		color: var(--accent);
-		position: absolute;
-		left: 0;
-		top: -10px;
-	}
-	.pull-quote p {
-		font-family: 'Times New Roman', Georgia, serif;
-		font-style: italic;
-		font-weight: 500;
-		font-size: clamp(1.5rem, 3.2vw, 2.6rem);
-		line-height: 1.2;
-		margin: 0;
-	}
-	.quote-cite {
-		font-family: ui-monospace, 'JetBrains Mono', monospace;
-		font-style: normal;
-		font-size: 11px;
-		letter-spacing: 0.3em;
-		margin-top: 24px;
-	}
-
+	/* PRESETS */
 	.preset-grid {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
-		border: 2px solid var(--ink);
+		gap: 14px;
 	}
 	.preset-cell {
 		display: flex;
 		flex-direction: column;
-		border-right: 2px solid var(--ink);
-		border-bottom: 2px solid var(--ink);
+		border: 1px solid var(--pink);
+		border-radius: 4px;
+		background: var(--surface);
+		box-shadow: 0 0 0 1px rgba(255, 58, 163, 0.08), 0 0 22px rgba(255, 58, 163, 0.18);
+		overflow: hidden;
+		transition: box-shadow 0.18s;
 	}
-	.preset-cell:nth-child(3n) {
-		border-right: 0;
-	}
-	.preset-cell:nth-child(n + 4) {
-		border-bottom: 0;
+	.preset-cell:hover {
+		box-shadow: 0 0 0 1px rgba(255, 58, 163, 0.18), 0 0 30px rgba(255, 58, 163, 0.32);
 	}
 	.cell-canvas {
 		height: 360px;
 		position: relative;
 	}
 
-	.invert-section {
-		background: var(--ink);
-		color: var(--paper);
-		padding: 0;
-		border-bottom: 2px solid var(--ink);
-		margin: 0 -24px;
-	}
-	.invert-grid {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-	}
-	.invert-text {
-		padding: 64px 56px;
-		border-right: 2px solid var(--paper);
-	}
-	.invert-title {
-		font-family: 'Times New Roman', Georgia, serif;
-		font-weight: 900;
-		font-size: clamp(2.4rem, 5.5vw, 4.5rem);
-		line-height: 1;
-		letter-spacing: -0.02em;
-		margin: 24px 0 24px;
-	}
-	.invert-body {
-		max-width: 480px;
-		font-size: 15px;
-		line-height: 1.6;
-	}
-	.invert-link {
-		display: inline-block;
-		margin-top: 32px;
-		color: var(--paper);
-		text-decoration: none;
-		border-bottom: 2px solid var(--accent);
-		padding-bottom: 2px;
-	}
-	.invert-canvas {
-		min-height: 480px;
-		position: relative;
-	}
-
-	/* Shapes */
+	/* SHAPES */
 	.shape-grid {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
-		border: 2px solid var(--ink);
+		gap: 14px;
 	}
 	.shape-cell {
 		display: flex;
 		flex-direction: column;
-		border-right: 2px solid var(--ink);
-		border-bottom: 2px solid var(--ink);
-	}
-	.shape-cell:nth-child(3n) {
-		border-right: 0;
-	}
-	.shape-cell:nth-child(n + 4) {
-		border-bottom: 0;
+		border: 1px solid var(--ink-faint);
+		border-radius: 4px;
+		background: var(--surface);
+		overflow: hidden;
 	}
 	.shape-canvas {
 		height: 300px;
 		position: relative;
 	}
 
-	/* Physics */
+	/* PHYSICS */
 	.physics-grid {
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
-		border: 2px solid var(--ink);
+		gap: 14px;
 	}
 	.physics-cell {
 		display: flex;
 		flex-direction: column;
-		border-right: 2px solid var(--ink);
-	}
-	.physics-cell:last-child {
-		border-right: 0;
+		border: 1px solid var(--ink-faint);
+		border-radius: 4px;
+		background: var(--surface);
+		overflow: hidden;
 	}
 	.physics-canvas {
 		height: 300px;
 		position: relative;
 	}
 	.physics-snippet {
+		font-family: var(--mono);
 		font-size: 10px;
-		letter-spacing: 0.05em;
-		padding: 8px 12px;
-		border-top: 2px solid var(--ink);
-		background: var(--paper);
+		letter-spacing: 0.04em;
+		padding: 10px 12px;
+		border-top: 1px solid var(--ink-faint);
+		background: rgba(0, 0, 0, 0.22);
+		color: var(--green);
 		word-break: break-all;
 		white-space: pre-wrap;
 	}
 
-	/* Glass */
+	/* GLASS */
 	.glass-grid {
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
-		border: 2px solid var(--ink);
+		gap: 14px;
 	}
 	.glass-cell {
 		display: flex;
 		flex-direction: column;
-		border-right: 2px solid var(--ink);
-	}
-	.glass-cell:last-child {
-		border-right: 0;
+		border: 1px solid var(--ink-faint);
+		border-radius: 4px;
+		background: var(--surface);
+		overflow: hidden;
 	}
 	.glass-canvas {
 		height: 340px;
 		position: relative;
-		background: var(--paper);
 	}
 
-	/* Sticky */
+	/* STICKY */
 	.sticky-grid {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
-		border: 2px solid var(--ink);
+		gap: 14px;
 	}
 	.sticky-cell {
 		display: flex;
 		flex-direction: column;
-		border-right: 2px solid var(--ink);
-	}
-	.sticky-cell:last-child {
-		border-right: 0;
+		border: 1px solid var(--ink-faint);
+		border-radius: 4px;
+		background: var(--surface);
+		overflow: hidden;
 	}
 	.sticky-canvas {
 		height: 340px;
 		position: relative;
 	}
 
-	/* Reveal */
+	/* REVEAL */
 	.reveal-grid {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
-		border: 2px solid var(--ink);
+		gap: 14px;
 	}
 	.reveal-cell {
 		display: flex;
 		flex-direction: column;
-		border-right: 2px solid var(--ink);
-	}
-	.reveal-cell:last-child {
-		border-right: 0;
+		border: 1px solid var(--ink-faint);
+		border-radius: 4px;
+		background: var(--surface);
+		overflow: hidden;
 	}
 	.reveal-canvas {
 		height: 340px;
@@ -1342,44 +1380,38 @@
 		align-items: center;
 		justify-content: center;
 		height: 100%;
-		background: linear-gradient(135deg, #f5f1ea 0%, #e8dfd0 100%);
-	}
-	.reveal-content--dark {
-		background: linear-gradient(135deg, #0a0e1a 0%, #0d1833 100%);
+		background: linear-gradient(135deg, #2c1647 0%, #1a0c2c 100%);
 	}
 	.reveal-label {
-		font-family: 'Times New Roman', Georgia, serif;
-		font-size: 1.5rem;
-		font-style: italic;
+		font-family: 'Inter', system-ui, sans-serif;
+		font-size: 1.6rem;
+		font-weight: 900;
+		letter-spacing: 0.2em;
+		text-transform: uppercase;
 		color: var(--ink);
-	}
-	.reveal-label--light {
-		color: rgba(255, 255, 255, 0.9);
+		text-shadow: 0 0 16px rgba(122, 255, 138, 0.45);
 	}
 
-	/* Distortion */
+	/* DISTORT */
 	.distort-grid {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
-		border: 2px solid var(--ink);
+		gap: 14px;
 	}
 	.distort-cell {
 		display: flex;
 		flex-direction: column;
-		border-right: 2px solid var(--ink);
-	}
-	.distort-cell:last-child {
-		border-right: 0;
+		border: 1px solid var(--ink-faint);
+		border-radius: 4px;
+		background: var(--surface);
+		overflow: hidden;
 	}
 	.distort-canvas {
 		height: 340px;
 		position: relative;
 	}
 
-	/* Playground */
-	.playground-section {
-		border-bottom: 2px solid var(--ink);
-	}
+	/* PLAYGROUND */
 	.preset-chips {
 		display: flex;
 		flex-wrap: wrap;
@@ -1387,40 +1419,49 @@
 		margin-bottom: 24px;
 	}
 	.preset-chip {
-		background: var(--paper);
-		color: var(--ink);
-		border: 2px solid var(--ink);
-		padding: 4px 12px;
-		font: inherit;
+		background: transparent;
+		color: var(--ink-soft);
+		border: 1px solid var(--ink-faint);
+		padding: 6px 14px;
+		font-family: var(--mono);
 		font-size: 11px;
-		letter-spacing: 0.15em;
+		letter-spacing: 0.18em;
 		text-transform: uppercase;
 		cursor: pointer;
-		transition: background 0.1s, color 0.1s;
+		border-radius: 999px;
+		transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.15s;
 	}
-	.preset-chip:hover,
+	.preset-chip:hover {
+		color: var(--ink);
+		border-color: var(--pink);
+	}
 	.preset-chip.active {
-		background: var(--ink);
-		color: var(--paper);
+		background: var(--pink);
+		color: #2a0e3f;
+		border-color: var(--pink);
+		font-weight: 700;
+		box-shadow: 0 0 18px rgba(255, 58, 163, 0.5);
 	}
 	.preset-chip.reset {
-		border-color: var(--accent);
-		color: var(--accent);
+		border-color: var(--green);
+		color: var(--green);
 	}
 	.preset-chip.reset:hover {
-		background: var(--accent);
-		color: var(--paper);
+		background: var(--green);
+		color: #102a14;
 	}
 	.playground-grid {
 		display: grid;
 		grid-template-columns: 1fr 320px;
-		border: 2px solid var(--ink);
-		gap: 0;
+		border: 1px solid var(--ink-faint);
+		background: var(--surface);
+		border-radius: 4px;
+		overflow: hidden;
 	}
 	.playground-canvas {
 		min-height: 480px;
 		position: relative;
-		border-right: 2px solid var(--ink);
+		border-right: 1px solid var(--ink-faint);
 	}
 	.playground-panel {
 		padding: 20px;
@@ -1429,6 +1470,7 @@
 		gap: 20px;
 		overflow-y: auto;
 		max-height: 600px;
+		background: rgba(0, 0, 0, 0.2);
 	}
 	.knob-group {
 		display: flex;
@@ -1436,12 +1478,14 @@
 		gap: 10px;
 	}
 	.knob-group-title {
+		font-family: var(--mono);
 		font-size: 10px;
-		letter-spacing: 0.3em;
+		letter-spacing: 0.28em;
 		text-transform: uppercase;
 		font-weight: 700;
-		border-bottom: 1px solid var(--ink);
-		padding-bottom: 4px;
+		color: var(--pink);
+		border-bottom: 1px solid var(--ink-faint);
+		padding-bottom: 6px;
 	}
 	.knob-row {
 		display: grid;
@@ -1451,19 +1495,23 @@
 		cursor: pointer;
 	}
 	.knob-label {
+		font-family: var(--mono);
 		font-size: 11px;
-		letter-spacing: 0.05em;
+		letter-spacing: 0.04em;
+		color: var(--ink);
 	}
 	.knob-value {
+		font-family: var(--mono);
 		font-size: 11px;
 		text-align: right;
+		color: var(--green);
 	}
 	.knob-value.mono {
-		font-family: ui-monospace, 'JetBrains Mono', monospace;
+		font-family: var(--mono);
 	}
-	input[type='range'] {
+	.knob-row input[type='range'] {
 		width: 100%;
-		accent-color: var(--ink);
+		accent-color: var(--green);
 	}
 	.toggle-row {
 		display: flex;
@@ -1477,11 +1525,11 @@
 	.toggle-pill {
 		width: 32px;
 		height: 16px;
-		background: rgba(0, 0, 0, 0.15);
-		border: 1.5px solid var(--ink);
+		background: rgba(240, 232, 255, 0.1);
+		border: 1.5px solid var(--ink-faint);
 		border-radius: 8px;
 		position: relative;
-		transition: background 0.15s;
+		transition: background 0.15s, border-color 0.15s;
 		flex-shrink: 0;
 	}
 	.toggle-pill::after {
@@ -1491,16 +1539,17 @@
 		left: 1px;
 		width: 10px;
 		height: 10px;
-		background: var(--ink);
+		background: var(--ink-soft);
 		border-radius: 50%;
-		transition: transform 0.15s;
+		transition: transform 0.15s, background 0.15s;
 	}
 	.toggle-row input[type='checkbox']:checked ~ .toggle-pill {
-		background: var(--ink);
+		background: var(--pink);
+		border-color: var(--pink);
 	}
 	.toggle-row input[type='checkbox']:checked ~ .toggle-pill::after {
 		transform: translateX(16px);
-		background: var(--paper);
+		background: #2a0e3f;
 	}
 	.color-row {
 		display: flex;
@@ -1511,7 +1560,7 @@
 	.color-row input[type='color'] {
 		width: 32px;
 		height: 24px;
-		border: 1.5px solid var(--ink);
+		border: 1.5px solid var(--ink-faint);
 		padding: 1px;
 		background: none;
 		cursor: pointer;
@@ -1520,113 +1569,97 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
+		font-family: var(--mono);
 		font-size: 10px;
-		letter-spacing: 0.2em;
+		letter-spacing: 0.22em;
 		text-transform: uppercase;
-		border-bottom: 1px solid var(--ink);
-		padding-bottom: 4px;
+		border-bottom: 1px solid var(--ink-faint);
+		padding-bottom: 6px;
+		color: var(--pink);
 	}
 	.copy-btn {
-		background: var(--paper);
-		color: var(--ink);
-		border: 1.5px solid var(--ink);
-		padding: 2px 8px;
-		font: inherit;
+		background: transparent;
+		color: var(--green);
+		border: 1px solid var(--green);
+		padding: 3px 10px;
+		font-family: var(--mono);
 		font-size: 10px;
-		letter-spacing: 0.1em;
+		letter-spacing: 0.18em;
 		cursor: pointer;
+		border-radius: 2px;
 	}
 	.copy-btn:hover {
-		background: var(--ink);
-		color: var(--paper);
+		background: var(--green);
+		color: #102a14;
 	}
 	.snippet-code {
 		margin: 0;
+		font-family: var(--mono);
 		font-size: 11px;
 		line-height: 1.6;
 		white-space: pre-wrap;
 		word-break: break-all;
-		background: var(--paper);
+		background: rgba(0, 0, 0, 0.3);
+		color: var(--ink);
+		padding: 12px;
+		border: 1px solid var(--ink-faint);
+		border-radius: 2px;
 	}
 
-	/* Specs */
-	.spec-list {
-		margin: 0;
-		padding: 0;
-		border-top: 2px solid var(--ink);
-	}
-	.spec-row {
-		display: grid;
-		grid-template-columns: 280px 1fr;
-		gap: 24px;
-		padding: 14px 0;
-		border-bottom: 2px solid var(--ink);
-	}
-	.spec-row dt {
-		text-transform: uppercase;
-		letter-spacing: 0.2em;
-		font-size: 11px;
-		font-weight: 700;
-	}
-	.spec-row dd {
-		margin: 0;
-		font-size: 14px;
-	}
-	.spec-row a {
-		color: var(--accent);
-		text-decoration: none;
-		border-bottom: 1px solid var(--accent);
-	}
-
+	/* FOOTER */
 	.page-footer {
 		padding: 40px 0 64px;
 	}
 	.page-footer hr {
 		border: 0;
-		border-top: 2px solid var(--ink);
+		border-top: 1px solid var(--ink-faint);
 		margin: 0 0 24px;
 	}
 	.footer-row {
 		display: grid;
 		grid-template-columns: 1fr 2fr 1fr;
 		gap: 24px;
-		font-size: 11px;
-		letter-spacing: 0.2em;
+		font-family: var(--mono);
+		font-size: 10px;
+		letter-spacing: 0.28em;
 		text-transform: uppercase;
+		color: var(--ink-soft);
+	}
+	.footer-left {
+		color: var(--ink);
+		border-bottom: 1px solid var(--pink);
+		padding-bottom: 4px;
+		justify-self: start;
 	}
 	.footer-mid {
 		text-align: center;
-		text-transform: none;
-		letter-spacing: 0.05em;
-		font-size: 11px;
 	}
 	.footer-right {
 		text-align: right;
+		color: var(--ink);
+		border-bottom: 1px solid var(--green);
+		padding-bottom: 4px;
+		justify-self: end;
+	}
+
+	@media (max-width: 1100px) {
+		.physics-grid,
+		.glass-grid {
+			grid-template-columns: repeat(2, 1fr);
+		}
 	}
 
 	@media (max-width: 900px) {
-		.usage-grid,
-		.preset-grid,
-		.invert-grid {
+		.usage-grid {
 			grid-template-columns: 1fr;
 		}
 		.snippet {
 			border-right: 0;
-			border-bottom: 2px solid var(--ink);
+			border-bottom: 1px solid var(--ink-faint);
 		}
-		.preset-cell {
-			border-right: 0;
-		}
-		.preset-cell:nth-child(n) {
-			border-bottom: 2px solid var(--ink);
-		}
-		.preset-cell:last-child {
-			border-bottom: 0;
-		}
-		.invert-text {
-			border-right: 0;
-			border-bottom: 2px solid var(--paper);
-			padding: 40px 24px;
+		.preset-grid,
+		.shape-grid {
+			grid-template-columns: repeat(2, 1fr);
 		}
 		.manifesto li {
 			grid-template-columns: 48px 1fr;
@@ -1635,13 +1668,6 @@
 			grid-column: 1 / -1;
 			padding-left: 64px;
 		}
-		.pull-quote {
-			padding-left: 64px;
-		}
-		.spec-row {
-			grid-template-columns: 1fr;
-			gap: 4px;
-		}
 		.footer-row {
 			grid-template-columns: 1fr;
 			text-align: left;
@@ -1649,38 +1675,19 @@
 		.footer-mid,
 		.footer-right {
 			text-align: left;
+			justify-self: start;
 		}
-		.shape-grid,
-		.physics-grid,
-		.glass-grid,
 		.sticky-grid,
 		.reveal-grid,
 		.distort-grid {
 			grid-template-columns: 1fr;
-		}
-		.shape-cell,
-		.physics-cell,
-		.glass-cell,
-		.sticky-cell,
-		.reveal-cell,
-		.distort-cell {
-			border-right: 0;
-			border-bottom: 2px solid var(--ink);
-		}
-		.shape-cell:last-child,
-		.physics-cell:last-child,
-		.glass-cell:last-child,
-		.sticky-cell:last-child,
-		.reveal-cell:last-child,
-		.distort-cell:last-child {
-			border-bottom: 0;
 		}
 		.playground-grid {
 			grid-template-columns: 1fr;
 		}
 		.playground-canvas {
 			border-right: 0;
-			border-bottom: 2px solid var(--ink);
+			border-bottom: 1px solid var(--ink-faint);
 		}
 	}
 
@@ -1690,41 +1697,23 @@
 			padding: 0 16px;
 		}
 		.display {
-			font-size: clamp(3rem, 16vw, 6rem);
+			font-size: clamp(2.6rem, 14vw, 5rem);
 		}
 		.tagline {
 			font-size: 1rem;
 			margin: 20px 0 28px;
 		}
 		.section {
-			padding: 40px 0;
+			padding: 44px 0;
 		}
 		.section-title {
 			font-size: clamp(1.6rem, 7vw, 2.4rem);
 		}
-		.invert-title {
-			font-size: clamp(1.8rem, 7.5vw, 2.6rem);
-		}
+		.preset-grid,
 		.shape-grid,
 		.physics-grid,
-		.glass-grid,
-		.preset-grid,
-		.reveal-grid,
-		.distort-grid,
-		.sticky-grid {
+		.glass-grid {
 			grid-template-columns: 1fr;
-		}
-		.open-quote {
-			font-size: clamp(5rem, 18vw, 8rem);
-		}
-		.pull-quote {
-			padding-left: 48px;
-		}
-		.pull-quote p {
-			font-size: clamp(1.2rem, 4.5vw, 1.8rem);
-		}
-		.invert-text {
-			padding: 32px 20px;
 		}
 		.cell-canvas,
 		.shape-canvas,
@@ -1736,9 +1725,6 @@
 			height: 260px;
 		}
 		.playground-canvas {
-			min-height: 360px;
-		}
-		.invert-canvas {
 			min-height: 360px;
 		}
 	}
@@ -1755,33 +1741,26 @@
 		}
 		.kicker {
 			font-size: 10px;
-			letter-spacing: 0.22em;
+			letter-spacing: 0.24em;
 			margin: 10px 0 24px;
-		}
-		.margin-mark {
-			font-size: 10px;
-			letter-spacing: 0.12em;
-		}
-		.knob-group-title,
-		.cell-label,
-		.physics-snippet,
-		.snippet-head {
-			font-size: 9px;
-			letter-spacing: 0.18em;
 		}
 		.install-row {
 			flex-direction: column;
 		}
 		.install-tabs {
-			border-right: 2px solid var(--ink);
+			border-right: 1px solid var(--ink-faint);
 			border-bottom: 0;
 		}
 		.install-box {
 			border-top: 0;
 		}
 		.hero-links {
-			gap: 20px;
+			gap: 12px;
 			flex-wrap: wrap;
+		}
+		.cta {
+			padding: 10px 16px;
+			font-size: 11px;
 		}
 		.manifesto li {
 			grid-template-columns: 36px 1fr;
@@ -1791,7 +1770,7 @@
 			padding-left: 48px;
 		}
 		.knob-row {
-			grid-template-columns: 100px 1fr 40px;
+			grid-template-columns: 110px 1fr 44px;
 		}
 		.playground-panel {
 			padding: 16px;

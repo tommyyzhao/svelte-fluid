@@ -16,7 +16,12 @@
 		ToroidalTempest
 	} from '$lib/index.js';
 
-	let installTab = $state<'npm' | 'bun' | 'pnpm'>('npm');
+	type RGB = { r: number; g: number; b: number };
+
+	const pageColor: RGB = { r: 232, g: 139, b: 162 };
+	const surfaceColor: RGB = { r: 255, g: 245, b: 238 };
+
+	let installTab = $state<'npm' | 'bun' | 'pnpm'>('bun');
 
 	const installCmd = $derived(
 		installTab === 'npm'
@@ -31,17 +36,24 @@
 <\/script>
 
 <div style="width: 100%; height: 480px;">
-  <Fluid seed={42} splatOnHover backColor={{ r: 245, g: 241, b: 234 }} />
+  <Fluid
+    seed={42}
+    splatOnHover
+    curl={45}
+    colorful
+    bloom
+    backColor={{ r: 255, g: 245, b: 238 }}
+  />
 </div>`;
 
-	const features = [
-		{ n: '01', t: 'Multi-instance', d: 'Many engines coexist on one page. No shared globals.' },
-		{ n: '02', t: 'Resize-stable', d: 'Survives ResizeObserver storms. FBOs rebuild on stable size.' },
-		{ n: '03', t: 'Deterministic seeding', d: 'A seed in. The same fluid out. Frame for frame.' },
-		{ n: '04', t: 'MIT licensed', d: 'Derivative of PavelDoGreat. Use it. Ship it.' },
-		{ n: '05', t: 'Zero runtime deps', d: 'Pure Svelte 5 and WebGL. Nothing else in your bundle.' },
-		{ n: '06', t: '70+ configuration props', d: 'Bloom, sunrays, curl, dissipation, splat radius. All hot-swappable.' },
-		{ n: '07', t: 'Ten built-in presets', d: 'Editorial fluid wallpaper out of the box.' }
+	const flavors = [
+		{ n: '01', t: 'Drop it in', d: 'One component. Zero config. Instant swirl.' },
+		{ n: '02', t: 'Multi-instance', d: 'Stack a hundred on a page — no globals shouting at each other.' },
+		{ n: '03', t: 'Resize-stable', d: 'Stretch the window. The fluid stretches with you.' },
+		{ n: '04', t: 'Seeded', d: 'Same seed in, same swirl out. Frame-perfect, every reload.' },
+		{ n: '05', t: 'Tiny', d: 'Pure Svelte 5 + WebGL. No runtime deps to lug around.' },
+		{ n: '06', t: '70+ knobs', d: 'Bloom, curl, splat radius, dissipation — all hot-swap.' },
+		{ n: '07', t: 'Ten presets', d: 'LavaLamp, Plasma, Aurora… ready out of the box.' }
 	];
 
 	const lightning = 'M 55 5 L 25 55 L 45 55 L 35 95 L 75 40 L 55 40 L 70 5 Z';
@@ -59,12 +71,8 @@
 
 	const stickyAutoAnimate = $derived(!reducedMotion);
 
-	type RGB = { r: number; g: number; b: number };
-
-	const paperColor: RGB = { r: 245, g: 241, b: 234 };
-
 	const PLAYGROUND_DEFAULTS = {
-		curl: 30,
+		curl: 45,
 		splatRadius: 0.25,
 		splatForce: 6000,
 		densityDissipation: 1.0,
@@ -72,7 +80,7 @@
 		bloom: true,
 		shading: true,
 		colorful: true,
-		backColor: { ...paperColor } as RGB
+		backColor: { ...surfaceColor } as RGB
 	};
 
 	const PLAYGROUND_PRESETS: Record<string, Partial<typeof PLAYGROUND_DEFAULTS>> = {
@@ -180,165 +188,172 @@
 </script>
 
 <svelte:head>
-	<title>svelte-fluid — WebGL fluid as a Svelte 5 component</title>
+	<title>svelte-fluid — bubblegum edition</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+	<link
+		href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&display=swap"
+		rel="stylesheet"
+	/>
 </svelte:head>
 
 <a class="competition-back" href="{base}/design-competition">← Competition</a>
 
 <main class="page">
 	<header class="hero">
-		<div class="margin-mark">§ 00</div>
-		<div class="kicker">A Svelte 5 component library / Issue No. 1</div>
-		<h1 class="display">svelte<span class="dash">‑</span>fluid</h1>
-		<h1 class="tagline">
-			WebGL fluid simulation as a Svelte 5 component. Multi-instance, resize-stable,
-			deterministic seeding.
+		<div class="hero-top">
+			<span class="dot" aria-hidden="true">●</span>
+			<span class="kicker">Issue 18 · Bubblegum</span>
+			<span class="dot" aria-hidden="true">●</span>
+		</div>
+		<h1 class="display">
+			swirl<span class="lemon">!</span>
+			<br />
+			<span class="display-row2">it's <em>fluid</em></span>
 		</h1>
+		<p class="tagline">
+			A WebGL fluid simulation that drops into Svelte like a sugar cube into tea.
+			Stir vigorously. Hover happily. Repeat.
+		</p>
 
 		<div class="install-row">
 			<div class="install-tabs">
-				<button
-					class="tab"
-					class:active={installTab === 'npm'}
-					onclick={() => (installTab = 'npm')}>NPM</button
+				<button class="tab" class:active={installTab === 'npm'} onclick={() => (installTab = 'npm')}
+					>npm</button
 				>
-				<button
-					class="tab"
-					class:active={installTab === 'bun'}
-					onclick={() => (installTab = 'bun')}>BUN</button
+				<button class="tab" class:active={installTab === 'bun'} onclick={() => (installTab = 'bun')}
+					>bun</button
 				>
 				<button
 					class="tab"
 					class:active={installTab === 'pnpm'}
-					onclick={() => (installTab = 'pnpm')}>PNPM</button
+					onclick={() => (installTab = 'pnpm')}>pnpm</button
 				>
 			</div>
 			<div class="install-box">
-				<span class="prompt">↳</span>
+				<span class="prompt">$</span>
 				<code>{installCmd}</code>
 			</div>
 		</div>
 
-		<nav class="hero-links">
-			<a class="hero-link" href="https://github.com/tommyyzhao/svelte-fluid">→ GitHub</a>
-			<a class="hero-link" href="{base}/docs">→ Documentation</a>
-		</nav>
+		<div class="hero-cta">
+			<a class="cta cta-primary" href="{base}/docs">Read the docs →</a>
+			<a class="cta cta-secondary" href="https://github.com/tommyyzhao/svelte-fluid">GitHub ★</a>
+		</div>
+
+		<div class="feature-pills">
+			<span class="pill pill-mint">multi-instance</span>
+			<span class="pill pill-lemon">resize-stable</span>
+			<span class="pill pill-cream">deterministic seed</span>
+			<span class="pill pill-mint">70+ props</span>
+			<span class="pill pill-lemon">10 presets</span>
+			<span class="pill pill-cream">MIT</span>
+		</div>
 	</header>
 
-	<section class="section index-section">
+	<section class="section flavors-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 01</div>
-			<h2 class="section-title">01. INDEX — A MANIFESTO</h2>
+			<span class="section-tag">01 · Drop it in!</span>
+			<h2 class="section-title">Seven happy reasons</h2>
+			<p class="section-sub">A quick taste before you commit. Each one a sticker on the lunchbox.</p>
 		</div>
-		<ol class="manifesto">
-			{#each features as f (f.n)}
-				<li>
-					<span class="num">{f.n}.</span>
-					<span class="t">{f.t}</span>
-					<span class="d">— {f.d}</span>
+		<ul class="flavor-list">
+			{#each flavors as f (f.n)}
+				<li class="flavor-card">
+					<span class="flavor-num">{f.n}</span>
+					<div class="flavor-body">
+						<strong class="flavor-title">{f.t}</strong>
+						<span class="flavor-desc">{f.d}</span>
+					</div>
 				</li>
 			{/each}
-		</ol>
+		</ul>
 	</section>
 
 	<section class="section usage-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 02</div>
-			<h2 class="section-title">02. INSTALL — A MINIMUM</h2>
+			<span class="section-tag">02 · Get gooey</span>
+			<h2 class="section-title">Paste, swirl, smile</h2>
+			<p class="section-sub">
+				Heavy curl. Cream background. Cartoon energy. This is the default we wish was the default.
+			</p>
 		</div>
 		<div class="usage-grid">
 			<pre class="snippet"><code>{usage}</code></pre>
 			<div class="usage-preview">
-				<div class="cell-label">PREVIEW</div>
-				<div class="fluid-host"><Fluid seed={42} splatOnHover backColor={paperColor} /></div>
+				<div class="cell-label">live preview</div>
+				<div class="fluid-host">
+					<Fluid
+						seed={42}
+						splatOnHover
+						curl={40}
+						colorful
+						bloom
+						initialSplatCount={18}
+						backColor={surfaceColor}
+					/>
+				</div>
 			</div>
 		</div>
-	</section>
-
-	<section class="section quote-section">
-		<div class="margin-mark">§ 03</div>
-		<blockquote class="pull-quote">
-			<span class="open-quote" aria-hidden="true">&ldquo;</span>
-			<p>
-				A seed in. The same fluid out. Frame for frame, render for render — pixels
-				stable across reloads, machines, and time.
-			</p>
-			<footer class="quote-cite">— ON DETERMINISTIC SEEDING</footer>
-		</blockquote>
 	</section>
 
 	<section class="section presets-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 04</div>
-			<h2 class="section-title">03. PRESETS — A SAMPLER</h2>
-			<p class="section-sub">Six of ten. Each fills its parent. Each accepts a seed.</p>
+			<span class="section-tag">03 · Six flavors</span>
+			<h2 class="section-title">Each preset brings its own ink</h2>
+			<p class="section-sub">
+				Like stickers in a sticker book. Pull one out, slap it on a div, ship.
+			</p>
 		</div>
 		<div class="preset-grid">
-			<article class="preset-cell">
-				<div class="cell-label">§ 04 / LAVA LAMP</div>
-				<div class="cell-canvas"><LavaLamp seed={1} aria-label="LavaLamp preset" /></div>
+			<article class="preset-card">
+				<div class="cell-label">lava lamp</div>
+				<div class="cell-canvas"><LavaLamp seed={11} aria-label="LavaLamp preset" /></div>
 			</article>
-			<article class="preset-cell">
-				<div class="cell-label">§ 04 / PLASMA</div>
-				<div class="cell-canvas"><Plasma seed={2} aria-label="Plasma preset" /></div>
+			<article class="preset-card">
+				<div class="cell-label">plasma</div>
+				<div class="cell-canvas"><Plasma seed={22} aria-label="Plasma preset" /></div>
 			</article>
-			<article class="preset-cell">
-				<div class="cell-label">§ 04 / INK IN WATER</div>
+			<article class="preset-card">
+				<div class="cell-label">ink in water</div>
 				<div class="cell-canvas">
-					<InkInWater seed={3} lazy aria-label="InkInWater preset" />
+					<InkInWater seed={33} lazy aria-label="InkInWater preset" />
 				</div>
 			</article>
-			<article class="preset-cell">
-				<div class="cell-label">§ 04 / FROZEN SWIRL</div>
+			<article class="preset-card">
+				<div class="cell-label">frozen swirl</div>
 				<div class="cell-canvas">
-					<FrozenSwirl seed={4} lazy aria-label="FrozenSwirl preset" />
+					<FrozenSwirl seed={44} lazy aria-label="FrozenSwirl preset" />
 				</div>
 			</article>
-			<article class="preset-cell">
-				<div class="cell-label">§ 04 / AURORA</div>
-				<div class="cell-canvas"><Aurora seed={5} lazy aria-label="Aurora preset" /></div>
+			<article class="preset-card">
+				<div class="cell-label">aurora</div>
+				<div class="cell-canvas"><Aurora seed={55} lazy aria-label="Aurora preset" /></div>
 			</article>
-			<article class="preset-cell">
-				<div class="cell-label">§ 04 / TOROIDAL TEMPEST</div>
+			<article class="preset-card">
+				<div class="cell-label">toroidal tempest</div>
 				<div class="cell-canvas">
-					<ToroidalTempest seed={6} lazy aria-label="ToroidalTempest preset" />
+					<ToroidalTempest seed={66} lazy aria-label="ToroidalTempest preset" />
 				</div>
 			</article>
-		</div>
-	</section>
-
-	<section class="section invert-section">
-		<div class="invert-grid">
-			<div class="invert-text">
-				<div class="margin-mark light">§ 05</div>
-				<h2 class="invert-title">04. PLASMA — AFTER MIDNIGHT</h2>
-				<p class="invert-body">
-					Inverted, the fluid reads as type. Set against cream it argues with the
-					page. Set against black it argues with the void. Same engine, two columns.
-				</p>
-				<a class="invert-link" href="{base}/docs">→ Read the docs</a>
-			</div>
-			<div class="invert-canvas">
-				<Plasma seed={99} lazy aria-label="Plasma preset, inverted" />
-			</div>
 		</div>
 	</section>
 
 	<section class="section shapes-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 06</div>
-			<h2 class="section-title">05. SHAPES — A TYPOLOGY</h2>
-			<p class="section-sub">Six primitives. Confine the dye. Hover to splat.</p>
+			<span class="section-tag">04 · Pick your shape</span>
+			<h2 class="section-title">Squish it into anything</h2>
+			<p class="section-sub">Six containers. Hover to make them ooze. Some are even letter-shaped.</p>
 		</div>
 		<div class="shape-grid">
-			<article class="shape-cell">
-				<div class="cell-label">CIRCLE</div>
+			<article class="shape-card">
+				<div class="cell-label">circle</div>
 				<div class="shape-canvas">
 					<CircularFluid seed={601} lazy splatOnHover aria-label="Circle container shape" />
 				</div>
 			</article>
-			<article class="shape-cell">
-				<div class="cell-label">ROUNDED RECT</div>
+			<article class="shape-card">
+				<div class="cell-label">rounded rect</div>
 				<div class="shape-canvas">
 					<Fluid
 						seed={602}
@@ -346,28 +361,29 @@
 						shading
 						bloom
 						splatOnHover
+						curl={45}
 						initialSplatCount={15}
-						containerShape={{ type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.42, halfH: 0.42, cornerRadius: 0.08 }}
-						backColor={paperColor}
+						containerShape={{ type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.42, halfH: 0.42, cornerRadius: 0.12 }}
+						backColor={surfaceColor}
 						lazy
 						aria-label="Rounded rect container shape"
 					/>
 				</div>
 			</article>
-			<article class="shape-cell">
-				<div class="cell-label">FRAME</div>
+			<article class="shape-card">
+				<div class="cell-label">frame</div>
 				<div class="shape-canvas">
 					<FrameFluid seed={603} lazy splatOnHover aria-label="Frame container shape" />
 				</div>
 			</article>
-			<article class="shape-cell">
-				<div class="cell-label">ANNULUS</div>
+			<article class="shape-card">
+				<div class="cell-label">annulus</div>
 				<div class="shape-canvas">
 					<AnnularFluid seed={604} lazy splatOnHover aria-label="Annulus container shape" />
 				</div>
 			</article>
-			<article class="shape-cell">
-				<div class="cell-label">SVG PATH</div>
+			<article class="shape-card">
+				<div class="cell-label">lightning</div>
 				<div class="shape-canvas">
 					<Fluid
 						seed={605}
@@ -375,16 +391,17 @@
 						shading
 						bloom
 						splatOnHover
+						curl={45}
 						initialSplatCount={15}
 						containerShape={{ type: 'svgPath', d: lightning, viewBox: [0, 0, 100, 100] }}
-						backColor={paperColor}
+						backColor={surfaceColor}
 						lazy
-						aria-label="SVG path container shape"
+						aria-label="Lightning bolt container shape"
 					/>
 				</div>
 			</article>
-			<article class="shape-cell">
-				<div class="cell-label">TEXT GLYPH</div>
+			<article class="shape-card">
+				<div class="cell-label">glyph !</div>
 				<div class="shape-canvas">
 					<Fluid
 						seed={606}
@@ -392,11 +409,12 @@
 						shading
 						bloom
 						splatOnHover
+						curl={45}
 						initialSplatCount={15}
-						containerShape={{ type: 'svgPath', text: '&', font: '900 280px Georgia, serif' }}
-						backColor={paperColor}
+						containerShape={{ type: 'svgPath', text: '!', font: '900 280px Georgia, serif' }}
+						backColor={surfaceColor}
 						lazy
-						aria-label="Text glyph container shape"
+						aria-label="Exclamation glyph container shape"
 					/>
 				</div>
 			</article>
@@ -405,44 +423,44 @@
 
 	<section class="section physics-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 07</div>
-			<h2 class="section-title">06. PHYSICS — A STUDY</h2>
-			<p class="section-sub">Every prop optional. Drop the tag; reach for props when you want your own physics.</p>
+			<span class="section-tag">05 · Twist the knobs</span>
+			<h2 class="section-title">Same engine, very different vibes</h2>
+			<p class="section-sub">Swap a few props and you get a whole new mood. Try them all!</p>
 		</div>
 		<div class="physics-grid">
-			<article class="physics-cell">
-				<div class="cell-label">DEFAULT</div>
+			<article class="physics-card">
+				<div class="cell-label">defaults</div>
 				<div class="physics-canvas">
 					<Fluid
 						seed={1234}
 						initialSplatCount={12}
 						splatOnHover
-						backColor={paperColor}
+						backColor={surfaceColor}
 						lazy
 						aria-label="Default fluid configuration"
 					/>
 				</div>
 				<code class="physics-snippet">{'<Fluid />'}</code>
 			</article>
-			<article class="physics-cell">
-				<div class="cell-label">FLAT + SOFT</div>
+			<article class="physics-card">
+				<div class="cell-label">swirly</div>
 				<div class="physics-canvas">
 					<Fluid
 						seed={5678}
-						bloom={false}
-						curl={5}
-						densityDissipation={0.4}
-						initialSplatCount={10}
+						curl={50}
+						velocityDissipation={0.05}
+						colorful
+						initialSplatCount={14}
 						splatOnHover
-						backColor={paperColor}
+						backColor={surfaceColor}
 						lazy
-						aria-label="Flat fluid with low curl"
+						aria-label="Swirly fluid with high curl"
 					/>
 				</div>
-				<code class="physics-snippet">{'bloom={false} curl={5} densityDissipation={0.4}'}</code>
+				<code class="physics-snippet">{'curl={50} velocityDissipation={0.05}'}</code>
 			</article>
-			<article class="physics-cell">
-				<div class="cell-label">BOLD SPLATS</div>
+			<article class="physics-card">
+				<div class="cell-label">bold splats</div>
 				<div class="physics-canvas">
 					<Fluid
 						seed={9012}
@@ -451,15 +469,15 @@
 						splatForce={9000}
 						initialSplatCount={8}
 						splatOnHover
-						backColor={paperColor}
+						backColor={surfaceColor}
 						lazy
 						aria-label="Fluid with large bold splats"
 					/>
 				</div>
-				<code class="physics-snippet">{'shading={false} splatRadius={0.8} splatForce={9000}'}</code>
+				<code class="physics-snippet">{'splatRadius={0.8} splatForce={9000}'}</code>
 			</article>
-			<article class="physics-cell">
-				<div class="cell-label">SLOW + TRANSPARENT</div>
+			<article class="physics-card">
+				<div class="cell-label">slow + see-through</div>
 				<div class="physics-canvas">
 					<Fluid
 						seed={3456}
@@ -472,20 +490,20 @@
 						aria-label="Slow-motion transparent fluid"
 					/>
 				</div>
-				<code class="physics-snippet">{'velocityDissipation={0.05} densityDissipation={0.5} transparent'}</code>
+				<code class="physics-snippet">{'transparent velocityDissipation={0.05}'}</code>
 			</article>
 		</div>
 	</section>
 
 	<section class="section glass-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 08</div>
-			<h2 class="section-title">07. REFRACTION — A FOOTNOTE</h2>
-			<p class="section-sub">A lens at the wall. Chromatic fringes at the edge. Pairs with any shape.</p>
+			<span class="section-tag">06 · Glassy good times</span>
+			<h2 class="section-title">Refraction, but make it candy</h2>
+			<p class="section-sub">A lens at the wall. Chromatic fringes. Dye that won't sit still.</p>
 		</div>
 		<div class="glass-grid">
-			<article class="glass-cell">
-				<div class="cell-label">CRYSTAL ORB</div>
+			<article class="glass-card">
+				<div class="cell-label">crystal orb</div>
 				<div class="glass-canvas">
 					<Fluid
 						seed={1111}
@@ -496,17 +514,18 @@
 						glassChromatic={0.5}
 						glassThickness={0.08}
 						containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
-						backColor={paperColor}
-						curl={35}
-						densityDissipation={0.15}
+						backColor={surfaceColor}
+						curl={40}
+						densityDissipation={0.18}
 						velocityDissipation={0.06}
 						splatRadius={0.38}
 						splatForce={5000}
 						shading
 						bloom
+						colorful
 						sunrays={false}
 						initialSplatCount={12}
-						autoSplatRate={stickyAutoAnimate ? 1.2 : 0}
+						autoSplatRate={stickyAutoAnimate ? 2.0 : 0}
 						autoSplatCenterY={0.5}
 						autoSplatBandHeight={0.8}
 						autoSplatSwirl={500}
@@ -515,8 +534,8 @@
 					/>
 				</div>
 			</article>
-			<article class="glass-cell">
-				<div class="cell-label">SOFT LENS</div>
+			<article class="glass-card">
+				<div class="cell-label">soft lens</div>
 				<div class="glass-canvas">
 					<Fluid
 						seed={1212}
@@ -526,17 +545,18 @@
 						glassReflectivity={0.06}
 						glassChromatic={0.1}
 						containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
-						backColor={paperColor}
-						curl={30}
+						backColor={surfaceColor}
+						curl={35}
 						densityDissipation={0.4}
 						velocityDissipation={0.12}
 						splatRadius={0.25}
 						splatForce={5000}
 						shading
 						bloom
+						colorful
 						sunrays
 						initialSplatCount={15}
-						autoSplatRate={stickyAutoAnimate ? 2.5 : 0}
+						autoSplatRate={stickyAutoAnimate ? 2.0 : 0}
 						autoSplatCount={2}
 						autoSplatCenterY={0.5}
 						autoSplatBandHeight={0.8}
@@ -546,8 +566,8 @@
 					/>
 				</div>
 			</article>
-			<article class="glass-cell">
-				<div class="cell-label">PORTAL RING</div>
+			<article class="glass-card">
+				<div class="cell-label">portal ring</div>
 				<div class="glass-canvas">
 					<Fluid
 						seed={1313}
@@ -558,17 +578,18 @@
 						glassReflectivity={0.15}
 						glassChromatic={0.7}
 						containerShape={{ type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.42 }}
-						backColor={paperColor}
-						curl={40}
+						backColor={surfaceColor}
+						curl={45}
 						densityDissipation={0.3}
 						velocityDissipation={0.1}
 						splatRadius={0.3}
 						splatForce={5000}
 						shading
 						bloom
+						colorful
 						sunrays={false}
 						initialSplatCount={10}
-						autoSplatRate={stickyAutoAnimate ? 1.5 : 0}
+						autoSplatRate={stickyAutoAnimate ? 2.0 : 0}
 						autoSplatCenterY={0.5}
 						autoSplatBandHeight={0.6}
 						autoSplatSwirl={400}
@@ -577,8 +598,8 @@
 					/>
 				</div>
 			</article>
-			<article class="glass-cell">
-				<div class="cell-label">GLASS FRAME</div>
+			<article class="glass-card">
+				<div class="cell-label">glass frame</div>
 				<div class="glass-canvas">
 					<Fluid
 						seed={1414}
@@ -589,18 +610,19 @@
 						glassReflectivity={0.18}
 						glassChromatic={0.4}
 						containerShape={{ type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.22, halfH: 0.22, innerCornerRadius: 0.06, outerHalfW: 0.48, outerHalfH: 0.48, outerCornerRadius: 0.04 }}
-						backColor={paperColor}
-						curl={25}
+						backColor={surfaceColor}
+						curl={30}
 						densityDissipation={0.25}
 						velocityDissipation={0.1}
 						splatRadius={0.35}
 						splatForce={5000}
 						shading
 						bloom
+						colorful
 						bloomIntensity={1.0}
 						sunrays={false}
 						initialSplatCount={10}
-						autoSplatRate={stickyAutoAnimate ? 3.0 : 0}
+						autoSplatRate={stickyAutoAnimate ? 2.0 : 0}
 						autoSplatCount={2}
 						autoSplatCenterY={0.5}
 						autoSplatBandHeight={1.5}
@@ -615,17 +637,17 @@
 
 	<section class="section sticky-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 09</div>
-			<h2 class="section-title">08. LETTERFORMS — A STUDY</h2>
-			<p class="section-sub">Dye accumulates inside the letterforms. Try the cursor.</p>
+			<span class="section-tag">07 · Chunky letters</span>
+			<h2 class="section-title">Dye that sticks inside the glyphs</h2>
+			<p class="section-sub">Move your cursor through the letters. The fluid clings.</p>
 		</div>
 		<div class="sticky-grid">
-			<article class="sticky-cell">
-				<div class="cell-label">GEIST · 900</div>
+			<article class="sticky-card">
+				<div class="cell-label">YAY</div>
 				<div class="sticky-canvas">
 					<FluidStick
-						text="FLUID"
-						font="900 100px Georgia, serif"
+						text="YAY!"
+						font="900 110px 'Inter', system-ui, sans-serif"
 						seed={211}
 						autoAnimate={stickyAutoAnimate}
 						autoAnimateDuration={4}
@@ -634,17 +656,17 @@
 						bloom={false}
 						densityDissipation={0.92}
 						splatRadius={0.18}
-						backColor={paperColor}
+						backColor={surfaceColor}
 						lazy
 					/>
 				</div>
 			</article>
-			<article class="sticky-cell">
-				<div class="cell-label">GEORGIA · ∞</div>
+			<article class="sticky-card">
+				<div class="cell-label">heart</div>
 				<div class="sticky-canvas">
 					<FluidStick
-						text="∞"
-						font="200px Georgia, serif"
+						text="♥"
+						font="180px Georgia, serif"
 						seed={222}
 						autoAnimate={stickyAutoAnimate}
 						autoAnimateDuration={4}
@@ -653,7 +675,7 @@
 						bloom={false}
 						densityDissipation={0.92}
 						splatRadius={0.18}
-						backColor={paperColor}
+						backColor={surfaceColor}
 						lazy
 					/>
 				</div>
@@ -663,23 +685,30 @@
 
 	<section class="section reveal-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 10</div>
-			<h2 class="section-title">09. REVEAL — A CURTAIN</h2>
-			<p class="section-sub">The fluid serves as an opacity mask. Drag to uncover what lies beneath.</p>
+			<span class="section-tag">08 · Surprise behind the curtain</span>
+			<h2 class="section-title">Scratch and peek</h2>
+			<p class="section-sub">Drag across the cream. The fluid eats its own coat to expose what's beneath.</p>
 		</div>
 		<div class="reveal-grid">
-			<article class="reveal-cell">
-				<div class="cell-label">SCRATCH TO REVEAL</div>
+			<article class="reveal-card">
+				<div class="cell-label">scratch to reveal</div>
 				<div class="reveal-canvas">
-					<FluidReveal lazy velocityDissipation={0.95} pressureIterations={10}>
+					<FluidReveal
+						lazy
+						velocityDissipation={0.95}
+						pressureIterations={10}
+						coverColor={{ r: 1.0, g: 0.96, b: 0.93 }}
+						fringeColor={{ r: 0.99, g: 0.91, b: 0.35 }}
+						accentColor={{ r: 0.62, g: 0.89, b: 0.78 }}
+					>
 						<div class="reveal-content">
-							<span class="reveal-label">Revealed</span>
+							<span class="reveal-label">surprise!</span>
 						</div>
 					</FluidReveal>
 				</div>
 			</article>
-			<article class="reveal-cell">
-				<div class="cell-label">AUTO REVEAL</div>
+			<article class="reveal-card">
+				<div class="cell-label">auto reveal</div>
 				<div class="reveal-canvas">
 					<FluidReveal
 						lazy
@@ -688,12 +717,12 @@
 						fadeBack={false}
 						velocityDissipation={0.95}
 						sensitivity={0.15}
-						coverColor={{ r: 0.05, g: 0.08, b: 0.13 }}
-						fringeColor={{ r: 0.15, g: 0.35, b: 0.55 }}
-						accentColor={{ r: 0, g: 0.78, b: 1 }}
+						coverColor={{ r: 1.0, g: 0.96, b: 0.93 }}
+						fringeColor={{ r: 0.99, g: 0.91, b: 0.35 }}
+						accentColor={{ r: 0.62, g: 0.89, b: 0.78 }}
 					>
-						<div class="reveal-content reveal-content--dark">
-							<span class="reveal-label reveal-label--light">Auto Reveal</span>
+						<div class="reveal-content">
+							<span class="reveal-label">auto peek</span>
 						</div>
 					</FluidReveal>
 				</div>
@@ -703,13 +732,13 @@
 
 	<section class="section distort-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 11</div>
-			<h2 class="section-title">10. DISTORTION — AN IMAGE</h2>
-			<p class="section-sub">The velocity field warps the source image. Move the cursor across the plate.</p>
+			<span class="section-tag">09 · Warp factor</span>
+			<h2 class="section-title">Smush a picture around</h2>
+			<p class="section-sub">The velocity field pushes pixels. Drag across to swirl the painting.</p>
 		</div>
 		<div class="distort-grid">
-			<article class="distort-cell">
-				<div class="cell-label">SUBTLE · STRENGTH 0.3</div>
+			<article class="distort-card">
+				<div class="cell-label">subtle · 0.3</div>
 				<div class="distort-canvas">
 					<FluidDistortion
 						src="{base}/bosch-garden.jpg"
@@ -723,8 +752,8 @@
 					/>
 				</div>
 			</article>
-			<article class="distort-cell">
-				<div class="cell-label">STRONG · STRENGTH 0.45</div>
+			<article class="distort-card">
+				<div class="cell-label">strong · 0.45</div>
 				<div class="distort-canvas">
 					<FluidDistortion
 						src="{base}/bosch-garden.jpg"
@@ -741,46 +770,11 @@
 		</div>
 	</section>
 
-	<section class="section close-section">
-		<div class="section-head">
-			<div class="margin-mark">§ 12</div>
-			<h2 class="section-title">11. SPECIFICATIONS — A LEDGER</h2>
-		</div>
-		<dl class="spec-list">
-			<div class="spec-row">
-				<dt>License</dt>
-				<dd>MIT</dd>
-			</div>
-			<div class="spec-row">
-				<dt>Framework</dt>
-				<dd>Svelte 5 (runes)</dd>
-			</div>
-			<div class="spec-row">
-				<dt>Runtime dependencies</dt>
-				<dd>Zero</dd>
-			</div>
-			<div class="spec-row">
-				<dt>Configuration props</dt>
-				<dd>70+</dd>
-			</div>
-			<div class="spec-row">
-				<dt>Built-in presets</dt>
-				<dd>10</dd>
-			</div>
-			<div class="spec-row">
-				<dt>Source</dt>
-				<dd>
-					<a href="https://github.com/tommyyzhao/svelte-fluid">github.com/tommyyzhao/svelte-fluid</a>
-				</dd>
-			</div>
-		</dl>
-	</section>
-
 	<section class="section playground-section">
 		<div class="section-head">
-			<div class="margin-mark">§ 13</div>
-			<h2 class="section-title">12. PLAYGROUND — AN INSTRUMENT</h2>
-			<p class="section-sub">Turn the knobs. The fluid responds in real time. Take the snippet with you.</p>
+			<span class="section-tag">10 · Sugar rush</span>
+			<h2 class="section-title">Twist every knob</h2>
+			<p class="section-sub">Tap a flavor to start. Then push sliders till the fluid yelps.</p>
 		</div>
 
 		<div class="preset-chips" role="tablist" aria-label="Quick-start presets">
@@ -795,9 +789,7 @@
 					{name}
 				</button>
 			{/each}
-			<button type="button" class="preset-chip reset" onclick={resetPlayground}>
-				Reset
-			</button>
+			<button type="button" class="preset-chip reset" onclick={resetPlayground}>reset</button>
 		</div>
 
 		<div class="playground-grid">
@@ -822,7 +814,7 @@
 
 			<aside class="playground-panel">
 				<div class="knob-group">
-					<div class="knob-group-title">Physics</div>
+					<div class="knob-group-title">physics</div>
 					<label class="knob-row">
 						<span class="knob-label">curl</span>
 						<input type="range" min="0" max="50" step="1" bind:value={pgCurl} oninput={markCustomEdit} />
@@ -839,19 +831,19 @@
 						<span class="knob-value">{pgSplatForce}</span>
 					</label>
 					<label class="knob-row">
-						<span class="knob-label">densityDissipation</span>
+						<span class="knob-label">densityDiss.</span>
 						<input type="range" min="0" max="1" step="0.01" bind:value={pgDensityDissipation} oninput={markCustomEdit} />
 						<span class="knob-value">{pgDensityDissipation.toFixed(2)}</span>
 					</label>
 					<label class="knob-row">
-						<span class="knob-label">velocityDissipation</span>
+						<span class="knob-label">velocityDiss.</span>
 						<input type="range" min="0" max="1" step="0.01" bind:value={pgVelocityDissipation} oninput={markCustomEdit} />
 						<span class="knob-value">{pgVelocityDissipation.toFixed(2)}</span>
 					</label>
 				</div>
 
 				<div class="knob-group">
-					<div class="knob-group-title">Visuals</div>
+					<div class="knob-group-title">visuals</div>
 					<label class="toggle-row">
 						<input type="checkbox" bind:checked={pgBloom} onchange={markCustomEdit} />
 						<span class="toggle-pill" aria-hidden="true"></span>
@@ -870,7 +862,7 @@
 				</div>
 
 				<div class="knob-group">
-					<div class="knob-group-title">Background</div>
+					<div class="knob-group-title">background</div>
 					<label class="color-row">
 						<span class="knob-label">backColor</span>
 						<input type="color" value={pgBackColorHex} oninput={onBackColorInput} aria-label="Background color" />
@@ -881,7 +873,7 @@
 				<div class="snippet-head">
 					<span>snippet</span>
 					<button class="copy-btn" onclick={copySnippet} aria-label="Copy playground snippet">
-						{copiedSnippet ? 'Copied!' : 'Copy'}
+						{copiedSnippet ? 'copied!' : 'copy'}
 					</button>
 				</div>
 				<pre class="snippet-code"><code>{playgroundSnippet}</code></pre>
@@ -890,13 +882,19 @@
 	</section>
 
 	<footer class="page-footer">
-		<hr />
-		<div class="footer-row">
-			<div class="footer-left">SVELTE&nbsp;·&nbsp;FLUID</div>
-			<div class="footer-mid">
-				Derivative work of PavelDoGreat / WebGL-Fluid-Simulation by Pavel Dobryakov (c) 2017.
+		<div class="footer-card">
+			<div class="footer-row">
+				<div class="footer-left">svelte<span class="lemon">·</span>fluid</div>
+				<div class="footer-mid">
+					Derivative of PavelDoGreat / WebGL-Fluid-Simulation by Pavel Dobryakov (c) 2017.
+				</div>
+				<div class="footer-right">MIT · 2026</div>
 			</div>
-			<div class="footer-right">M&nbsp;I&nbsp;T&nbsp;&nbsp;·&nbsp;&nbsp;2 0 2 6</div>
+			<div class="footer-links">
+				<a href="https://github.com/tommyyzhao/svelte-fluid">github</a>
+				<a href="{base}/docs">docs</a>
+				<a href="{base}/design-competition">competition</a>
+			</div>
 		</div>
 	</footer>
 </main>
@@ -905,7 +903,7 @@
 	:global(html, body) {
 		margin: 0;
 		padding: 0;
-		background: #f5f1ea;
+		background: #e88ba2;
 	}
 
 	.competition-back {
@@ -913,104 +911,150 @@
 		top: 1rem;
 		left: 1rem;
 		z-index: 200;
-		font-size: 0.75rem;
-		font-weight: 500;
-		letter-spacing: 0.05em;
-		color: rgba(0, 0, 0, 0.55);
+		font-family: 'Fredoka', 'Inter', system-ui, sans-serif;
+		font-weight: 700;
+		font-size: 0.78rem;
+		letter-spacing: 0.02em;
+		color: #3a1d2c;
 		text-decoration: none;
-		background: rgba(245, 241, 234, 0.9);
-		backdrop-filter: blur(8px);
-		-webkit-backdrop-filter: blur(8px);
-		border: 1px solid rgba(0, 0, 0, 0.12);
-		border-radius: 4px;
-		padding: 0.35rem 0.7rem;
-		font-family: var(--mono, monospace);
-		transition: color 0.15s;
+		background: #fff5ee;
+		border: 2.5px solid #3a1d2c;
+		border-radius: 999px;
+		padding: 0.45rem 0.9rem;
+		box-shadow: 3px 3px 0 #3a1d2c;
+		transition: transform 0.12s, box-shadow 0.12s;
 	}
 	.competition-back:hover {
-		color: rgba(0, 0, 0, 0.85);
+		transform: translate(-1px, -1px);
+		box-shadow: 4px 4px 0 #3a1d2c;
 	}
 
 	.page {
-		--paper: #f5f1ea;
-		--ink: #0a0a0a;
-		--accent: #ff2d2d;
-		background: var(--paper);
+		--pink: #e88ba2;
+		--cream: #fff5ee;
+		--ink: #3a1d2c;
+		--ink-soft: rgba(58, 29, 44, 0.72);
+		--ink-faint: rgba(58, 29, 44, 0.18);
+		--lemon: #fce85a;
+		--mint: #9ee2c8;
+		background: var(--pink);
 		color: var(--ink);
-		font-family: ui-monospace, 'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
-		font-size: 14px;
+		font-family: 'Inter', system-ui, sans-serif;
+		font-size: 16px;
 		line-height: 1.55;
-		max-width: 1400px;
+		max-width: 1320px;
 		margin: 0 auto;
-		padding: 0 24px 0;
+		padding: 0 28px;
 	}
 
-	.margin-mark {
-		font-family: ui-monospace, 'JetBrains Mono', monospace;
+	.section-tag {
+		display: inline-block;
+		font-family: ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, monospace;
 		font-size: 11px;
-		letter-spacing: 0.15em;
+		letter-spacing: 0.18em;
 		text-transform: uppercase;
 		color: var(--ink);
-	}
-	.margin-mark.light {
-		color: var(--paper);
+		background: var(--lemon);
+		border: 2px solid var(--ink);
+		border-radius: 999px;
+		padding: 4px 12px;
+		box-shadow: 2px 2px 0 var(--ink);
 	}
 
 	.hero {
-		border-bottom: 2px solid var(--ink);
-		padding: 32px 0 56px;
-		position: relative;
+		padding: 80px 0 64px;
+		text-align: center;
 	}
-
-	.kicker {
-		font-size: 11px;
+	.hero-top {
+		display: inline-flex;
+		align-items: center;
+		gap: 12px;
+		font-family: ui-monospace, 'JetBrains Mono', monospace;
+		font-size: 12px;
+		letter-spacing: 0.22em;
 		text-transform: uppercase;
-		letter-spacing: 0.3em;
-		border-top: 2px solid var(--ink);
-		border-bottom: 2px solid var(--ink);
-		padding: 6px 0;
-		margin: 12px 0 32px;
+		color: var(--ink);
+		background: var(--cream);
+		border: 2.5px solid var(--ink);
+		border-radius: 999px;
+		padding: 6px 16px;
+		box-shadow: 3px 3px 0 var(--ink);
+	}
+	.hero-top .dot {
+		color: var(--ink);
+		font-size: 8px;
+	}
+	.kicker {
+		font-weight: 700;
 	}
 
 	.display {
-		font-family: 'Times New Roman', Georgia, 'Playfair Display', serif;
-		font-weight: 900;
-		font-size: clamp(4rem, 13vw, 12rem);
-		line-height: 0.88;
-		letter-spacing: -0.04em;
-		margin: 0;
+		font-family: 'Fredoka', 'Inter', system-ui, sans-serif;
+		font-weight: 800;
+		font-size: clamp(4rem, 14vw, 11rem);
+		line-height: 0.92;
+		letter-spacing: -0.045em;
+		margin: 32px 0 0;
+		color: var(--ink);
 	}
-	.display .dash {
-		letter-spacing: -0.12em;
-		color: var(--accent);
+	.display .lemon {
+		color: var(--ink);
+		background: var(--lemon);
+		display: inline-block;
+		padding: 0 0.18em;
+		border-radius: 0.18em;
+		transform: rotate(-6deg);
+		margin: 0 0.04em;
+	}
+	.display em {
+		font-style: italic;
+		font-weight: 800;
+		color: var(--ink);
+		background: var(--mint);
+		padding: 0 0.16em;
+		border-radius: 0.18em;
+		display: inline-block;
+		transform: rotate(-2deg);
+	}
+	.display-row2 {
+		font-size: 0.7em;
 	}
 
 	.tagline {
-		font-size: clamp(1rem, 1.4vw, 1.25rem);
-		max-width: 640px;
-		margin: 28px 0 36px;
+		font-family: 'Inter', system-ui, sans-serif;
+		font-size: clamp(1.05rem, 1.5vw, 1.25rem);
+		max-width: 560px;
+		margin: 28px auto 36px;
+		color: var(--ink);
+		line-height: 1.45;
 	}
 
 	.install-row {
-		display: flex;
+		display: inline-flex;
 		align-items: stretch;
-		gap: 0;
-		max-width: 640px;
+		max-width: 560px;
+		margin: 0 auto 24px;
+		border: 2.5px solid var(--ink);
+		border-radius: 14px;
+		overflow: hidden;
+		background: var(--cream);
+		box-shadow: 4px 4px 0 var(--ink);
 	}
 	.install-tabs {
 		display: flex;
-		border: 2px solid var(--ink);
-		border-right: 0;
+		border-right: 2.5px solid var(--ink);
 	}
 	.tab {
-		background: var(--paper);
+		background: var(--cream);
 		color: var(--ink);
 		border: 0;
 		border-right: 2px solid var(--ink);
-		padding: 0 14px;
+		padding: 0 16px;
 		font: inherit;
-		font-size: 11px;
-		letter-spacing: 0.2em;
+		font-family: ui-monospace, 'JetBrains Mono', monospace;
+		font-size: 12px;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
 		cursor: pointer;
 	}
 	.tab:last-child {
@@ -1018,323 +1062,316 @@
 	}
 	.tab.active {
 		background: var(--ink);
-		color: var(--paper);
+		color: var(--cream);
 	}
 	.install-box {
 		flex: 1;
 		display: flex;
 		align-items: center;
-		gap: 10px;
-		border: 2px solid var(--ink);
-		padding: 8px 14px;
-		background: var(--paper);
+		gap: 12px;
+		padding: 10px 16px;
+		font-family: ui-monospace, 'JetBrains Mono', monospace;
 		font-size: 14px;
 	}
 	.install-box .prompt {
-		color: var(--accent);
+		color: #d6488a;
+		font-weight: 700;
 	}
 
-	.hero-links {
-		margin-top: 32px;
+	.hero-cta {
 		display: flex;
-		gap: 32px;
-		font-size: 13px;
+		gap: 14px;
+		justify-content: center;
+		flex-wrap: wrap;
+		margin: 0 0 36px;
 	}
-	.hero-link {
-		color: var(--ink);
+	.cta {
+		display: inline-block;
+		padding: 14px 26px;
+		font-family: 'Fredoka', 'Inter', system-ui, sans-serif;
+		font-weight: 700;
+		font-size: 1.05rem;
+		letter-spacing: -0.01em;
 		text-decoration: none;
-		border-bottom: 2px solid var(--ink);
-		padding-bottom: 2px;
+		border: 3px solid var(--ink);
+		border-radius: 999px;
+		box-shadow: 4px 4px 0 var(--ink);
+		transition: transform 0.12s, box-shadow 0.12s;
 	}
-	.hero-link:hover {
-		color: var(--accent);
-		border-color: var(--accent);
+	.cta:hover {
+		transform: translate(-2px, -2px);
+		box-shadow: 6px 6px 0 var(--ink);
 	}
+	.cta-primary {
+		background: var(--ink);
+		color: var(--cream);
+	}
+	.cta-secondary {
+		background: var(--cream);
+		color: var(--ink);
+	}
+
+	.feature-pills {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 10px;
+		max-width: 720px;
+		margin: 0 auto;
+	}
+	.pill {
+		font-family: ui-monospace, 'JetBrains Mono', monospace;
+		font-size: 12px;
+		letter-spacing: 0.06em;
+		padding: 6px 14px;
+		border: 2px solid var(--ink);
+		border-radius: 999px;
+		color: var(--ink);
+		box-shadow: 2px 2px 0 var(--ink);
+	}
+	.pill-mint { background: var(--mint); }
+	.pill-lemon { background: var(--lemon); }
+	.pill-cream { background: var(--cream); }
 
 	.section {
-		border-bottom: 2px solid var(--ink);
-		padding: 56px 0;
+		padding: 64px 0;
 	}
 	.section-head {
-		margin-bottom: 32px;
+		margin-bottom: 36px;
+		max-width: 760px;
 	}
 	.section-title {
-		font-family: 'Times New Roman', Georgia, serif;
-		font-weight: 900;
-		font-size: clamp(2rem, 5vw, 4rem);
-		line-height: 1;
-		letter-spacing: -0.02em;
-		margin: 8px 0 0;
+		font-family: 'Fredoka', 'Inter', system-ui, sans-serif;
+		font-weight: 800;
+		font-size: clamp(2rem, 4.5vw, 3.4rem);
+		line-height: 1.02;
+		letter-spacing: -0.025em;
+		margin: 14px 0 0;
+		color: var(--ink);
 	}
 	.section-sub {
 		margin: 12px 0 0;
-		max-width: 540px;
+		max-width: 520px;
+		color: var(--ink-soft);
+		font-size: 1.02rem;
 	}
 
-	.manifesto {
+	.flavor-list {
 		list-style: none;
 		margin: 0;
 		padding: 0;
-		border-top: 2px solid var(--ink);
-	}
-	.manifesto li {
 		display: grid;
-		grid-template-columns: 64px 240px 1fr;
+		grid-template-columns: repeat(2, 1fr);
 		gap: 16px;
-		align-items: baseline;
-		padding: 16px 0;
-		border-bottom: 2px solid var(--ink);
 	}
-	.manifesto .num {
+	.flavor-card {
+		display: grid;
+		grid-template-columns: 56px 1fr;
+		gap: 14px;
+		align-items: start;
+		background: var(--cream);
+		border: 3px solid var(--ink);
+		border-radius: 24px;
+		padding: 18px 20px;
+		box-shadow: 4px 4px 0 var(--ink);
+	}
+	.flavor-num {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 44px;
+		height: 44px;
+		background: var(--lemon);
+		border: 2.5px solid var(--ink);
+		border-radius: 50%;
+		font-family: 'Fredoka', 'Inter', sans-serif;
 		font-weight: 700;
-		color: var(--accent);
-	}
-	.manifesto .t {
-		text-transform: uppercase;
-		letter-spacing: 0.15em;
-		font-weight: 700;
-		font-size: 13px;
-	}
-	.manifesto .d {
 		font-size: 14px;
+		color: var(--ink);
+	}
+	.flavor-body {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+	.flavor-title {
+		font-family: 'Fredoka', 'Inter', sans-serif;
+		font-weight: 700;
+		font-size: 1.15rem;
+		color: var(--ink);
+	}
+	.flavor-desc {
+		color: var(--ink-soft);
+		font-size: 0.96rem;
+		line-height: 1.45;
 	}
 
 	.usage-grid {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		border: 2px solid var(--ink);
+		gap: 20px;
 	}
 	.snippet {
 		margin: 0;
-		padding: 20px;
-		border-right: 2px solid var(--ink);
-		background: var(--paper);
+		padding: 22px;
+		background: var(--cream);
+		border: 3px solid var(--ink);
+		border-radius: 24px;
 		overflow-x: auto;
+		font-family: ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, monospace;
 		font-size: 13px;
 		line-height: 1.6;
+		color: var(--ink);
+		box-shadow: 4px 4px 0 var(--ink);
 	}
 	.usage-preview {
 		display: flex;
 		flex-direction: column;
+		background: var(--cream);
+		border: 3px solid var(--ink);
+		border-radius: 24px;
+		overflow: hidden;
+		box-shadow: 4px 4px 0 var(--ink);
 	}
 	.cell-label {
-		font-size: 10px;
-		letter-spacing: 0.25em;
+		font-family: ui-monospace, 'JetBrains Mono', monospace;
+		font-size: 11px;
+		letter-spacing: 0.18em;
 		text-transform: uppercase;
-		padding: 8px 12px;
-		border-bottom: 2px solid var(--ink);
-		background: var(--paper);
+		padding: 10px 14px;
+		border-bottom: 2.5px solid var(--ink);
+		background: var(--cream);
+		color: var(--ink);
 	}
 	.fluid-host {
 		flex: 1;
-		min-height: 320px;
+		min-height: 360px;
 		position: relative;
-	}
-
-	.quote-section {
-		padding: 80px 0;
-	}
-	.pull-quote {
-		margin: 0;
-		max-width: 980px;
-		position: relative;
-		padding-left: 120px;
-	}
-	.open-quote {
-		font-family: 'Times New Roman', Georgia, serif;
-		font-weight: 900;
-		font-size: clamp(8rem, 16vw, 14rem);
-		line-height: 0.7;
-		color: var(--accent);
-		position: absolute;
-		left: 0;
-		top: -10px;
-	}
-	.pull-quote p {
-		font-family: 'Times New Roman', Georgia, serif;
-		font-style: italic;
-		font-weight: 500;
-		font-size: clamp(1.5rem, 3.2vw, 2.6rem);
-		line-height: 1.2;
-		margin: 0;
-	}
-	.quote-cite {
-		font-family: ui-monospace, 'JetBrains Mono', monospace;
-		font-style: normal;
-		font-size: 11px;
-		letter-spacing: 0.3em;
-		margin-top: 24px;
 	}
 
 	.preset-grid {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
-		border: 2px solid var(--ink);
+		gap: 18px;
 	}
-	.preset-cell {
+	.preset-card {
 		display: flex;
 		flex-direction: column;
-		border-right: 2px solid var(--ink);
-		border-bottom: 2px solid var(--ink);
-	}
-	.preset-cell:nth-child(3n) {
-		border-right: 0;
-	}
-	.preset-cell:nth-child(n + 4) {
-		border-bottom: 0;
+		background: var(--cream);
+		border: 3px solid var(--ink);
+		border-radius: 24px;
+		overflow: hidden;
+		box-shadow: 4px 4px 0 var(--ink);
 	}
 	.cell-canvas {
-		height: 360px;
+		height: 320px;
 		position: relative;
 	}
 
-	.invert-section {
-		background: var(--ink);
-		color: var(--paper);
-		padding: 0;
-		border-bottom: 2px solid var(--ink);
-		margin: 0 -24px;
-	}
-	.invert-grid {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-	}
-	.invert-text {
-		padding: 64px 56px;
-		border-right: 2px solid var(--paper);
-	}
-	.invert-title {
-		font-family: 'Times New Roman', Georgia, serif;
-		font-weight: 900;
-		font-size: clamp(2.4rem, 5.5vw, 4.5rem);
-		line-height: 1;
-		letter-spacing: -0.02em;
-		margin: 24px 0 24px;
-	}
-	.invert-body {
-		max-width: 480px;
-		font-size: 15px;
-		line-height: 1.6;
-	}
-	.invert-link {
-		display: inline-block;
-		margin-top: 32px;
-		color: var(--paper);
-		text-decoration: none;
-		border-bottom: 2px solid var(--accent);
-		padding-bottom: 2px;
-	}
-	.invert-canvas {
-		min-height: 480px;
-		position: relative;
-	}
-
-	/* Shapes */
 	.shape-grid {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
-		border: 2px solid var(--ink);
+		gap: 18px;
 	}
-	.shape-cell {
+	.shape-card {
 		display: flex;
 		flex-direction: column;
-		border-right: 2px solid var(--ink);
-		border-bottom: 2px solid var(--ink);
-	}
-	.shape-cell:nth-child(3n) {
-		border-right: 0;
-	}
-	.shape-cell:nth-child(n + 4) {
-		border-bottom: 0;
+		background: var(--cream);
+		border: 3px solid var(--ink);
+		border-radius: 24px;
+		overflow: hidden;
+		box-shadow: 4px 4px 0 var(--ink);
 	}
 	.shape-canvas {
-		height: 300px;
+		height: 280px;
 		position: relative;
 	}
 
-	/* Physics */
 	.physics-grid {
 		display: grid;
-		grid-template-columns: repeat(4, 1fr);
-		border: 2px solid var(--ink);
+		grid-template-columns: repeat(2, 1fr);
+		gap: 18px;
 	}
-	.physics-cell {
+	.physics-card {
 		display: flex;
 		flex-direction: column;
-		border-right: 2px solid var(--ink);
-	}
-	.physics-cell:last-child {
-		border-right: 0;
+		background: var(--cream);
+		border: 3px solid var(--ink);
+		border-radius: 24px;
+		overflow: hidden;
+		box-shadow: 4px 4px 0 var(--ink);
 	}
 	.physics-canvas {
-		height: 300px;
+		height: 280px;
 		position: relative;
 	}
 	.physics-snippet {
-		font-size: 10px;
-		letter-spacing: 0.05em;
-		padding: 8px 12px;
-		border-top: 2px solid var(--ink);
-		background: var(--paper);
+		font-family: ui-monospace, 'JetBrains Mono', monospace;
+		font-size: 11px;
+		letter-spacing: 0.04em;
+		padding: 10px 14px;
+		border-top: 2.5px solid var(--ink);
+		background: var(--cream);
+		color: var(--ink);
 		word-break: break-all;
 		white-space: pre-wrap;
 	}
 
-	/* Glass */
 	.glass-grid {
 		display: grid;
-		grid-template-columns: repeat(4, 1fr);
-		border: 2px solid var(--ink);
+		grid-template-columns: repeat(2, 1fr);
+		gap: 18px;
 	}
-	.glass-cell {
+	.glass-card {
 		display: flex;
 		flex-direction: column;
-		border-right: 2px solid var(--ink);
-	}
-	.glass-cell:last-child {
-		border-right: 0;
+		background: var(--cream);
+		border: 3px solid var(--ink);
+		border-radius: 24px;
+		overflow: hidden;
+		box-shadow: 4px 4px 0 var(--ink);
 	}
 	.glass-canvas {
 		height: 340px;
 		position: relative;
-		background: var(--paper);
+		background: var(--cream);
 	}
 
-	/* Sticky */
 	.sticky-grid {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
-		border: 2px solid var(--ink);
+		gap: 18px;
 	}
-	.sticky-cell {
+	.sticky-card {
 		display: flex;
 		flex-direction: column;
-		border-right: 2px solid var(--ink);
-	}
-	.sticky-cell:last-child {
-		border-right: 0;
+		background: var(--cream);
+		border: 3px solid var(--ink);
+		border-radius: 24px;
+		overflow: hidden;
+		box-shadow: 4px 4px 0 var(--ink);
 	}
 	.sticky-canvas {
-		height: 340px;
+		height: 320px;
 		position: relative;
 	}
 
-	/* Reveal */
 	.reveal-grid {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
-		border: 2px solid var(--ink);
+		gap: 18px;
 	}
-	.reveal-cell {
+	.reveal-card {
 		display: flex;
 		flex-direction: column;
-		border-right: 2px solid var(--ink);
-	}
-	.reveal-cell:last-child {
-		border-right: 0;
+		background: var(--cream);
+		border: 3px solid var(--ink);
+		border-radius: 24px;
+		overflow: hidden;
+		box-shadow: 4px 4px 0 var(--ink);
 	}
 	.reveal-canvas {
-		height: 340px;
+		height: 320px;
 		position: relative;
 	}
 	.reveal-content {
@@ -1342,144 +1379,152 @@
 		align-items: center;
 		justify-content: center;
 		height: 100%;
-		background: linear-gradient(135deg, #f5f1ea 0%, #e8dfd0 100%);
-	}
-	.reveal-content--dark {
-		background: linear-gradient(135deg, #0a0e1a 0%, #0d1833 100%);
+		background: var(--pink);
 	}
 	.reveal-label {
-		font-family: 'Times New Roman', Georgia, serif;
-		font-size: 1.5rem;
-		font-style: italic;
+		font-family: 'Fredoka', 'Inter', system-ui, sans-serif;
+		font-weight: 800;
+		font-size: 2.2rem;
+		letter-spacing: -0.02em;
 		color: var(--ink);
 	}
-	.reveal-label--light {
-		color: rgba(255, 255, 255, 0.9);
-	}
 
-	/* Distortion */
 	.distort-grid {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
-		border: 2px solid var(--ink);
+		gap: 18px;
 	}
-	.distort-cell {
+	.distort-card {
 		display: flex;
 		flex-direction: column;
-		border-right: 2px solid var(--ink);
-	}
-	.distort-cell:last-child {
-		border-right: 0;
+		background: var(--cream);
+		border: 3px solid var(--ink);
+		border-radius: 24px;
+		overflow: hidden;
+		box-shadow: 4px 4px 0 var(--ink);
 	}
 	.distort-canvas {
 		height: 340px;
 		position: relative;
 	}
 
-	/* Playground */
-	.playground-section {
-		border-bottom: 2px solid var(--ink);
-	}
 	.preset-chips {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px;
+		gap: 10px;
 		margin-bottom: 24px;
 	}
 	.preset-chip {
-		background: var(--paper);
+		background: var(--mint);
 		color: var(--ink);
-		border: 2px solid var(--ink);
-		padding: 4px 12px;
+		border: 2.5px solid var(--ink);
+		border-radius: 999px;
+		padding: 6px 16px;
 		font: inherit;
-		font-size: 11px;
-		letter-spacing: 0.15em;
-		text-transform: uppercase;
+		font-family: 'Fredoka', 'Inter', sans-serif;
+		font-weight: 700;
+		font-size: 13px;
 		cursor: pointer;
-		transition: background 0.1s, color 0.1s;
+		box-shadow: 2px 2px 0 var(--ink);
+		transition: transform 0.1s, box-shadow 0.1s;
 	}
-	.preset-chip:hover,
+	.preset-chip:hover {
+		transform: translate(-1px, -1px);
+		box-shadow: 3px 3px 0 var(--ink);
+	}
 	.preset-chip.active {
 		background: var(--ink);
-		color: var(--paper);
+		color: var(--lemon);
 	}
 	.preset-chip.reset {
-		border-color: var(--accent);
-		color: var(--accent);
+		background: var(--lemon);
 	}
-	.preset-chip.reset:hover {
-		background: var(--accent);
-		color: var(--paper);
-	}
+
 	.playground-grid {
 		display: grid;
-		grid-template-columns: 1fr 320px;
-		border: 2px solid var(--ink);
-		gap: 0;
+		grid-template-columns: 1fr 340px;
+		gap: 18px;
 	}
 	.playground-canvas {
 		min-height: 480px;
 		position: relative;
-		border-right: 2px solid var(--ink);
+		background: var(--cream);
+		border: 3px solid var(--ink);
+		border-radius: 24px;
+		overflow: hidden;
+		box-shadow: 4px 4px 0 var(--ink);
 	}
 	.playground-panel {
-		padding: 20px;
+		padding: 22px;
 		display: flex;
 		flex-direction: column;
-		gap: 20px;
+		gap: 22px;
+		background: var(--cream);
+		border: 3px solid var(--ink);
+		border-radius: 24px;
 		overflow-y: auto;
 		max-height: 600px;
+		box-shadow: 4px 4px 0 var(--ink);
 	}
 	.knob-group {
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
+		gap: 12px;
 	}
 	.knob-group-title {
-		font-size: 10px;
-		letter-spacing: 0.3em;
+		font-family: ui-monospace, 'JetBrains Mono', monospace;
+		font-size: 11px;
+		letter-spacing: 0.22em;
 		text-transform: uppercase;
 		font-weight: 700;
-		border-bottom: 1px solid var(--ink);
-		padding-bottom: 4px;
+		color: var(--ink);
+		background: var(--mint);
+		display: inline-block;
+		align-self: flex-start;
+		border: 2px solid var(--ink);
+		border-radius: 999px;
+		padding: 3px 12px;
 	}
 	.knob-row {
 		display: grid;
-		grid-template-columns: 130px 1fr 48px;
+		grid-template-columns: 110px 1fr 48px;
 		align-items: center;
-		gap: 8px;
+		gap: 10px;
 		cursor: pointer;
 	}
 	.knob-label {
-		font-size: 11px;
-		letter-spacing: 0.05em;
+		font-family: ui-monospace, 'JetBrains Mono', monospace;
+		font-size: 12px;
+		color: var(--ink);
 	}
 	.knob-value {
-		font-size: 11px;
+		font-family: ui-monospace, 'JetBrains Mono', monospace;
+		font-size: 12px;
 		text-align: right;
+		color: var(--ink);
 	}
 	.knob-value.mono {
 		font-family: ui-monospace, 'JetBrains Mono', monospace;
 	}
 	input[type='range'] {
 		width: 100%;
-		accent-color: var(--ink);
+		accent-color: #d6488a;
 	}
 	.toggle-row {
 		display: flex;
 		align-items: center;
-		gap: 10px;
+		gap: 12px;
 		cursor: pointer;
 	}
 	.toggle-row input[type='checkbox'] {
 		display: none;
 	}
 	.toggle-pill {
-		width: 32px;
-		height: 16px;
-		background: rgba(0, 0, 0, 0.15);
-		border: 1.5px solid var(--ink);
-		border-radius: 8px;
+		width: 40px;
+		height: 22px;
+		background: var(--cream);
+		border: 2.5px solid var(--ink);
+		border-radius: 999px;
 		position: relative;
 		transition: background 0.15s;
 		flex-shrink: 0;
@@ -1487,31 +1532,32 @@
 	.toggle-pill::after {
 		content: '';
 		position: absolute;
-		top: 1px;
-		left: 1px;
-		width: 10px;
-		height: 10px;
+		top: 2px;
+		left: 2px;
+		width: 13px;
+		height: 13px;
 		background: var(--ink);
 		border-radius: 50%;
-		transition: transform 0.15s;
+		transition: transform 0.15s, background 0.15s;
 	}
 	.toggle-row input[type='checkbox']:checked ~ .toggle-pill {
-		background: var(--ink);
+		background: var(--mint);
 	}
 	.toggle-row input[type='checkbox']:checked ~ .toggle-pill::after {
-		transform: translateX(16px);
-		background: var(--paper);
+		transform: translateX(17px);
+		background: var(--ink);
 	}
 	.color-row {
 		display: flex;
 		align-items: center;
-		gap: 10px;
+		gap: 12px;
 		cursor: pointer;
 	}
 	.color-row input[type='color'] {
-		width: 32px;
-		height: 24px;
-		border: 1.5px solid var(--ink);
+		width: 36px;
+		height: 28px;
+		border: 2.5px solid var(--ink);
+		border-radius: 8px;
 		padding: 1px;
 		background: none;
 		cursor: pointer;
@@ -1520,211 +1566,142 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		font-size: 10px;
+		font-family: ui-monospace, 'JetBrains Mono', monospace;
+		font-size: 11px;
 		letter-spacing: 0.2em;
 		text-transform: uppercase;
-		border-bottom: 1px solid var(--ink);
-		padding-bottom: 4px;
+		color: var(--ink);
 	}
 	.copy-btn {
-		background: var(--paper);
+		background: var(--lemon);
 		color: var(--ink);
-		border: 1.5px solid var(--ink);
-		padding: 2px 8px;
+		border: 2px solid var(--ink);
+		border-radius: 999px;
+		padding: 4px 12px;
 		font: inherit;
-		font-size: 10px;
-		letter-spacing: 0.1em;
+		font-family: 'Fredoka', 'Inter', sans-serif;
+		font-weight: 700;
+		font-size: 11px;
+		letter-spacing: 0.04em;
 		cursor: pointer;
+		box-shadow: 2px 2px 0 var(--ink);
 	}
 	.copy-btn:hover {
-		background: var(--ink);
-		color: var(--paper);
+		background: var(--mint);
 	}
 	.snippet-code {
 		margin: 0;
-		font-size: 11px;
+		font-family: ui-monospace, 'JetBrains Mono', monospace;
+		font-size: 12px;
 		line-height: 1.6;
 		white-space: pre-wrap;
 		word-break: break-all;
-		background: var(--paper);
-	}
-
-	/* Specs */
-	.spec-list {
-		margin: 0;
-		padding: 0;
-		border-top: 2px solid var(--ink);
-	}
-	.spec-row {
-		display: grid;
-		grid-template-columns: 280px 1fr;
-		gap: 24px;
-		padding: 14px 0;
-		border-bottom: 2px solid var(--ink);
-	}
-	.spec-row dt {
-		text-transform: uppercase;
-		letter-spacing: 0.2em;
-		font-size: 11px;
-		font-weight: 700;
-	}
-	.spec-row dd {
-		margin: 0;
-		font-size: 14px;
-	}
-	.spec-row a {
-		color: var(--accent);
-		text-decoration: none;
-		border-bottom: 1px solid var(--accent);
+		background: var(--pink);
+		color: var(--ink);
+		padding: 14px;
+		border: 2.5px solid var(--ink);
+		border-radius: 14px;
 	}
 
 	.page-footer {
-		padding: 40px 0 64px;
+		padding: 32px 0 64px;
 	}
-	.page-footer hr {
-		border: 0;
-		border-top: 2px solid var(--ink);
-		margin: 0 0 24px;
+	.footer-card {
+		background: var(--cream);
+		border: 3px solid var(--ink);
+		border-radius: 28px;
+		padding: 28px 28px;
+		box-shadow: 4px 4px 0 var(--ink);
 	}
 	.footer-row {
 		display: grid;
 		grid-template-columns: 1fr 2fr 1fr;
 		gap: 24px;
-		font-size: 11px;
-		letter-spacing: 0.2em;
-		text-transform: uppercase;
+		font-family: ui-monospace, 'JetBrains Mono', monospace;
+		font-size: 12px;
+		letter-spacing: 0.06em;
+		color: var(--ink);
+	}
+	.footer-left {
+		font-family: 'Fredoka', 'Inter', sans-serif;
+		font-weight: 800;
+		font-size: 1.1rem;
+		letter-spacing: -0.01em;
+		color: var(--ink);
+		text-transform: lowercase;
+	}
+	.footer-left .lemon {
+		color: var(--ink);
+		background: var(--lemon);
+		padding: 0 0.18em;
+		border-radius: 0.18em;
+		margin: 0 0.06em;
 	}
 	.footer-mid {
 		text-align: center;
-		text-transform: none;
-		letter-spacing: 0.05em;
-		font-size: 11px;
+		color: var(--ink-soft);
 	}
 	.footer-right {
 		text-align: right;
+		font-weight: 700;
+	}
+	.footer-links {
+		margin-top: 18px;
+		padding-top: 18px;
+		border-top: 2px dashed var(--ink-faint);
+		display: flex;
+		justify-content: center;
+		gap: 22px;
+		font-family: 'Fredoka', 'Inter', sans-serif;
+		font-weight: 700;
+	}
+	.footer-links a {
+		color: var(--ink);
+		text-decoration: none;
+		background: linear-gradient(transparent 60%, var(--lemon) 60%);
+		padding: 0 4px;
+	}
+	.footer-links a:hover {
+		background: linear-gradient(transparent 0%, var(--lemon) 0%);
 	}
 
-	@media (max-width: 900px) {
+	@media (max-width: 980px) {
 		.usage-grid,
 		.preset-grid,
-		.invert-grid {
-			grid-template-columns: 1fr;
-		}
-		.snippet {
-			border-right: 0;
-			border-bottom: 2px solid var(--ink);
-		}
-		.preset-cell {
-			border-right: 0;
-		}
-		.preset-cell:nth-child(n) {
-			border-bottom: 2px solid var(--ink);
-		}
-		.preset-cell:last-child {
-			border-bottom: 0;
-		}
-		.invert-text {
-			border-right: 0;
-			border-bottom: 2px solid var(--paper);
-			padding: 40px 24px;
-		}
-		.manifesto li {
-			grid-template-columns: 48px 1fr;
-		}
-		.manifesto .d {
-			grid-column: 1 / -1;
-			padding-left: 64px;
-		}
-		.pull-quote {
-			padding-left: 64px;
-		}
-		.spec-row {
-			grid-template-columns: 1fr;
-			gap: 4px;
-		}
-		.footer-row {
-			grid-template-columns: 1fr;
-			text-align: left;
-		}
-		.footer-mid,
-		.footer-right {
-			text-align: left;
-		}
 		.shape-grid,
 		.physics-grid,
 		.glass-grid,
 		.sticky-grid,
 		.reveal-grid,
-		.distort-grid {
+		.distort-grid,
+		.flavor-list {
 			grid-template-columns: 1fr;
-		}
-		.shape-cell,
-		.physics-cell,
-		.glass-cell,
-		.sticky-cell,
-		.reveal-cell,
-		.distort-cell {
-			border-right: 0;
-			border-bottom: 2px solid var(--ink);
-		}
-		.shape-cell:last-child,
-		.physics-cell:last-child,
-		.glass-cell:last-child,
-		.sticky-cell:last-child,
-		.reveal-cell:last-child,
-		.distort-cell:last-child {
-			border-bottom: 0;
 		}
 		.playground-grid {
 			grid-template-columns: 1fr;
-		}
-		.playground-canvas {
-			border-right: 0;
-			border-bottom: 2px solid var(--ink);
 		}
 	}
 
 	@media (max-width: 640px) {
 		.page {
-			font-size: 13px;
 			padding: 0 16px;
 		}
+		.section {
+			padding: 44px 0;
+		}
+		.hero {
+			padding: 56px 0 40px;
+		}
 		.display {
-			font-size: clamp(3rem, 16vw, 6rem);
+			font-size: clamp(3rem, 17vw, 5.5rem);
 		}
 		.tagline {
 			font-size: 1rem;
-			margin: 20px 0 28px;
+			margin: 22px auto 28px;
 		}
-		.section {
-			padding: 40px 0;
-		}
-		.section-title {
-			font-size: clamp(1.6rem, 7vw, 2.4rem);
-		}
-		.invert-title {
-			font-size: clamp(1.8rem, 7.5vw, 2.6rem);
-		}
-		.shape-grid,
-		.physics-grid,
-		.glass-grid,
-		.preset-grid,
-		.reveal-grid,
-		.distort-grid,
-		.sticky-grid {
-			grid-template-columns: 1fr;
-		}
-		.open-quote {
-			font-size: clamp(5rem, 18vw, 8rem);
-		}
-		.pull-quote {
-			padding-left: 48px;
-		}
-		.pull-quote p {
-			font-size: clamp(1.2rem, 4.5vw, 1.8rem);
-		}
-		.invert-text {
-			padding: 32px 20px;
+		.cta {
+			padding: 12px 22px;
+			font-size: 1rem;
 		}
 		.cell-canvas,
 		.shape-canvas,
@@ -1738,71 +1715,16 @@
 		.playground-canvas {
 			min-height: 360px;
 		}
-		.invert-canvas {
-			min-height: 360px;
+		.footer-row {
+			grid-template-columns: 1fr;
+			text-align: left;
 		}
-	}
-
-	@media (max-width: 480px) {
-		.page {
-			padding: 0 12px;
-		}
-		.section {
-			padding: 32px 0;
-		}
-		.hero {
-			padding: 24px 0 40px;
-		}
-		.kicker {
-			font-size: 10px;
-			letter-spacing: 0.22em;
-			margin: 10px 0 24px;
-		}
-		.margin-mark {
-			font-size: 10px;
-			letter-spacing: 0.12em;
-		}
-		.knob-group-title,
-		.cell-label,
-		.physics-snippet,
-		.snippet-head {
-			font-size: 9px;
-			letter-spacing: 0.18em;
-		}
-		.install-row {
-			flex-direction: column;
-		}
-		.install-tabs {
-			border-right: 2px solid var(--ink);
-			border-bottom: 0;
-		}
-		.install-box {
-			border-top: 0;
-		}
-		.hero-links {
-			gap: 20px;
-			flex-wrap: wrap;
-		}
-		.manifesto li {
-			grid-template-columns: 36px 1fr;
-			padding: 12px 0;
-		}
-		.manifesto .d {
-			padding-left: 48px;
+		.footer-mid,
+		.footer-right {
+			text-align: left;
 		}
 		.knob-row {
-			grid-template-columns: 100px 1fr 40px;
-		}
-		.playground-panel {
-			padding: 16px;
-			max-height: none;
-		}
-		.snippet {
-			padding: 14px;
-			font-size: 12px;
-		}
-		.section-head {
-			margin-bottom: 20px;
+			grid-template-columns: 100px 1fr 44px;
 		}
 	}
 </style>

@@ -53,6 +53,14 @@
 			seed: 300
 		},
 		{
+			route: '/design3-light',
+			num: 3.5,
+			label: 'Editorial Glass (light)',
+			descriptor: 'Cream paper, hairline cards, real glass shader at edges',
+			preview: InkInWater,
+			seed: 350
+		},
+		{
 			route: '/design4',
 			num: 4,
 			label: 'Modern SaaS',
@@ -139,6 +147,38 @@
 			descriptor: 'Mixed layouts, scroll-driven anims',
 			preview: Aurora,
 			seed: 1500
+		},
+		{
+			route: '/design16',
+			num: 16,
+			label: 'Velvet (mid-tone wine)',
+			descriptor: 'Sultry editorial, italic Playfair, champagne gold',
+			preview: LavaLamp,
+			seed: 1600
+		},
+		{
+			route: '/design17',
+			num: 17,
+			label: 'Lagoon (mid-tone teal)',
+			descriptor: 'Modern minimal, Inter sans, copper accent',
+			preview: FrozenSwirl,
+			seed: 1700
+		},
+		{
+			route: '/design18',
+			num: 18,
+			label: 'Bubblegum (cartoony pink)',
+			descriptor: 'Chunky cream cards, lemon + mint, sticker-book',
+			preview: Aurora,
+			seed: 1800
+		},
+		{
+			route: '/design19',
+			num: 19,
+			label: 'Vortex (psychedelic purple)',
+			descriptor: 'Rave grid, neon pink + acid green, max curl',
+			preview: ToroidalTempest,
+			seed: 1900
 		}
 	];
 </script>
