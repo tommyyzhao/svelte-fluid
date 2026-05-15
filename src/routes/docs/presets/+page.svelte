@@ -27,8 +27,11 @@
 
 <p>
 	All presets accept <code>width</code>, <code>height</code>, <code>class</code>,
-	<code>style</code>, <code>seed</code>, <code>lazy</code>, <code>splatOnHover</code>, and
-	<code>aria-label</code> props for sizing, styling, accessibility, and interactive splatting.
+	<code>style</code>, <code>seed</code>, <code>lazy</code>, <code>splatOnHover</code>,
+	<code>aria-label</code>, and <code>backColor</code> props for sizing, styling, accessibility,
+	interactive splatting, and adapting the empty-canvas substrate to a host page background.
+	Each preset's table below shows the <code>backColor</code> value that ships by default; pass
+	your own to override.
 </p>
 
 <p>

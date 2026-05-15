@@ -293,7 +293,7 @@
 						<span class="preset-name">{preset.name}</span>
 					</div>
 					<div class="preset-canvas">
-						<preset.Component seed={i * 7 + 11} lazy aria-label="{preset.name} preset preview" />
+						<preset.Component seed={i * 7 + 11} lazy backColor={paperColor} aria-label="{preset.name} preset preview" />
 					</div>
 					<p class="preset-blurb">{preset.blurb}</p>
 				</article>
@@ -326,7 +326,7 @@
 			<div class="shape-grid">
 				<figure class="shape-cell">
 					<div class="shape-canvas">
-						<CircularFluid seed={601} lazy splatOnHover aria-label="Circle container demo" />
+						<CircularFluid seed={601} lazy backColor={paperColor} splatOnHover aria-label="Circle container demo" />
 					</div>
 					<figcaption>Circle</figcaption>
 				</figure>
@@ -355,13 +355,13 @@
 				</figure>
 				<figure class="shape-cell">
 					<div class="shape-canvas">
-						<FrameFluid seed={603} lazy splatOnHover aria-label="Frame container demo" />
+						<FrameFluid seed={603} lazy backColor={paperColor} splatOnHover aria-label="Frame container demo" />
 					</div>
 					<figcaption>Frame</figcaption>
 				</figure>
 				<figure class="shape-cell">
 					<div class="shape-canvas">
-						<AnnularFluid seed={604} lazy splatOnHover aria-label="Annulus container demo" />
+						<AnnularFluid seed={604} lazy backColor={paperColor} splatOnHover aria-label="Annulus container demo" />
 					</div>
 					<figcaption>Annulus</figcaption>
 				</figure>

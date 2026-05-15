@@ -484,7 +484,10 @@ Exposed via \`bind:this\` on any component.
 ## Presets
 
 Pre-configured \`&lt;Fluid /&gt;\` wrappers with opinionated physics. All accept:
-width, height, class, style, seed, lazy, splatOnHover, aria-label.
+width, height, class, style, seed, lazy, splatOnHover, aria-label, backColor.
+
+\`backColor\` overrides the preset's shipped substrate so the preset can adapt to
+a host page background. Omit it to keep the preset's authored default.
 
 | Preset          | Visual                                          | Container Shape              |
 |-----------------|------------------------------------------------|------------------------------|

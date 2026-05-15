@@ -304,7 +304,7 @@
 			<div class="preset-grid">
 				<figure class="paper-card preset-card">
 					<div class="card-fluid">
-						<LavaLamp seed={11} aria-label="LavaLamp preset" />
+						<LavaLamp seed={11} backColor={paperColor} aria-label="LavaLamp preset" />
 					</div>
 					<figcaption class="card-caption">
 						<span class="card-num">01</span>
@@ -315,7 +315,7 @@
 
 				<figure class="paper-card preset-card">
 					<div class="card-fluid">
-						<Plasma seed={22} aria-label="Plasma preset" />
+						<Plasma seed={22} backColor={paperColor} aria-label="Plasma preset" />
 					</div>
 					<figcaption class="card-caption">
 						<span class="card-num">02</span>
@@ -326,7 +326,7 @@
 
 				<figure class="paper-card preset-card">
 					<div class="card-fluid">
-						<InkInWater seed={33} lazy aria-label="InkInWater preset" />
+						<InkInWater seed={33} lazy backColor={paperColor} aria-label="InkInWater preset" />
 					</div>
 					<figcaption class="card-caption">
 						<span class="card-num">03</span>
@@ -337,7 +337,7 @@
 
 				<figure class="paper-card preset-card">
 					<div class="card-fluid">
-						<FrozenSwirl seed={44} lazy aria-label="FrozenSwirl preset" />
+						<FrozenSwirl seed={44} lazy backColor={paperColor} aria-label="FrozenSwirl preset" />
 					</div>
 					<figcaption class="card-caption">
 						<span class="card-num">04</span>
@@ -348,7 +348,7 @@
 
 				<figure class="paper-card preset-card">
 					<div class="card-fluid">
-						<Aurora seed={55} lazy aria-label="Aurora preset" />
+						<Aurora seed={55} lazy backColor={paperColor} aria-label="Aurora preset" />
 					</div>
 					<figcaption class="card-caption">
 						<span class="card-num">05</span>
@@ -359,7 +359,7 @@
 
 				<figure class="paper-card preset-card">
 					<div class="card-fluid">
-						<ToroidalTempest seed={66} lazy aria-label="ToroidalTempest preset" />
+						<ToroidalTempest seed={66} lazy backColor={paperColor} aria-label="ToroidalTempest preset" />
 					</div>
 					<figcaption class="card-caption">
 						<span class="card-num">06</span>
@@ -368,10 +368,6 @@
 					</figcaption>
 				</figure>
 			</div>
-			<p class="presets-note">
-				The six plates above use the shipped preset components verbatim. Each preset
-				declares its own backColor — the inks here are intentional, set against the page.
-			</p>
 		</section>
 
 		<section class="shapes-section">
@@ -1575,15 +1571,6 @@
 	.preset-card .card-fluid {
 		height: 320px;
 	}
-	.presets-note {
-		font-family: 'Instrument Serif', 'Playfair Display', 'Times New Roman', Georgia, serif;
-		font-style: italic;
-		font-size: 13.5px;
-		color: var(--ink-soft);
-		margin: 8px 4px 0;
-		max-width: 720px;
-	}
-
 	/* ---------- Shapes ---------- */
 	.shapes-section,
 	.physics-section,

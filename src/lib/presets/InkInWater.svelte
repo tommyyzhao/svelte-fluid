@@ -31,7 +31,7 @@
 	/** Props consumed by `<InkInWater />`. */
 	export type InkInWaterProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label'
+		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 	>;
 </script>
 
@@ -47,7 +47,8 @@
 		seed,
 		lazy,
 		splatOnHover,
-		'aria-label': ariaLabel
+		'aria-label': ariaLabel,
+		backColor
 	}: InkInWaterProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
@@ -99,6 +100,6 @@
 	autoSplatVelocityY={-180}
 	autoSplatCenterY={0.90}
 	initialSplatCount={0}
-	backColor={{ r: 6, g: 8, b: 20 }}
+	backColor={backColor ?? { r: 6, g: 8, b: 20 }}
 	presetSplats={PRESET_SPLATS}
 />

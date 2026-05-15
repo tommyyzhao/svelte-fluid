@@ -261,7 +261,7 @@
 			{@const C = p.component}
 			<article class="cell preset preset-{i}">
 				<div class="canvas-wrap">
-					<C seed={p.seed} lazy={true} aria-label={p.name} />
+					<C seed={p.seed} lazy={true} backColor={paperColor} aria-label={p.name} />
 				</div>
 				<div class="caption">
 					<span class="label">{p.name}</span>
@@ -281,7 +281,7 @@
 		<div class="shape-grid">
 			<article class="cell shape-cell">
 				<div class="canvas-wrap dark">
-					<CircularFluid seed={601} lazy splatOnHover aria-label="Circle container demo" />
+					<CircularFluid seed={601} lazy backColor={paperColor} splatOnHover aria-label="Circle container demo" />
 				</div>
 				<div class="caption">
 					<span class="label">circle</span>
@@ -307,7 +307,7 @@
 			</article>
 			<article class="cell shape-cell">
 				<div class="canvas-wrap dark">
-					<FrameFluid seed={603} lazy splatOnHover aria-label="Frame container demo" />
+					<FrameFluid seed={603} lazy backColor={paperColor} splatOnHover aria-label="Frame container demo" />
 				</div>
 				<div class="caption">
 					<span class="label">frame</span>
@@ -315,7 +315,7 @@
 			</article>
 			<article class="cell shape-cell">
 				<div class="canvas-wrap dark">
-					<AnnularFluid seed={604} lazy splatOnHover aria-label="Annulus container demo" />
+					<AnnularFluid seed={604} lazy backColor={paperColor} splatOnHover aria-label="Annulus container demo" />
 				</div>
 				<div class="caption">
 					<span class="label">annulus</span>
