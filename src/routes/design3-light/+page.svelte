@@ -13,11 +13,11 @@
 		InkInWater,
 		FrozenSwirl,
 		Aurora,
-		ToroidalTempest
+		ToroidalTempest,
+		type RGB
 	} from '$lib/index.js';
 	import { base } from '$app/paths';
 
-	type RGB = { r: number; g: number; b: number };
 
 	const paperColor: RGB = { r: 244, g: 237, b: 224 };
 

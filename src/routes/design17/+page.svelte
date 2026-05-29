@@ -13,7 +13,8 @@
 		InkInWater,
 		FrozenSwirl,
 		Aurora,
-		ToroidalTempest
+		ToroidalTempest,
+		type RGB
 	} from '$lib/index.js';
 
 	let installTab = $state<'npm' | 'bun' | 'pnpm'>('npm');
@@ -49,7 +50,6 @@
 
 	const stickyAutoAnimate = $derived(!reducedMotion);
 
-	type RGB = { r: number; g: number; b: number };
 
 	const pageColor: RGB = { r: 29, g: 56, b: 69 };
 	const surfaceColor: RGB = { r: 38, g: 74, b: 89 };

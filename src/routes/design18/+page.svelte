@@ -13,10 +13,10 @@
 		InkInWater,
 		FrozenSwirl,
 		Aurora,
-		ToroidalTempest
+		ToroidalTempest,
+		type RGB
 	} from '$lib/index.js';
 
-	type RGB = { r: number; g: number; b: number };
 
 	const pageColor: RGB = { r: 232, g: 139, b: 162 };
 	const surfaceColor: RGB = { r: 255, g: 245, b: 238 };

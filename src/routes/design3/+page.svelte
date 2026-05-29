@@ -13,7 +13,8 @@
 		InkInWater,
 		FrozenSwirl,
 		Aurora,
-		ToroidalTempest
+		ToroidalTempest,
+		type RGB
 	} from '$lib/index.js';
 	import { base } from '$app/paths';
 
@@ -70,7 +71,6 @@
 
 	const stickyAutoAnimate = $derived(!reducedMotion);
 
-	type RGB = { r: number; g: number; b: number };
 
 	const PLAYGROUND_DEFAULTS = {
 		curl: 30,
@@ -291,7 +291,7 @@
 			<div class="preset-grid">
 				<div class="glass-card preset-card">
 					<div class="preset-canvas">
-						<LavaLamp seed={11} aria-label="LavaLamp preset" />
+						<LavaLamp seed={11} aria-label="LavaLamp preset" backColor={{ r: 6, g: 8, b: 26 }} />
 					</div>
 					<div class="preset-meta">
 						<h3>LavaLamp</h3>
@@ -301,7 +301,7 @@
 
 				<div class="glass-card preset-card">
 					<div class="preset-canvas">
-						<Plasma seed={22} aria-label="Plasma preset" />
+						<Plasma seed={22} aria-label="Plasma preset" backColor={{ r: 6, g: 8, b: 26 }} />
 					</div>
 					<div class="preset-meta">
 						<h3>Plasma</h3>
@@ -311,7 +311,7 @@
 
 				<div class="glass-card preset-card">
 					<div class="preset-canvas">
-						<InkInWater seed={33} lazy aria-label="InkInWater preset" />
+						<InkInWater seed={33} lazy aria-label="InkInWater preset" backColor={{ r: 6, g: 8, b: 26 }} />
 					</div>
 					<div class="preset-meta">
 						<h3>InkInWater</h3>
@@ -321,7 +321,7 @@
 
 				<div class="glass-card preset-card">
 					<div class="preset-canvas">
-						<FrozenSwirl seed={44} lazy aria-label="FrozenSwirl preset" />
+						<FrozenSwirl seed={44} lazy aria-label="FrozenSwirl preset" backColor={{ r: 6, g: 8, b: 26 }} />
 					</div>
 					<div class="preset-meta">
 						<h3>FrozenSwirl</h3>
@@ -331,7 +331,7 @@
 
 				<div class="glass-card preset-card">
 					<div class="preset-canvas">
-						<Aurora seed={55} lazy aria-label="Aurora preset" />
+						<Aurora seed={55} lazy aria-label="Aurora preset" backColor={{ r: 6, g: 8, b: 26 }} />
 					</div>
 					<div class="preset-meta">
 						<h3>Aurora</h3>
@@ -341,7 +341,7 @@
 
 				<div class="glass-card preset-card">
 					<div class="preset-canvas">
-						<ToroidalTempest seed={66} lazy aria-label="ToroidalTempest preset" />
+						<ToroidalTempest seed={66} lazy aria-label="ToroidalTempest preset" backColor={{ r: 6, g: 8, b: 26 }} />
 					</div>
 					<div class="preset-meta">
 						<h3>ToroidalTempest</h3>
@@ -360,7 +360,7 @@
 			<div class="shape-grid">
 				<figure class="glass-card shape-card">
 					<div class="shape-canvas">
-						<CircularFluid seed={601} lazy splatOnHover aria-label="Circle container demo" />
+						<CircularFluid seed={601} lazy splatOnHover aria-label="Circle container demo" backColor={{ r: 6, g: 8, b: 26 }} />
 					</div>
 					<figcaption class="shape-caption">CIRCLE</figcaption>
 				</figure>
@@ -388,13 +388,13 @@
 				</figure>
 				<figure class="glass-card shape-card">
 					<div class="shape-canvas">
-						<FrameFluid seed={603} lazy splatOnHover aria-label="Frame container demo" />
+						<FrameFluid seed={603} lazy splatOnHover aria-label="Frame container demo" backColor={{ r: 6, g: 8, b: 26 }} />
 					</div>
 					<figcaption class="shape-caption">FRAME</figcaption>
 				</figure>
 				<figure class="glass-card shape-card">
 					<div class="shape-canvas">
-						<AnnularFluid seed={604} lazy splatOnHover aria-label="Annulus container demo" />
+						<AnnularFluid seed={604} lazy splatOnHover aria-label="Annulus container demo" backColor={{ r: 6, g: 8, b: 26 }} />
 					</div>
 					<figcaption class="shape-caption">ANNULUS</figcaption>
 				</figure>
@@ -700,7 +700,7 @@
 				<div class="glass-card reveal-card">
 					<div class="reveal-canvas">
 						<FluidReveal lazy velocityDissipation={0.95} pressureIterations={10}>
-							<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:1.4rem;color:#e0e8ff;">Revealed</div>
+							<div class="reveal-content">Revealed</div>
 						</FluidReveal>
 					</div>
 					<div class="reveal-meta">SCRATCH TO REVEAL</div>
@@ -718,7 +718,7 @@
 							fringeColor={{ r: 0.15, g: 0.35, b: 0.55 }}
 							accentColor={{ r: 0, g: 0.78, b: 1 }}
 						>
-							<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:1.4rem;color:#e0e8ff;">Auto Reveal</div>
+							<div class="reveal-content">Auto Reveal</div>
 						</FluidReveal>
 					</div>
 					<div class="reveal-meta">AUTO-REVEAL</div>
@@ -1474,6 +1474,14 @@
 		overflow: hidden;
 		background: #06081a;
 		border: 1px solid rgba(255, 255, 255, 0.07);
+	}
+	.reveal-content {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		font-size: 1.4rem;
+		color: #e0e8ff;
 	}
 	.reveal-meta {
 		font-size: 10px;

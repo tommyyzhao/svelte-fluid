@@ -13,7 +13,8 @@
 		InkInWater,
 		LavaLamp,
 		Plasma,
-		ToroidalTempest
+		ToroidalTempest,
+		type RGB
 	} from '$lib/index.js';
 	import { base } from '$app/paths';
 
@@ -119,7 +120,6 @@
 
 	const stickyAutoAnimate = $derived(!reducedMotion);
 
-	type RGB = { r: number; g: number; b: number };
 
 	const PLAYGROUND_DEFAULTS = {
 		curl: 30,
@@ -370,7 +370,7 @@
 		<section class="featured">
 			<div class="featured-frame">
 				<div class="featured-canvas">
-					<Aurora seed={101} aria-label="Aurora preset featured preview" />
+					<Aurora seed={101} aria-label="Aurora preset featured preview" backColor={{ r: 0, g: 0, b: 0 }} />
 				</div>
 				<div class="featured-vignette" aria-hidden="true"></div>
 				<div class="featured-label">AURORA / PRESET</div>
@@ -391,17 +391,17 @@
 					<article class="preset-card">
 						<div class="preset-canvas">
 							{#if p.name === 'LavaLamp'}
-								<LavaLamp seed={p.seed} lazy aria-label="LavaLamp preview" />
+								<LavaLamp seed={p.seed} lazy aria-label="LavaLamp preview" backColor={{ r: 0, g: 0, b: 0 }} />
 							{:else if p.name === 'Plasma'}
-								<Plasma seed={p.seed} lazy aria-label="Plasma preview" />
+								<Plasma seed={p.seed} lazy aria-label="Plasma preview" backColor={{ r: 0, g: 0, b: 0 }} />
 							{:else if p.name === 'InkInWater'}
-								<InkInWater seed={p.seed} lazy aria-label="InkInWater preview" />
+								<InkInWater seed={p.seed} lazy aria-label="InkInWater preview" backColor={{ r: 0, g: 0, b: 0 }} />
 							{:else if p.name === 'FrozenSwirl'}
-								<FrozenSwirl seed={p.seed} lazy aria-label="FrozenSwirl preview" />
+								<FrozenSwirl seed={p.seed} lazy aria-label="FrozenSwirl preview" backColor={{ r: 0, g: 0, b: 0 }} />
 							{:else if p.name === 'Aurora'}
-								<Aurora seed={p.seed} lazy aria-label="Aurora preview" />
+								<Aurora seed={p.seed} lazy aria-label="Aurora preview" backColor={{ r: 0, g: 0, b: 0 }} />
 							{:else if p.name === 'ToroidalTempest'}
-								<ToroidalTempest seed={p.seed} lazy aria-label="ToroidalTempest preview" />
+								<ToroidalTempest seed={p.seed} lazy aria-label="ToroidalTempest preview" backColor={{ r: 0, g: 0, b: 0 }} />
 							{/if}
 						</div>
 						<div class="preset-meta">
@@ -426,7 +426,7 @@
 			<div class="shape-grid">
 				<article class="shape-card">
 					<div class="shape-canvas">
-						<CircularFluid seed={601} lazy splatOnHover aria-label="Circle container demo" />
+						<CircularFluid seed={601} lazy splatOnHover aria-label="Circle container demo" backColor={{ r: 0, g: 0, b: 0 }} />
 					</div>
 					<div class="shape-label">Circle</div>
 				</article>
@@ -454,13 +454,13 @@
 				</article>
 				<article class="shape-card">
 					<div class="shape-canvas">
-						<FrameFluid seed={603} lazy splatOnHover aria-label="Frame container demo" />
+						<FrameFluid seed={603} lazy splatOnHover aria-label="Frame container demo" backColor={{ r: 0, g: 0, b: 0 }} />
 					</div>
 					<div class="shape-label">Frame</div>
 				</article>
 				<article class="shape-card">
 					<div class="shape-canvas">
-						<AnnularFluid seed={604} lazy splatOnHover aria-label="Annulus container demo" />
+						<AnnularFluid seed={604} lazy splatOnHover aria-label="Annulus container demo" backColor={{ r: 0, g: 0, b: 0 }} />
 					</div>
 					<div class="shape-label">Annulus</div>
 				</article>

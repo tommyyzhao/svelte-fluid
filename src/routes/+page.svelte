@@ -1152,23 +1152,23 @@
 			</p>
 		</header>
 		<div class="grid-2col">
-			<Card title="Lava Lamp" description="Warm blobs in a glass vessel with rim refraction." onCustomize={() => loadConfig(PRESET_CONFIGS['LavaLamp'], 'LavaLamp')} snippet={`<LavaLamp />\n\n<!-- Presets are wrapper components. To build a custom version,\n     copy the preset source and edit its pinned <Fluid> props. -->`}>
-				<LavaLamp seed={101} lazy aria-label="LavaLamp preset" />
+			<Card title="Lava Lamp" description="Warm blobs in a glass vessel with rim refraction." onCustomize={() => loadConfig(PRESET_CONFIGS['LavaLamp'], 'LavaLamp')} snippet={`<LavaLamp backColor={{ r: 13, g: 13, b: 13 }} />\n\n<!-- Presets are wrapper components. To build a custom version,\n     copy the preset source and edit its pinned <Fluid> props. -->`}>
+				<LavaLamp seed={101} lazy aria-label="LavaLamp preset" backColor={{ r: 13, g: 13, b: 13 }} />
 			</Card>
-			<Card title="Plasma" description="Rapid color jets with strong curl and vivid bloom lighting up a dark canvas." onCustomize={() => loadConfig(PRESET_CONFIGS['Plasma'], 'Plasma')} snippet={`<Plasma />\n\n<!-- Uses a hand-authored opening scene internally.\n     See the preset source for the pinned props. -->`}>
-				<Plasma seed={202} lazy aria-label="Plasma preset" />
+			<Card title="Plasma" description="Rapid color jets with strong curl and vivid bloom lighting up a dark canvas." onCustomize={() => loadConfig(PRESET_CONFIGS['Plasma'], 'Plasma')} snippet={`<Plasma backColor={{ r: 13, g: 13, b: 13 }} />\n\n<!-- Uses a hand-authored opening scene internally.\n     See the preset source for the pinned props. -->`}>
+				<Plasma seed={202} lazy aria-label="Plasma preset" backColor={{ r: 13, g: 13, b: 13 }} />
 			</Card>
-			<Card title="Ink in Water" description="Deep blue ink diffusing through dark water with a soft glow." onCustomize={() => loadConfig(PRESET_CONFIGS['Ink in Water'], 'Ink in Water')} snippet={`<InkInWater />\n\n<!-- Uses pinned ink-drop splats internally.\n     Import the preset for the look; fork it to customize the recipe. -->`}>
-				<InkInWater seed={303} lazy aria-label="Ink in Water preset" />
+			<Card title="Ink in Water" description="Deep blue ink diffusing through dark water with a soft glow." onCustomize={() => loadConfig(PRESET_CONFIGS['Ink in Water'], 'Ink in Water')} snippet={`<InkInWater backColor={{ r: 13, g: 13, b: 13 }} />\n\n<!-- Uses pinned ink-drop splats internally.\n     Import the preset for the look; fork it to customize the recipe. -->`}>
+				<InkInWater seed={303} lazy aria-label="Ink in Water preset" backColor={{ r: 13, g: 13, b: 13 }} />
 			</Card>
-			<Card title="Frozen Swirl" description="Cyan dye flash-frozen in a circular vessel. Strong swirl, instant slowdown." onCustomize={() => loadConfig(PRESET_CONFIGS['Frozen Swirl'], 'Frozen Swirl')} snippet={`<FrozenSwirl />\n\n<!-- A small wrapper around <Fluid> with a circular container\n     and construct-only preset splats. -->`}>
-				<FrozenSwirl seed={404} lazy aria-label="Frozen Swirl preset" />
+			<Card title="Frozen Swirl" description="Cyan dye flash-frozen in a circular vessel. Strong swirl, instant slowdown." onCustomize={() => loadConfig(PRESET_CONFIGS['Frozen Swirl'], 'Frozen Swirl')} snippet={`<FrozenSwirl backColor={{ r: 13, g: 13, b: 13 }} />\n\n<!-- A small wrapper around <Fluid> with a circular container\n     and construct-only preset splats. -->`}>
+				<FrozenSwirl seed={404} lazy aria-label="Frozen Swirl preset" backColor={{ r: 13, g: 13, b: 13 }} />
 			</Card>
-			<Card title="Aurora" description="Layered aurora ribbons that glow and slowly settle into the night-sky backdrop." onCustomize={() => loadConfig(PRESET_CONFIGS['Aurora'], 'Aurora')} snippet={`<Aurora />\n\n<!-- Pinned aurora palette + opening bands.\n     See the preset source if you want to tune the hidden splats. -->`}>
-				<Aurora seed={505} lazy aria-label="Aurora preset" />
+			<Card title="Aurora" description="Layered aurora ribbons that glow and slowly settle into the night-sky backdrop." onCustomize={() => loadConfig(PRESET_CONFIGS['Aurora'], 'Aurora')} snippet={`<Aurora backColor={{ r: 13, g: 13, b: 13 }} />\n\n<!-- Pinned aurora palette + opening bands.\n     See the preset source if you want to tune the hidden splats. -->`}>
+				<Aurora seed={505} lazy aria-label="Aurora preset" backColor={{ r: 13, g: 13, b: 13 }} />
 			</Card>
-			<Card title="Toroidal Tempest" description="Full-spectrum storm circulating in a high-velocity ring." onCustomize={() => loadConfig(PRESET_CONFIGS['Toroidal Tempest'], 'Toroidal Tempest')} snippet={`<ToroidalTempest />\n\n<!-- Re-injects its own ring splats internally to keep\n     the annular storm fed with fresh color. -->`}>
-				<ToroidalTempest seed={660} lazy aria-label="Toroidal Tempest preset" />
+			<Card title="Toroidal Tempest" description="Full-spectrum storm circulating in a high-velocity ring." onCustomize={() => loadConfig(PRESET_CONFIGS['Toroidal Tempest'], 'Toroidal Tempest')} snippet={`<ToroidalTempest backColor={{ r: 13, g: 13, b: 13 }} />\n\n<!-- Re-injects its own ring splats internally to keep\n     the annular storm fed with fresh color. -->`}>
+				<ToroidalTempest seed={660} lazy aria-label="Toroidal Tempest preset" backColor={{ r: 13, g: 13, b: 13 }} />
 			</Card>
 		</div>
 	</section>
@@ -1241,16 +1241,16 @@
 		</header>
 		<div class="grid-2col">
 			<Card title="Circle" description="Fluid swirling inside a circular boundary." onCustomize={() => loadConfig(PRESET_CONFIGS['Circle'], 'Circle')} snippet={`<Fluid\n  containerShape={{\n    type: 'circle',\n    cx: 0.5, cy: 0.5, radius: 0.45\n  }}\n/>`}>
-				<CircularFluid seed={606} lazy splatOnHover aria-label="Circular fluid shape demo" />
+				<CircularFluid seed={606} lazy splatOnHover aria-label="Circular fluid shape demo" backColor={{ r: 13, g: 13, b: 13 }} />
 			</Card>
 			<Card title="Frame" description="Sharp-edged rectangular frame with no rounding." onCustomize={() => loadConfig(PRESET_CONFIGS['Frame'], 'Frame')} snippet={`<Fluid\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.2, halfH: 0.2\n  }}\n/>`}>
-				<FrameFluid seed={707} lazy splatOnHover aria-label="Frame fluid shape demo" />
+				<FrameFluid seed={707} lazy splatOnHover aria-label="Frame fluid shape demo" backColor={{ r: 13, g: 13, b: 13 }} />
 			</Card>
 			<Card title="Ring" description="Fluid flowing in a ring between two circles." onCustomize={() => loadConfig(PRESET_CONFIGS['Ring'], 'Ring')} snippet={`<Fluid\n  containerShape={{\n    type: 'annulus',\n    cx: 0.5, cy: 0.5,\n    innerRadius: 0.15, outerRadius: 0.4\n  }}\n/>`}>
-				<AnnularFluid seed={909} lazy splatOnHover aria-label="Annular fluid shape demo" />
+				<AnnularFluid seed={909} lazy splatOnHover aria-label="Annular fluid shape demo" backColor={{ r: 13, g: 13, b: 13 }} />
 			</Card>
 			<Card title="Rounded frame" description="Soft-edged frame with rounded inner and outer corners." onCustomize={() => loadConfig(PRESET_CONFIGS['Rounded frame'], 'Rounded frame')} snippet={`<Fluid\n  containerShape={{\n    type: 'frame',\n    cx: 0.5, cy: 0.5,\n    halfW: 0.2, halfH: 0.2,\n    innerCornerRadius: 0.06,\n    outerHalfW: 0.48, outerHalfH: 0.48,\n    outerCornerRadius: 0.06\n  }}\n/>`}>
-				<FrameFluid seed={818} lazy splatOnHover innerCornerRadius={0.06} outerCornerRadius={0.06} aria-label="Rounded frame shape demo" />
+				<FrameFluid seed={818} lazy splatOnHover innerCornerRadius={0.06} outerCornerRadius={0.06} aria-label="Rounded frame shape demo" backColor={{ r: 13, g: 13, b: 13 }} />
 			</Card>
 			<Card title="SVG path" description="Fluid shaped by an arbitrary SVG path — a lightning bolt." onCustomize={() => loadConfig(PRESET_CONFIGS['SVG path'], 'SVG path')} snippet={`<Fluid\n  containerShape={{\n    type: 'svgPath',\n    d: 'M55 2 L30 42 L48 42 L25 70 ...'\n  }}\n/>`}>
 				<Fluid
@@ -1276,7 +1276,7 @@
 				/>
 			</Card>
 			<Card title="Text glyph" description="Fluid shaped by a bold ampersand. Any text string can become a container." onCustomize={() => loadConfig(PRESET_CONFIGS['Text glyph'], 'Text glyph')} snippet={`<Fluid\n  containerShape={{\n    type: 'svgPath',\n    text: '&',\n    font: 'bold 200px Georgia, serif',\n    fillRule: 'evenodd'\n  }}\n/>`}>
-				<SvgPathFluid seed={1010} lazy splatOnHover aria-label="Text glyph fluid shape demo" />
+				<SvgPathFluid seed={1010} lazy splatOnHover aria-label="Text glyph fluid shape demo" backColor={{ r: 13, g: 13, b: 13 }} />
 			</Card>
 		</div>
 	</section>

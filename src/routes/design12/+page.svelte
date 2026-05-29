@@ -14,7 +14,8 @@
 		InkInWater,
 		LavaLamp,
 		Plasma,
-		ToroidalTempest
+		ToroidalTempest,
+		type RGB
 	} from '$lib/index.js';
 	import { base } from '$app/paths';
 
@@ -129,7 +130,6 @@
 
 	const stickyAutoAnimate = $derived(!reducedMotion);
 
-	type RGB = { r: number; g: number; b: number };
 
 	const PLAYGROUND_DEFAULTS = {
 		curl: 30,
@@ -367,7 +367,7 @@
 
 		<section class="featured warm" bind:this={revealEls[1]}>
 			<div class="featured-canvas">
-				<LavaLamp seed={101} lazy aria-label="Lava Lamp preset" />
+				<LavaLamp seed={101} lazy aria-label="Lava Lamp preset" backColor={{ r: 10, g: 10, b: 10 }} />
 			</div>
 			<div class="featured-text">
 				<div class="eyebrow muted">Preset · warm</div>
@@ -395,13 +395,13 @@
 				<a class="source-link" href="{base}/docs/presets">View source →</a>
 			</div>
 			<div class="featured-canvas">
-				<Aurora seed={202} lazy aria-label="Aurora preset" />
+				<Aurora seed={202} lazy aria-label="Aurora preset" backColor={{ r: 10, g: 10, b: 10 }} />
 			</div>
 		</section>
 
 		<section class="featured bleed" bind:this={revealEls[3]}>
 			<div class="bleed-canvas">
-				<Plasma seed={303} lazy aria-label="Plasma preset" />
+				<Plasma seed={303} lazy aria-label="Plasma preset" backColor={{ r: 10, g: 10, b: 10 }} />
 			</div>
 			<aside class="glass-caption">
 				<div class="eyebrow muted">Preset · electric</div>
@@ -424,11 +424,11 @@
 						<article class="small-card">
 							<div class="small-canvas">
 								{#if p.component === InkInWater}
-									<InkInWater seed={p.seed} lazy aria-label="{p.name} preset" />
+									<InkInWater seed={p.seed} lazy aria-label="{p.name} preset" backColor={{ r: 10, g: 10, b: 10 }} />
 								{:else if p.component === FrozenSwirl}
-									<FrozenSwirl seed={p.seed} lazy aria-label="{p.name} preset" />
+									<FrozenSwirl seed={p.seed} lazy aria-label="{p.name} preset" backColor={{ r: 10, g: 10, b: 10 }} />
 								{:else if p.component === ToroidalTempest}
-									<ToroidalTempest seed={p.seed} lazy aria-label="{p.name} preset" />
+									<ToroidalTempest seed={p.seed} lazy aria-label="{p.name} preset" backColor={{ r: 10, g: 10, b: 10 }} />
 								{/if}
 							</div>
 							<div class="small-meta">
@@ -454,7 +454,7 @@
 				<div class="shape-grid">
 					<figure class="shape-cell">
 						<div class="shape-canvas">
-							<CircularFluid seed={601} lazy splatOnHover aria-label="Circle container demo" />
+							<CircularFluid seed={601} lazy splatOnHover aria-label="Circle container demo" backColor={{ r: 10, g: 10, b: 10 }} />
 						</div>
 						<figcaption>CIRCLE</figcaption>
 					</figure>
@@ -482,13 +482,13 @@
 					</figure>
 					<figure class="shape-cell">
 						<div class="shape-canvas">
-							<FrameFluid seed={603} lazy splatOnHover aria-label="Frame container demo" />
+							<FrameFluid seed={603} lazy splatOnHover aria-label="Frame container demo" backColor={{ r: 10, g: 10, b: 10 }} />
 						</div>
 						<figcaption>FRAME</figcaption>
 					</figure>
 					<figure class="shape-cell">
 						<div class="shape-canvas">
-							<AnnularFluid seed={604} lazy splatOnHover aria-label="Annulus container demo" />
+							<AnnularFluid seed={604} lazy splatOnHover aria-label="Annulus container demo" backColor={{ r: 10, g: 10, b: 10 }} />
 						</div>
 						<figcaption>ANNULUS</figcaption>
 					</figure>
@@ -822,7 +822,7 @@
 								velocityDissipation={0.95}
 								pressureIterations={10}
 							>
-								<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:1.5rem;">Revealed</div>
+								<div class="reveal-content">Revealed</div>
 							</FluidReveal>
 						</div>
 						<figcaption>SCRATCH TO REVEAL</figcaption>
@@ -840,7 +840,7 @@
 								fringeColor={{ r: 0.15, g: 0.35, b: 0.55 }}
 								accentColor={{ r: 0, g: 0.78, b: 1 }}
 							>
-								<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:1.5rem;">Auto Reveal</div>
+								<div class="reveal-content">Auto Reveal</div>
 							</FluidReveal>
 						</div>
 						<figcaption>AUTO-REVEAL</figcaption>
@@ -1865,6 +1865,14 @@
 		border-radius: 10px;
 		overflow: hidden;
 		cursor: crosshair;
+	}
+
+	.reveal-content {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		font-size: 1.5rem;
 	}
 
 	.fr-cell figcaption {
