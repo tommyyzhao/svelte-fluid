@@ -5,9 +5,10 @@
 
 ## Context
 
-All nine preset wrappers — six stylistic (`LavaLamp`, `Plasma`,
-`InkInWater`, `FrozenSwirl`, `Aurora`, `ToroidalTempest`) and three
-shape primitives (`CircularFluid`, `FrameFluid`, `AnnularFluid`) —
+All ten preset wrappers — six stylistic (`LavaLamp`, `Plasma`,
+`InkInWater`, `FrozenSwirl`, `Aurora`, `ToroidalTempest`) and four
+shape primitives (`CircularFluid`, `FrameFluid`, `AnnularFluid`,
+`SvgPathFluid`) —
 hardcoded their `backColor` value inside the wrapper's `<Fluid>`
 invocation. The hardcoded value was not surfaced through the wrapper's
 `Props` type, so consumers had no way to adapt a preset to their page
