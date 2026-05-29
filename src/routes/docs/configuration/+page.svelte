@@ -625,6 +625,29 @@
 </table>
 
 <!-- ================================================================ -->
+<h2>Obstructions</h2>
+<p>Interior obstacles the fluid flows around — the inverse of <code>containerShape</code>, and orthogonal to it. See the <a href="/docs/shapes#obstructions">Container Shapes</a> page for the <code>Obstruction</code> descriptor and behavior.</p>
+
+<table>
+	<thead>
+		<tr>
+			<th>Prop</th>
+			<th>Type</th>
+			<th>Default</th>
+			<th>Description</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td><code>obstructions</code></td>
+			<td><code>ReadonlyArray&lt;Obstruction&gt;</code></td>
+			<td><code>undefined</code></td>
+			<td>Interior obstacles the fluid flows around. Union into one combined mask; allowed region is <code>container × (1 − obstruction)</code>. Changing it rebuilds the obstruction mask texture (Bucket C) and recompiles the display shader. Mutually exclusive with <code>distortion</code>.</td>
+		</tr>
+	</tbody>
+</table>
+
+<!-- ================================================================ -->
 <h2>Hot-update buckets</h2>
 <p>
 	When props change at runtime, <code>setConfig()</code> classifies each field into one of four buckets
@@ -655,7 +678,8 @@
 	Triggers framebuffer reallocation. Applies to resolution fields: <code>simResolution</code>,
 	<code>dyeResolution</code>, <code>bloomResolution</code>, <code>bloomIterations</code>,
 	and <code>sunraysResolution</code>. Also triggered by <code>containerShape</code> changes
-	(mask texture rebuild) and <code>glass</code> toggle (scene FBO alloc/dispose).
+	(mask texture rebuild), <code>obstructions</code> changes (obstruction mask rebuild +
+	display keyword recompile), and <code>glass</code> toggle (scene FBO alloc/dispose).
 </p>
 
 <h3>Bucket D — Construct-only</h3>

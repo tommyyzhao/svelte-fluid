@@ -257,6 +257,79 @@ fluidRef.handle.randomSplats(10);</code></pre>
   color: RGB;
 {RB}</code></pre>
 
+<h3>Obstruction</h3>
+
+<p>
+	An interior obstacle the fluid flows around, passed via the <code>obstructions</code> prop.
+	Reuses the same path/text descriptor as the <code>svgPath</code> container variant — the filled
+	region marks where fluid is <em>blocked</em>. All obstructions union into one combined mask;
+	the allowed region is <code>container × (1 − obstruction)</code>. Orthogonal to
+	<code>containerShape</code>. See <a href="/docs/shapes#obstructions">Container Shapes</a> and ADR-0034.
+</p>
+
+<table>
+	<thead>
+		<tr>
+			<th>Field</th>
+			<th>Type</th>
+			<th>Description</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td><code>d</code></td>
+			<td><code>string?</code></td>
+			<td>SVG path data (path mode). Takes precedence over <code>text</code>.</td>
+		</tr>
+		<tr>
+			<td><code>text</code></td>
+			<td><code>string?</code></td>
+			<td>Text to rasterize (text mode). Centered in the mask.</td>
+		</tr>
+		<tr>
+			<td><code>font</code></td>
+			<td><code>string?</code></td>
+			<td>CSS font for text mode. Default <code>'bold 72px sans-serif'</code>.</td>
+		</tr>
+		<tr>
+			<td><code>viewBox</code></td>
+			<td><code>[number, number, number, number]?</code></td>
+			<td>viewBox for path mode. Default <code>[0, 0, 100, 100]</code>.</td>
+		</tr>
+		<tr>
+			<td><code>fillRule</code></td>
+			<td><code>'nonzero' | 'evenodd'?</code></td>
+			<td>Fill rule for path mode. Default <code>'nonzero'</code>.</td>
+		</tr>
+		<tr>
+			<td><code>offset</code></td>
+			<td><code>{LB} x: number; y: number {RB}?</code></td>
+			<td>UV-space translation after the fit transform. Default <code>{LB} x: 0, y: 0 {RB}</code>.</td>
+		</tr>
+		<tr>
+			<td><code>scale</code></td>
+			<td><code>number?</code></td>
+			<td>Multiplier on the fit scale. Default 1.</td>
+		</tr>
+		<tr>
+			<td><code>fit</code></td>
+			<td><code>'contain' | 'fill'?</code></td>
+			<td>viewBox→canvas mapping. <code>'contain'</code> (default) uniform-fits + centers (letterboxes); <code>'fill'</code> stretches to fill at any aspect (for maze/nozzle channels). Path mode only.</td>
+		</tr>
+	</tbody>
+</table>
+
+<pre><code>interface Obstruction {LB}
+  d?: string;
+  text?: string;
+  font?: string;
+  viewBox?: [number, number, number, number];
+  fillRule?: 'nonzero' | 'evenodd';
+  offset?: {LB} x: number; y: number {RB};
+  scale?: number;
+  fit?: 'contain' | 'fill';
+{RB}</code></pre>
+
 <hr />
 
 <h2>FluidEngine (Advanced)</h2>

@@ -99,7 +99,11 @@ svelte-fluid/
    [ADR 0005](dev-docs/decisions/0005-hot-update-buckets.md)) and update
    `FluidEngine.setConfig` if needed.
 6. Add the prop to the destructure in `Fluid.svelte` and to the
-   `buildConfig()` return.
+   `buildConfig()` return. **Do not skip this** — because `FluidProps extends
+   FluidConfig`, an unforwarded prop still type-checks but silently falls into
+   `...rest` (spread onto the `<canvas>`) and never reaches the engine. The
+   `fluid-props-forwarding.test.ts` guard fails if any `FluidConfig` field is
+   missing from `buildConfig()`.
 7. Add a row to the prop table in `README.md`.
 8. Run `bun run check` and `bun run dev`.
 

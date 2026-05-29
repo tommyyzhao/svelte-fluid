@@ -392,6 +392,12 @@ All fields are optional. The engine fills defaults at construction.
 | stickyPressure  | number     | 0.15    | Pressure injected on mask to push fluid around.    |
 | stickyAmplify   | number     | 0.3     | Splat intensity multiplier on mask.                |
 
+### Obstructions
+
+| Field        | Type                          | Default   | Description                                          |
+|--------------|-------------------------------|-----------|------------------------------------------------------|
+| obstructions | ReadonlyArray&lt;Obstruction&gt; | undefined | Interior obstacles fluid flows around. Union into one mask; allowed = container × (1 − obstruction). Orthogonal to containerShape. Rebuilds mask + recompiles display shader on change. Mutually exclusive with distortion. |
+
 ### Boundary
 
 | Field        | Type    | Default | Description                                          |
@@ -456,6 +462,28 @@ At least one of d or text must be provided.
 
 ---
 
+## Obstruction Interface
+
+An interior obstacle the fluid flows around — the inverse of a container.
+Reuses the svgPath/text descriptor; the filled region marks where fluid is
+*blocked*. All obstructions in the \`obstructions\` array union into one
+combined mask. Orthogonal to containerShape: allowed = container × (1 −
+obstruction). Boundary is free-slip, ~1 texel wide; minimum feature size ≈
+2 / simResolution. Mutually exclusive with distortion. See ADR-0034.
+
+| Field    | Type                          | Default                | Description                                  |
+|----------|-------------------------------|------------------------|----------------------------------------------|
+| d        | string                        | —                      | SVG path data (path mode). Precedence over text. |
+| text     | string                        | —                      | Text to rasterize (text mode). Centered.     |
+| font     | string                        | 'bold 72px sans-serif' | CSS font for text mode.                      |
+| viewBox  | [number,number,number,number] | [0,0,100,100]          | viewBox for path mode.                       |
+| fillRule | 'nonzero'|'evenodd'           | 'nonzero'              | Fill rule for path mode.                     |
+| offset   | { x: number, y: number }      | { x: 0, y: 0 }         | UV-space translate after the fit transform.  |
+| scale    | number                        | 1                      | Multiplier on the fit scale.                 |
+| fit      | 'contain'|'fill'              | 'contain'              | 'contain' uniform-fits+centers (letterboxes); 'fill' stretches to fill at any aspect (maze/nozzle channels). Path mode only. |
+
+---
+
 ## FluidHandle — Imperative API
 
 Exposed via \`bind:this\` on any component.
@@ -501,6 +529,14 @@ a host page background. Omit it to keep the preset's authored default.
 | FrameFluid      | Fluid around a rectangular cutout (picture frame) | frame                        |
 | AnnularFluid    | Ring-vortex between two concentric circles        | annulus                      |
 | SvgPathFluid    | Fluid inside an "&amp;" ampersand glyph              | svgPath (text mode)          |
+| RocketEngine    | De Laval nozzle: exhaust accelerates through the throat | none (2 nozzle obstructions) |
+| Venturi         | Bernoulli throat: streamlines accelerate + glow     | none (2 throat obstructions) |
+| RiverDelta      | River braiding around a chain of teardrop islands   | none (5 island obstructions) |
+
+The last three are fluid-dynamics presets built on interior obstructions
+(openBoundary throughflow — obstacles stay physical, flow vents off-canvas).
+Faithful: Venturi/RiverDelta continuity routing; RocketEngine throat
+acceleration. Evocative: RocketEngine color gradient, Venturi throat glow.
 
 ---
 
@@ -533,6 +569,13 @@ Color range depends on context:
 &lt;Fluid
   containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
   transparent
+/&gt;
+\`\`\`
+
+### Fluid Around Obstacles
+\`\`\`svelte
+&lt;Fluid
+  obstructions={[{ d: 'M40 0 L60 0 L60 100 L40 100 Z' }]}
 /&gt;
 \`\`\`
 

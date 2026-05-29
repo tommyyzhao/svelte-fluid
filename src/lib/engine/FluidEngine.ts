@@ -63,7 +63,7 @@ import {
 import { type DitheringTexture, createDitheringTexture } from './dithering.js';
 import { type Pointer, createPointer, updatePointerDownData, updatePointerMoveData, updatePointerUpData } from './pointer.js';
 import { type Rng, generateColor, mulberry32, normalizeColor, randomSeed } from './rng.js';
-import { containerShapeEqual, stickyMaskEqual, containerMask, maskAreaFraction, type MaskContext } from './container-shapes.js';
+import { containerShapeEqual, stickyMaskEqual, containerMask, maskAreaFraction, obstructionsEqual, obstructionMask, type MaskContext } from './container-shapes.js';
 import * as S from './shaders.js';
 
 /* -------------------------------------------------------------------------- */
@@ -137,7 +137,8 @@ export const DEFAULTS: ResolvedConfig = {
 	STICKY_MASK: null,
 	STICKY_STRENGTH: 0.9,
 	STICKY_PRESSURE: 0.15,
-	STICKY_AMPLIFY: 0.3
+	STICKY_AMPLIFY: 0.3,
+	OBSTRUCTIONS: null
 };
 /** @internal Exported for tests — not part of the public API. */
 export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): ResolvedConfig {
@@ -223,6 +224,7 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 	if (input.stickyStrength !== undefined) out.STICKY_STRENGTH = input.stickyStrength;
 	if (input.stickyPressure !== undefined) out.STICKY_PRESSURE = input.stickyPressure;
 	if (input.stickyAmplify !== undefined) out.STICKY_AMPLIFY = input.stickyAmplify;
+	if (input.obstructions !== undefined) out.OBSTRUCTIONS = input.obstructions ?? null;
 	return out;
 }
 
@@ -292,6 +294,12 @@ export class FluidEngine implements FluidHandle {
 	private stickyMaskTexture: WebGLTexture | null = null;
 	private stickyFallbackTexture: WebGLTexture | null = null;
 
+	// --- Combined interior-obstruction mask (union of all obstructions) ---
+	private obstructionMaskTexture: WebGLTexture | null = null;
+	private obstructionMaskData: Uint8Array | null = null;
+	private obstructionMaskW = 0;
+	private obstructionMaskH = 0;
+
 	// --- Framebuffers ---
 	private dye!: DoubleFBO;
 	private velocity!: DoubleFBO;
@@ -348,6 +356,7 @@ export class FluidEngine implements FluidHandle {
 		this.initFramebuffers();
 		this.initMaskTexture();
 		this.initStickyMaskTexture();
+		this.initObstructionMaskTexture();
 		this.initGlassFramebuffer();
 		if (this.config.DISTORTION_IMAGE_URL) {
 			this.loadDistortionImage(this.config.DISTORTION_IMAGE_URL);
@@ -489,6 +498,9 @@ export class FluidEngine implements FluidHandle {
 		const distortionImageChanged = a.DISTORTION_IMAGE_URL !== b.DISTORTION_IMAGE_URL;
 		const stickyChanged = a.STICKY !== b.STICKY;
 		const stickyMaskChanged = !stickyMaskEqual(a.STICKY_MASK, b.STICKY_MASK);
+		// Bucket-C-like: rebuild the combined obstruction mask texture, and
+		// recompile the display shader to toggle the OBSTRUCTION_MASK keyword.
+		const obstructionsChanged = !obstructionsEqual(a.OBSTRUCTIONS, b.OBSTRUCTIONS);
 		const pointerInputChanged = a.POINTER_INPUT !== b.POINTER_INPUT;
 		const pointerTargetChanged = a.POINTER_TARGET !== b.POINTER_TARGET;
 
@@ -501,8 +513,9 @@ export class FluidEngine implements FluidHandle {
 		if (bloomChanged) this.initBloomFramebuffers();
 		if (sunraysChanged) this.initSunraysFramebuffers();
 		if (shapeChanged) this.initMaskTexture();
+		if (obstructionsChanged) this.initObstructionMaskTexture();
 		if (glassChanged) this.initGlassFramebuffer();
-		if (kwChanged || shapeChanged || revealChanged || distortionChanged) this.updateKeywords();
+		if (kwChanged || shapeChanged || revealChanged || distortionChanged || obstructionsChanged) this.updateKeywords();
 		if (stickyChanged || stickyMaskChanged) this.initStickyMaskTexture();
 		if (distortionImageChanged) this.loadDistortionImage(b.DISTORTION_IMAGE_URL);
 		if (pointerInputChanged || pointerTargetChanged) {
@@ -553,6 +566,7 @@ export class FluidEngine implements FluidHandle {
 		this.initFramebuffers();
 		this.initMaskTexture();
 		this.initStickyMaskTexture();
+		this.initObstructionMaskTexture();
 		this.initGlassFramebuffer();
 		// Re-load distortion image (GL texture was lost with context)
 		if (this.config.DISTORTION_IMAGE_URL) {
@@ -625,6 +639,13 @@ export class FluidEngine implements FluidHandle {
 		if (this.stickyFallbackTexture) {
 			gl.deleteTexture(this.stickyFallbackTexture);
 			this.stickyFallbackTexture = null;
+		}
+
+		// Obstruction mask texture
+		if (this.obstructionMaskTexture) {
+			gl.deleteTexture(this.obstructionMaskTexture);
+			this.obstructionMaskTexture = null;
+			this.obstructionMaskData = null;
 		}
 
 		// Programs
@@ -1126,6 +1147,133 @@ export class FluidEngine implements FluidHandle {
 	}
 
 	/**
+	 * Rasterize all interior obstructions into ONE combined mask texture.
+	 * Each obstruction is drawn into the same OffscreenCanvas so their filled
+	 * regions union (white-on-transparent fills accumulate). Modeled on
+	 * initMaskTexture: same aspect-corrected dims and per-shape fit transform,
+	 * plus each obstruction's own `scale`/`offset`. See ADR-0034.
+	 */
+	private initObstructionMaskTexture(): void {
+		const gl = this.gl;
+		const obstructions = this.config.OBSTRUCTIONS;
+
+		// Dispose previous obstruction texture
+		if (this.obstructionMaskTexture) {
+			gl.deleteTexture(this.obstructionMaskTexture);
+			this.obstructionMaskTexture = null;
+			this.obstructionMaskData = null;
+		}
+
+		if (!obstructions || obstructions.length === 0) return;
+
+		// Use the same base resolution + aspect-corrected dims as the
+		// container mask so obstruction UVs line up with the canvas.
+		const baseDim = 512;
+		const aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
+		const maskW = aspect >= 1 ? baseDim : Math.round(baseDim * aspect);
+		const maskH = aspect >= 1 ? Math.round(baseDim / aspect) : baseDim;
+
+		let ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+		if (typeof OffscreenCanvas !== 'undefined') {
+			ctx = new OffscreenCanvas(maskW, maskH).getContext('2d')!;
+		} else {
+			const el = document.createElement('canvas');
+			el.width = maskW;
+			el.height = maskH;
+			ctx = el.getContext('2d')!;
+		}
+		ctx.fillStyle = 'white';
+
+		for (const ob of obstructions) {
+			ctx.save();
+			const extraScale = ob.scale ?? 1;
+			// Canvas-y points down vs UV-y up, so a positive UV y-offset moves
+			// the obstruction up the canvas (toward smaller pixel-y).
+			const offX = (ob.offset?.x ?? 0) * maskW;
+			const offY = -(ob.offset?.y ?? 0) * maskH;
+			if (ob.d) {
+				ctx.translate(offX, offY);
+				const [vx, vy, vw, vh] = ob.viewBox ?? [0, 0, 100, 100];
+				const fillRule = ob.fillRule ?? 'nonzero';
+				if ((ob.fit ?? 'contain') === 'fill') {
+					// Stretch each axis to fill the canvas (non-uniform). The
+					// geometry spans edge-to-edge at any aspect, so a maze or
+					// nozzle confines the fluid and injection UVs line up.
+					ctx.scale((maskW / vw) * extraScale, (maskH / vh) * extraScale);
+					ctx.translate(-vx, -vy);
+				} else {
+					// Uniform-fit the viewBox into the mask rectangle (same as the
+					// container path mode), then apply the per-obstruction scale.
+					const s = Math.min(maskW / vw, maskH / vh) * extraScale;
+					ctx.translate((maskW - vw * s) / 2, (maskH - vh * s) / 2);
+					ctx.scale(s, s);
+					ctx.translate(-vx, -vy);
+				}
+				ctx.fill(new Path2D(ob.d), fillRule);
+			} else if (ob.text) {
+				ctx.font = ob.font ?? 'bold 72px sans-serif';
+				ctx.textAlign = 'center';
+				ctx.textBaseline = 'alphabetic';
+				const metrics = ctx.measureText(ob.text);
+				const textW = metrics.width;
+				const ascent = metrics.actualBoundingBoxAscent;
+				const descent = metrics.actualBoundingBoxDescent;
+				const textH = ascent + descent;
+				const pad = 0.9;
+				const scale = Math.min((maskW * pad) / textW, (maskH * pad) / textH) * extraScale;
+				// setTransform replaces the matrix, so the offset is folded
+				// directly into its translation args (a leading ctx.translate
+				// would be discarded).
+				ctx.setTransform(scale, 0, 0, scale, maskW / 2 + offX, maskH / 2 + offY);
+				ctx.fillText(ob.text, 0, (ascent - descent) / 2);
+			}
+			ctx.restore();
+		}
+
+		const imageData = ctx.getImageData(0, 0, maskW, maskH);
+		const maskData = new Uint8Array(maskW * maskH);
+		for (let i = 0; i < maskW * maskH; i++) {
+			maskData[i] = imageData.data[i * 4 + 3];
+		}
+		this.obstructionMaskData = maskData;
+		this.obstructionMaskW = maskW;
+		this.obstructionMaskH = maskH;
+
+		const tex = gl.createTexture()!;
+		gl.bindTexture(gl.TEXTURE_2D, tex);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+		gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+		if (this.ext.isWebGL2) {
+			const gl2 = gl as WebGL2RenderingContext;
+			gl2.texImage2D(gl2.TEXTURE_2D, 0, gl2.R8, maskW, maskH, 0, gl2.RED, gl2.UNSIGNED_BYTE, maskData);
+		} else {
+			gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, maskW, maskH, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, maskData);
+		}
+		gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+		this.obstructionMaskTexture = tex;
+	}
+
+	/** True when any masking work (container shape or obstructions) is active. */
+	private hasMaskWork(): boolean {
+		return !!(this.config.CONTAINER_SHAPE || (this.config.OBSTRUCTIONS && this.config.OBSTRUCTIONS.length));
+	}
+
+	/**
+	 * Whether physics masking should run this frame. Container shapes are
+	 * physical walls only with a closed boundary (open boundary turns them
+	 * into a visual-only crop); obstructions are always physical, so the mask
+	 * pass runs whenever obstructions exist — even under an open boundary.
+	 */
+	private shouldMaskPhysics(): boolean {
+		const obstructionsActive = !!(this.config.OBSTRUCTIONS && this.config.OBSTRUCTIONS.length);
+		return obstructionsActive || (!!this.config.CONTAINER_SHAPE && !this.config.OPEN_BOUNDARY);
+	}
+
+	/**
 	 * Rasterize the current sticky mask to a texture. Called at
 	 * construction (if sticky is enabled) and on stickyMask change.
 	 * Reuses the same OffscreenCanvas + Path2D pattern as initMaskTexture.
@@ -1255,14 +1403,39 @@ export class FluidEngine implements FluidHandle {
 		gl.bindTexture(gl.TEXTURE_2D, this.stickyMaskTexture ?? this.stickyFallbackTexture);
 	}
 
-	/** Multiply a DoubleFBO's contents by the container shape mask in place. */
+	/** Multiply a DoubleFBO's contents by the container shape + obstruction mask in place. */
 	private applyMask(target: DoubleFBO): void {
-		const shape = this.config.CONTAINER_SHAPE;
-		if (!shape) return;
+		// Container masking is a physical wall only with a closed boundary; an
+		// open boundary makes the container a visual-only crop (handled in the
+		// display shader). Obstructions, by contrast, are ALWAYS physical — a
+		// solid obstacle blocks flow regardless of the canvas-edge behavior —
+		// so under an open boundary we mask with obstructions alone.
+		const shape = this.config.OPEN_BOUNDARY ? null : this.config.CONTAINER_SHAPE;
+		const hasObstruction = !!this.obstructionMaskTexture;
+		// Runs when a container shape OR any obstruction is active.
+		if (!shape && !hasObstruction) return;
 		const gl = this.gl;
 
 		this.applyMaskProgram.bind();
 		gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
+
+		// Obstruction uniforms apply on every path (analytical, svgPath, and
+		// the no-container case). Bound on unit 2 — free in this pass.
+		gl.uniform1f(this.applyMaskProgram.uniforms.uHasObstruction, hasObstruction ? 1.0 : 0.0);
+		if (hasObstruction) {
+			gl.activeTexture(gl.TEXTURE2);
+			gl.bindTexture(gl.TEXTURE_2D, this.obstructionMaskTexture);
+			gl.uniform1i(this.applyMaskProgram.uniforms.uObstructionMask, 2);
+		}
+
+		if (!shape) {
+			// No container: uShapeType has no matching branch so mask stays 1.0,
+			// leaving only the obstruction subtraction to act.
+			gl.uniform1i(this.applyMaskProgram.uniforms.uShapeType, -1);
+			this.blit(target.write);
+			target.swap();
+			return;
+		}
 
 		if (shape.type === 'svgPath') {
 			if (!this.maskTexture) return;
@@ -1326,6 +1499,11 @@ export class FluidEngine implements FluidHandle {
 		if (this.config.BLOOM) keywords.push('BLOOM');
 		if (this.config.SUNRAYS) keywords.push('SUNRAYS');
 		if (this.config.CONTAINER_SHAPE) keywords.push('CONTAINER_MASK');
+		// Obstructions and distortion share display texture unit 6; the
+		// obstruction mask is only bound when distortion is off, so the
+		// keyword must match that guard or the display samples a stale unit.
+		if (!this.config.DISTORTION && this.config.OBSTRUCTIONS && this.config.OBSTRUCTIONS.length)
+			keywords.push('OBSTRUCTION_MASK');
 		// DISTORTION and REVEAL are mutually exclusive display modes
 		if (this.config.DISTORTION) keywords.push('DISTORTION');
 		else if (this.config.REVEAL) keywords.push('REVEAL');
@@ -1416,10 +1594,16 @@ export class FluidEngine implements FluidHandle {
 				const spread = this.config.AUTO_SPLAT_BAND_HEIGHT;
 				let x = evenSpacing ? (i + 0.5) / count : this.rng();
 				let y = Math.max(0, Math.min(1, spawnY + (this.rng() - 0.5) * spread));
-				if (shape) {
+				if (shape || this.config.OBSTRUCTIONS) {
 					const mc = this.getMaskCtx();
+					const octx = this.getObstructionCtx();
+					// Accept only inside the container (if any) AND outside every
+					// obstruction. Same attempt cap + continue-on-exhaustion as before.
+					const rejected = (xx: number, yy: number) =>
+						(shape ? containerMask(shape, xx, yy, aspect, mc) < 0.5 : false) ||
+						obstructionMask(xx, yy, octx) >= 0.5;
 					let attempts = 10;
-					while (attempts > 0 && containerMask(shape, x, y, aspect, mc) < 0.5) {
+					while (attempts > 0 && rejected(x, y)) {
 						if (!evenSpacing) x = this.rng();
 						y = Math.max(0, Math.min(1, spawnY + (this.rng() - 0.5) * spread));
 						attempts--;
@@ -1569,11 +1753,11 @@ export class FluidEngine implements FluidHandle {
 		);
 		this.blit(this.velocity.write);
 		this.velocity.swap();
-		if (this.config.CONTAINER_SHAPE && !this.config.OPEN_BOUNDARY) this.applyMask(this.velocity);
+		if (this.shouldMaskPhysics()) this.applyMask(this.velocity);
 
 		// Re-bind advection program — applyMask switches the active GL
 		// program, and the dye advection below reuses advectionProgram.
-		if (this.config.CONTAINER_SHAPE && !this.config.OPEN_BOUNDARY) this.advectionProgram.bind();
+		if (this.shouldMaskPhysics()) this.advectionProgram.bind();
 
 		// Re-bind sticky mask for dye advection pass
 		this.bindStickyMask();
@@ -1600,7 +1784,7 @@ export class FluidEngine implements FluidHandle {
 		);
 		this.blit(this.dye.write);
 		this.dye.swap();
-		if (this.config.CONTAINER_SHAPE && !this.config.OPEN_BOUNDARY) this.applyMask(this.dye);
+		if (this.shouldMaskPhysics()) this.applyMask(this.dye);
 	}
 
 	private render(target: FBO | null): void {
@@ -1697,6 +1881,14 @@ export class FluidEngine implements FluidHandle {
 		}
 		if (this.config.CONTAINER_SHAPE) {
 			this.setContainerShapeUniforms(this.displayMaterial.uniforms, width, height, 4);
+		}
+		// Obstruction mask on unit 6. Guarded by !DISTORTION because unit 6 is
+		// distortion's velocity sampler; obstruction presets never use distortion.
+		// The OBSTRUCTION_MASK keyword gates the sampler in the shader.
+		if (!this.config.DISTORTION && this.obstructionMaskTexture) {
+			gl.activeTexture(gl.TEXTURE6);
+			gl.bindTexture(gl.TEXTURE_2D, this.obstructionMaskTexture);
+			gl.uniform1i(this.displayMaterial.uniforms.uObstructionMask, 6);
 		}
 		if (this.config.DISTORTION) {
 			gl.activeTexture(gl.TEXTURE5);
@@ -1798,6 +1990,15 @@ export class FluidEngine implements FluidHandle {
 
 		// Container shape uniforms — mask texture on unit 1 (unit 0 = sceneFBO)
 		this.setContainerShapeUniforms(this.glassProgram.uniforms, width, height, 1);
+
+		// Obstruction mask on unit 2 (free in the glass pass): cut out a clean hole.
+		const hasObstruction = !!this.obstructionMaskTexture;
+		gl.uniform1f(this.glassProgram.uniforms.uHasObstruction, hasObstruction ? 1.0 : 0.0);
+		if (hasObstruction) {
+			gl.activeTexture(gl.TEXTURE2);
+			gl.bindTexture(gl.TEXTURE_2D, this.obstructionMaskTexture);
+			gl.uniform1i(this.glassProgram.uniforms.uObstructionMask, 2);
+		}
 
 		this.blit(target);
 	}
@@ -1902,6 +2103,12 @@ export class FluidEngine implements FluidHandle {
 		return { data: this.maskData, width: this.maskW, height: this.maskH };
 	}
 
+	/** Build a MaskContext for CPU-side obstruction sampling, or undefined if N/A. */
+	private getObstructionCtx(): MaskContext | undefined {
+		if (!this.obstructionMaskData) return undefined;
+		return { data: this.obstructionMaskData, width: this.obstructionMaskW, height: this.obstructionMaskH };
+	}
+
 	private hdrMultiplier(): number {
 		const shape = this.config.CONTAINER_SHAPE;
 		if (!shape) return 10.0;
@@ -1938,10 +2145,14 @@ export class FluidEngine implements FluidHandle {
 			color.b *= hdr;
 			let x = this.rng();
 			let y = this.rng();
-			if (shape) {
+			if (shape || this.config.OBSTRUCTIONS) {
 				const mc = this.getMaskCtx();
+				const octx = this.getObstructionCtx();
+				const rejected = (xx: number, yy: number) =>
+					(shape ? containerMask(shape, xx, yy, aspect, mc) < 0.5 : false) ||
+					obstructionMask(xx, yy, octx) >= 0.5;
 				let attempts = 10;
-				while (attempts > 0 && containerMask(shape, x, y, aspect, mc) < 0.5) {
+				while (attempts > 0 && rejected(x, y)) {
 					x = this.rng();
 					y = this.rng();
 					attempts--;

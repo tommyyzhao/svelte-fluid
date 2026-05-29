@@ -35,6 +35,12 @@
 	<li><a href="#svgpath"><code>svgPath</code></a> — fluid inside an SVG path or text glyph</li>
 </ul>
 
+<p>
+	Separately, the <a href="#obstructions"><code>obstructions</code></a> prop adds interior obstacles
+	the fluid flows <em>around</em> — the inverse of a container, and orthogonal to
+	<code>containerShape</code>.
+</p>
+
 <hr />
 
 <h2 id="circle">circle</h2>
@@ -349,6 +355,132 @@
 
 <hr />
 
+<h2 id="obstructions">Interior Obstructions</h2>
+
+<p>
+	Where <code>containerShape</code> marks where the fluid is <em>contained</em>, the
+	<code>obstructions</code> prop marks where it is <em>blocked</em> — arbitrary interior
+	obstacles the fluid flows around. Think pillars in a current, letters the dye weaves
+	between, or walls forming a maze.
+</p>
+
+<p>
+	Each <code>Obstruction</code> reuses the same <code>svgPath</code> / text descriptor as the
+	<a href="#svgpath"><code>svgPath</code></a> container variant — the filled region of the path
+	(or rasterized text) marks the blocked area.
+</p>
+
+<table>
+	<thead>
+		<tr>
+			<th>Field</th>
+			<th>Type</th>
+			<th>Description</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td><code>d</code></td>
+			<td><code>string?</code></td>
+			<td>SVG path data string (path mode). Takes precedence over <code>text</code>.</td>
+		</tr>
+		<tr>
+			<td><code>text</code></td>
+			<td><code>string?</code></td>
+			<td>Text to rasterize as the obstruction (text mode). Centered in the mask.</td>
+		</tr>
+		<tr>
+			<td><code>font</code></td>
+			<td><code>string?</code></td>
+			<td>CSS font string for text mode. Default <code>'bold 72px sans-serif'</code>.</td>
+		</tr>
+		<tr>
+			<td><code>viewBox</code></td>
+			<td><code>[number, number, number, number]?</code></td>
+			<td>viewBox for path mode. Default <code>[0, 0, 100, 100]</code>.</td>
+		</tr>
+		<tr>
+			<td><code>fillRule</code></td>
+			<td><code>'nonzero' | 'evenodd'?</code></td>
+			<td>Fill rule for path mode. Default <code>'nonzero'</code>.</td>
+		</tr>
+		<tr>
+			<td><code>offset</code></td>
+			<td><code>{LB} x: number; y: number {RB}?</code></td>
+			<td>UV-space translation applied after the base fit transform (0–1, bottom-to-top). Default <code>{LB} x: 0, y: 0 {RB}</code>.</td>
+		</tr>
+		<tr>
+			<td><code>scale</code></td>
+			<td><code>number?</code></td>
+			<td>Multiplier on the base fit scale (1 = fit as-is, 2 = double, 0.5 = half). Default 1.</td>
+		</tr>
+		<tr>
+			<td><code>fit</code></td>
+			<td><code>'contain' | 'fill'?</code></td>
+			<td>
+				How the <code>viewBox</code> maps onto a non-square canvas. <code>'contain'</code>
+				(default) uniform-fits and centers — shape-accurate but letterboxes, leaving open
+				margins; best for discrete obstacles placed with <code>offset</code>/<code>scale</code>.
+				<code>'fill'</code> stretches each axis to fill the canvas at any aspect (no margins);
+				best for canvas-spanning geometry like a maze or nozzle channel where the fluid must
+				be confined edge-to-edge. Path mode only.
+			</td>
+		</tr>
+	</tbody>
+</table>
+
+<pre><code>&lt;Fluid obstructions={LB}[{LB} d: 'M40 0 L60 0 L60 100 L40 100 Z' {RB}]{RB} /&gt;</code></pre>
+
+<p>
+	You can pass several obstructions at once. Use <code>offset</code> and <code>scale</code> to
+	place and size each one independently:
+</p>
+
+<pre><code>&lt;Fluid obstructions={LB}[
+  {LB} text: 'A', offset: {LB} x: -0.2, y: 0 {RB}, scale: 0.6 {RB},
+  {LB} text: 'B', offset: {LB} x: 0.2, y: 0 {RB}, scale: 0.6 {RB}
+]{RB} /&gt;</code></pre>
+
+<h3>Union behavior</h3>
+
+<p>
+	All obstructions in the array rasterize into a <strong>single combined mask</strong> — their
+	filled regions union together (overlapping fills accumulate). Cost is constant regardless of how
+	many obstructions you pass: one extra texture sample per fragment.
+</p>
+
+<h3>Orthogonality to containerShape</h3>
+
+<p>
+	Obstructions are fully <strong>orthogonal</strong> to <code>containerShape</code>. They compose
+	with any container — or with no container at all (a full-rectangle maze). The allowed fluid
+	region is <code>container × (1 − obstruction)</code>: where a container says "fluid here" and an
+	obstruction says "blocked here", blocked wins.
+</p>
+
+<pre><code>&lt;Fluid
+  containerShape={LB}{LB} type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 {RB}{RB}
+  obstructions={LB}[{LB} text: 'X', scale: 0.5 {RB}]{RB}
+/&gt;</code></pre>
+
+<h3>Minimum feature size</h3>
+
+<p>
+	Like container shapes, obstructions use post-hoc mask penalisation: the boundary is roughly one
+	texel wide at the simulation resolution. The smallest reliably-resolved obstacle is about
+	<code>2 / simResolution</code> in UV units (~0.016 at the default <code>simResolution: 128</code>).
+	Walls thinner than that may leak — raise <code>simResolution</code> for finer mazes. The wall is
+	free-slip (it stops flow crossing it but applies no drag along it), and the pressure solver
+	produces emergent flow-around and venturi acceleration through gaps. See ADR-0034.
+</p>
+
+<p>
+	Note that obstructions are mutually exclusive with <code>distortion</code> mode (they share an
+	internal display texture unit).
+</p>
+
+<hr />
+
 <h2>Open Boundaries</h2>
 
 <p>
@@ -367,6 +499,15 @@
 	becomes a visual crop rather than a physical wall — dye and velocity are not zeroed outside the
 	shape. The <code>FluidReveal</code> component defaults to <code>openBoundary: true</code> for
 	natural scratch behavior.
+</p>
+
+<p>
+	<a href="#obstructions"><code>obstructions</code></a> behave differently from container shapes
+	here: an obstruction is a <strong>physical wall regardless of <code>openBoundary</code></strong>.
+	Velocity and dye are always zeroed inside obstacles, so fluid flows around them whether the
+	boundary is open or closed. Combining <code>openBoundary</code> with obstructions is the natural
+	setup for throughflow scenes (a nozzle, a venturi, flow past a body): fluid enters one side,
+	flows around the obstacles, and vents off the canvas edge instead of recirculating.
 </p>
 
 <hr />

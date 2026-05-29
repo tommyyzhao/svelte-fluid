@@ -97,6 +97,50 @@ export type ContainerShape =
 	| { type: 'svgPath'; d?: string; text?: string; font?: string; viewBox?: [number, number, number, number]; fillRule?: 'nonzero' | 'evenodd'; maskResolution?: number };
 
 /**
+ * An interior obstacle the fluid flows around. Reuses the same svgPath/text
+ * descriptor as {@link ContainerShape}'s `svgPath` variant, so the filled
+ * region of `d` (or rasterized `text`) marks where fluid is *blocked* rather
+ * than where it is *contained*.
+ *
+ * `offset` and `scale` place and size the obstruction in UV space (0–1,
+ * bottom-to-top): `offset` shifts it after the base fit transform, `scale`
+ * multiplies the fit scale (1 = fit as-is, 2 = double size, 0.5 = half).
+ *
+ * All obstructions in {@link FluidConfig.obstructions} are rasterized into a
+ * single combined mask (their filled regions union together). This is
+ * orthogonal to `containerShape`: the allowed fluid region is
+ * `container × (1 − obstruction)`. See ADR-0034.
+ */
+export interface Obstruction {
+	/** SVG path data string (path mode). Takes precedence over `text`. */
+	d?: string;
+	/** Text to rasterize as the obstruction (text mode). */
+	text?: string;
+	/** CSS font string for text mode. Default `'bold 72px sans-serif'`. */
+	font?: string;
+	/** viewBox for path mode. Default `[0, 0, 100, 100]`. */
+	viewBox?: [number, number, number, number];
+	/** Fill rule for path mode. Default `'nonzero'`. */
+	fillRule?: 'nonzero' | 'evenodd';
+	/** UV-space translation applied after the base fit transform. Default `{ x: 0, y: 0 }`. */
+	offset?: { x: number; y: number };
+	/** Multiplier on the base fit scale. Default 1. */
+	scale?: number;
+	/**
+	 * How the `viewBox` maps onto the (non-square) canvas. Default `'contain'`.
+	 * - `'contain'`: uniform-fit + center — shape-accurate, but letterboxes
+	 *   into the canvas's narrower axis, leaving open margins. Best for
+	 *   discrete obstacles placed via `offset`/`scale`.
+	 * - `'fill'`: stretch each axis independently to fill the whole canvas at
+	 *   any aspect (no margins). Best for canvas-spanning geometry like a maze
+	 *   or a nozzle channel, where the fluid must be confined edge-to-edge and
+	 *   injection coordinates must line up regardless of the card's shape.
+	 *   Path mode only; text mode always centers.
+	 */
+	fit?: 'contain' | 'fill';
+}
+
+/**
  * Describes a sticky mask shape. The mask is rasterized to a texture and
  * used to modulate physics shaders so dye "sticks" to the masked region.
  *
@@ -484,6 +528,18 @@ export interface FluidConfig {
 	 * Default 0.3. Bucket A.
 	 */
 	stickyAmplify?: number;
+	/**
+	 * Interior obstacles the fluid flows around. Each {@link Obstruction}
+	 * marks a *blocked* region (the inverse of `containerShape`, which marks
+	 * a *contained* region). They union into a single combined mask, so the
+	 * allowed fluid region is `container × (1 − obstruction)`.
+	 *
+	 * Orthogonal to `containerShape` — works with any container (or none,
+	 * e.g. a full-rect maze). Changing this at runtime rebuilds the combined
+	 * obstruction mask texture. Default `undefined` (no obstructions).
+	 * See ADR-0034.
+	 */
+	obstructions?: ReadonlyArray<Obstruction>;
 }
 
 /**
@@ -557,6 +613,7 @@ export interface ResolvedConfig {
 	STICKY_STRENGTH: number;
 	STICKY_PRESSURE: number;
 	STICKY_AMPLIFY: number;
+	OBSTRUCTIONS: ReadonlyArray<Obstruction> | null;
 }
 
 /** Pixel format pair returned by `getSupportedFormat`. */

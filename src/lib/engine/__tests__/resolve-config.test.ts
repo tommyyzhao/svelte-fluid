@@ -192,6 +192,36 @@ describe('resolveConfig', () => {
 			const r = resolveConfig({ containerShape: null }, base);
 			expect(r.CONTAINER_SHAPE).toBeNull();
 		});
+
+		it('obstructions default to null', () => {
+			expect(resolveConfig({}, DEFAULTS).OBSTRUCTIONS).toBeNull();
+		});
+
+		it('maps an obstructions array', () => {
+			const obstructions = [{ d: 'M0 0 L100 0 L100 100 L0 100 Z' }];
+			const r = resolveConfig({ obstructions }, DEFAULTS);
+			expect(r.OBSTRUCTIONS).toEqual(obstructions);
+		});
+
+		it('undefined obstructions preserves the prior value', () => {
+			const base = resolveConfig(
+				{ obstructions: [{ d: 'M0 0 L10 10' }] },
+				DEFAULTS
+			);
+			const r = resolveConfig({ obstructions: undefined }, base);
+			expect(r.OBSTRUCTIONS).toEqual([{ d: 'M0 0 L10 10' }]);
+		});
+
+		it('null obstructions clears the prior value', () => {
+			const base = resolveConfig(
+				{ obstructions: [{ d: 'M0 0 L10 10' }] },
+				DEFAULTS
+			);
+			// The public type only accepts an array, but resolveConfig coerces
+			// any nullish input to null. Cast through to exercise the clear path.
+			const r = resolveConfig({ obstructions: null } as never, base);
+			expect(r.OBSTRUCTIONS).toBeNull();
+		});
 	});
 
 	describe('Bucket D — construct-only fields', () => {
@@ -311,6 +341,10 @@ describe('DEFAULTS', () => {
 
 	it('has null container shape by default', () => {
 		expect(DEFAULTS.CONTAINER_SHAPE).toBeNull();
+	});
+
+	it('has null obstructions by default', () => {
+		expect(DEFAULTS.OBSTRUCTIONS).toBeNull();
 	});
 
 	it('has no automatic splats by default', () => {
