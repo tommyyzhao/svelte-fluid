@@ -1,3 +1,7 @@
+<script lang="ts">
+	import { base } from '$app/paths';
+</script>
+
 <svelte:head>
 	<title>Configuration — svelte-fluid</title>
 	<meta name="description" content="Complete prop reference for the FluidConfig interface in svelte-fluid." />
@@ -626,7 +630,7 @@
 
 <!-- ================================================================ -->
 <h2>Obstructions</h2>
-<p>Interior obstacles the fluid flows around — the inverse of <code>containerShape</code>, and orthogonal to it. See the <a href="/docs/shapes#obstructions">Container Shapes</a> page for the <code>Obstruction</code> descriptor and behavior.</p>
+<p>Interior obstacles the fluid flows around — the inverse of <code>containerShape</code>, and orthogonal to it. See the <a href="{base}/docs/shapes#obstructions">Container Shapes</a> page for the <code>Obstruction</code> descriptor and behavior.</p>
 
 <table>
 	<thead>

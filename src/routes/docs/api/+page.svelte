@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	const SCRIPT_OPEN = '<' + 'script lang="ts">';
 	const SCRIPT_CLOSE = '</' + 'script>';
 	const LB = '{';
@@ -264,7 +265,7 @@ fluidRef.handle.randomSplats(10);</code></pre>
 	Reuses the same path/text descriptor as the <code>svgPath</code> container variant — the filled
 	region marks where fluid is <em>blocked</em>. All obstructions union into one combined mask;
 	the allowed region is <code>container × (1 − obstruction)</code>. Orthogonal to
-	<code>containerShape</code>. See <a href="/docs/shapes#obstructions">Container Shapes</a> and ADR-0034.
+	<code>containerShape</code>. See <a href="{base}/docs/shapes#obstructions">Container Shapes</a> and ADR-0034.
 </p>
 
 <table>
