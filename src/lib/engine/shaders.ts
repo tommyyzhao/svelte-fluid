@@ -145,6 +145,10 @@ export const displayShaderSource = `
     uniform float uContainerOuterCornerRadius;
     uniform sampler2D uContainerMaskTexture;
 
+#ifdef OBSTRUCTION_MASK
+    uniform sampler2D uObstructionMask;
+#endif
+
 #ifdef REVEAL
     uniform float uRevealSensitivity;
     uniform float uRevealCurve;
@@ -264,6 +268,15 @@ export const displayShaderSource = `
             // SVG path: sample pre-rasterized mask texture
             cmask = texture2D(uContainerMaskTexture, vec2(vUv.x, 1.0 - vUv.y)).r;
         }
+    #endif
+
+    #ifdef OBSTRUCTION_MASK
+        // Interior obstructions cut out of the visible region too, so the
+        // display matches the masked physics. Orthogonal to CONTAINER_MASK.
+        cmask *= (1.0 - texture2D(uObstructionMask, vec2(vUv.x, 1.0 - vUv.y)).r);
+    #endif
+
+    #if defined(CONTAINER_MASK) || defined(OBSTRUCTION_MASK)
         c *= cmask;
         a *= cmask;
     #endif
@@ -360,6 +373,10 @@ export const glassShaderSource = `
     uniform float uContainerOuterCornerRadius;
     uniform sampler2D uContainerMaskTexture;
 
+    // Interior obstructions (cut out as a clean hole in the glass).
+    uniform sampler2D uObstructionMask;
+    uniform float uHasObstruction;
+
     // Rounded box SDF: negative inside, positive outside.
     // Aspect-corrected so corners are circular in physical space.
     float roundedBoxSDF(vec2 p, vec2 halfSize, float cr, float aspect) {
@@ -413,6 +430,17 @@ export const glassShaderSource = `
 
     void main () {
         vec4 scene = texture2D(uScene, vUv);
+
+        // Obstructed pixels read as a clean cutout: transparent (transparent
+        // mode) or the untouched scene color. Glass rim around obstacles is
+        // future work — see ADR-0034.
+        if (uHasObstruction > 0.5) {
+            float obstruct = texture2D(uObstructionMask, vec2(vUv.x, 1.0 - vUv.y)).r;
+            if (obstruct > 0.5) {
+                gl_FragColor = uTransparent > 0.5 ? vec4(0.0) : scene;
+                return;
+            }
+        }
 
         vec3 lightDir = normalize(vec3(2.0 * (uLightScreenPos.x - 0.5), 2.0 * (uLightScreenPos.y - 0.5), 0.6));
         vec3 viewDir = vec3(0.0, 0.0, 1.0);
@@ -917,9 +945,13 @@ export const applyMaskShader = `
     uniform float uOuterHalfH;
     uniform float uOuterCornerRadius;
     uniform sampler2D uMaskTexture;
+    uniform sampler2D uObstructionMask;
+    uniform float uHasObstruction;
 
     void main () {
         vec4 val = texture2D(uTarget, vUv);
+        // Default mask 1.0; uShapeType with no matching branch (e.g. -1, used
+        // when obstructions exist but there is no container) leaves it at 1.0.
         float mask = 1.0;
 
         if (uShapeType == 0) {
@@ -969,6 +1001,13 @@ export const applyMaskShader = `
         } else if (uShapeType == 4) {
             // SVG path: sample pre-rasterized mask texture
             mask = texture2D(uMaskTexture, vec2(vUv.x, 1.0 - vUv.y)).r;
+        }
+
+        // Interior obstructions subtract from the allowed region regardless of
+        // container shape (orthogonal): allowed = container * (1 - obstruction).
+        if (uHasObstruction > 0.5) {
+            float obstruct = texture2D(uObstructionMask, vec2(vUv.x, 1.0 - vUv.y)).r;
+            mask *= (1.0 - obstruct);
         }
 
         gl_FragColor = val * mask;

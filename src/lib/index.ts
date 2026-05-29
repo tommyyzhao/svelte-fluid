@@ -48,3 +48,6 @@ export { default as FrameFluid, type FrameFluidProps } from './presets/FrameFlui
 export { default as AnnularFluid, type AnnularFluidProps } from './presets/AnnularFluid.svelte';
 export { default as SvgPathFluid, type SvgPathFluidProps } from './presets/SvgPathFluid.svelte';
 export { default as ToroidalTempest, type ToroidalTempestProps } from './presets/ToroidalTempest.svelte';
+export { default as RocketEngine, type RocketEngineProps } from './presets/RocketEngine.svelte';
+export { default as Venturi, type VenturiProps } from './presets/Venturi.svelte';
+export { default as RiverDelta, type RiverDeltaProps } from './presets/RiverDelta.svelte';

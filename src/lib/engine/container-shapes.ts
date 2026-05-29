@@ -6,7 +6,7 @@
  * and the display shader's CONTAINER_MASK block, kept in sync by tests.
  */
 
-import type { ContainerShape, StickyMask } from './types.js';
+import type { ContainerShape, Obstruction, StickyMask } from './types.js';
 
 /**
  * CPU-side mask data for svgPath shapes, used for rejection sampling
@@ -245,6 +245,58 @@ export function stickyMaskEqual(
 		(a.blur ?? 0) === (b.blur ?? 0) &&
 		(a.padding ?? 0.9) === (b.padding ?? 0.9) &&
 		viewBoxEqual(a.viewBox, b.viewBox);
+}
+
+/**
+ * Deep equality for obstruction arrays. Two arrays are equal when they are
+ * the same reference, both null/undefined/empty, or have identical length
+ * with element-wise equal descriptors. Defaults match {@link Obstruction}:
+ * `font` → `''`, `fillRule` → `'nonzero'`, `scale` → 1, `offset` → `{0,0}`,
+ * `fit` → `'contain'`.
+ */
+export function obstructionsEqual(
+	a: ReadonlyArray<Obstruction> | null | undefined,
+	b: ReadonlyArray<Obstruction> | null | undefined
+): boolean {
+	if (a === b) return true;
+	// Treat null/undefined/empty as the same "no obstructions" state.
+	const al = a?.length ?? 0;
+	const bl = b?.length ?? 0;
+	if (al === 0 && bl === 0) return true;
+	if (al !== bl) return false;
+	for (let i = 0; i < al; i++) {
+		const x = a![i];
+		const y = b![i];
+		if (
+			x.d !== y.d ||
+			x.text !== y.text ||
+			(x.font ?? '') !== (y.font ?? '') ||
+			(x.fillRule ?? 'nonzero') !== (y.fillRule ?? 'nonzero') ||
+			(x.scale ?? 1) !== (y.scale ?? 1) ||
+			(x.fit ?? 'contain') !== (y.fit ?? 'contain') ||
+			(x.offset?.x ?? 0) !== (y.offset?.x ?? 0) ||
+			(x.offset?.y ?? 0) !== (y.offset?.y ?? 0) ||
+			!viewBoxEqual(x.viewBox, y.viewBox)
+		) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/**
+ * Sample the combined obstruction mask at a UV coordinate. Returns 0–1 where
+ * 1 = fully blocked (fluid rejected), 0 = unobstructed. Mirrors svgPathMask's
+ * texel logic (Y-flip, floor, edge clamp). Returns 0 when no maskCtx exists.
+ */
+export function obstructionMask(uvX: number, uvY: number, ctx?: MaskContext): number {
+	if (!ctx) return 0;
+	const { data, width, height } = ctx;
+	const px = Math.floor(uvX * (width - 1));
+	const py = Math.floor((1 - uvY) * (height - 1));
+	const cx = Math.max(0, Math.min(width - 1, px));
+	const cy = Math.max(0, Math.min(height - 1, py));
+	return data[cy * width + cx] / 255;
 }
 
 /** Compare two optional viewBox tuples. Defaults to [0,0,100,100]. */

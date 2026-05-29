@@ -148,3 +148,27 @@ they should.
 **Why this matters:** When you have an effect that consolidates many
 reactive inputs into one downstream call, push the diffing into the
 downstream so the upstream stays simple.
+
+## A new `FluidConfig` field silently does nothing (not destructured in Fluid.svelte)
+
+**Symptom:** You add a field to `FluidConfig` + `ResolvedConfig`, wire the
+engine + `resolveConfig` + tests, and the unit tests pass — but at runtime
+the feature does nothing. Passing the prop to `<Fluid>` type-checks fine.
+(Hit for real with `obstructions`, and `revealAccentColor` / `revealFringeColor`
+were latently broken the same way.)
+
+**Cause:** `FluidProps extends FluidConfig`, so every `FluidConfig` field is a
+valid `<Fluid>` prop *type*. But `Fluid.svelte` destructures props explicitly
+and spreads the leftover `...rest` onto the `<canvas>` element. A field that is
+not in the destructure (and `buildConfig()`) lands in `...rest`, becomes an
+ignored DOM attribute, and never reaches the engine. No type error, no test
+failure — engine unit tests don't exercise the component→engine path.
+
+**Fix:** Add the field to BOTH the `$props()` destructure and the
+`buildConfig()` return in `Fluid.svelte` (CONTRIBUTING step 6). A source-level
+guard, `src/lib/engine/__tests__/fluid-props-forwarding.test.ts`, now parses
+both files and fails if any `FluidConfig` field is missing from `buildConfig()`.
+
+**Why this matters:** "Type-checks + unit tests green" is NOT proof a prop
+works end-to-end when the prop type is structurally shared with the component's
+attribute spread. Verify new props in the browser, or rely on the guard test.
