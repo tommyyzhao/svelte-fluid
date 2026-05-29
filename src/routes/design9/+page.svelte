@@ -13,7 +13,8 @@
 		LavaLamp,
 		Plasma,
 		Aurora,
-		ToroidalTempest
+		ToroidalTempest,
+		type RGB
 	} from '$lib/index.js';
 	import { base } from '$app/paths';
 
@@ -77,7 +78,6 @@
 
 	const stickyAutoAnimate = $derived(!reducedMotion);
 
-	type RGB = { r: number; g: number; b: number };
 
 	const PLAYGROUND_DEFAULTS = {
 		curl: 30,
@@ -293,7 +293,7 @@
 				{@const C = p.component}
 				<article class="cell preset">
 					<div class="preset-canvas">
-						<C seed={p.seed} lazy aria-label="{p.name} preset preview" />
+						<C seed={p.seed} lazy aria-label="{p.name} preset preview" backColor={{ r: 8, g: 8, b: 10 }} />
 					</div>
 					<div class="preset-meta">
 						<span class="preset-name">{p.name}</span>
@@ -313,7 +313,7 @@
 			</div>
 			<div class="bento shapes-bento">
 				<article class="cell shape-cell">
-					<CircularFluid seed={601} lazy splatOnHover aria-label="Circle container demo" />
+					<CircularFluid seed={601} lazy splatOnHover aria-label="Circle container demo" backColor={{ r: 8, g: 8, b: 10 }} />
 					<div class="cell-label">CIRCLE</div>
 				</article>
 				<article class="cell shape-cell">
@@ -330,11 +330,11 @@
 					<div class="cell-label">ROUNDED RECT</div>
 				</article>
 				<article class="cell shape-cell">
-					<FrameFluid seed={603} lazy splatOnHover aria-label="Frame container demo" />
+					<FrameFluid seed={603} lazy splatOnHover aria-label="Frame container demo" backColor={{ r: 8, g: 8, b: 10 }} />
 					<div class="cell-label">FRAME</div>
 				</article>
 				<article class="cell shape-cell">
-					<AnnularFluid seed={604} lazy splatOnHover aria-label="Annulus container demo" />
+					<AnnularFluid seed={604} lazy splatOnHover aria-label="Annulus container demo" backColor={{ r: 8, g: 8, b: 10 }} />
 					<div class="cell-label">ANNULUS</div>
 				</article>
 				<article class="cell shape-cell">
@@ -625,7 +625,7 @@
 						velocityDissipation={0.95}
 						pressureIterations={10}
 					>
-						<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:1.2rem;color:#fff8e7;">scratch</div>
+						<div class="reveal-content">scratch</div>
 					</FluidReveal>
 					<div class="cell-label">SCRATCH TO REVEAL</div>
 				</article>
@@ -641,7 +641,7 @@
 						fringeColor={{ r: 0.15, g: 0.35, b: 0.55 }}
 						accentColor={{ r: 0, g: 0.78, b: 1 }}
 					>
-						<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:1.2rem;color:#fff8e7;">auto</div>
+						<div class="reveal-content">auto</div>
 					</FluidReveal>
 					<div class="cell-label">AUTO REVEAL</div>
 				</article>
@@ -1399,6 +1399,15 @@
 		position: absolute;
 		inset: 0;
 		border-radius: inherit;
+	}
+
+	.reveal-content {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		font-size: 1.2rem;
+		color: #fff8e7;
 	}
 
 	/* distortion */

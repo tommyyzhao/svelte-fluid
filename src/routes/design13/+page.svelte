@@ -15,7 +15,8 @@
 		InkInWater,
 		LavaLamp,
 		Plasma,
-		ToroidalTempest
+		ToroidalTempest,
+		type RGB
 	} from '$lib/index.js';
 
 	type PM = 'bun' | 'npm' | 'pnpm' | 'yarn';
@@ -157,7 +158,6 @@
 	const titleAutoSplatRate = $derived(reducedMotion ? 0 : 0.5);
 	const stickyAutoAnimate = $derived(!reducedMotion);
 
-	type RGB = { r: number; g: number; b: number };
 
 	const PLAYGROUND_DEFAULTS = {
 		curl: 30,
@@ -397,7 +397,7 @@
 
 	<section class="featured bleed reveal" bind:this={revealEls[1]}>
 		<div class="bleed-canvas">
-			<Plasma seed={303} splatOnHover lazy aria-label="Plasma preset" />
+			<Plasma seed={303} splatOnHover lazy aria-label="Plasma preset" backColor={{ r: 10, g: 10, b: 10 }} />
 		</div>
 		<aside class="glass-caption">
 			<div class="eyebrow muted">§ 02 · Preset · PLASMA</div>
@@ -429,7 +429,7 @@
 				<article class="ed-cell">
 					<div class="ed-label">{p.name}</div>
 					<div class="ed-canvas">
-						<C seed={p.seed} splatOnHover lazy aria-label="{p.name} preset" />
+						<C seed={p.seed} splatOnHover lazy aria-label="{p.name} preset" backColor={{ r: 10, g: 10, b: 10 }} />
 					</div>
 					<a
 						class="ed-source"
@@ -456,7 +456,7 @@
 			<div class="shape-grid">
 				<figure class="shape-cell">
 					<div class="shape-canvas">
-						<CircularFluid seed={601} lazy aria-label="Circle container" />
+						<CircularFluid seed={601} lazy aria-label="Circle container" backColor={{ r: 10, g: 10, b: 10 }} />
 					</div>
 					<figcaption>CIRCLE</figcaption>
 				</figure>
@@ -485,13 +485,13 @@
 				</figure>
 				<figure class="shape-cell">
 					<div class="shape-canvas">
-						<FrameFluid seed={603} lazy aria-label="Frame container" />
+						<FrameFluid seed={603} lazy aria-label="Frame container" backColor={{ r: 10, g: 10, b: 10 }} />
 					</div>
 					<figcaption>FRAME</figcaption>
 				</figure>
 				<figure class="shape-cell">
 					<div class="shape-canvas">
-						<AnnularFluid seed={604} lazy aria-label="Annulus container" />
+						<AnnularFluid seed={604} lazy aria-label="Annulus container" backColor={{ r: 10, g: 10, b: 10 }} />
 					</div>
 					<figcaption>ANNULUS</figcaption>
 				</figure>

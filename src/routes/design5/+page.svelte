@@ -13,7 +13,8 @@
 		InkInWater,
 		FrozenSwirl,
 		Aurora,
-		ToroidalTempest
+		ToroidalTempest,
+		type RGB
 	} from '$lib/index.js';
 
 	let copied = $state(false);
@@ -57,7 +58,6 @@
 
 	const stickyAutoAnimate = $derived(!reducedMotion);
 
-	type RGB = { r: number; g: number; b: number };
 
 	const paperColor: RGB = { r: 251, g: 245, b: 238 };
 
@@ -694,7 +694,7 @@
 							velocityDissipation={0.95}
 							pressureIterations={10}
 						>
-							<div style="display:flex;align-items:center;justify-content:center;height:100%;background:linear-gradient(135deg,#e8d5f5,#d5e8f5);font-size:1.5rem;font-family:'Instrument Serif',serif;font-style:italic;">Revealed</div>
+							<div class="reveal-content reveal-content-cool">Revealed</div>
 						</FluidReveal>
 					</div>
 					<figcaption>Scratch to Reveal</figcaption>
@@ -712,7 +712,7 @@
 							fringeColor={{ r: 0.7, g: 0.8, b: 0.95 }}
 							accentColor={{ r: 0.5, g: 0.75, b: 1 }}
 						>
-							<div style="display:flex;align-items:center;justify-content:center;height:100%;background:linear-gradient(135deg,#d5f5e5,#f5f0d5);font-size:1.5rem;font-family:'Instrument Serif',serif;font-style:italic;">Auto Reveal</div>
+							<div class="reveal-content reveal-content-warm">Auto Reveal</div>
 						</FluidReveal>
 					</div>
 					<figcaption>Auto-Reveal</figcaption>
@@ -1569,6 +1569,24 @@
 		border-radius: 24px;
 		overflow: hidden;
 		box-shadow: 0 2px 12px rgba(160, 100, 130, 0.1);
+	}
+
+	.reveal-content {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		font-size: 1.5rem;
+		font-family: 'Instrument Serif', serif;
+		font-style: italic;
+	}
+
+	.reveal-content-cool {
+		background: linear-gradient(135deg, #e8d5f5, #d5e8f5);
+	}
+
+	.reveal-content-warm {
+		background: linear-gradient(135deg, #d5f5e5, #f5f0d5);
 	}
 
 	.reveal-cell figcaption {

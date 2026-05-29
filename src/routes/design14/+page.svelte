@@ -382,7 +382,7 @@
 
 	<section class="bleed" bind:this={revealEls[1]}>
 		<div class="bleed-canvas">
-			<Plasma seed={303} lazy aria-label="Plasma preset" />
+			<Plasma seed={303} lazy aria-label="Plasma preset" backColor={{ r: 10, g: 10, b: 10 }} />
 		</div>
 		<aside class="glass-caption">
 			<div class="eyebrow muted">§ 03 — Preset · electric</div>
@@ -407,7 +407,7 @@
 				<article class="preset-cell">
 					<div class="cell-label">§ {p.idx} / {p.name.toUpperCase()}</div>
 					<div class="cell-canvas">
-						<C seed={p.seed} lazy aria-label="{p.name} preset" />
+						<C seed={p.seed} lazy aria-label="{p.name} preset" backColor={{ r: 10, g: 10, b: 10 }} />
 					</div>
 					<div class="cell-hover">
 						<code class="cell-snippet">&lt;{p.name} /&gt;</code>
@@ -426,7 +426,7 @@
 			<div class="shape-grid">
 				<div class="shape-cell">
 					<div class="shape-stage">
-						<CircularFluid seed={601} lazy aria-label="Circle container" />
+						<CircularFluid seed={601} lazy aria-label="Circle container" backColor={{ r: 10, g: 10, b: 10 }} />
 					</div>
 					<div class="shape-caption">Circle</div>
 				</div>
@@ -451,13 +451,13 @@
 				</div>
 				<div class="shape-cell">
 					<div class="shape-stage">
-						<FrameFluid seed={603} lazy aria-label="Frame container" />
+						<FrameFluid seed={603} lazy aria-label="Frame container" backColor={{ r: 10, g: 10, b: 10 }} />
 					</div>
 					<div class="shape-caption">Frame</div>
 				</div>
 				<div class="shape-cell">
 					<div class="shape-stage">
-						<AnnularFluid seed={604} lazy aria-label="Annulus container" />
+						<AnnularFluid seed={604} lazy aria-label="Annulus container" backColor={{ r: 10, g: 10, b: 10 }} />
 					</div>
 					<div class="shape-caption">Annulus</div>
 				</div>

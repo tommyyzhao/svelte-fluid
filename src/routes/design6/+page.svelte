@@ -13,7 +13,8 @@
 		InkInWater,
 		FrozenSwirl,
 		Aurora,
-		ToroidalTempest
+		ToroidalTempest,
+		type RGB
 	} from '$lib/index.js';
 
 	type PkgManager = 'bun' | 'npm' | 'pnpm' | 'yarn';
@@ -116,7 +117,6 @@
 
 	const stickyAutoAnimate = $derived(!reducedMotion);
 
-	type RGB = { r: number; g: number; b: number };
 
 	const PLAYGROUND_DEFAULTS = {
 		curl: 30,
@@ -364,7 +364,7 @@
 							<span class="pane-title">╭─ CircularFluid ────╮</span>
 						</div>
 						<div class="shape-canvas">
-							<CircularFluid seed={601} lazy splatOnHover aria-label="Circle container shape" />
+							<CircularFluid seed={601} lazy splatOnHover aria-label="Circle container shape" backColor={{ r: 10, g: 10, b: 10 }} />
 						</div>
 						<div class="pane-foot"><span class="dim">// type: 'circle'</span></div>
 					</article>
@@ -375,7 +375,7 @@
 							<span class="pane-title">╭─ FrameFluid ───────╮</span>
 						</div>
 						<div class="shape-canvas">
-							<FrameFluid seed={603} lazy splatOnHover aria-label="Frame container shape" />
+							<FrameFluid seed={603} lazy splatOnHover aria-label="Frame container shape" backColor={{ r: 10, g: 10, b: 10 }} />
 						</div>
 						<div class="pane-foot"><span class="dim">// type: 'frame'</span></div>
 					</article>
@@ -386,7 +386,7 @@
 							<span class="pane-title">╭─ AnnularFluid ─────╮</span>
 						</div>
 						<div class="shape-canvas">
-							<AnnularFluid seed={604} lazy splatOnHover aria-label="Annulus container shape" />
+							<AnnularFluid seed={604} lazy splatOnHover aria-label="Annulus container shape" backColor={{ r: 10, g: 10, b: 10 }} />
 						</div>
 						<div class="pane-foot"><span class="dim">// type: 'annulus'</span></div>
 					</article>
@@ -797,7 +797,7 @@
 						</div>
 						<div class="reveal-canvas">
 							<FluidReveal lazy velocityDissipation={0.95} pressureIterations={10}>
-								<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:monospace;font-size:1.2rem;color:#a0ffaa;">$ revealed</div>
+								<div class="reveal-content">$ revealed</div>
 							</FluidReveal>
 						</div>
 						<div class="pane-foot"><span class="dim">// scratch to reveal</span></div>
@@ -820,7 +820,7 @@
 								fringeColor={{ r: 0.15, g: 0.35, b: 0.55 }}
 								accentColor={{ r: 0, g: 0.78, b: 1 }}
 							>
-								<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:monospace;font-size:1.2rem;color:#a0ffaa;">$ auto_reveal</div>
+								<div class="reveal-content">$ auto_reveal</div>
 							</FluidReveal>
 						</div>
 						<div class="pane-foot"><span class="dim">// autoReveal · fadeBack=false</span></div>
@@ -1590,6 +1590,16 @@
 		height: 280px;
 		background: #0d1117;
 		position: relative;
+	}
+
+	.reveal-content {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		font-family: monospace;
+		font-size: 1.2rem;
+		color: #a0ffaa;
 	}
 
 	.distort-grid {

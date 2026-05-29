@@ -352,7 +352,7 @@
 		<div class="gutter">§ 03</div>
 		<div class="featured-grid">
 			<div class="featured-stage">
-				<Plasma seed={7} aria-label="Plasma featured" />
+				<Plasma seed={7} aria-label="Plasma featured" backColor={{ r: 10, g: 10, b: 10 }} />
 			</div>
 			<div class="featured-copy">
 				<div class="eyebrow">§ 03 / FEATURED</div>
@@ -380,7 +380,7 @@
 				<article class="preset-cell">
 					<div class="cell-label">§ 04.{p.idx} / {p.name.toUpperCase()}</div>
 					<div class="cell-canvas">
-						<C seed={p.seed} lazy aria-label="{p.name} preset" />
+						<C seed={p.seed} lazy aria-label="{p.name} preset" backColor={{ r: 10, g: 10, b: 10 }} />
 					</div>
 					<div class="cell-hover">
 						<code class="cell-snippet">&lt;{p.name} /&gt;</code>
@@ -403,7 +403,7 @@
 			<article class="shape-cell">
 				<div class="cell-label">§ 05.01 / CIRCLE</div>
 				<div class="cell-canvas square">
-					<CircularFluid seed={601} lazy aria-label="Circle container" />
+					<CircularFluid seed={601} lazy aria-label="Circle container" backColor={{ r: 10, g: 10, b: 10 }} />
 				</div>
 				<div class="cell-caption">Circle</div>
 			</article>
@@ -430,14 +430,14 @@
 			<article class="shape-cell">
 				<div class="cell-label">§ 05.03 / FRAME</div>
 				<div class="cell-canvas square">
-					<FrameFluid seed={603} lazy aria-label="Frame container" />
+					<FrameFluid seed={603} lazy aria-label="Frame container" backColor={{ r: 10, g: 10, b: 10 }} />
 				</div>
 				<div class="cell-caption">Frame</div>
 			</article>
 			<article class="shape-cell">
 				<div class="cell-label">§ 05.04 / ANNULUS</div>
 				<div class="cell-canvas square">
-					<AnnularFluid seed={604} lazy aria-label="Annulus container" />
+					<AnnularFluid seed={604} lazy aria-label="Annulus container" backColor={{ r: 10, g: 10, b: 10 }} />
 				</div>
 				<div class="cell-caption">Annulus</div>
 			</article>

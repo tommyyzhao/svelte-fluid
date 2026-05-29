@@ -12,7 +12,8 @@
 		InkInWater,
 		LavaLamp,
 		Plasma,
-		ToroidalTempest
+		ToroidalTempest,
+		type RGB
 	} from '$lib/index.js';
 	import { base } from '$app/paths';
 
@@ -56,6 +57,17 @@
 		mq.addEventListener('change', onChange);
 		return () => mq.removeEventListener('change', onChange);
 	});
+
+	let darkMode = $state(false);
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+		const mq = window.matchMedia('(prefers-color-scheme: dark)');
+		darkMode = mq.matches;
+		const onChange = (e: MediaQueryListEvent) => (darkMode = e.matches);
+		mq.addEventListener('change', onChange);
+		return () => mq.removeEventListener('change', onChange);
+	});
+	const themeColor = $derived(darkMode ? { r: 10, g: 10, b: 10 } : { r: 250, g: 250, b: 250 });
 
 	const stickyAutoAnimate = $derived(!reducedMotion);
 
@@ -147,7 +159,6 @@
 
 	const lightning = 'M 55 5 L 25 55 L 45 55 L 35 95 L 75 40 L 55 40 L 70 5 Z';
 
-	type RGB = { r: number; g: number; b: number };
 
 	const PLAYGROUND_DEFAULTS = {
 		curl: 30,
@@ -320,7 +331,7 @@
 
 		<section class="hero-demo-wrap">
 			<div class="hero-demo">
-				<Aurora seed={101} lazy={false} aria-label="Aurora preset demo" />
+				<Aurora seed={101} lazy={false} backColor={themeColor} aria-label="Aurora preset demo" />
 				<div class="hero-demo-tag">
 					<span class="dot" aria-hidden="true"></span>
 					Aurora — live
@@ -401,7 +412,7 @@
 				{#each presets as p (p.name)}
 					<article class="preset-card">
 						<div class="preset-canvas">
-							<p.component seed={p.seed} lazy aria-label="{p.name} preset preview" />
+							<p.component seed={p.seed} lazy backColor={themeColor} aria-label="{p.name} preset preview" />
 						</div>
 						<div class="preset-meta">
 							<div class="preset-head">
@@ -432,7 +443,7 @@
 					<pre class="code-body"><code>{usage}</code></pre>
 				</div>
 				<div class="live-card">
-					<Fluid seed={7} splatOnHover aria-label="Interactive Fluid demo" />
+					<Fluid seed={7} splatOnHover backColor={themeColor} aria-label="Interactive Fluid demo" />
 					<div class="live-tag">Interactive — hover to splat</div>
 				</div>
 			</div>
@@ -449,7 +460,7 @@
 			<div class="shapes-grid">
 				<figure class="shape-card">
 					<div class="shape-canvas">
-						<CircularFluid seed={601} lazy splatOnHover aria-label="Circle container demo" />
+						<CircularFluid seed={601} lazy splatOnHover backColor={themeColor} aria-label="Circle container demo" />
 					</div>
 					<figcaption class="shape-label">Circle</figcaption>
 				</figure>
@@ -470,6 +481,7 @@
 								cornerRadius: 0.08
 							}}
 							lazy
+							backColor={themeColor}
 							aria-label="Rounded rect container demo"
 						/>
 					</div>
@@ -477,13 +489,13 @@
 				</figure>
 				<figure class="shape-card">
 					<div class="shape-canvas">
-						<FrameFluid seed={603} lazy splatOnHover aria-label="Frame container demo" />
+						<FrameFluid seed={603} lazy splatOnHover backColor={themeColor} aria-label="Frame container demo" />
 					</div>
 					<figcaption class="shape-label">Frame</figcaption>
 				</figure>
 				<figure class="shape-card">
 					<div class="shape-canvas">
-						<AnnularFluid seed={604} lazy splatOnHover aria-label="Annulus container demo" />
+						<AnnularFluid seed={604} lazy splatOnHover backColor={themeColor} aria-label="Annulus container demo" />
 					</div>
 					<figcaption class="shape-label">Annulus</figcaption>
 				</figure>
@@ -497,6 +509,7 @@
 							splatOnHover
 							containerShape={{ type: 'svgPath', d: lightning, viewBox: [0, 0, 100, 100] }}
 							lazy
+							backColor={themeColor}
 							aria-label="SVG path lightning container demo"
 						/>
 					</div>
@@ -512,6 +525,7 @@
 							splatOnHover
 							containerShape={{ type: 'svgPath', text: '&', font: '900 280px Georgia, serif' }}
 							lazy
+							backColor={themeColor}
 							aria-label="Text glyph container demo"
 						/>
 					</div>
@@ -536,6 +550,7 @@
 							initialSplatCount={12}
 							splatOnHover
 							lazy
+							backColor={themeColor}
 							aria-label="Default fluid configuration"
 						/>
 					</div>
@@ -552,6 +567,7 @@
 							initialSplatCount={10}
 							splatOnHover
 							lazy
+							backColor={themeColor}
 							aria-label="Flat fluid with low curl"
 						/>
 					</div>
@@ -568,6 +584,7 @@
 							initialSplatCount={8}
 							splatOnHover
 							lazy
+							backColor={themeColor}
 							aria-label="Fluid with large bold splats"
 						/>
 					</div>
@@ -584,6 +601,7 @@
 							initialSplatCount={14}
 							splatOnHover
 							lazy
+							backColor={themeColor}
 							aria-label="Slow-motion transparent fluid"
 						/>
 					</div>
@@ -770,6 +788,7 @@
 							densityDissipation={0.92}
 							splatRadius={0.18}
 							lazy
+							backColor={themeColor}
 						/>
 					</div>
 					<figcaption class="sticky-label">Geist · 900</figcaption>
@@ -788,6 +807,7 @@
 							densityDissipation={0.92}
 							splatRadius={0.18}
 							lazy
+							backColor={themeColor}
 						/>
 					</div>
 					<figcaption class="sticky-label">Georgia · ∞</figcaption>
@@ -807,7 +827,7 @@
 				<figure class="reveal-card">
 					<div class="reveal-canvas" aria-label="Scratch-to-reveal demo">
 						<FluidReveal lazy velocityDissipation={0.95} pressureIterations={10}>
-							<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:1.4rem;">Revealed</div>
+							<div class="reveal-content">Revealed</div>
 						</FluidReveal>
 					</div>
 					<figcaption class="reveal-label">Scratch to Reveal</figcaption>
@@ -825,7 +845,7 @@
 							fringeColor={{ r: 0.15, g: 0.35, b: 0.55 }}
 							accentColor={{ r: 0, g: 0.78, b: 1 }}
 						>
-							<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:1.4rem;">Auto Reveal</div>
+							<div class="reveal-content">Auto Reveal</div>
 						</FluidReveal>
 					</div>
 					<figcaption class="reveal-label">Auto Reveal</figcaption>
@@ -1101,6 +1121,7 @@
 		--accent: #0a0a0a;
 		--accent-fg: #ffffff;
 		--ring: rgba(10, 10, 10, 0.08);
+		--canvas-bg: #fafafa;
 		font-family: 'Geist', 'Inter', system-ui, -apple-system, sans-serif;
 		font-feature-settings: 'cv11', 'ss01';
 		background: var(--bg);
@@ -1122,6 +1143,7 @@
 			--accent: #fafafa;
 			--accent-fg: #0a0a0a;
 			--ring: rgba(250, 250, 250, 0.08);
+			--canvas-bg: #0a0a0a;
 		}
 	}
 
@@ -1574,7 +1596,7 @@
 		position: relative;
 		overflow: hidden;
 		border-bottom: 1px solid var(--border);
-		background: #000;
+		background: var(--canvas-bg);
 	}
 
 	.preset-meta {
@@ -1696,7 +1718,7 @@
 		border: 1px solid var(--border);
 		border-radius: 12px;
 		overflow: hidden;
-		background: #000;
+		background: var(--canvas-bg);
 	}
 
 	.live-tag {
@@ -1745,7 +1767,7 @@
 		height: 220px;
 		position: relative;
 		overflow: hidden;
-		background: #000;
+		background: var(--canvas-bg);
 		border-bottom: 1px solid var(--border);
 	}
 
@@ -1789,7 +1811,7 @@
 		height: 200px;
 		position: relative;
 		overflow: hidden;
-		background: #000;
+		background: var(--canvas-bg);
 		border-bottom: 1px solid var(--border);
 	}
 
@@ -1846,7 +1868,7 @@
 		height: 220px;
 		position: relative;
 		overflow: hidden;
-		background: #000;
+		background: var(--canvas-bg);
 		border-bottom: 1px solid var(--border);
 	}
 
@@ -1890,7 +1912,7 @@
 		height: 220px;
 		position: relative;
 		overflow: hidden;
-		background: #000;
+		background: var(--canvas-bg);
 		border-bottom: 1px solid var(--border);
 	}
 
@@ -1939,6 +1961,14 @@
 		color: var(--fg);
 	}
 
+	.reveal-content {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		font-size: 1.4rem;
+	}
+
 	.reveal-label {
 		padding: 10px 14px;
 		font-size: 0.8125rem;
@@ -1980,7 +2010,7 @@
 		position: relative;
 		overflow: hidden;
 		border-bottom: 1px solid var(--border);
-		background: #000;
+		background: var(--canvas-bg);
 	}
 
 	.distort-label {
@@ -2045,7 +2075,7 @@
 		border: 1px solid var(--border);
 		border-radius: 12px;
 		overflow: hidden;
-		background: #000;
+		background: var(--canvas-bg);
 	}
 
 	.playground-panel {

@@ -13,7 +13,8 @@
 		InkInWater,
 		FrozenSwirl,
 		Aurora,
-		ToroidalTempest
+		ToroidalTempest,
+		type RGB
 	} from '$lib/index.js';
 
 	type PM = 'bun' | 'npm' | 'pnpm' | 'yarn';
@@ -101,7 +102,6 @@
 
 	const stickyAutoAnimate = $derived(!reducedMotion);
 
-	type RGB = { r: number; g: number; b: number };
 
 	const PLAYGROUND_DEFAULTS = {
 		curl: 30,
@@ -335,9 +335,9 @@
 					<div class="cell-label">§ 05.{p.idx} / {p.name.toUpperCase()}</div>
 					<div class="cell-canvas">
 						{#if p.lazy}
-							<C seed={p.seed} lazy aria-label="{p.name} preset" />
+							<C seed={p.seed} lazy aria-label="{p.name} preset" backColor={{ r: 10, g: 10, b: 10 }} />
 						{:else}
-							<C seed={p.seed} aria-label="{p.name} preset" />
+							<C seed={p.seed} aria-label="{p.name} preset" backColor={{ r: 10, g: 10, b: 10 }} />
 						{/if}
 					</div>
 					<a class="cell-link" href="{base}/docs/presets">→</a>
@@ -372,7 +372,7 @@
 			<article class="shape-cell">
 				<div class="cell-label">§ 07.01 Circle</div>
 				<div class="cell-canvas">
-					<CircularFluid seed={601} lazy splatOnHover aria-label="Circle container demo" />
+					<CircularFluid seed={601} lazy splatOnHover aria-label="Circle container demo" backColor={{ r: 10, g: 10, b: 10 }} />
 				</div>
 			</article>
 			<article class="shape-cell">
@@ -393,13 +393,13 @@
 			<article class="shape-cell">
 				<div class="cell-label">§ 07.03 Frame</div>
 				<div class="cell-canvas">
-					<FrameFluid seed={603} lazy splatOnHover aria-label="Frame container demo" />
+					<FrameFluid seed={603} lazy splatOnHover aria-label="Frame container demo" backColor={{ r: 10, g: 10, b: 10 }} />
 				</div>
 			</article>
 			<article class="shape-cell">
 				<div class="cell-label">§ 07.04 Annulus</div>
 				<div class="cell-canvas">
-					<AnnularFluid seed={604} lazy splatOnHover aria-label="Annulus container demo" />
+					<AnnularFluid seed={604} lazy splatOnHover aria-label="Annulus container demo" backColor={{ r: 10, g: 10, b: 10 }} />
 				</div>
 			</article>
 			<article class="shape-cell">
@@ -711,7 +711,7 @@
 				<div class="cell-label">§ 11.01 Scratch to Reveal</div>
 				<div class="cell-canvas">
 					<FluidReveal lazy velocityDissipation={0.95} pressureIterations={10}>
-						<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:1.5rem;color:#f0ede8;">Revealed</div>
+						<div class="reveal-content">Revealed</div>
 					</FluidReveal>
 				</div>
 			</article>
@@ -729,7 +729,7 @@
 						fringeColor={{ r: 0.15, g: 0.35, b: 0.55 }}
 						accentColor={{ r: 0, g: 0.78, b: 1 }}
 					>
-						<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:1.5rem;color:#f0ede8;">Auto Reveal</div>
+						<div class="reveal-content">Auto Reveal</div>
 					</FluidReveal>
 				</div>
 			</article>
@@ -1528,6 +1528,14 @@
 	}
 	.reveal-cell:nth-child(odd) {
 		border-right: 1px solid var(--hair);
+	}
+	.reveal-content {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		font-size: 1.5rem;
+		color: #f0ede8;
 	}
 
 	/* Distortion */

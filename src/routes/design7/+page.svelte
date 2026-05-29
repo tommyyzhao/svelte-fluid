@@ -14,7 +14,8 @@
 		InkInWater,
 		FrozenSwirl,
 		Aurora,
-		ToroidalTempest
+		ToroidalTempest,
+		type RGB
 	} from '$lib/index.js';
 	import { base } from '$app/paths';
 
@@ -102,7 +103,6 @@
 		return n.toString().padStart(2, '0');
 	}
 
-	type RGB = { r: number; g: number; b: number };
 
 	const PLAYGROUND_DEFAULTS = {
 		curl: 30,
@@ -296,7 +296,7 @@
 	<!-- 03 Preset: LavaLamp -->
 	<section class="snap split warm" bind:this={sections[2]}>
 		<div class="split-canvas">
-			<LavaLamp lazy seed={101} aria-label="LavaLamp preset" />
+			<LavaLamp lazy seed={101} aria-label="LavaLamp preset" backColor={{ r: 10, g: 10, b: 10 }} />
 		</div>
 		<div class="split-text">
 			<div class="kicker">Preset 02 &mdash; warm</div>
@@ -323,14 +323,14 @@
 			<a class="inline-link light" href="{base}/docs/presets">View source &rarr;</a>
 		</div>
 		<div class="split-canvas">
-			<Aurora lazy seed={202} aria-label="Aurora preset" />
+			<Aurora lazy seed={202} aria-label="Aurora preset" backColor={{ r: 10, g: 10, b: 10 }} />
 		</div>
 	</section>
 
 	<!-- 05 Preset: Plasma (full-bleed) -->
 	<section class="snap full-bleed" bind:this={sections[4]}>
 		<div class="bleed-canvas">
-			<Plasma lazy seed={303} aria-label="Plasma preset" />
+			<Plasma lazy seed={303} aria-label="Plasma preset" backColor={{ r: 10, g: 10, b: 10 }} />
 		</div>
 		<aside class="bleed-caption">
 			<div class="kicker light">Preset 04 &mdash; electric</div>
@@ -346,7 +346,7 @@
 	<!-- 06 Preset: InkInWater -->
 	<section class="snap split white" bind:this={sections[5]}>
 		<div class="split-canvas">
-			<InkInWater lazy seed={404} aria-label="InkInWater preset" />
+			<InkInWater lazy seed={404} aria-label="InkInWater preset" backColor={{ r: 10, g: 10, b: 10 }} />
 		</div>
 		<div class="split-text">
 			<div class="kicker dark">Preset 05 &mdash; quiet</div>
@@ -372,14 +372,14 @@
 			<a class="inline-link light" href="{base}/docs/presets">View source &rarr;</a>
 		</div>
 		<div class="split-canvas">
-			<FrozenSwirl lazy seed={505} aria-label="FrozenSwirl preset" />
+			<FrozenSwirl lazy seed={505} aria-label="FrozenSwirl preset" backColor={{ r: 10, g: 10, b: 10 }} />
 		</div>
 	</section>
 
 	<!-- 08 Preset: ToroidalTempest (full-bleed) -->
 	<section class="snap full-bleed" bind:this={sections[7]}>
 		<div class="bleed-canvas">
-			<ToroidalTempest lazy seed={606} aria-label="ToroidalTempest preset" />
+			<ToroidalTempest lazy seed={606} aria-label="ToroidalTempest preset" backColor={{ r: 10, g: 10, b: 10 }} />
 		</div>
 		<aside class="bleed-caption">
 			<div class="kicker light">Preset 07 &mdash; tempest</div>
@@ -401,7 +401,7 @@
 			<div class="shape-grid">
 				<figure class="shape-cell">
 					<div class="shape-canvas">
-						<CircularFluid seed={601} lazy splatOnHover aria-label="Circle container demo" />
+						<CircularFluid seed={601} lazy splatOnHover aria-label="Circle container demo" backColor={{ r: 10, g: 10, b: 10 }} />
 					</div>
 					<figcaption>CIRCLE</figcaption>
 				</figure>
@@ -422,13 +422,13 @@
 				</figure>
 				<figure class="shape-cell">
 					<div class="shape-canvas">
-						<FrameFluid seed={603} lazy splatOnHover aria-label="Frame container demo" />
+						<FrameFluid seed={603} lazy splatOnHover aria-label="Frame container demo" backColor={{ r: 10, g: 10, b: 10 }} />
 					</div>
 					<figcaption>FRAME</figcaption>
 				</figure>
 				<figure class="shape-cell">
 					<div class="shape-canvas">
-						<AnnularFluid seed={604} lazy splatOnHover aria-label="Annulus container demo" />
+						<AnnularFluid seed={604} lazy splatOnHover aria-label="Annulus container demo" backColor={{ r: 10, g: 10, b: 10 }} />
 					</div>
 					<figcaption>ANNULUS</figcaption>
 				</figure>
