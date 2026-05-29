@@ -65,7 +65,7 @@
 	let shading = $state(true);
 	let sunrays = $state(true);
 	let colorful = $state(true);
-	let splatOnHover = $state(false);
+	let splatOnHover = $state(true);
 	let transparent = $state(false);
 
 	let backColor = $state<RGB>({ ...paperColor });
@@ -388,12 +388,14 @@
 	bloom
 	bloomIntensity={0.3}
 	sunrays={false}
+	simResolution={96}
+	dyeResolution={768}
 	autoSplatRate={stickyAutoAnimate ? 0.18 : 0}
 	autoSplatCount={2}
 	autoSplatSwirl={0.5}
 	velocityDissipation={0.18}
 	densityDissipation={0.7}
-	splatRadius={0.4}
+	splatRadius={0.15}
 	backColor={paperColor}
 	seed={777}
 >
@@ -452,7 +454,7 @@
 			<div class="grid grid-3">
 				<figure class="card preset-card">
 					<div class="card-fluid">
-						<LavaLamp seed={11} lazy backColor={cardColor} aria-label="LavaLamp preset" />
+						<LavaLamp seed={11} backColor={cardColor} aria-label="LavaLamp preset" />
 					</div>
 					<figcaption>
 						<span class="card-name">LavaLamp</span>
@@ -461,7 +463,7 @@
 				</figure>
 				<figure class="card preset-card">
 					<div class="card-fluid">
-						<Plasma seed={22} lazy backColor={cardColor} aria-label="Plasma preset" />
+						<Plasma seed={22} backColor={cardColor} aria-label="Plasma preset" />
 					</div>
 					<figcaption>
 						<span class="card-name">Plasma</span>
@@ -470,7 +472,7 @@
 				</figure>
 				<figure class="card preset-card">
 					<div class="card-fluid">
-						<InkInWater seed={33} lazy backColor={cardColor} aria-label="InkInWater preset" />
+						<InkInWater seed={33} backColor={cardColor} aria-label="InkInWater preset" />
 					</div>
 					<figcaption>
 						<span class="card-name">InkInWater</span>
@@ -537,6 +539,10 @@
 							sunrays={false}
 							colorful
 							initialSplatCount={10}
+							autoSplatRate={stickyAutoAnimate ? 0.45 : 0}
+							autoSplatCount={1}
+							autoSplatBandHeight={1.6}
+							autoSplatSwirl={350}
 							splatOnHover
 							aria-label="Circle container demo"
 						/>
@@ -575,6 +581,10 @@
 							sunrays={false}
 							colorful
 							initialSplatCount={10}
+							autoSplatRate={stickyAutoAnimate ? 0.45 : 0}
+							autoSplatCount={1}
+							autoSplatBandHeight={1.6}
+							autoSplatSwirl={350}
 							splatOnHover
 							aria-label="Rounded rect container demo"
 						/>
@@ -616,6 +626,10 @@
 							sunrays={false}
 							colorful
 							initialSplatCount={10}
+							autoSplatRate={stickyAutoAnimate ? 0.45 : 0}
+							autoSplatCount={1}
+							autoSplatBandHeight={1.6}
+							autoSplatSwirl={350}
 							splatOnHover
 							aria-label="Frame container demo"
 						/>
@@ -653,6 +667,10 @@
 							sunrays={false}
 							colorful
 							initialSplatCount={10}
+							autoSplatRate={stickyAutoAnimate ? 0.45 : 0}
+							autoSplatCount={1}
+							autoSplatBandHeight={1.6}
+							autoSplatSwirl={350}
 							splatOnHover
 							aria-label="Annulus container demo"
 						/>
@@ -684,6 +702,10 @@
 							sunrays={false}
 							colorful
 							initialSplatCount={10}
+							autoSplatRate={stickyAutoAnimate ? 0.45 : 0}
+							autoSplatCount={1}
+							autoSplatBandHeight={1.6}
+							autoSplatSwirl={350}
 							splatOnHover
 							aria-label="SVG path lightning container demo"
 						/>
@@ -715,6 +737,10 @@
 							sunrays={false}
 							colorful
 							initialSplatCount={10}
+							autoSplatRate={stickyAutoAnimate ? 0.45 : 0}
+							autoSplatCount={1}
+							autoSplatBandHeight={1.6}
+							autoSplatSwirl={350}
 							splatOnHover
 							aria-label="Text glyph container demo"
 						/>
@@ -1168,6 +1194,10 @@
 								lazy
 								seed={4242}
 								initialSplatCount={20}
+								autoSplatRate={stickyAutoAnimate ? 0.45 : 0}
+								autoSplatCount={1}
+								autoSplatBandHeight={1.6}
+								autoSplatSwirl={350}
 								{curl}
 								{splatRadius}
 								{splatForce}
