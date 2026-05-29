@@ -179,6 +179,14 @@
 			descriptor: 'Rave grid, neon pink + acid green, max curl',
 			preview: ToroidalTempest,
 			seed: 1900
+		},
+		{
+			route: '/design20',
+			num: 20,
+			label: 'Paper Glass (synthesis)',
+			descriptor: 'Cream paper + framed boxes + glass edges + comprehensive playground',
+			preview: InkInWater,
+			seed: 2000
 		}
 	];
 </script>
@@ -192,7 +200,7 @@
 		<p class="eyebrow">svelte-fluid</p>
 		<h1 class="title">TZ's Fluid Design <em>Competition</em></h1>
 		<p class="subtitle">
-			Fifteen redesign passes of the svelte-fluid main page. Pick your favorite.
+			Twenty-one redesign passes of the svelte-fluid main page. Pick your favorite.
 		</p>
 	</div>
 
@@ -210,6 +218,7 @@
 							seed={c.seed}
 							lazy
 							splatOnHover
+							backColor={{ r: 8, g: 8, b: 16 }}
 							aria-label="{c.label} fluid preview"
 						/>
 					{:else}
