@@ -15,7 +15,7 @@
 	/** Props consumed by `<SvgPathFluid />`. */
 	export type SvgPathFluidProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label'
+		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 	>;
 </script>
 
@@ -31,7 +31,8 @@
 		seed,
 		lazy,
 		'aria-label': ariaLabel,
-		splatOnHover
+		splatOnHover,
+		backColor
 	}: SvgPathFluidProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
@@ -71,7 +72,7 @@
 	bloomIntensity={0.9}
 	sunrays={false}
 	initialSplatCount={8}
-	backColor={{ r: 2, g: 2, b: 8 }}
+	backColor={backColor ?? { r: 2, g: 2, b: 8 }}
 	autoSplatRate={0.8}
 	autoSplatCount={1}
 	autoSplatBandHeight={2.0}
