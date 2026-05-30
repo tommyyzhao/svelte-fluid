@@ -16,11 +16,9 @@
   - The maze WALLS are obstruction geometry; obstruction physics is always on,
     and a CLOSED boundary (openBoundary omitted) makes the canvas edges contain
     the flood so it can only leave through the exit hole.
-  - LOW density dissipation (0.2, not literally zero): continuous injection into
-    a sealed maze with *zero* dissipation accumulates without bound and
-    saturates every channel to white. A small dissipation bounds the steady
-    state so the channels stay legible (bright near the entrance, fading toward
-    the exit) while still flooding the whole maze over the first few seconds.
+  - A sheet-like inlet, low-dissipation scalar, and downward gravity make this
+    read more like incompressible liquid filling a channel than smoke diffusing
+    through a room. It is still not a true free-surface/multiphase water solve.
 
   Channel trace (viewBox [0,0,135,80], SVG y DOWN so y=0 is the TOP):
       entrance gap (top, x60..75)
@@ -47,9 +45,8 @@
 </script>
 
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import Fluid from '$lib/Fluid.svelte';
-	import type { FluidHandle, PresetSplat } from '$lib/engine/types.js';
+	import type { FlowConfig, FluidHandle, PresetSplat } from '$lib/engine/types.js';
 
 	let {
 		width,
@@ -58,7 +55,7 @@
 		style,
 		seed,
 		lazy,
-		splatOnHover,
+		splatOnHover = true,
 		'aria-label': ariaLabel,
 		backColor
 	}: MazeProps = $props();
@@ -87,20 +84,44 @@
 		rect(5, 56, 118, 61) // baffle C — gap on the RIGHT (x118..130)
 	].join(' ');
 
-	// Entrance gap is viewBox x60..75 → centre x67.5/135 ≈ 0.5. Push the splat
-	// against the TOP wall (splat y≈0.875 ≈ SVG y10, just inside) so dye can
+	// Entrance gap is viewBox x60..75 → x≈0.44..0.56. Push the inlet sheet
+	// against the TOP wall (splat y≈0.9 ≈ SVG y8, just inside) so liquid can
 	// only head DOWN into the channel, not back out the entrance.
 	const ENTRANCE_X = 0.5;
-	const ENTRANCE_Y = 0.875;
-	// dy NEGATIVE = DOWN. Below 1.0 (no HDR) so the flooded channels stay a
-	// legible blue rather than blowing out to white as they accumulate.
-	const INJECT_DY = -700;
-	const DYE = { r: 0.1, g: 0.5, b: 0.9 } as const;
+	const ENTRANCE_Y = 0.9;
+	const ENTRANCE_LEFT = 0.445;
+	const ENTRANCE_RIGHT = 0.555;
+	// dy NEGATIVE = DOWN. Dye is deliberately faint; the scalar field is the
+	// liquid volume proxy used for display.
+	const INJECT_DY = -620;
+	const DYE = { r: 0.03, g: 0.18, b: 0.34 } as const;
 
 	// Opening pulse so the flood has already started on frame 1.
 	const PRESET_SPLATS: PresetSplat[] = [
 		{ x: ENTRANCE_X, y: ENTRANCE_Y, dx: 0, dy: INJECT_DY, color: DYE }
 	];
+
+	const FLOW: FlowConfig = {
+		mode: 'live',
+		boundary: { left: 'wall', right: 'wall', top: 'wall', bottom: 'wall' },
+		sources: [
+			{
+				kind: 'line',
+				from: { x: ENTRANCE_LEFT, y: ENTRANCE_Y },
+				to: { x: ENTRANCE_RIGHT, y: ENTRANCE_Y },
+				velocity: { x: 0, y: INJECT_DY },
+				dye: DYE,
+				scalars: { ink: 0.82 },
+				rate: 46,
+				radius: 0.045,
+				profile: 'uniform'
+			}
+		],
+		outlets: [{ edge: 'bottom', from: 0.77, to: 0.9, width: 0.055, clearDye: 0.55, clearScalars: true, clearVelocity: true }],
+		scalarFields: [{ name: 'ink', dissipation: 0.003, advection: 'low-dissipation', color: { r: 0.75, g: 0.95, b: 1.0 }, range: [0, 1] }],
+		forces: [{ kind: 'gravity', vector: { x: 0, y: -140 } }],
+		visualization: { colorBy: 'scalar', scalar: 'ink', transfer: 'water', scale: 0.85 }
+	};
 
 	export const handle: FluidHandle = {
 		splat: (x, y, dx, dy, color) => inner?.handle.splat(x, y, dx, dy, color),
@@ -112,18 +133,6 @@
 		}
 	};
 
-	// Continuous downward injection at the entrance feeds the flood. Guarded for
-	// SSR (no window) and reduced-motion (the static opening pulse remains).
-	onMount(() => {
-		if (typeof window === 'undefined') return;
-		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-		const id = setInterval(() => {
-			if (!inner) return;
-			inner.handle.splat(ENTRANCE_X, ENTRANCE_Y, 0, INJECT_DY, DYE);
-		}, 110);
-		return () => clearInterval(id);
-	});
 </script>
 
 <Fluid
@@ -137,18 +146,19 @@
 	{splatOnHover}
 	aria-label={ariaLabel}
 	obstructions={[{ d: MAZE, fillRule: 'nonzero', viewBox: [0, 0, 135, 80], fit: 'fill' }]}
-	densityDissipation={0.2}
-	initialDensityDissipation={0.2}
-	velocityDissipation={0.04}
+	flow={FLOW}
+	densityDissipation={0.08}
+	initialDensityDissipation={0.08}
+	velocityDissipation={0.025}
 	curl={0}
 	pressure={0.9}
-	pressureIterations={28}
+	pressureIterations={40}
 	splatRadius={0.1}
 	splatForce={6000}
-	bloom
+	bloom={false}
 	bloomThreshold={0.7}
 	bloomIntensity={0.4}
-	shading
+	shading={false}
 	colorful={false}
 	simResolution={256}
 	dyeResolution={1024}

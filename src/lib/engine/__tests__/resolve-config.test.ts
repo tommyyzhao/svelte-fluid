@@ -31,19 +31,34 @@ describe('resolveConfig', () => {
 
 	describe('Bucket A — hot scalars', () => {
 		it('maps physics scalars', () => {
-			const r = resolveConfig({
-				curl: 50,
-				splatRadius: 0.5,
-				densityDissipation: 0.5,
-				velocityDissipation: 0.3,
-				pressure: 0.6,
-				pressureIterations: 30,
-				splatForce: 8000
-			}, DEFAULTS);
+			const r = resolveConfig(
+				{
+					curl: 50,
+					splatRadius: 0.5,
+					densityDissipation: 0.5,
+					velocityDissipation: 0.3,
+					maxTimeStep: 1 / 120,
+					substeps: 3,
+					viscosity: 0.02,
+					viscosityIterations: 12,
+					wallFriction: 0.2,
+					wallFrictionWidth: 2,
+					pressure: 0.6,
+					pressureIterations: 30,
+					splatForce: 8000
+				},
+				DEFAULTS
+			);
 			expect(r.CURL).toBe(50);
 			expect(r.SPLAT_RADIUS).toBe(0.5);
 			expect(r.DENSITY_DISSIPATION).toBe(0.5);
 			expect(r.VELOCITY_DISSIPATION).toBe(0.3);
+			expect(r.MAX_TIME_STEP).toBe(1 / 120);
+			expect(r.SUBSTEPS).toBe(3);
+			expect(r.VISCOSITY).toBe(0.02);
+			expect(r.VISCOSITY_ITERATIONS).toBe(12);
+			expect(r.WALL_FRICTION).toBe(0.2);
+			expect(r.WALL_FRICTION_WIDTH).toBe(2);
 			expect(r.PRESSURE).toBe(0.6);
 			expect(r.PRESSURE_ITERATIONS).toBe(30);
 			expect(r.SPLAT_FORCE).toBe(8000);
@@ -56,17 +71,20 @@ describe('resolveConfig', () => {
 		});
 
 		it('maps automatic splat fields', () => {
-			const r = resolveConfig({
-				autoSplatRate: 5,
-				autoSplatCount: 3,
-				autoSplatColor: { r: 1, g: 0, b: 0 },
-				autoSplatVelocityX: 100,
-				autoSplatVelocityY: -50,
-				autoSplatCenterY: 0.7,
-				autoSplatEvenX: true,
-				autoSplatSwirl: 200,
-				autoSplatBandHeight: 0.5
-			}, DEFAULTS);
+			const r = resolveConfig(
+				{
+					autoSplatRate: 5,
+					autoSplatCount: 3,
+					autoSplatColor: { r: 1, g: 0, b: 0 },
+					autoSplatVelocityX: 100,
+					autoSplatVelocityY: -50,
+					autoSplatCenterY: 0.7,
+					autoSplatEvenX: true,
+					autoSplatSwirl: 200,
+					autoSplatBandHeight: 0.5
+				},
+				DEFAULTS
+			);
 			expect(r.AUTO_SPLAT_RATE).toBe(5);
 			expect(r.AUTO_SPLAT_COUNT).toBe(3);
 			expect(r.AUTO_SPLAT_COLOR).toEqual({ r: 1, g: 0, b: 0 });
@@ -79,13 +97,16 @@ describe('resolveConfig', () => {
 		});
 
 		it('maps glass parameters', () => {
-			const r = resolveConfig({
-				glass: true,
-				glassThickness: 0.06,
-				glassRefraction: 0.8,
-				glassReflectivity: 0.3,
-				glassChromatic: 0.5
-			}, DEFAULTS);
+			const r = resolveConfig(
+				{
+					glass: true,
+					glassThickness: 0.06,
+					glassRefraction: 0.8,
+					glassReflectivity: 0.3,
+					glassChromatic: 0.5
+				},
+				DEFAULTS
+			);
 			expect(r.GLASS).toBe(true);
 			expect(r.GLASS_THICKNESS).toBe(0.06);
 			expect(r.GLASS_REFRACTION).toBe(0.8);
@@ -94,12 +115,15 @@ describe('resolveConfig', () => {
 		});
 
 		it('maps reveal parameters', () => {
-			const r = resolveConfig({
-				reveal: true,
-				revealSensitivity: 0.2,
-				revealCurve: 0.5,
-				revealCoverColor: { r: 0.5, g: 0.5, b: 0.5 }
-			}, DEFAULTS);
+			const r = resolveConfig(
+				{
+					reveal: true,
+					revealSensitivity: 0.2,
+					revealCurve: 0.5,
+					revealCoverColor: { r: 0.5, g: 0.5, b: 0.5 }
+				},
+				DEFAULTS
+			);
 			expect(r.REVEAL).toBe(true);
 			expect(r.REVEAL_SENSITIVITY).toBe(0.2);
 			expect(r.REVEAL_CURVE).toBe(0.5);
@@ -107,13 +131,16 @@ describe('resolveConfig', () => {
 		});
 
 		it('maps distortion parameters', () => {
-			const r = resolveConfig({
-				distortion: true,
-				distortionPower: 0.7,
-				distortionImageUrl: 'https://example.com/img.jpg',
-				distortionFit: 'contain',
-				distortionScale: 1.5
-			}, DEFAULTS);
+			const r = resolveConfig(
+				{
+					distortion: true,
+					distortionPower: 0.7,
+					distortionImageUrl: 'https://example.com/img.jpg',
+					distortionFit: 'contain',
+					distortionScale: 1.5
+				},
+				DEFAULTS
+			);
 			expect(r.DISTORTION).toBe(true);
 			expect(r.DISTORTION_POWER).toBe(0.7);
 			expect(r.DISTORTION_IMAGE_URL).toBe('https://example.com/img.jpg');
@@ -122,13 +149,16 @@ describe('resolveConfig', () => {
 		});
 
 		it('maps sticky parameters', () => {
-			const r = resolveConfig({
-				sticky: true,
-				stickyMask: { text: 'HELLO' },
-				stickyStrength: 0.8,
-				stickyPressure: 0.2,
-				stickyAmplify: 0.5
-			}, DEFAULTS);
+			const r = resolveConfig(
+				{
+					sticky: true,
+					stickyMask: { text: 'HELLO' },
+					stickyStrength: 0.8,
+					stickyPressure: 0.2,
+					stickyAmplify: 0.5
+				},
+				DEFAULTS
+			);
 			expect(r.STICKY).toBe(true);
 			expect(r.STICKY_MASK).toEqual({ text: 'HELLO' });
 			expect(r.STICKY_STRENGTH).toBe(0.8);
@@ -137,14 +167,17 @@ describe('resolveConfig', () => {
 		});
 
 		it('maps display options', () => {
-			const r = resolveConfig({
-				shading: false,
-				colorful: false,
-				colorUpdateSpeed: 5,
-				paused: true,
-				backColor: { r: 128, g: 128, b: 128 },
-				transparent: true
-			}, DEFAULTS);
+			const r = resolveConfig(
+				{
+					shading: false,
+					colorful: false,
+					colorUpdateSpeed: 5,
+					paused: true,
+					backColor: { r: 128, g: 128, b: 128 },
+					transparent: true
+				},
+				DEFAULTS
+			);
 			expect(r.SHADING).toBe(false);
 			expect(r.COLORFUL).toBe(false);
 			expect(r.COLOR_UPDATE_SPEED).toBe(5);
@@ -164,13 +197,16 @@ describe('resolveConfig', () => {
 
 	describe('Bucket C — FBO rebuild triggers', () => {
 		it('maps resolution fields', () => {
-			const r = resolveConfig({
-				simResolution: 64,
-				dyeResolution: 512,
-				bloomResolution: 128,
-				bloomIterations: 4,
-				sunraysResolution: 128
-			}, DEFAULTS);
+			const r = resolveConfig(
+				{
+					simResolution: 64,
+					dyeResolution: 512,
+					bloomResolution: 128,
+					bloomIterations: 4,
+					sunraysResolution: 128
+				},
+				DEFAULTS
+			);
 			expect(r.SIM_RESOLUTION).toBe(64);
 			expect(r.DYE_RESOLUTION).toBe(512);
 			expect(r.BLOOM_RESOLUTION).toBe(128);
@@ -185,10 +221,7 @@ describe('resolveConfig', () => {
 		});
 
 		it('null containerShape clears the shape', () => {
-			const base = resolveConfig(
-				{ containerShape: { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.4 } },
-				DEFAULTS
-			);
+			const base = resolveConfig({ containerShape: { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.4 } }, DEFAULTS);
 			const r = resolveConfig({ containerShape: null }, base);
 			expect(r.CONTAINER_SHAPE).toBeNull();
 		});
@@ -204,23 +237,47 @@ describe('resolveConfig', () => {
 		});
 
 		it('undefined obstructions preserves the prior value', () => {
-			const base = resolveConfig(
-				{ obstructions: [{ d: 'M0 0 L10 10' }] },
-				DEFAULTS
-			);
+			const base = resolveConfig({ obstructions: [{ d: 'M0 0 L10 10' }] }, DEFAULTS);
 			const r = resolveConfig({ obstructions: undefined }, base);
 			expect(r.OBSTRUCTIONS).toEqual([{ d: 'M0 0 L10 10' }]);
 		});
 
 		it('null obstructions clears the prior value', () => {
-			const base = resolveConfig(
-				{ obstructions: [{ d: 'M0 0 L10 10' }] },
-				DEFAULTS
-			);
+			const base = resolveConfig({ obstructions: [{ d: 'M0 0 L10 10' }] }, DEFAULTS);
 			// The public type only accepts an array, but resolveConfig coerces
 			// any nullish input to null. Cast through to exercise the clear path.
 			const r = resolveConfig({ obstructions: null } as never, base);
 			expect(r.OBSTRUCTIONS).toBeNull();
+		});
+
+		it('flow defaults to null', () => {
+			expect(resolveConfig({}, DEFAULTS).FLOW).toBeNull();
+		});
+
+		it('maps a flow config', () => {
+			const flow = {
+				mode: 'live' as const,
+				boundary: { right: 'open' as const },
+				sources: [
+					{
+						kind: 'line' as const,
+						from: { x: 0, y: 0.2 },
+						to: { x: 0, y: 0.8 },
+						velocity: { x: 400, y: 0 }
+					}
+				],
+				outlets: [{ edge: 'right' as const }],
+				scalarFields: [{ name: 'ink', dissipation: 0.05 }],
+				visualization: { colorBy: 'speed' as const }
+			};
+			const r = resolveConfig({ flow }, DEFAULTS);
+			expect(r.FLOW).toEqual(flow);
+		});
+
+		it('undefined flow preserves the prior value and null clears it', () => {
+			const base = resolveConfig({ flow: { mode: 'live', boundary: { right: 'open' } } }, DEFAULTS);
+			expect(resolveConfig({ flow: undefined }, base).FLOW).toEqual(base.FLOW);
+			expect(resolveConfig({ flow: null }, base).FLOW).toBeNull();
 		});
 	});
 
@@ -249,6 +306,26 @@ describe('resolveConfig', () => {
 	});
 
 	describe('clamping and normalization', () => {
+		it('clamps solver stability and wall-shear fields', () => {
+			const r = resolveConfig(
+				{
+					maxTimeStep: -1,
+					substeps: 99,
+					viscosity: -1,
+					viscosityIterations: 99,
+					wallFriction: 2,
+					wallFrictionWidth: 99
+				},
+				DEFAULTS
+			);
+			expect(r.MAX_TIME_STEP).toBe(0.001);
+			expect(r.SUBSTEPS).toBe(8);
+			expect(r.VISCOSITY).toBe(0);
+			expect(r.VISCOSITY_ITERATIONS).toBe(40);
+			expect(r.WALL_FRICTION).toBe(1);
+			expect(r.WALL_FRICTION_WIDTH).toBe(4);
+		});
+
 		it('clamps autoSplatCenterY to [0, 1]', () => {
 			expect(resolveConfig({ autoSplatCenterY: -0.5 }, DEFAULTS).AUTO_SPLAT_CENTER_Y).toBe(0);
 			expect(resolveConfig({ autoSplatCenterY: 1.5 }, DEFAULTS).AUTO_SPLAT_CENTER_Y).toBe(1);
@@ -277,10 +354,13 @@ describe('resolveConfig', () => {
 		});
 
 		it('explicit initialDensityDissipation overrides the default', () => {
-			const r = resolveConfig({
-				densityDissipation: 0.5,
-				initialDensityDissipation: 0.9
-			}, DEFAULTS);
+			const r = resolveConfig(
+				{
+					densityDissipation: 0.5,
+					initialDensityDissipation: 0.9
+				},
+				DEFAULTS
+			);
 			expect(r.DENSITY_DISSIPATION).toBe(0.5);
 			expect(r.INITIAL_DENSITY_DISSIPATION).toBe(0.9);
 		});
@@ -313,6 +393,12 @@ describe('DEFAULTS', () => {
 		expect(DEFAULTS.DYE_RESOLUTION).toBe(1024);
 		expect(DEFAULTS.DENSITY_DISSIPATION).toBe(1);
 		expect(DEFAULTS.VELOCITY_DISSIPATION).toBe(0.2);
+		expect(DEFAULTS.MAX_TIME_STEP).toBe(1 / 60);
+		expect(DEFAULTS.SUBSTEPS).toBe(1);
+		expect(DEFAULTS.VISCOSITY).toBe(0);
+		expect(DEFAULTS.VISCOSITY_ITERATIONS).toBe(8);
+		expect(DEFAULTS.WALL_FRICTION).toBe(0);
+		expect(DEFAULTS.WALL_FRICTION_WIDTH).toBe(1);
 		expect(DEFAULTS.PRESSURE).toBe(0.8);
 		expect(DEFAULTS.CURL).toBe(30);
 		expect(DEFAULTS.SPLAT_RADIUS).toBe(0.25);
@@ -345,6 +431,10 @@ describe('DEFAULTS', () => {
 
 	it('has null obstructions by default', () => {
 		expect(DEFAULTS.OBSTRUCTIONS).toBeNull();
+	});
+
+	it('has null flow by default', () => {
+		expect(DEFAULTS.FLOW).toBeNull();
 	});
 
 	it('has no automatic splats by default', () => {

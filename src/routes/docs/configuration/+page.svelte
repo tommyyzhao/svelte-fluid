@@ -57,14 +57,50 @@
 			<td><code>0</code></td>
 			<td>Seconds over which to ramp from initial to steady dissipation. 0 disables the ramp.</td>
 		</tr>
-		<tr>
-			<td><code>velocityDissipation</code></td>
-			<td><code>number</code></td>
-			<td><code>0.2</code></td>
-			<td>How fast velocity fades.</td>
-		</tr>
-		<tr>
-			<td><code>pressure</code></td>
+			<tr>
+				<td><code>velocityDissipation</code></td>
+				<td><code>number</code></td>
+				<td><code>0.2</code></td>
+				<td>How fast velocity fades.</td>
+			</tr>
+			<tr>
+				<td><code>maxTimeStep</code></td>
+				<td><code>number</code></td>
+				<td><code>1 / 60</code></td>
+				<td>Maximum simulated seconds per solver substep. Lower values help fast, narrow flows stay stable.</td>
+			</tr>
+			<tr>
+				<td><code>substeps</code></td>
+				<td><code>number</code></td>
+				<td><code>1</code></td>
+				<td>Minimum solver substeps per rendered frame. Higher values improve stability at extra GPU cost.</td>
+			</tr>
+			<tr>
+				<td><code>viscosity</code></td>
+				<td><code>number</code></td>
+				<td><code>0</code></td>
+				<td>Dimensionless implicit velocity diffusion. Use small values for smoother browser-GPU CFD scenes.</td>
+			</tr>
+			<tr>
+				<td><code>viscosityIterations</code></td>
+				<td><code>number</code></td>
+				<td><code>8</code></td>
+				<td>Jacobi iterations for the viscosity solve.</td>
+			</tr>
+			<tr>
+				<td><code>wallFriction</code></td>
+				<td><code>number</code></td>
+				<td><code>0</code></td>
+				<td>Velocity damping near interior obstruction masks. Approximates wall shear/no-slip drag.</td>
+			</tr>
+			<tr>
+				<td><code>wallFrictionWidth</code></td>
+				<td><code>number</code></td>
+				<td><code>1</code></td>
+				<td>Width of the obstruction-adjacent wall-friction band in simulation cells.</td>
+			</tr>
+			<tr>
+				<td><code>pressure</code></td>
 			<td><code>number</code></td>
 			<td><code>0.8</code></td>
 			<td>Pressure solver weight.</td>
@@ -652,6 +688,42 @@
 </table>
 
 <!-- ================================================================ -->
+<h2>Flow scene</h2>
+<p>
+	<code>flow</code> is the higher-level API for believable fixed or semi-fixed scenes. It keeps
+	legacy splats available, but lets presets describe persistent inlets, edge-drain outlets, scalar fields,
+	body forces, prescribed fields, and field-aware visualization directly.
+</p>
+
+<table>
+	<thead>
+		<tr>
+			<th>Prop</th>
+			<th>Type</th>
+			<th>Default</th>
+			<th>Description</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td><code>flow</code></td>
+			<td><code>FlowConfig | null</code></td>
+			<td><code>undefined</code></td>
+			<td>Additive flow-scene controls. <code>mode</code> may be <code>'live'</code>, <code>'prescribed'</code>, or <code>'hybrid'</code>. Supports <code>sources</code>, edge-drain <code>outlets</code>, <code>scalarFields</code>, <code>forces</code>, <code>prescribed</code>, and <code>visualization</code>. <code>flow.boundary</code> overrides individual edges; <code>openBoundary</code> is the fallback. <code>reveal</code> and <code>distortion</code> remain authoritative display modes.</td>
+		</tr>
+	</tbody>
+</table>
+
+<p>
+	Use <code>sources</code> for steady inlet lines/points/rects, <code>outlets</code> for edge sponge/drain zones,
+		<code>scalarFields</code> for temperature/ink-like quantities, and <code>forces</code> for gravity,
+		pressure-gradient body forces, or scalar-coupled buoyancy. <code>prescribed.kind: 'grid'</code> allows custom uploaded
+	flow fields. In <code>mode: 'prescribed'</code>, velocity remains prescribed and ignores
+	source velocity and forces; use <code>'hybrid'</code> to add live velocity before projection.
+	Uploaded grid fields should be immutable or carry a bumped <code>version</code> when reused.
+</p>
+
+<!-- ================================================================ -->
 <h2>Hot-update buckets</h2>
 <p>
 	When props change at runtime, <code>setConfig()</code> classifies each field into one of four buckets
@@ -662,19 +734,22 @@
 <p>
 	Written directly to the internal config object and picked up on the next simulation frame.
 	Zero overhead. Most numeric props live here: <code>densityDissipation</code>,
-	<code>velocityDissipation</code>, <code>pressure</code>, <code>curl</code>,
+		<code>velocityDissipation</code>, <code>maxTimeStep</code>, <code>substeps</code>,
+		<code>viscosity</code>, <code>viscosityIterations</code>, <code>wallFriction</code>,
+		<code>wallFrictionWidth</code>, <code>pressure</code>, <code>curl</code>,
 	<code>splatRadius</code>, <code>splatForce</code>, <code>colorUpdateSpeed</code>,
 	<code>bloomIntensity</code>, <code>sunraysWeight</code>, all <code>autoSplat*</code> props,
 	all <code>glass*</code> scalars, all <code>reveal*</code> scalars, all <code>distortion*</code>
 	scalars, <code>stickyStrength</code>, <code>stickyPressure</code>, <code>stickyAmplify</code>,
-	<code>pointerTarget</code>, and <code>openBoundary</code>.
+	<code>pointerTarget</code>, <code>openBoundary</code>, and most <code>flow</code> source/force
+	scalars.
 </p>
 
 <h3>Bucket B — Keyword recompile</h3>
 <p>
 	Triggers a display shader recompile (~1 ms). Applies to feature toggles that change which
 	GLSL code paths are active: <code>shading</code>, <code>bloom</code>, <code>sunrays</code>,
-	<code>reveal</code>, and <code>distortion</code>.
+	<code>reveal</code>, <code>distortion</code>, and field visualization inside <code>flow</code>.
 </p>
 
 <h3>Bucket C — FBO rebuild</h3>
@@ -683,7 +758,8 @@
 	<code>dyeResolution</code>, <code>bloomResolution</code>, <code>bloomIterations</code>,
 	and <code>sunraysResolution</code>. Also triggered by <code>containerShape</code> changes
 	(mask texture rebuild), <code>obstructions</code> changes (obstruction mask rebuild +
-	display keyword recompile), and <code>glass</code> toggle (scene FBO alloc/dispose).
+	display keyword recompile), scalar-field allocation inside <code>flow</code>, and
+	<code>glass</code> toggle (scene FBO alloc/dispose).
 </p>
 
 <h3>Bucket D — Construct-only</h3>

@@ -275,6 +275,12 @@ All fields are optional. The engine fills defaults at construction.
 | initialDensityDissipation          | number  | =densityDissipation | Initial dissipation for ramp.                |
 | initialDensityDissipationDuration  | number  | 0       | Ramp duration in seconds (0=no ramp).                    |
 | velocityDissipation                | number  | 0.2     | How fast velocity fades.                                 |
+| maxTimeStep                        | number  | 1/60    | Maximum simulated seconds per solver substep.            |
+| substeps                           | number  | 1       | Minimum solver substeps per rendered frame.              |
+| viscosity                          | number  | 0       | Dimensionless implicit velocity diffusion.               |
+| viscosityIterations                | number  | 8       | Jacobi iterations for viscosity.                         |
+| wallFriction                       | number  | 0       | Velocity damping near obstruction masks.                 |
+| wallFrictionWidth                  | number  | 1       | Wall-friction band width in simulation cells.            |
 | pressure                           | number  | 0.8     | Pressure solver weight.                                  |
 | pressureIterations                 | number  | 20      | Pressure solver iterations.                              |
 | curl                               | number  | 30      | Vorticity confinement strength.                          |
@@ -398,6 +404,33 @@ All fields are optional. The engine fills defaults at construction.
 |--------------|-------------------------------|-----------|------------------------------------------------------|
 | obstructions | ReadonlyArray&lt;Obstruction&gt; | undefined | Interior obstacles fluid flows around. Union into one mask; allowed = container × (1 − obstruction). Orthogonal to containerShape. Rebuilds mask + recompiles display shader on change. Mutually exclusive with distortion. |
 
+### Flow Scene
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| flow | FlowConfig|null | undefined | Additive believable-flow API: persistent sources, edge-drain outlets, scalar fields, body forces, prescribed fields, and field-aware visualization. \`flow.boundary\` overrides individual edges; \`openBoundary\` is the fallback. Reveal/distortion display modes override flow visualization. |
+
+FlowConfig:
+\`&#123; mode?: 'live'|'prescribed'|'hybrid'; boundary?: &#123; left?: 'wall'|'open'; right?: 'wall'|'open'; top?: 'wall'|'open'; bottom?: 'wall'|'open' &#125;; sources?: FlowSource[]; outlets?: FlowOutlet[]; scalarFields?: FlowScalarField[]; forces?: FlowForce[]; prescribed?: PrescribedFlowField; visualization?: FlowVisualization &#125;\`
+
+FlowForce includes \`{ kind: 'gravity'|'pressureGradient', vector }\` and
+\`{ kind: 'buoyancy', scalar, direction?, strength, ambient? }\`.
+
+Use flow sources for steady inlets instead of wrapper timers or repeated
+\`handle.splat()\`. In \`mode: 'prescribed'\`, velocity remains purely
+prescribed: sources may inject dye/scalars, but source velocity and forces are
+ignored. Use \`mode: 'hybrid'\` to add live velocity before projection. Uploaded
+grid fields should be immutable or bump \`version\` when reusing the same data
+object with changed values.
+
+\`FlowScalarField.advection: 'low-dissipation'\` reduces scalar fading; it is
+not MacCormack/BFECC low-numerical-diffusion advection. Uploaded grid fields
+should be immutable or bump \`version\` when reusing the same data object with
+changed values.
+\`FlowVisualization.transfer\` accepts \`'fire'|'water'|'ink'|'viridis'|'cfd'\`.
+Use \`transfer: 'cfd'\` plus \`range: [min, max]\` for blue→cyan→green→yellow→red
+velocity or pressure magnitude plots.
+
 ### Boundary
 
 | Field        | Type    | Default | Description                                          |
@@ -513,6 +546,8 @@ Exposed via \`bind:this\` on any component.
 
 Pre-configured \`&lt;Fluid /&gt;\` wrappers with opinionated physics. All accept:
 width, height, class, style, seed, lazy, splatOnHover, aria-label, backColor.
+Preset wrappers default splatOnHover=true; pass splatOnHover={false} to disable
+hover-driven splats.
 
 \`backColor\` overrides the preset's shipped substrate so the preset can adapt to
 a host page background. Omit it to keep the preset's authored default.
@@ -529,14 +564,12 @@ a host page background. Omit it to keep the preset's authored default.
 | FrameFluid      | Fluid around a rectangular cutout (picture frame) | frame                        |
 | AnnularFluid    | Ring-vortex between two concentric circles        | annulus                      |
 | SvgPathFluid    | Fluid inside an "&amp;" ampersand glyph              | svgPath (text mode)          |
-| RocketEngine    | De Laval nozzle: exhaust accelerates through the throat | none (2 nozzle obstructions) |
-| Venturi         | Bernoulli throat: streamlines accelerate + glow     | none (2 throat obstructions) |
+| GasFlare        | Hot gas flare jet with temperature-scalar buoyancy | none (2 flare-stack obstructions) |
+| Venturi         | Bernoulli throat with CFD-style velocity-magnitude colors | none (2 throat obstructions) |
 | RiverDelta      | River braiding around a chain of teardrop islands   | none (5 island obstructions) |
+| TeslaValve      | Tesla-valve conduit with bypass buckets + even-odd slots | svgPath reference channel |
 
-The last three are fluid-dynamics presets built on interior obstructions
-(openBoundary throughflow — obstacles stay physical, flow vents off-canvas).
-Faithful: Venturi/RiverDelta continuity routing; RocketEngine throat
-acceleration. Evocative: RocketEngine color gradient, Venturi throat glow.
+Faithful: GasFlare/Venturi/RiverDelta/TeslaValve incompressible routing, scalar buoyancy, separation, and throat/gap speed-up.
 
 ---
 

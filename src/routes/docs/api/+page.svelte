@@ -331,6 +331,77 @@ fluidRef.handle.randomSplats(10);</code></pre>
   fit?: 'contain' | 'fill';
 {RB}</code></pre>
 
+<h3>FlowConfig</h3>
+
+<p>
+	Higher-level scene description for believable presets. It is additive: omitting
+	<code>flow</code> keeps legacy splat behavior unchanged. <code>FluidReveal</code> and
+	<code>FluidDistortion</code> ignore flow visualization because their display shaders are
+	authoritative. When set, <code>flow.boundary</code> overrides individual canvas edges;
+	legacy <code>openBoundary</code> is only the fallback for unspecified edges.
+</p>
+
+<pre><code>interface FlowConfig {LB}
+  mode?: 'live' | 'prescribed' | 'hybrid';
+  boundary?: {LB} left?: 'wall'|'open'; right?: 'wall'|'open'; top?: 'wall'|'open'; bottom?: 'wall'|'open' {RB};
+  sources?: FlowSource[];
+  outlets?: FlowOutlet[];
+  scalarFields?: FlowScalarField[];
+  forces?: FlowForce[];
+  prescribed?: PrescribedFlowField;
+  visualization?: FlowVisualization;
+{RB}</code></pre>
+
+<p>
+	Use <code>FlowSource</code> for persistent point/line/rect emitters, <code>FlowOutlet</code>
+	for edge sponge/drain zones, <code>FlowScalarField</code> for temperature or ink-like
+		quantities, <code>FlowForce</code> for gravity, pressure-gradient body force, or buoyancy, and <code>PrescribedFlowField</code>
+	for custom uploaded flow grids. In <code>mode: 'prescribed'</code>, source velocity and
+	forces are ignored so the velocity remains exactly prescribed; use
+	<code>'hybrid'</code> when you want to add live velocity before projection.
+</p>
+
+<pre><code>interface FlowScalarField {LB}
+  name: string;
+  dissipation?: number;
+  advection?: 'standard' | 'low-dissipation';
+  color?: RGB;
+	range?: [number, number];
+{RB}
+
+type Vec2 = {LB} x: number; y: number {RB};
+
+type FlowForce =
+  | {LB} kind: 'gravity'; vector: Vec2 {RB}
+  | {LB} kind: 'pressureGradient'; vector: Vec2 {RB}
+  | {LB} kind: 'buoyancy'; scalar: string; direction?: Vec2; strength: number; ambient?: number {RB};
+
+interface FlowVisualization {LB}
+  colorBy?: 'dye' | 'speed' | 'pressure' | 'temperature' | 'scalar';
+  scalar?: string;
+  glowBy?: 'speed' | 'scalar' | 'none';
+  transfer?: 'fire' | 'water' | 'ink' | 'viridis' | 'cfd';
+  range?: [number, number];
+  scale?: number;
+{RB}
+
+interface FlowGridField {LB}
+  width: number;
+  height: number;
+  data: ArrayLike&lt;number&gt;;
+  scale?: number;
+  version?: number | string;
+{RB}</code></pre>
+
+<p>
+	<code>low-dissipation</code> reduces explicit scalar fading; it is not a MacCormack/BFECC
+	advection correction. For uploaded grids, replace immutable data objects or bump
+	<code>version</code> when values change so WebGL textures are re-uploaded.
+	For velocity and pressure plots, <code>FlowVisualization.range</code> maps raw field
+	values onto the selected transfer function; <code>transfer: 'cfd'</code> provides a
+	blue→cyan→green→yellow→red CFD-style magnitude ramp.
+</p>
+
 <hr />
 
 <h2>FluidEngine (Advanced)</h2>

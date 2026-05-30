@@ -149,6 +149,19 @@ export const displayShaderSource = `
     uniform sampler2D uObstructionMask;
 #endif
 
+#ifdef FLOW_VISUALIZATION
+    uniform sampler2D uFlowPrimary;
+    uniform sampler2D uFlowVelocity;
+    uniform int uFlowVisMode;
+    uniform int uFlowScalarChannel;
+    uniform int uFlowTransfer;
+    uniform int uFlowGlowMode;
+    uniform int uFlowUseRange;
+    uniform float uFlowScale;
+    uniform vec2 uFlowScalarRange;
+    uniform vec3 uFlowScalarColor;
+#endif
+
 #ifdef REVEAL
     uniform float uRevealSensitivity;
     uniform float uRevealCurve;
@@ -172,6 +185,47 @@ export const displayShaderSource = `
         color = max(color, vec3(0));
         return max(1.055 * pow(color, vec3(0.416666667)) - 0.055, vec3(0));
     }
+
+#ifdef FLOW_VISUALIZATION
+    float channel(vec4 v, int ch) {
+        if (ch == 0) return v.r;
+        if (ch == 1) return v.g;
+        return v.b;
+    }
+
+    vec3 transfer(float value, int transferKind) {
+        float t = clamp(value, 0.0, 1.0);
+        if (transferKind == 1) {
+            return mix(vec3(0.02, 0.07, 0.17), vec3(0.25, 0.75, 1.0), t);
+        }
+        if (transferKind == 2) {
+            return mix(vec3(0.015, 0.018, 0.035), vec3(0.07, 0.09, 0.45), t);
+        }
+        if (transferKind == 3) {
+            return mix(mix(vec3(0.07, 0.04, 0.25), vec3(0.0, 0.56, 0.55), smoothstep(0.0, 0.55, t)), vec3(0.98, 0.9, 0.18), smoothstep(0.45, 1.0, t));
+        }
+        if (transferKind == 4) {
+            vec3 c0 = vec3(0.04, 0.08, 0.55);
+            vec3 c1 = vec3(0.00, 0.70, 0.95);
+            vec3 c2 = vec3(0.05, 0.72, 0.22);
+            vec3 c3 = vec3(1.00, 0.88, 0.05);
+            vec3 c4 = vec3(0.90, 0.08, 0.02);
+            vec3 a = mix(c0, c1, smoothstep(0.00, 0.28, t));
+            vec3 b = mix(a, c2, smoothstep(0.22, 0.52, t));
+            vec3 c = mix(b, c3, smoothstep(0.48, 0.78, t));
+            return mix(c, c4, smoothstep(0.72, 1.00, t));
+        }
+        return mix(mix(vec3(0.10, 0.025, 0.005), vec3(1.0, 0.34, 0.04), smoothstep(0.0, 0.55, t)), vec3(1.5, 1.1, 0.45), smoothstep(0.45, 1.0, t));
+    }
+
+    float mapFlowValue(float rawValue) {
+        if (uFlowUseRange == 1) {
+            float ranged = (rawValue - uFlowScalarRange.x) / max(uFlowScalarRange.y - uFlowScalarRange.x, 0.00001);
+            return ranged * uFlowScale;
+        }
+        return rawValue * uFlowScale;
+    }
+#endif
 
     void main () {
         vec3 c = texture2D(uTexture, vUv).rgb;
@@ -279,6 +333,48 @@ export const displayShaderSource = `
     #if defined(CONTAINER_MASK) || defined(OBSTRUCTION_MASK)
         c *= cmask;
         a *= cmask;
+    #endif
+
+        float flowMask = cmask;
+    #if defined(CONTAINER_MASK) || defined(OBSTRUCTION_MASK)
+        // Speed/pressure overlays expose projection noise at the one-cell
+        // solid/fluid seam. Keep the antialiased display crop, but draw field
+        // visualization only in fully open cells.
+        flowMask *= smoothstep(0.75, 0.98, cmask);
+    #endif
+
+    #ifdef OBSTRUCTION_MASK
+        vec2 solidUv = vec2(vUv.x, 1.0 - vUv.y);
+        float solidEdge = texture2D(uObstructionMask, solidUv).r;
+        solidEdge = max(solidEdge, texture2D(uObstructionMask, solidUv + vec2(texelSize.x, 0.0)).r);
+        solidEdge = max(solidEdge, texture2D(uObstructionMask, solidUv - vec2(texelSize.x, 0.0)).r);
+        solidEdge = max(solidEdge, texture2D(uObstructionMask, solidUv + vec2(0.0, texelSize.y)).r);
+        solidEdge = max(solidEdge, texture2D(uObstructionMask, solidUv - vec2(0.0, texelSize.y)).r);
+        flowMask *= 1.0 - smoothstep(0.05, 0.45, solidEdge);
+    #endif
+
+    #ifdef FLOW_VISUALIZATION
+        float flowValue = 0.0;
+        if (uFlowVisMode == 1) {
+            flowValue = mapFlowValue(length(texture2D(uFlowPrimary, vUv).xy));
+        } else if (uFlowVisMode == 2) {
+            flowValue = mapFlowValue(abs(texture2D(uFlowPrimary, vUv).r));
+        } else {
+            float rawScalar = channel(texture2D(uFlowPrimary, vUv), uFlowScalarChannel);
+            flowValue = mapFlowValue(rawScalar);
+        }
+        vec3 flowColor = transfer(flowValue, uFlowTransfer);
+        if (uFlowVisMode == 3) {
+            flowColor *= uFlowScalarColor;
+        }
+        if (uFlowGlowMode == 1) {
+            float speedGlow = length(texture2D(uFlowVelocity, vUv).xy) * uFlowScale;
+            flowColor += vec3(smoothstep(0.35, 1.2, speedGlow)) * 0.25;
+        } else if (uFlowGlowMode == 2) {
+            flowColor += uFlowScalarColor * smoothstep(0.35, 1.0, flowValue) * 0.22;
+        }
+        c = max(c, flowColor * flowMask);
+        a = max(a, max(c.r, max(c.g, c.b)));
     #endif
 
     #ifdef DISTORTION
@@ -722,6 +818,153 @@ export const splatShader = `
     }
 `;
 
+export const flowSourceShader = `
+    precision highp float;
+    precision highp sampler2D;
+
+    varying vec2 vUv;
+    uniform sampler2D uTarget;
+    uniform float aspectRatio;
+    uniform int uKind;
+    uniform int uProfile;
+    uniform vec2 uFrom;
+    uniform vec2 uTo;
+    uniform vec4 uRect;
+    uniform vec3 color;
+    uniform float radius;
+    uniform sampler2D uStickyMask;
+    uniform float uStickyAmplify;
+
+    float profileWeight(float t) {
+        if (uProfile != 1) return 1.0;
+        float centered = t * 2.0 - 1.0;
+        return max(0.0, 1.0 - centered * centered);
+    }
+
+    vec2 aspectVec(vec2 p) {
+        return vec2(p.x * aspectRatio, p.y);
+    }
+
+    void main () {
+        float d2 = 0.0;
+        float t = 0.5;
+
+        if (uKind == 1) {
+            vec2 pa = aspectVec(vUv - uFrom);
+            vec2 ba = aspectVec(uTo - uFrom);
+            t = clamp(dot(pa, ba) / max(dot(ba, ba), 0.000001), 0.0, 1.0);
+            vec2 d = pa - ba * t;
+            d2 = dot(d, d);
+        } else {
+            vec2 mn = uRect.xy;
+            vec2 mx = uRect.xy + uRect.zw;
+            vec2 closest = clamp(vUv, mn, mx);
+            vec2 d = aspectVec(vUv - closest);
+            d2 = dot(d, d);
+            t = clamp((vUv.y - mn.y) / max(uRect.w, 0.000001), 0.0, 1.0);
+        }
+
+        float amount = exp(-d2 / radius) * profileWeight(t);
+        vec3 splat = amount * color;
+        float stickyVal = texture2D(uStickyMask, vec2(vUv.x, 1.0 - vUv.y)).r;
+        splat *= 1.0 + stickyVal * uStickyAmplify;
+        vec3 base = texture2D(uTarget, vUv).xyz;
+        gl_FragColor = vec4(clamp(base + splat, -1000.0, 1000.0), 1.0);
+    }
+`;
+
+export const flowOutletShader = `
+    precision highp float;
+    precision highp sampler2D;
+
+    varying vec2 vUv;
+    uniform sampler2D uTarget;
+    uniform int uEdge;
+    uniform float uFrom;
+    uniform float uTo;
+    uniform float uWidth;
+    uniform float uKeep;
+
+    void main () {
+        vec4 value = texture2D(uTarget, vUv);
+        float along = uEdge < 2 ? vUv.y : vUv.x;
+        float normal = 1.0;
+        if (uEdge == 0) normal = 1.0 - smoothstep(0.0, max(uWidth, 0.0001), vUv.x);
+        else if (uEdge == 1) normal = smoothstep(1.0 - max(uWidth, 0.0001), 1.0, vUv.x);
+        else if (uEdge == 2) normal = smoothstep(1.0 - max(uWidth, 0.0001), 1.0, vUv.y);
+        else normal = 1.0 - smoothstep(0.0, max(uWidth, 0.0001), vUv.y);
+
+        float gate = step(uFrom, along) * step(along, uTo) * normal;
+        gl_FragColor = mix(value, value * uKeep, gate);
+    }
+`;
+
+export const flowForceShader = `
+    precision highp float;
+    precision highp sampler2D;
+
+    varying vec2 vUv;
+    uniform sampler2D uVelocity;
+    uniform sampler2D uScalar;
+    uniform float dt;
+    uniform vec2 uGravity;
+    uniform vec2 uBuoyancyDirection;
+    uniform float uBuoyancyStrength;
+    uniform float uBuoyancyAmbient;
+    uniform int uScalarChannel;
+
+    float channel(vec4 v, int ch) {
+        if (ch == 0) return v.r;
+        if (ch == 1) return v.g;
+        return v.b;
+    }
+
+    void main () {
+        vec2 velocity = texture2D(uVelocity, vUv).xy;
+        velocity += uGravity * dt;
+        if (uBuoyancyStrength != 0.0) {
+            float scalar = channel(texture2D(uScalar, vUv), uScalarChannel);
+            velocity += normalize(uBuoyancyDirection + vec2(0.00001)) * (scalar - uBuoyancyAmbient) * uBuoyancyStrength * dt;
+        }
+        gl_FragColor = vec4(clamp(velocity, -1000.0, 1000.0), 0.0, 1.0);
+    }
+`;
+
+export const prescribedFieldShader = `
+    precision highp float;
+    precision highp sampler2D;
+
+    varying vec2 vUv;
+    uniform sampler2D uTarget;
+    uniform int uMode;
+    uniform int uOutputKind;
+    uniform int uUseGrid;
+    uniform sampler2D uGridTexture;
+    uniform float uGridScale;
+    uniform int uScalarChannel;
+
+    void main () {
+        vec4 base = texture2D(uTarget, vUv);
+        if (uUseGrid == 1) {
+            vec4 grid = texture2D(uGridTexture, vUv);
+            if (uOutputKind == 0) {
+                vec2 field = (grid.rg * 2.0 - 1.0) * uGridScale;
+                vec2 outV = uMode == 0 ? field : base.xy + field;
+                gl_FragColor = vec4(clamp(outV, -1000.0, 1000.0), 0.0, 1.0);
+            } else {
+                float scalar = grid.r * uGridScale;
+                vec3 scalarValue = vec3(0.0);
+                if (uScalarChannel == 0) scalarValue.r = scalar;
+                else if (uScalarChannel == 1) scalarValue.g = scalar;
+                else scalarValue.b = scalar;
+                gl_FragColor = uMode == 0 ? vec4(scalarValue, 1.0) : vec4(base.rgb + scalarValue, 1.0);
+            }
+        } else {
+            gl_FragColor = base;
+        }
+    }
+`;
+
 export const advectionShader = `
     precision highp float;
     precision highp sampler2D;
@@ -733,6 +976,8 @@ export const advectionShader = `
     uniform vec2 dyeTexelSize;
     uniform float dt;
     uniform float dissipation;
+    uniform vec4 dissipationVector;
+    uniform float uUseDissipationVector;
     uniform float uMultiplicative;
     uniform sampler2D uStickyMask;
     uniform float uStickyStrength;
@@ -761,18 +1006,20 @@ export const advectionShader = `
     #endif
         float stickyVal = texture2D(uStickyMask, vec2(vUv.x, 1.0 - vUv.y)).r;
         if (uMultiplicative > 0.5) {
+            float scalarDissipation = mix(dissipation, dissipationVector.r, uUseDissipationVector);
             float adjDissipation;
             if (uStickyStrength >= 0.0) {
                 // Dye: preserve on mask (dissipation → 1.0)
-                adjDissipation = mix(dissipation, 1.0, stickyVal * uStickyStrength);
+                adjDissipation = mix(scalarDissipation, 1.0, stickyVal * uStickyStrength);
             } else {
                 // Velocity: dampen on mask (dissipation → near-zero)
-                adjDissipation = dissipation * max(0.0, 1.0 + stickyVal * uStickyStrength);
+                adjDissipation = scalarDissipation * max(0.0, 1.0 + stickyVal * uStickyStrength);
             }
             gl_FragColor = clamp(adjDissipation * result, -1000.0, 1000.0);
         } else {
-            float adjDissipation = mix(dissipation, 0.0, stickyVal * uStickyStrength);
-            float decay = 1.0 + adjDissipation * dt;
+            vec4 baseDissipation = mix(vec4(dissipation), dissipationVector, uUseDissipationVector);
+            vec4 adjDissipation = mix(baseDissipation, vec4(0.0), stickyVal * uStickyStrength);
+            vec4 decay = vec4(1.0) + adjDissipation * dt;
             gl_FragColor = clamp(result / decay, -1000.0, 1000.0);
         }
     }
@@ -788,7 +1035,14 @@ export const divergenceShader = `
     varying highp vec2 vT;
     varying highp vec2 vB;
     uniform sampler2D uVelocity;
-    uniform float uOpenBoundary;
+    uniform vec4 uOpenEdges;
+    uniform sampler2D uSolidMask;
+    uniform float uHasSolidMask;
+
+    float solidAt(vec2 uv) {
+        if (uHasSolidMask < 0.5) return 0.0;
+        return texture2D(uSolidMask, vec2(clamp(uv.x, 0.0, 1.0), 1.0 - clamp(uv.y, 0.0, 1.0))).r;
+    }
 
     void main () {
         float L = texture2D(uVelocity, vL).x;
@@ -797,12 +1051,28 @@ export const divergenceShader = `
         float B = texture2D(uVelocity, vB).y;
 
         vec2 C = texture2D(uVelocity, vUv).xy;
-        if (uOpenBoundary < 0.5) {
+        if (uOpenEdges.x < 0.5) {
             if (vL.x < 0.0) { L = -C.x; }
+        }
+        if (uOpenEdges.y < 0.5) {
             if (vR.x > 1.0) { R = -C.x; }
+        }
+        if (uOpenEdges.z < 0.5) {
             if (vT.y > 1.0) { T = -C.y; }
+        }
+        if (uOpenEdges.w < 0.5) {
             if (vB.y < 0.0) { B = -C.y; }
         }
+
+        float sC = solidAt(vUv);
+        if (sC > 0.5) {
+            gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+            return;
+        }
+        if (solidAt(vL) > 0.5) { L = -C.x; }
+        if (solidAt(vR) > 0.5) { R = -C.x; }
+        if (solidAt(vT) > 0.5) { T = -C.y; }
+        if (solidAt(vB) > 0.5) { B = -C.y; }
 
         float div = 0.5 * (R - L + T - B);
         gl_FragColor = vec4(div, 0.0, 0.0, 1.0);
@@ -860,6 +1130,96 @@ export const vorticityShader = `
         velocity += force * dt;
         velocity = min(max(velocity, -1000.0), 1000.0);
         gl_FragColor = vec4(velocity, 0.0, 1.0);
+	    }
+	`;
+
+export const viscosityShader = `
+    precision highp float;
+    precision highp sampler2D;
+
+    varying vec2 vUv;
+    varying vec2 vL;
+    varying vec2 vR;
+    varying vec2 vT;
+    varying vec2 vB;
+    uniform sampler2D uVelocity;
+    uniform sampler2D uSource;
+    uniform sampler2D uSolidMask;
+    uniform float uHasSolidMask;
+    uniform float uAlpha;
+
+    float solidAt(vec2 uv) {
+        if (uHasSolidMask < 0.5) return 0.0;
+        return texture2D(uSolidMask, vec2(clamp(uv.x, 0.0, 1.0), 1.0 - clamp(uv.y, 0.0, 1.0))).r;
+    }
+
+    vec2 neighborVelocity(vec2 uv, vec2 center) {
+        if (solidAt(uv) > 0.5) return center;
+        return texture2D(uVelocity, uv).xy;
+    }
+
+    void main () {
+        if (solidAt(vUv) > 0.5) {
+            gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+            return;
+        }
+        vec2 C = texture2D(uVelocity, vUv).xy;
+        vec2 source = texture2D(uSource, vUv).xy;
+        vec2 L = neighborVelocity(vL, C);
+        vec2 R = neighborVelocity(vR, C);
+        vec2 T = neighborVelocity(vT, C);
+        vec2 B = neighborVelocity(vB, C);
+        vec2 velocity = (source + uAlpha * (L + R + T + B)) / (1.0 + 4.0 * uAlpha);
+        gl_FragColor = vec4(clamp(velocity, -1000.0, 1000.0), 0.0, 1.0);
+    }
+`;
+
+export const wallFrictionShader = `
+    precision highp float;
+    precision highp sampler2D;
+
+    varying vec2 vUv;
+    uniform sampler2D uVelocity;
+    uniform sampler2D uSolidMask;
+    uniform vec2 texelSize;
+    uniform float uHasSolidMask;
+    uniform float uWallFriction;
+    uniform float uWallFrictionWidth;
+
+    float solidAt(vec2 uv) {
+        if (uHasSolidMask < 0.5) return 0.0;
+        return texture2D(uSolidMask, vec2(clamp(uv.x, 0.0, 1.0), 1.0 - clamp(uv.y, 0.0, 1.0))).r;
+    }
+
+    void main () {
+        vec2 velocity = texture2D(uVelocity, vUv).xy;
+        if (uHasSolidMask < 0.5 || uWallFriction <= 0.0) {
+            gl_FragColor = vec4(velocity, 0.0, 1.0);
+            return;
+        }
+        float center = solidAt(vUv);
+        if (center > 0.5) {
+            gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+            return;
+        }
+
+        float width = clamp(uWallFrictionWidth, 1.0, 2.0);
+        vec2 dx = vec2(texelSize.x, 0.0);
+        vec2 dy = vec2(0.0, texelSize.y);
+        float edge = 0.0;
+        edge = max(edge, solidAt(vUv + dx));
+        edge = max(edge, solidAt(vUv - dx));
+        edge = max(edge, solidAt(vUv + dy));
+        edge = max(edge, solidAt(vUv - dy));
+        if (width > 1.5) {
+            edge = max(edge, 0.65 * solidAt(vUv + dx * 2.0));
+            edge = max(edge, 0.65 * solidAt(vUv - dx * 2.0));
+            edge = max(edge, 0.65 * solidAt(vUv + dy * 2.0));
+            edge = max(edge, 0.65 * solidAt(vUv - dy * 2.0));
+        }
+
+        float damping = clamp(1.0 - uWallFriction * edge, 0.0, 1.0);
+        gl_FragColor = vec4(velocity * damping, 0.0, 1.0);
     }
 `;
 
@@ -876,6 +1236,13 @@ export const pressureShader = `
     uniform sampler2D uDivergence;
     uniform sampler2D uStickyMask;
     uniform float uStickyPressure;
+    uniform sampler2D uSolidMask;
+    uniform float uHasSolidMask;
+
+    float solidAt(vec2 uv) {
+        if (uHasSolidMask < 0.5) return 0.0;
+        return texture2D(uSolidMask, vec2(clamp(uv.x, 0.0, 1.0), 1.0 - clamp(uv.y, 0.0, 1.0))).r;
+    }
 
     void main () {
         float L = texture2D(uPressure, vL).x;
@@ -883,6 +1250,14 @@ export const pressureShader = `
         float T = texture2D(uPressure, vT).x;
         float B = texture2D(uPressure, vB).x;
         float C = texture2D(uPressure, vUv).x;
+        if (solidAt(vUv) > 0.5) {
+            gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+            return;
+        }
+        if (solidAt(vL) > 0.5) { L = C; }
+        if (solidAt(vR) > 0.5) { R = C; }
+        if (solidAt(vT) > 0.5) { T = C; }
+        if (solidAt(vB) > 0.5) { B = C; }
         float divergence = texture2D(uDivergence, vUv).x;
         float pressure = (L + R + B + T - divergence) * 0.25;
         float stickyVal = texture2D(uStickyMask, vec2(vUv.x, 1.0 - vUv.y)).r;
@@ -902,6 +1277,13 @@ export const gradientSubtractShader = `
     varying highp vec2 vB;
     uniform sampler2D uPressure;
     uniform sampler2D uVelocity;
+    uniform sampler2D uSolidMask;
+    uniform float uHasSolidMask;
+
+    float solidAt(vec2 uv) {
+        if (uHasSolidMask < 0.5) return 0.0;
+        return texture2D(uSolidMask, vec2(clamp(uv.x, 0.0, 1.0), 1.0 - clamp(uv.y, 0.0, 1.0))).r;
+    }
 
     void main () {
         float L = texture2D(uPressure, vL).x;
@@ -909,6 +1291,15 @@ export const gradientSubtractShader = `
         float T = texture2D(uPressure, vT).x;
         float B = texture2D(uPressure, vB).x;
         vec2 velocity = texture2D(uVelocity, vUv).xy;
+        if (solidAt(vUv) > 0.5) {
+            gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+            return;
+        }
+        float C = texture2D(uPressure, vUv).x;
+        if (solidAt(vL) > 0.5) { L = C; }
+        if (solidAt(vR) > 0.5) { R = C; }
+        if (solidAt(vT) > 0.5) { T = C; }
+        if (solidAt(vB) > 0.5) { B = C; }
         velocity.xy -= vec2(R - L, T - B);
         gl_FragColor = vec4(velocity, 0.0, 1.0);
     }
@@ -1007,7 +1398,7 @@ export const applyMaskShader = `
         // container shape (orthogonal): allowed = container * (1 - obstruction).
         if (uHasObstruction > 0.5) {
             float obstruct = texture2D(uObstructionMask, vec2(vUv.x, 1.0 - vUv.y)).r;
-            mask *= (1.0 - obstruct);
+            mask *= (obstruct > 0.5 ? 0.0 : 1.0);
         }
 
         gl_FragColor = val * mask;

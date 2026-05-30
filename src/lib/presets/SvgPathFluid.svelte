@@ -31,7 +31,7 @@
 		seed,
 		lazy,
 		'aria-label': ariaLabel,
-		splatOnHover,
+		splatOnHover = true,
 		backColor
 	}: SvgPathFluidProps = $props();
 

@@ -140,7 +140,7 @@ acts as a visual-only crop (the divergence solver skips no-penetration at the
 canvas edges, and the container is not enforced as a wall). **Obstructions are
 the exception: their mask pass runs regardless of `openBoundary`.** A solid
 obstacle should block flow whether or not the canvas edges are open, and the
-throughflow presets (rocket nozzle, venturi, river delta, flow past a body)
+throughflow presets (gas flare, venturi, river delta, flow past a body)
 specifically want `openBoundary: true` — fluid enters one side, flows around
 the obstacles, and vents off the far edge instead of recirculating and
 saturating a sealed box. Concretely: `shouldMaskPhysics()` returns true whenever

@@ -32,7 +32,19 @@ export type {
 	DoubleFBO,
 	ExtInfo,
 	ContainerShape,
-	StickyMask
+	StickyMask,
+	Vec2,
+	FlowMode,
+	FlowBoundary,
+	FlowBoundaryKind,
+	FlowSource,
+	FlowOutlet,
+	FlowScalarField,
+	FlowForce,
+	FlowGridField,
+	PrescribedFlowField,
+	FlowVisualization,
+	FlowConfig
 } from './engine/types.js';
 export { mulberry32, randomSeed, generateColor, HSVtoRGB, normalizeColor, type Rng } from './engine/rng.js';
 
@@ -48,6 +60,7 @@ export { default as FrameFluid, type FrameFluidProps } from './presets/FrameFlui
 export { default as AnnularFluid, type AnnularFluidProps } from './presets/AnnularFluid.svelte';
 export { default as SvgPathFluid, type SvgPathFluidProps } from './presets/SvgPathFluid.svelte';
 export { default as ToroidalTempest, type ToroidalTempestProps } from './presets/ToroidalTempest.svelte';
-export { default as RocketEngine, type RocketEngineProps } from './presets/RocketEngine.svelte';
+export { default as GasFlare, type GasFlareProps } from './presets/GasFlare.svelte';
 export { default as Venturi, type VenturiProps } from './presets/Venturi.svelte';
 export { default as RiverDelta, type RiverDeltaProps } from './presets/RiverDelta.svelte';
+export { default as TeslaValve, type TeslaValveProps } from './presets/TeslaValve.svelte';

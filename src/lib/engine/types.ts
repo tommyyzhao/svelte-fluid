@@ -21,6 +21,150 @@ export interface RGB {
 	b: number;
 }
 
+/** 2D vector in normalized flow space. `y` follows the fluid convention: positive is upward. */
+export interface Vec2 {
+	x: number;
+	y: number;
+}
+
+export type FlowMode = 'live' | 'prescribed' | 'hybrid';
+export type FlowBoundaryKind = 'wall' | 'open';
+export type FlowSourceKind = 'point' | 'line' | 'rect';
+export type FlowProfile = 'uniform' | 'parabolic';
+export type FlowScalarName = 'temperature' | 'ink' | string;
+export type FlowAdvection = 'standard' | 'low-dissipation';
+export type FlowVisualizationField = 'dye' | 'speed' | 'pressure' | 'temperature' | 'scalar';
+export type FlowTransfer = 'fire' | 'water' | 'ink' | 'viridis' | 'cfd';
+
+export interface FlowBoundary {
+	left?: FlowBoundaryKind;
+	right?: FlowBoundaryKind;
+	top?: FlowBoundaryKind;
+	bottom?: FlowBoundaryKind;
+}
+
+interface FlowSourceBase {
+	/** Raw velocity injected every frame, in the same units as {@link PresetSplat.dx}. */
+	velocity?: Vec2;
+	/** RGB dye injected every frame. Components use the same 0-1/HDR range as {@link PresetSplat.color}. */
+	dye?: RGB;
+	/** Named scalar values injected every frame, e.g. `{ temperature: 1 }` or `{ ink: 0.8 }`. */
+	scalars?: Partial<Record<FlowScalarName, number>>;
+	/**
+	 * Source strength in "full-strength frames per second". Default 60 means
+	 * the configured velocity/dye/scalar values are applied once per 60 Hz frame.
+	 */
+	rate?: number;
+	/** Gaussian splat radius in the same public units as `splatRadius`. Defaults to the component's `splatRadius`. */
+	radius?: number;
+	/** Optional profile across line/rect sources. Default `uniform`. */
+	profile?: FlowProfile;
+	/**
+	 * Deprecated compatibility hint from the earlier sampled-source
+	 * implementation. Line/rect sources now render through one analytic shader
+	 * pass per target and ignore this value.
+	 */
+	samples?: number;
+}
+
+export type FlowSource =
+	| (FlowSourceBase & { kind: 'point'; x: number; y: number })
+	| (FlowSourceBase & {
+			kind: 'line';
+			from: Vec2;
+			to: Vec2;
+			thickness?: number;
+	  })
+	| (FlowSourceBase & {
+			kind: 'rect';
+			x: number;
+			y: number;
+			width: number;
+			height: number;
+	  });
+
+export interface FlowOutlet {
+	edge: 'left' | 'right' | 'top' | 'bottom';
+	/** Normalized interval along the outlet edge. Defaults to 0. */
+	from?: number;
+	/** Normalized interval along the outlet edge. Defaults to 1. */
+	to?: number;
+	/** Edge-zone width in UV units. Default 0.035. */
+	width?: number;
+	/** Multiplier applied to dye in the outlet zone. Default 0. */
+	clearDye?: number;
+	/** Whether to damp velocity in the outlet zone. Default false. */
+	clearVelocity?: boolean;
+	/** Whether to damp scalar fields in the outlet zone. Default true. */
+	clearScalars?: boolean;
+}
+
+export interface FlowScalarField {
+	name: FlowScalarName;
+	/** Scalar dissipation. Defaults to `densityDissipation` semantics. */
+	dissipation?: number;
+	/** `low-dissipation` reduces explicit scalar dissipation; it is not MacCormack/BFECC advection. Default `standard`. */
+	advection?: FlowAdvection;
+	/** Display color used by scalar visualization transfer functions. */
+	color?: RGB;
+	/** Input range mapped into visualization. Default `[0, 1]`. */
+	range?: [number, number];
+}
+
+export type FlowForce =
+	| { kind: 'gravity'; vector: Vec2 }
+	| { kind: 'pressureGradient'; vector: Vec2 }
+	| {
+			kind: 'buoyancy';
+			scalar: FlowScalarName;
+			direction?: Vec2;
+			strength: number;
+			ambient?: number;
+	  };
+
+export interface FlowGridField {
+	width: number;
+	height: number;
+	/** Row-major values. Velocity grids use x/y pairs; scalar grids use one value per cell. */
+	data: ArrayLike<number>;
+	/** Decode scale for normalized texture uploads. Default 1. */
+	scale?: number;
+	/**
+	 * Optional immutable-data revision. Increment or replace it when reusing the
+	 * same `data` object with changed values so `setConfig()` knows to re-upload.
+	 */
+	version?: number | string;
+}
+
+export type PrescribedFlowField = {
+	kind: 'grid';
+	velocity?: FlowGridField;
+	scalars?: Partial<Record<FlowScalarName, FlowGridField>>;
+};
+
+export interface FlowVisualization {
+	colorBy?: FlowVisualizationField;
+	scalar?: FlowScalarName;
+	/** Add a small display-only glow from either speed or the selected scalar. */
+	glowBy?: 'speed' | 'scalar' | 'none';
+	/** Color transfer function. `cfd` maps low→high as blue→cyan→green→yellow→red for velocity/pressure plots. */
+	transfer?: FlowTransfer;
+	/** Optional raw field range mapped to the selected transfer function before `scale` is applied. */
+	range?: [number, number];
+	scale?: number;
+}
+
+export interface FlowConfig {
+	mode?: FlowMode;
+	boundary?: FlowBoundary;
+	sources?: ReadonlyArray<FlowSource>;
+	outlets?: ReadonlyArray<FlowOutlet>;
+	scalarFields?: ReadonlyArray<FlowScalarField>;
+	forces?: ReadonlyArray<FlowForce>;
+	prescribed?: PrescribedFlowField;
+	visualization?: FlowVisualization;
+}
+
 /**
  * Declarative initial splat. Consumed once at engine construction
  * (after the random initial splats), then forgotten. Used by preset
@@ -91,10 +235,41 @@ export interface PresetSplat {
  */
 export type ContainerShape =
 	| { type: 'circle'; cx: number; cy: number; radius: number }
-	| { type: 'frame'; cx: number; cy: number; halfW: number; halfH: number; innerCornerRadius?: number; outerHalfW?: number; outerHalfH?: number; outerCornerRadius?: number }
-	| { type: 'roundedRect'; cx: number; cy: number; halfW: number; halfH: number; cornerRadius: number }
-	| { type: 'annulus'; cx: number; cy: number; innerRadius: number; outerRadius: number }
-	| { type: 'svgPath'; d?: string; text?: string; font?: string; viewBox?: [number, number, number, number]; fillRule?: 'nonzero' | 'evenodd'; maskResolution?: number };
+	| {
+			type: 'frame';
+			cx: number;
+			cy: number;
+			halfW: number;
+			halfH: number;
+			innerCornerRadius?: number;
+			outerHalfW?: number;
+			outerHalfH?: number;
+			outerCornerRadius?: number;
+	  }
+	| {
+			type: 'roundedRect';
+			cx: number;
+			cy: number;
+			halfW: number;
+			halfH: number;
+			cornerRadius: number;
+	  }
+	| {
+			type: 'annulus';
+			cx: number;
+			cy: number;
+			innerRadius: number;
+			outerRadius: number;
+	  }
+	| {
+			type: 'svgPath';
+			d?: string;
+			text?: string;
+			font?: string;
+			viewBox?: [number, number, number, number];
+			fillRule?: 'nonzero' | 'evenodd';
+			maskResolution?: number;
+	  };
 
 /**
  * An interior obstacle the fluid flows around. Reuses the same svgPath/text
@@ -207,6 +382,30 @@ export interface FluidConfig {
 	initialDensityDissipationDuration?: number;
 	/** How fast velocity fades. Default 0.2. */
 	velocityDissipation?: number;
+	/**
+	 * Maximum simulated seconds per solver substep. Default 1/60.
+	 * Pair with `substeps` for steadier high-speed or narrow-channel flows.
+	 */
+	maxTimeStep?: number;
+	/**
+	 * Minimum solver substeps per rendered frame. Default 1.
+	 * Higher values improve stability at the cost of extra GPU passes.
+	 */
+	substeps?: number;
+	/**
+	 * Dimensionless velocity diffusion. Default 0 (off).
+	 * Implemented as an implicit Jacobi solve so small values remain stable.
+	 */
+	viscosity?: number;
+	/** Jacobi iterations for the viscosity solve. Default 8. */
+	viscosityIterations?: number;
+	/**
+	 * Tangential damping near interior obstruction masks. Default 0 (off).
+	 * Approximates no-slip wall shear while preserving the existing mask model.
+	 */
+	wallFriction?: number;
+	/** Width of the obstruction-adjacent wall-friction band in simulation cells. Default 1. */
+	wallFrictionWidth?: number;
 	/** Pressure solver weight. Default 0.8. */
 	pressure?: number;
 	/** Pressure solver iterations. Default 20. */
@@ -540,6 +739,12 @@ export interface FluidConfig {
 	 * See ADR-0034.
 	 */
 	obstructions?: ReadonlyArray<Obstruction>;
+	/**
+	 * Additive v1 flow-scene controls for physically-plausible presets:
+	 * persistent sources, edge-drain outlets, scalar fields, forces, prescribed fields,
+	 * and field-aware visualization. `undefined` preserves legacy behavior.
+	 */
+	flow?: FlowConfig | null;
 }
 
 /**
@@ -553,6 +758,12 @@ export interface ResolvedConfig {
 	INITIAL_DENSITY_DISSIPATION: number;
 	INITIAL_DENSITY_DISSIPATION_DURATION: number;
 	VELOCITY_DISSIPATION: number;
+	MAX_TIME_STEP: number;
+	SUBSTEPS: number;
+	VISCOSITY: number;
+	VISCOSITY_ITERATIONS: number;
+	WALL_FRICTION: number;
+	WALL_FRICTION_WIDTH: number;
 	PRESSURE: number;
 	PRESSURE_ITERATIONS: number;
 	CURL: number;
@@ -614,6 +825,7 @@ export interface ResolvedConfig {
 	STICKY_PRESSURE: number;
 	STICKY_AMPLIFY: number;
 	OBSTRUCTIONS: ReadonlyArray<Obstruction> | null;
+	FLOW: FlowConfig | null;
 }
 
 /** Pixel format pair returned by `getSupportedFormat`. */

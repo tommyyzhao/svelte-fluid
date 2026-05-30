@@ -1013,7 +1013,7 @@
 
 <svelte:head>
 	<title>svelte-fluid — WebGL fluid simulation as a Svelte 5 component</title>
-	<meta name="description" content="Drop-in WebGL fluid simulation for Svelte 5. Multi-instance, resize-stable, deterministic seeding, ten presets. MIT licensed." />
+	<meta name="description" content="Drop-in WebGL fluid simulation for Svelte 5. Multi-instance, resize-stable, deterministic seeding, fourteen presets. MIT licensed." />
 	<meta property="og:title" content="svelte-fluid" />
 	<meta property="og:description" content="WebGL fluid simulation as a Svelte 5 component. Multi-instance, resize-stable, ten ready-made presets." />
 </svelte:head>
