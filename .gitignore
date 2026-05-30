@@ -29,5 +29,8 @@ vite.config.ts.timestamp-*
 .claude/worktrees/
 .claude/commands/
 
+# Agent session memories (local-only, append-only)
+.agents/memories/
+
 # Release dogfood harnesses (local-only)
 /examples/dogfood-v010/

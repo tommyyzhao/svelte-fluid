@@ -99,5 +99,9 @@ route as part of the same change — not as a follow-up.
 
 ## Session workflow
 
-- Start: run `/resume-fluid-session`
-- End: run `/end-fluid-session`
+- Start: use the `resume-fluid-session` skill or run `/resume-fluid-session`.
+- End: use the `end-fluid-session` skill, the resume skill's end workflow, or run
+  `/end-fluid-session`.
+- Session memories live in `.agents/memories/fluid-sessions/` as local-only,
+  timestamped files. Do not overwrite prior memories; keep `.claude/handoff.md`
+  as a legacy read-only fallback.
