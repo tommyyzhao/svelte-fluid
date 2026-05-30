@@ -7,7 +7,7 @@
 
 <svelte:head>
 	<title>Presets — svelte-fluid</title>
-	<meta name="description" content="Thirteen opinionated Fluid wrappers with tuned physics and visuals — drop in with zero config." />
+	<meta name="description" content="Fourteen opinionated Fluid wrappers with tuned physics and visuals — drop in with zero config." />
 </svelte:head>
 
 <h1>Presets</h1>
@@ -30,14 +30,15 @@
 	<code>style</code>, <code>seed</code>, <code>lazy</code>, <code>splatOnHover</code>,
 	<code>aria-label</code>, and <code>backColor</code> props for sizing, styling, accessibility,
 	interactive splatting, and adapting the empty-canvas substrate to a host page background.
-	Each preset's table below shows the <code>backColor</code> value that ships by default; pass
-	your own to override.
+	Presets enable <code>splatOnHover</code> by default; pass <code>splatOnHover={LB}false{RB}</code>
+	to disable pointer-driven splats. Each preset's table below shows the <code>backColor</code>
+	value that ships by default; pass your own to override.
 </p>
 
 <p>
 	The examples below show the public wrapper API. The detailed tables describe the pinned
-	<code>&lt;Fluid&gt;</code> recipe, but hand-authored <code>presetSplats</code> arrays live in
-	the preset source so copy-paste examples stay small.
+	<code>&lt;Fluid&gt;</code> recipe, but hand-authored <code>presetSplats</code> and
+	<code>flow</code> scene configs live in the preset source so copy-paste examples stay small.
 </p>
 
 <hr />
@@ -146,24 +147,20 @@
 	</thead>
 	<tbody>
 		<tr><td><code>curl</code></td><td>8</td></tr>
-		<tr><td><code>densityDissipation</code></td><td>0.3</td></tr>
-		<tr><td><code>velocityDissipation</code></td><td>0.15</td></tr>
+		<tr><td><code>densityDissipation</code></td><td>0.18</td></tr>
+		<tr><td><code>velocityDissipation</code></td><td>0.12</td></tr>
 		<tr><td><code>pressure</code></td><td>0.85</td></tr>
 		<tr><td><code>splatRadius</code></td><td>0.12</td></tr>
 		<tr><td><code>splatForce</code></td><td>800</td></tr>
 		<tr><td><code>shading</code></td><td>true</td></tr>
 		<tr><td><code>colorful</code></td><td>false</td></tr>
-		<tr><td><code>bloom</code></td><td>true</td></tr>
-		<tr><td><code>bloomIntensity</code></td><td>0.6</td></tr>
+		<tr><td><code>bloom</code></td><td>false</td></tr>
+		<tr><td><code>bloomIntensity</code></td><td>0.35</td></tr>
 		<tr><td><code>bloomThreshold</code></td><td>0.4</td></tr>
 		<tr><td><code>sunrays</code></td><td>false</td></tr>
 		<tr><td><code>backColor</code></td><td>{LB} r: 6, g: 8, b: 20 {RB}</td></tr>
 		<tr><td><code>initialSplatCount</code></td><td>0</td></tr>
-		<tr><td><code>autoSplatRate</code></td><td>0.2</td></tr>
-		<tr><td><code>autoSplatColor</code></td><td>{LB} r: 0.06, g: 0.07, b: 0.50 {RB}</td></tr>
-		<tr><td><code>autoSplatVelocityX</code></td><td>0</td></tr>
-		<tr><td><code>autoSplatVelocityY</code></td><td>-180</td></tr>
-		<tr><td><code>autoSplatCenterY</code></td><td>0.90</td></tr>
+		<tr><td><code>flow</code></td><td>ink scalar source + downward ink-coupled buoyancy + scalar visualization</td></tr>
 		<tr><td><code>presetSplats</code></td><td>5 ink droplets near the top</td></tr>
 	</tbody>
 </table>
@@ -269,7 +266,7 @@
 		<tr><td><code>colorful</code></td><td>true</td></tr>
 		<tr><td><code>colorUpdateSpeed</code></td><td>8</td></tr>
 		<tr><td><code>bloom</code></td><td>true</td></tr>
-		<tr><td><code>bloomThreshold</code></td><td>0.5</td></tr>
+		<tr><td><code>bloomThreshold</code></td><td>0.6</td></tr>
 		<tr><td><code>bloomIntensity</code></td><td>1.8</td></tr>
 		<tr><td><code>sunrays</code></td><td>true</td></tr>
 		<tr><td><code>sunraysWeight</code></td><td>0.6</td></tr>
@@ -457,15 +454,15 @@
 
 <hr />
 
-<h2 id="rocketengine">RocketEngine</h2>
+<h2 id="gasflare">GasFlare</h2>
 
-<p>A rocket combustion chamber and converging-diverging (de Laval) nozzle, built from two obstruction slabs on a full canvas. Hot exhaust is injected continuously at the chamber head on the left, accelerates as the channel pinches to the throat, expands through the diverging bell, and dissipates past the bell mouth on the right.</p>
+<p>A natural-gas flare plume from a short exit nozzle. A hot vertical jet enters through a physical slot, entrains surrounding fluid, rolls into shear-layer vortices, and rises under temperature-scalar buoyancy with a fire transfer ramp.</p>
 
-<p><strong>Obstructions:</strong> two slabs (upper + lower) forming a nozzle channel — chamber → converging cone → throat → diverging bell. Closed boundary (obstruction physics requires it); the throughflow look comes from continuous head injection plus heavy density dissipation.</p>
+<p><strong>Obstructions:</strong> two lower slabs form the left and right walls of a flare stack, leaving a center nozzle slot open. The top and side edges drain the plume so hot content can vent instead of saturating the canvas.</p>
 
-<p><strong>Honest physics note:</strong> the converging-diverging acceleration is <em>faithful</em> — mass continuity forces the flow to speed up through the narrow throat. The white→yellow→orange color gradient is <em>evocative</em>, not physical: it is dye dissipating over distance, not a blackbody temperature falloff.</p>
+<p><strong>Honest physics note:</strong> this is an incompressible jet/plume simulation with advected heat scalar and buoyancy. It does not model combustion chemistry, compressibility, soot, radiation, or heat release.</p>
 
-<pre><code>&lt;RocketEngine /&gt;</code></pre>
+<pre><code>&lt;GasFlare /&gt;</code></pre>
 
 <table>
 	<thead>
@@ -475,27 +472,27 @@
 		</tr>
 	</thead>
 	<tbody>
-		<tr><td><code>curl</code></td><td>18</td></tr>
-		<tr><td><code>densityDissipation</code></td><td>0.9</td></tr>
-		<tr><td><code>initialDensityDissipation</code></td><td>0.9</td></tr>
-		<tr><td><code>velocityDissipation</code></td><td>0.05</td></tr>
+		<tr><td><code>curl</code></td><td>16</td></tr>
+		<tr><td><code>densityDissipation</code></td><td>0.42</td></tr>
+		<tr><td><code>initialDensityDissipation</code></td><td>0.55</td></tr>
+		<tr><td><code>velocityDissipation</code></td><td>0.055</td></tr>
 		<tr><td><code>pressure</code></td><td>0.85</td></tr>
-		<tr><td><code>pressureIterations</code></td><td>24</td></tr>
-		<tr><td><code>splatRadius</code></td><td>0.16</td></tr>
-		<tr><td><code>splatForce</code></td><td>6000</td></tr>
-		<tr><td><code>shading</code></td><td>true</td></tr>
+		<tr><td><code>pressureIterations</code></td><td>28</td></tr>
+		<tr><td><code>splatRadius</code></td><td>0.06</td></tr>
+		<tr><td><code>splatForce</code></td><td>3800</td></tr>
+		<tr><td><code>shading</code></td><td>false</td></tr>
 		<tr><td><code>colorful</code></td><td>false</td></tr>
 		<tr><td><code>bloom</code></td><td>true</td></tr>
-		<tr><td><code>bloomThreshold</code></td><td>0.5</td></tr>
-		<tr><td><code>bloomIntensity</code></td><td>1.6</td></tr>
-		<tr><td><code>sunrays</code></td><td>true</td></tr>
-		<tr><td><code>sunraysWeight</code></td><td>0.6</td></tr>
+		<tr><td><code>bloomThreshold</code></td><td>0.48</td></tr>
+		<tr><td><code>bloomIntensity</code></td><td>1.0</td></tr>
+		<tr><td><code>sunrays</code></td><td>false</td></tr>
+		<tr><td><code>sunraysWeight</code></td><td>0</td></tr>
 		<tr><td><code>simResolution</code></td><td>192</td></tr>
 		<tr><td><code>dyeResolution</code></td><td>1024</td></tr>
-		<tr><td><code>backColor</code></td><td>{LB} r: 8, g: 6, b: 10 {RB}</td></tr>
+		<tr><td><code>backColor</code></td><td>{LB} r: 6, g: 6, b: 8 {RB}</td></tr>
 		<tr><td><code>initialSplatCount</code></td><td>0</td></tr>
-		<tr><td><code>obstructions</code></td><td>2 nozzle slabs (upper + lower)</td></tr>
-		<tr><td><code>presetSplats</code></td><td>3 hot jets at the chamber head; re-injected every 120ms</td></tr>
+		<tr><td><code>obstructions</code></td><td>2 flare-stack wall slabs around a center slot</td></tr>
+		<tr><td><code>flow</code></td><td>live vertical hot-gas jet + crosswind source + top/side outlets + temperature-buoyancy fire visualization</td></tr>
 	</tbody>
 </table>
 
@@ -503,11 +500,11 @@
 
 <h2 id="venturi">Venturi</h2>
 
-<p>Bernoulli's principle made visible. Five colored streamlines enter from the left inlet and are squeezed through a central throat formed by two concave obstruction islands. Continuity forces the flow to accelerate through the constriction; the bunching streamlines concentrate dye in the throat, which crosses the bloom threshold and glows.</p>
+<p>Bernoulli's principle made visible. A gentle left-to-right body force acts like a pressure gradient, pushing fluid through a wide channel that is squeezed through a central throat formed by two concave obstruction islands. The visualization colors the velocity-magnitude field with a CFD-style blue→cyan→green→yellow→red ramp so the throat acceleration is readable instead of appearing as a uniform center jet.</p>
 
-<p><strong>Obstructions:</strong> two concave islands (top + bottom) pinching a horizontal channel from a wide inlet to a ~2.7:1 contraction at the throat. Closed boundary; laminar (<code>curl</code> 0) so the streamlines stay ordered.</p>
+<p><strong>Obstructions:</strong> two concave islands (top + bottom) pinching a horizontal channel from a wide inlet to a ~5.3:1 contraction at the throat. Open left/right boundaries let the inlet feed throughflow while the solid obstruction mask forms the throat; laminar (<code>curl</code> 0) so the streamlines stay ordered.</p>
 
-<p><strong>Honest physics note:</strong> the throat velocity acceleration is <em>faithful</em> — incompressible continuity genuinely speeds the flow through the constriction. The throat glow is <em>enhanced</em>: it is dye concentration crossing the bloom threshold, not a physical luminance.</p>
+<p><strong>Honest physics note:</strong> the throat speed-up is an incompressible, low-speed effect and belongs in the live solver. Pressure/density changes from compressible gas flow are not modeled.</p>
 
 <pre><code>&lt;Venturi /&gt;</code></pre>
 
@@ -520,24 +517,30 @@
 	</thead>
 	<tbody>
 		<tr><td><code>curl</code></td><td>0</td></tr>
-		<tr><td><code>densityDissipation</code></td><td>0.4</td></tr>
-		<tr><td><code>velocityDissipation</code></td><td>0.04</td></tr>
-		<tr><td><code>pressure</code></td><td>0.9</td></tr>
-		<tr><td><code>pressureIterations</code></td><td>30</td></tr>
-		<tr><td><code>splatRadius</code></td><td>0.08</td></tr>
+			<tr><td><code>densityDissipation</code></td><td>0.35</td></tr>
+			<tr><td><code>velocityDissipation</code></td><td>0.09</td></tr>
+			<tr><td><code>maxTimeStep</code></td><td>1 / 120</td></tr>
+			<tr><td><code>substeps</code></td><td>2</td></tr>
+			<tr><td><code>viscosity</code></td><td>0.018</td></tr>
+			<tr><td><code>viscosityIterations</code></td><td>10</td></tr>
+			<tr><td><code>wallFriction</code></td><td>0.18</td></tr>
+			<tr><td><code>wallFrictionWidth</code></td><td>2</td></tr>
+			<tr><td><code>pressure</code></td><td>0.9</td></tr>
+		<tr><td><code>pressureIterations</code></td><td>36</td></tr>
+		<tr><td><code>splatRadius</code></td><td>0.055</td></tr>
 		<tr><td><code>splatForce</code></td><td>6000</td></tr>
-		<tr><td><code>shading</code></td><td>true</td></tr>
+		<tr><td><code>shading</code></td><td>false</td></tr>
 		<tr><td><code>colorful</code></td><td>false</td></tr>
-		<tr><td><code>bloom</code></td><td>true</td></tr>
-		<tr><td><code>bloomThreshold</code></td><td>0.55</td></tr>
-		<tr><td><code>bloomIntensity</code></td><td>1.8</td></tr>
+		<tr><td><code>bloom</code></td><td>false</td></tr>
+		<tr><td><code>bloomThreshold</code></td><td>0.6</td></tr>
+		<tr><td><code>bloomIntensity</code></td><td>0.5</td></tr>
 		<tr><td><code>sunrays</code></td><td>false</td></tr>
 		<tr><td><code>simResolution</code></td><td>192</td></tr>
 		<tr><td><code>dyeResolution</code></td><td>1024</td></tr>
 		<tr><td><code>backColor</code></td><td>{LB} r: 6, g: 10, b: 14 {RB}</td></tr>
 		<tr><td><code>initialSplatCount</code></td><td>0</td></tr>
 		<tr><td><code>obstructions</code></td><td>2 concave throat islands (top + bottom)</td></tr>
-		<tr><td><code>presetSplats</code></td><td>5 inlet streamlines; re-injected every 200ms</td></tr>
+			<tr><td><code>flow</code></td><td><code>pressureGradient</code> body-force drive + velocity-draining outlet + <code>transfer: 'cfd'</code> speed visualization</td></tr>
 	</tbody>
 </table>
 
@@ -547,9 +550,9 @@
 
 <p>A wide river entering from the left edge and braiding around a chain of staggered teardrop islands. The flow can't go straight through, so continuity routes the flux through the open channels between islands — the single inlet stream fans out into branching distributaries, exactly like a sediment delta.</p>
 
-<p><strong>Obstructions:</strong> five teardrop islands (each pointed upstream) staggered across x and y, instanced from one path via <code>offset</code>/<code>scale</code>. Closed boundary; a wide left-edge inlet via <code>autoSplat</code> feeds a steady sheet of fresh dye.</p>
+<p><strong>Obstructions:</strong> five teardrop islands (each pointed upstream) staggered across x and y, instanced from one path via <code>offset</code>/<code>scale</code>. Open left/right boundaries let a wide left-edge inlet feed a steady sheet of fresh dye and vent downstream.</p>
 
-<p><strong>Honest physics note:</strong> the branching around islands is <em>faithful</em> — incompressible continuity genuinely routes flux through the open channels between the obstacles. (The "river mouth" exit is evocative: this is a closed box, so dye recirculates and is cleared by dissipation rather than draining off an open boundary.)</p>
+<p><strong>Honest physics note:</strong> the branching around islands is <em>faithful</em> — incompressible continuity genuinely routes flux through the open channels between the obstacles. It is still not sediment transport or free-surface river physics.</p>
 
 <pre><code>&lt;RiverDelta /&gt;</code></pre>
 
@@ -581,6 +584,46 @@
 		<tr><td><code>autoSplatVelocityX</code></td><td>700</td></tr>
 		<tr><td><code>autoSplatBandHeight</code></td><td>1.2</td></tr>
 		<tr><td><code>presetSplats</code></td><td>5 left-edge inflow jets (silt→glacial ramp)</td></tr>
+	</tbody>
+</table>
+
+<hr />
+
+<h2 id="teslavalve">TeslaValve</h2>
+
+<p>A passive Tesla-valve-like channel with a straight conduit and patent-style alternating bypass loops. A steady left-to-right inlet remains mostly coherent in the main channel while shedding visible recirculation into the side buckets.</p>
+
+<p><strong>Geometry:</strong> a cropped reference SVG path defines the conduit, side-channel buckets, and internal slots as one even-odd container mask. The filled SVG region is the physical fluid domain, so the slots and walls are solved as part of the same boundary.</p>
+
+<p><strong>Honest physics note:</strong> this is a live incompressible throughflow visualization. It gives plausible routing, separation, and recirculation cues, but it does not calculate a reverse/forward pressure-drop ratio or real valve rectification.</p>
+
+<pre><code>&lt;TeslaValve /&gt;</code></pre>
+
+<table>
+	<thead>
+		<tr>
+			<th>Prop</th>
+			<th>Value</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr><td><code>curl</code></td><td>4</td></tr>
+		<tr><td><code>densityDissipation</code></td><td>0.38</td></tr>
+		<tr><td><code>velocityDissipation</code></td><td>0.04</td></tr>
+		<tr><td><code>pressure</code></td><td>0.9</td></tr>
+		<tr><td><code>pressureIterations</code></td><td>34</td></tr>
+		<tr><td><code>splatRadius</code></td><td>0.06</td></tr>
+		<tr><td><code>splatForce</code></td><td>6000</td></tr>
+		<tr><td><code>shading</code></td><td>false</td></tr>
+		<tr><td><code>colorful</code></td><td>false</td></tr>
+		<tr><td><code>bloom</code></td><td>false</td></tr>
+		<tr><td><code>simResolution</code></td><td>224</td></tr>
+		<tr><td><code>dyeResolution</code></td><td>1024</td></tr>
+		<tr><td><code>backColor</code></td><td>{LB} r: 5, g: 9, b: 12 {RB}</td></tr>
+		<tr><td><code>initialSplatCount</code></td><td>0</td></tr>
+		<tr><td><code>containerShape</code></td><td>reference SVG conduit + even-odd internal slots</td></tr>
+		<tr><td><code>flow</code></td><td>parabolic line inlet + right-edge outlet + ink scalar visualization</td></tr>
+		<tr><td><code>presetSplats</code></td><td>3 left-edge inflow pulses</td></tr>
 	</tbody>
 </table>
 

@@ -35,7 +35,7 @@
 		seed,
 		lazy,
 		'aria-label': ariaLabel,
-		splatOnHover,
+		splatOnHover = true,
 		backColor
 	}: AnnularFluidProps = $props();
 

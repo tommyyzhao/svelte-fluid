@@ -35,8 +35,15 @@ import type {
 	DoubleFBO,
 	ExtInfo,
 	FBO,
+	FlowConfig,
+	FlowForce,
+	FlowGridField,
+	FlowOutlet,
+	FlowScalarField,
+	FlowSource,
 	FluidConfig,
 	FluidHandle,
+	PrescribedFlowField,
 	ResolvedConfig,
 	RGB
 } from './types.js';
@@ -61,9 +68,23 @@ import {
 	wrap
 } from './gl-utils.js';
 import { type DitheringTexture, createDitheringTexture } from './dithering.js';
-import { type Pointer, createPointer, updatePointerDownData, updatePointerMoveData, updatePointerUpData } from './pointer.js';
+import {
+	type Pointer,
+	createPointer,
+	updatePointerDownData,
+	updatePointerMoveData,
+	updatePointerUpData
+} from './pointer.js';
 import { type Rng, generateColor, mulberry32, normalizeColor, randomSeed } from './rng.js';
-import { containerShapeEqual, stickyMaskEqual, containerMask, maskAreaFraction, obstructionsEqual, obstructionMask, type MaskContext } from './container-shapes.js';
+import {
+	containerShapeEqual,
+	stickyMaskEqual,
+	containerMask,
+	maskAreaFraction,
+	obstructionsEqual,
+	obstructionMask,
+	type MaskContext
+} from './container-shapes.js';
 import * as S from './shaders.js';
 
 /* -------------------------------------------------------------------------- */
@@ -78,6 +99,12 @@ export const DEFAULTS: ResolvedConfig = {
 	INITIAL_DENSITY_DISSIPATION: 1,
 	INITIAL_DENSITY_DISSIPATION_DURATION: 0,
 	VELOCITY_DISSIPATION: 0.2,
+	MAX_TIME_STEP: 1 / 60,
+	SUBSTEPS: 1,
+	VISCOSITY: 0,
+	VISCOSITY_ITERATIONS: 8,
+	WALL_FRICTION: 0,
+	WALL_FRICTION_WIDTH: 1,
 	PRESSURE: 0.8,
 	PRESSURE_ITERATIONS: 20,
 	CURL: 30,
@@ -138,7 +165,8 @@ export const DEFAULTS: ResolvedConfig = {
 	STICKY_STRENGTH: 0.9,
 	STICKY_PRESSURE: 0.15,
 	STICKY_AMPLIFY: 0.3,
-	OBSTRUCTIONS: null
+	OBSTRUCTIONS: null,
+	FLOW: null
 };
 /** @internal Exported for tests — not part of the public API. */
 export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): ResolvedConfig {
@@ -154,11 +182,18 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 			out.INITIAL_DENSITY_DISSIPATION = input.densityDissipation;
 		}
 	}
-	if (input.initialDensityDissipation !== undefined)
-		out.INITIAL_DENSITY_DISSIPATION = input.initialDensityDissipation;
+	if (input.initialDensityDissipation !== undefined) out.INITIAL_DENSITY_DISSIPATION = input.initialDensityDissipation;
 	if (input.initialDensityDissipationDuration !== undefined)
 		out.INITIAL_DENSITY_DISSIPATION_DURATION = input.initialDensityDissipationDuration;
 	if (input.velocityDissipation !== undefined) out.VELOCITY_DISSIPATION = input.velocityDissipation;
+	if (input.maxTimeStep !== undefined) out.MAX_TIME_STEP = Math.max(0.001, input.maxTimeStep);
+	if (input.substeps !== undefined) out.SUBSTEPS = Math.max(1, Math.min(8, Math.floor(input.substeps)));
+	if (input.viscosity !== undefined) out.VISCOSITY = Math.max(0, input.viscosity);
+	if (input.viscosityIterations !== undefined)
+		out.VISCOSITY_ITERATIONS = Math.max(0, Math.min(40, Math.floor(input.viscosityIterations)));
+	if (input.wallFriction !== undefined) out.WALL_FRICTION = Math.max(0, Math.min(1, input.wallFriction));
+	if (input.wallFrictionWidth !== undefined)
+		out.WALL_FRICTION_WIDTH = Math.max(0, Math.min(4, input.wallFrictionWidth));
 	if (input.pressure !== undefined) out.PRESSURE = input.pressure;
 	if (input.pressureIterations !== undefined) out.PRESSURE_ITERATIONS = input.pressureIterations;
 	if (input.curl !== undefined) out.CURL = input.curl;
@@ -225,9 +260,106 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 	if (input.stickyPressure !== undefined) out.STICKY_PRESSURE = input.stickyPressure;
 	if (input.stickyAmplify !== undefined) out.STICKY_AMPLIFY = input.stickyAmplify;
 	if (input.obstructions !== undefined) out.OBSTRUCTIONS = input.obstructions ?? null;
+	if (input.flow !== undefined) out.FLOW = input.flow ?? null;
 	return out;
 }
 
+function flowConfigEqual(a: FlowConfig | null | undefined, b: FlowConfig | null | undefined): boolean {
+	if (!a && !b) return true;
+	if (!a || !b) return false;
+	return (
+		flowBoundaryEqual(a.boundary, b.boundary) &&
+		shallowArrayEqual(a.sources, b.sources) &&
+		shallowArrayEqual(a.outlets, b.outlets) &&
+		shallowArrayEqual(a.scalarFields, b.scalarFields) &&
+		shallowArrayEqual(a.forces, b.forces) &&
+		prescribedFlowEqual(a.prescribed, b.prescribed) &&
+		a.visualization === b.visualization &&
+		a.mode === b.mode
+	);
+}
+
+function shallowArrayEqual<T>(a: ReadonlyArray<T> | undefined, b: ReadonlyArray<T> | undefined): boolean {
+	if (!a && !b) return true;
+	if (!a || !b) return false;
+	if (a === b) return true;
+	if (a.length !== b.length) return false;
+	for (let i = 0; i < a.length; i++) {
+		if (a[i] !== b[i]) return false;
+	}
+	return true;
+}
+
+function flowBoundaryEqual(a: FlowConfig['boundary'], b: FlowConfig['boundary']): boolean {
+	return (
+		(a?.left ?? null) === (b?.left ?? null) &&
+		(a?.right ?? null) === (b?.right ?? null) &&
+		(a?.top ?? null) === (b?.top ?? null) &&
+		(a?.bottom ?? null) === (b?.bottom ?? null)
+	);
+}
+
+function prescribedGridFieldEqual(a: FlowGridField | undefined, b: FlowGridField | undefined): boolean {
+	if (!a && !b) return true;
+	if (!a || !b) return false;
+	return (
+		a.width === b.width &&
+		a.height === b.height &&
+		(a.scale ?? null) === (b.scale ?? null) &&
+		(a.version ?? null) === (b.version ?? null) &&
+		a.data === b.data
+	);
+}
+
+function prescribedFlowEqual(a: FlowConfig['prescribed'], b: FlowConfig['prescribed']): boolean {
+	if (!a && !b) return true;
+	if (!a || !b) return false;
+	if (a.kind !== b.kind) return false;
+	if (a.kind === 'grid' && b.kind === 'grid') {
+		const aKeys = Object.keys(a.scalars ?? {}).sort();
+		const bKeys = Object.keys(b.scalars ?? {}).sort();
+		return (
+			prescribedGridFieldEqual(a.velocity, b.velocity) &&
+			aKeys.length === bKeys.length &&
+			aKeys.every((key, i) => key === bKeys[i] && prescribedGridFieldEqual(a.scalars?.[key], b.scalars?.[key]))
+		);
+	}
+	return false;
+}
+
+function flowScalarChannel(name: string | undefined, fields?: ReadonlyArray<FlowScalarField>): number {
+	const n = name ?? fields?.[0]?.name ?? 'temperature';
+	if (n === 'temperature') return 0;
+	if (n === 'ink') return 1;
+	const idx = fields?.findIndex((f) => f.name === n) ?? -1;
+	if (idx >= 0) return Math.min(idx, 2);
+	return 2;
+}
+
+function needsScalarFBOForFlow(flow: FlowConfig | null | undefined): boolean {
+	if (!flow) return false;
+	if (flow.scalarFields && flow.scalarFields.length > 0) return true;
+	if (flow.visualization?.colorBy === 'temperature' || flow.visualization?.colorBy === 'scalar') return true;
+	if (flow.sources?.some((s) => s.scalars && Object.keys(s.scalars).length > 0)) return true;
+	if (flow.forces?.some((f) => f.kind === 'buoyancy')) return true;
+	if (flow.prescribed && flow.prescribed.kind === 'grid' && flow.prescribed.scalars) return true;
+	return false;
+}
+
+function sourceProfileWeight(profile: FlowSource['profile'] | undefined, t: number): number {
+	if (profile !== 'parabolic') return 1;
+	const centered = t * 2 - 1;
+	return Math.max(0, 1 - centered * centered);
+}
+
+function scalarDissipationForField(field: FlowScalarField | undefined, fallback: number): number {
+	const dissipation = field?.dissipation ?? fallback;
+	return field?.advection === 'low-dissipation' ? dissipation * 0.35 : dissipation;
+}
+
+function clamp01(value: number): number {
+	return Math.max(0, Math.min(1, value));
+}
 
 /* -------------------------------------------------------------------------- */
 /*                                FluidEngine                                 */
@@ -272,8 +404,14 @@ export class FluidEngine implements FluidHandle {
 	private divergenceProgram!: ProgramWrap;
 	private curlProgram!: ProgramWrap;
 	private vorticityProgram!: ProgramWrap;
+	private viscosityProgram!: ProgramWrap;
+	private wallFrictionProgram!: ProgramWrap;
 	private pressureProgram!: ProgramWrap;
 	private gradientSubtractProgram!: ProgramWrap;
+	private flowSourceProgram!: ProgramWrap;
+	private flowOutletProgram!: ProgramWrap;
+	private flowForceProgram!: ProgramWrap;
+	private prescribedFieldProgram!: ProgramWrap;
 	private displayMaterial!: Material;
 	private applyMaskProgram!: ProgramWrap;
 	private glassProgram!: ProgramWrap;
@@ -282,6 +420,12 @@ export class FluidEngine implements FluidHandle {
 	private distortionTexture: WebGLTexture | null = null;
 	private distortionImgRatio = 1.0;
 	private distortionLoadedUrl: string | null = null;
+
+	// --- Prescribed grid textures (8-bit encoded, decoded in shader) ---
+	private prescribedVelocityTexture: WebGLTexture | null = null;
+	private prescribedVelocityScale = 1;
+	private prescribedScalarTexture: WebGLTexture | null = null;
+	private prescribedScalarScale = 1;
 
 	// --- Mask texture for svgPath shapes ---
 	private maskTexture: WebGLTexture | null = null;
@@ -303,9 +447,11 @@ export class FluidEngine implements FluidHandle {
 	// --- Framebuffers ---
 	private dye!: DoubleFBO;
 	private velocity!: DoubleFBO;
+	private velocitySource!: FBO;
 	private divergence!: FBO;
 	private curlFBO!: FBO;
 	private pressure!: DoubleFBO;
+	private scalar: DoubleFBO | null = null;
 	private bloom!: FBO;
 	private bloomFramebuffers: FBO[] = [];
 	private sunrays!: FBO;
@@ -357,6 +503,7 @@ export class FluidEngine implements FluidHandle {
 		this.initMaskTexture();
 		this.initStickyMaskTexture();
 		this.initObstructionMaskTexture();
+		this.initPrescribedGridTextures();
 		this.initGlassFramebuffer();
 		if (this.config.DISTORTION_IMAGE_URL) {
 			this.loadDistortionImage(this.config.DISTORTION_IMAGE_URL);
@@ -404,10 +551,22 @@ export class FluidEngine implements FluidHandle {
 		const elapsed = (performance.now() - this.engineStartTime) / 1000;
 		if (elapsed >= duration) return this.config.DENSITY_DISSIPATION;
 		const t = elapsed / duration;
-		return (
-			this.config.INITIAL_DENSITY_DISSIPATION * (1 - t) +
-			this.config.DENSITY_DISSIPATION * t
-		);
+		return this.config.INITIAL_DENSITY_DISSIPATION * (1 - t) + this.config.DENSITY_DISSIPATION * t;
+	}
+
+	private splatTo(target: DoubleFBO, x: number, y: number, color: RGB, radius: number, stickyAmplify = 0): void {
+		const gl = this.gl;
+		this.splatProgram.bind();
+		this.bindStickyMask();
+		gl.uniform1i(this.splatProgram.uniforms.uStickyMask, 7);
+		gl.uniform1f(this.splatProgram.uniforms.uStickyAmplify, stickyAmplify);
+		gl.uniform1i(this.splatProgram.uniforms.uTarget, target.read.attach(0));
+		gl.uniform1f(this.splatProgram.uniforms.aspectRatio, this.canvas.width / this.canvas.height);
+		gl.uniform2f(this.splatProgram.uniforms.point, x, y);
+		gl.uniform3f(this.splatProgram.uniforms.color, color.r, color.g, color.b);
+		gl.uniform1f(this.splatProgram.uniforms.radius, correctRadius(radius, this.canvas.width / this.canvas.height));
+		this.blit(target.write);
+		target.swap();
 	}
 
 	/* ---------------------------------------------------------------------- */
@@ -416,34 +575,9 @@ export class FluidEngine implements FluidHandle {
 
 	splat(x: number, y: number, dx: number, dy: number, color: RGB): void {
 		if (this.contextLost) return;
-		const gl = this.gl;
-		this.splatProgram.bind();
-		this.bindStickyMask();
-		gl.uniform1i(this.splatProgram.uniforms.uStickyMask, 7);
-		gl.uniform1f(this.splatProgram.uniforms.uStickyAmplify, 0.0); // velocity splat: no amplify
-		gl.uniform1i(this.splatProgram.uniforms.uTarget, this.velocity.read.attach(0));
-		gl.uniform1f(
-			this.splatProgram.uniforms.aspectRatio,
-			this.canvas.width / this.canvas.height
-		);
-		gl.uniform2f(this.splatProgram.uniforms.point, x, y);
-		gl.uniform3f(this.splatProgram.uniforms.color, dx, dy, 0.0);
-		gl.uniform1f(
-			this.splatProgram.uniforms.radius,
-			correctRadius(this.config.SPLAT_RADIUS / 100.0, this.canvas.width / this.canvas.height)
-		);
-		this.blit(this.velocity.write);
-		this.velocity.swap();
-
-		// Dye splat: apply sticky amplification
-		gl.uniform1f(
-			this.splatProgram.uniforms.uStickyAmplify,
-			this.config.STICKY ? this.config.STICKY_AMPLIFY : 0.0
-		);
-		gl.uniform1i(this.splatProgram.uniforms.uTarget, this.dye.read.attach(0));
-		gl.uniform3f(this.splatProgram.uniforms.color, color.r, color.g, color.b);
-		this.blit(this.dye.write);
-		this.dye.swap();
+		const radius = this.config.SPLAT_RADIUS / 100.0;
+		this.splatTo(this.velocity, x, y, { r: dx, g: dy, b: 0 }, radius, 0);
+		this.splatTo(this.dye, x, y, color, radius, this.config.STICKY ? this.config.STICKY_AMPLIFY : 0);
 	}
 
 	randomSplats(count: number): void {
@@ -487,8 +621,7 @@ export class FluidEngine implements FluidHandle {
 		const b = next;
 
 		const fbChanged = a.SIM_RESOLUTION !== b.SIM_RESOLUTION || a.DYE_RESOLUTION !== b.DYE_RESOLUTION;
-		const bloomChanged =
-			a.BLOOM_RESOLUTION !== b.BLOOM_RESOLUTION || a.BLOOM_ITERATIONS !== b.BLOOM_ITERATIONS;
+		const bloomChanged = a.BLOOM_RESOLUTION !== b.BLOOM_RESOLUTION || a.BLOOM_ITERATIONS !== b.BLOOM_ITERATIONS;
 		const sunraysChanged = a.SUNRAYS_RESOLUTION !== b.SUNRAYS_RESOLUTION;
 		const kwChanged = a.SHADING !== b.SHADING || a.BLOOM !== b.BLOOM || a.SUNRAYS !== b.SUNRAYS;
 		const shapeChanged = !containerShapeEqual(a.CONTAINER_SHAPE, b.CONTAINER_SHAPE);
@@ -501,6 +634,8 @@ export class FluidEngine implements FluidHandle {
 		// Bucket-C-like: rebuild the combined obstruction mask texture, and
 		// recompile the display shader to toggle the OBSTRUCTION_MASK keyword.
 		const obstructionsChanged = !obstructionsEqual(a.OBSTRUCTIONS, b.OBSTRUCTIONS);
+		const flowChanged = !flowConfigEqual(a.FLOW, b.FLOW);
+		const scalarNeedChanged = needsScalarFBOForFlow(a.FLOW) !== needsScalarFBOForFlow(b.FLOW);
 		const pointerInputChanged = a.POINTER_INPUT !== b.POINTER_INPUT;
 		const pointerTargetChanged = a.POINTER_TARGET !== b.POINTER_TARGET;
 
@@ -509,13 +644,15 @@ export class FluidEngine implements FluidHandle {
 			this.normalizedBackColor = normalizeColor(b.BACK_COLOR);
 		}
 
-		if (fbChanged) this.initFramebuffers();
+		if (fbChanged || scalarNeedChanged) this.initFramebuffers();
 		if (bloomChanged) this.initBloomFramebuffers();
 		if (sunraysChanged) this.initSunraysFramebuffers();
 		if (shapeChanged) this.initMaskTexture();
 		if (obstructionsChanged) this.initObstructionMaskTexture();
+		if (flowChanged) this.initPrescribedGridTextures();
 		if (glassChanged) this.initGlassFramebuffer();
-		if (kwChanged || shapeChanged || revealChanged || distortionChanged || obstructionsChanged) this.updateKeywords();
+		if (kwChanged || shapeChanged || revealChanged || distortionChanged || obstructionsChanged || flowChanged)
+			this.updateKeywords();
 		if (stickyChanged || stickyMaskChanged) this.initStickyMaskTexture();
 		if (distortionImageChanged) this.loadDistortionImage(b.DISTORTION_IMAGE_URL);
 		if (pointerInputChanged || pointerTargetChanged) {
@@ -567,6 +704,7 @@ export class FluidEngine implements FluidHandle {
 		this.initMaskTexture();
 		this.initStickyMaskTexture();
 		this.initObstructionMaskTexture();
+		this.initPrescribedGridTextures();
 		this.initGlassFramebuffer();
 		// Re-load distortion image (GL texture was lost with context)
 		if (this.config.DISTORTION_IMAGE_URL) {
@@ -599,9 +737,14 @@ export class FluidEngine implements FluidHandle {
 		// FBOs
 		disposeDoubleFBO(gl, this.dye);
 		disposeDoubleFBO(gl, this.velocity);
+		disposeFBO(gl, this.velocitySource);
 		disposeFBO(gl, this.divergence);
 		disposeFBO(gl, this.curlFBO);
 		disposeDoubleFBO(gl, this.pressure);
+		if (this.scalar) {
+			disposeDoubleFBO(gl, this.scalar);
+			this.scalar = null;
+		}
 		disposeFBO(gl, this.bloom);
 		for (const fbo of this.bloomFramebuffers) disposeFBO(gl, fbo);
 		this.bloomFramebuffers = [];
@@ -648,6 +791,15 @@ export class FluidEngine implements FluidHandle {
 			this.obstructionMaskData = null;
 		}
 
+		if (this.prescribedVelocityTexture) {
+			gl.deleteTexture(this.prescribedVelocityTexture);
+			this.prescribedVelocityTexture = null;
+		}
+		if (this.prescribedScalarTexture) {
+			gl.deleteTexture(this.prescribedScalarTexture);
+			this.prescribedScalarTexture = null;
+		}
+
 		// Programs
 		const programs: ProgramWrap[] = [
 			this.blurProgram,
@@ -665,8 +817,14 @@ export class FluidEngine implements FluidHandle {
 			this.divergenceProgram,
 			this.curlProgram,
 			this.vorticityProgram,
+			this.viscosityProgram,
+			this.wallFrictionProgram,
 			this.pressureProgram,
 			this.gradientSubtractProgram,
+			this.flowSourceProgram,
+			this.flowOutletProgram,
+			this.flowForceProgram,
+			this.prescribedFieldProgram,
 			this.applyMaskProgram,
 			this.glassProgram
 		];
@@ -732,8 +890,14 @@ export class FluidEngine implements FluidHandle {
 			divergence: compileShader(gl, gl.FRAGMENT_SHADER, S.divergenceShader),
 			curl: compileShader(gl, gl.FRAGMENT_SHADER, S.curlShader),
 			vorticity: compileShader(gl, gl.FRAGMENT_SHADER, S.vorticityShader),
+			viscosity: compileShader(gl, gl.FRAGMENT_SHADER, S.viscosityShader),
+			wallFriction: compileShader(gl, gl.FRAGMENT_SHADER, S.wallFrictionShader),
 			pressure: compileShader(gl, gl.FRAGMENT_SHADER, S.pressureShader),
 			gradientSubtract: compileShader(gl, gl.FRAGMENT_SHADER, S.gradientSubtractShader),
+			flowSource: compileShader(gl, gl.FRAGMENT_SHADER, S.flowSourceShader),
+			flowOutlet: compileShader(gl, gl.FRAGMENT_SHADER, S.flowOutletShader),
+			flowForce: compileShader(gl, gl.FRAGMENT_SHADER, S.flowForceShader),
+			prescribedField: compileShader(gl, gl.FRAGMENT_SHADER, S.prescribedFieldShader),
 			applyMask: compileShader(gl, gl.FRAGMENT_SHADER, S.applyMaskShader),
 			glass: compileShader(gl, gl.FRAGMENT_SHADER, S.glassShaderSource)
 		};
@@ -769,8 +933,14 @@ export class FluidEngine implements FluidHandle {
 		this.divergenceProgram = makeProgram(gl, this.baseVertexShader, f.divergence);
 		this.curlProgram = makeProgram(gl, this.baseVertexShader, f.curl);
 		this.vorticityProgram = makeProgram(gl, this.baseVertexShader, f.vorticity);
+		this.viscosityProgram = makeProgram(gl, this.baseVertexShader, f.viscosity);
+		this.wallFrictionProgram = makeProgram(gl, this.baseVertexShader, f.wallFriction);
 		this.pressureProgram = makeProgram(gl, this.baseVertexShader, f.pressure);
 		this.gradientSubtractProgram = makeProgram(gl, this.baseVertexShader, f.gradientSubtract);
+		this.flowSourceProgram = makeProgram(gl, this.baseVertexShader, f.flowSource);
+		this.flowOutletProgram = makeProgram(gl, this.baseVertexShader, f.flowOutlet);
+		this.flowForceProgram = makeProgram(gl, this.baseVertexShader, f.flowForce);
+		this.prescribedFieldProgram = makeProgram(gl, this.baseVertexShader, f.prescribedField);
 
 		// On context restore the old Material holds a Map of stale program/shader
 		// entries. Dispose it so the JS heap doesn't accumulate orphaned Maps.
@@ -805,15 +975,7 @@ export class FluidEngine implements FluidHandle {
 		gl.disable(gl.BLEND);
 
 		if (this.dye == null) {
-			this.dye = createDoubleFBO(
-				gl,
-				dyeRes.width,
-				dyeRes.height,
-				rgba.internalFormat,
-				rgba.format,
-				texType,
-				filtering
-			);
+			this.dye = createDoubleFBO(gl, dyeRes.width, dyeRes.height, rgba.internalFormat, rgba.format, texType, filtering);
 		} else {
 			this.dye = resizeDoubleFBO(
 				gl,
@@ -827,6 +989,36 @@ export class FluidEngine implements FluidHandle {
 				this.copyProgram,
 				this.blit
 			);
+		}
+
+		if (this.needsScalarFBO()) {
+			if (this.scalar == null) {
+				this.scalar = createDoubleFBO(
+					gl,
+					dyeRes.width,
+					dyeRes.height,
+					rgba.internalFormat,
+					rgba.format,
+					texType,
+					filtering
+				);
+			} else {
+				this.scalar = resizeDoubleFBO(
+					gl,
+					this.scalar,
+					dyeRes.width,
+					dyeRes.height,
+					rgba.internalFormat,
+					rgba.format,
+					texType,
+					filtering,
+					this.copyProgram,
+					this.blit
+				);
+			}
+		} else if (this.scalar) {
+			disposeDoubleFBO(gl, this.scalar);
+			this.scalar = null;
 		}
 
 		if (this.velocity == null) {
@@ -856,37 +1048,15 @@ export class FluidEngine implements FluidHandle {
 
 		// Single-buffer FBOs are recreated unconditionally — their contents are
 		// transient (recomputed every step), so no copy is needed.
+		disposeFBO(gl, this.velocitySource);
 		disposeFBO(gl, this.divergence);
 		disposeFBO(gl, this.curlFBO);
 		disposeDoubleFBO(gl, this.pressure);
 
-		this.divergence = createFBO(
-			gl,
-			simRes.width,
-			simRes.height,
-			r.internalFormat,
-			r.format,
-			texType,
-			gl.NEAREST
-		);
-		this.curlFBO = createFBO(
-			gl,
-			simRes.width,
-			simRes.height,
-			r.internalFormat,
-			r.format,
-			texType,
-			gl.NEAREST
-		);
-		this.pressure = createDoubleFBO(
-			gl,
-			simRes.width,
-			simRes.height,
-			r.internalFormat,
-			r.format,
-			texType,
-			gl.NEAREST
-		);
+		this.velocitySource = createFBO(gl, simRes.width, simRes.height, rg.internalFormat, rg.format, texType, gl.NEAREST);
+		this.divergence = createFBO(gl, simRes.width, simRes.height, r.internalFormat, r.format, texType, gl.NEAREST);
+		this.curlFBO = createFBO(gl, simRes.width, simRes.height, r.internalFormat, r.format, texType, gl.NEAREST);
+		this.pressure = createDoubleFBO(gl, simRes.width, simRes.height, r.internalFormat, r.format, texType, gl.NEAREST);
 
 		this.initBloomFramebuffers();
 		this.initSunraysFramebuffers();
@@ -904,23 +1074,13 @@ export class FluidEngine implements FluidHandle {
 		for (const fbo of this.bloomFramebuffers) disposeFBO(gl, fbo);
 		this.bloomFramebuffers = [];
 
-		this.bloom = createFBO(
-			gl,
-			res.width,
-			res.height,
-			rgba.internalFormat,
-			rgba.format,
-			texType,
-			filtering
-		);
+		this.bloom = createFBO(gl, res.width, res.height, rgba.internalFormat, rgba.format, texType, filtering);
 
 		for (let i = 0; i < this.config.BLOOM_ITERATIONS; i++) {
 			const width = res.width >> (i + 1);
 			const height = res.height >> (i + 1);
 			if (width < 2 || height < 2) break;
-			this.bloomFramebuffers.push(
-				createFBO(gl, width, height, rgba.internalFormat, rgba.format, texType, filtering)
-			);
+			this.bloomFramebuffers.push(createFBO(gl, width, height, rgba.internalFormat, rgba.format, texType, filtering));
 		}
 	}
 
@@ -934,24 +1094,8 @@ export class FluidEngine implements FluidHandle {
 		disposeFBO(gl, this.sunrays);
 		disposeFBO(gl, this.sunraysTemp);
 
-		this.sunrays = createFBO(
-			gl,
-			res.width,
-			res.height,
-			r.internalFormat,
-			r.format,
-			texType,
-			filtering
-		);
-		this.sunraysTemp = createFBO(
-			gl,
-			res.width,
-			res.height,
-			r.internalFormat,
-			r.format,
-			texType,
-			filtering
-		);
+		this.sunrays = createFBO(gl, res.width, res.height, r.internalFormat, r.format, texType, filtering);
+		this.sunraysTemp = createFBO(gl, res.width, res.height, r.internalFormat, r.format, texType, filtering);
 	}
 
 	/**
@@ -990,8 +1134,7 @@ export class FluidEngine implements FluidHandle {
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
-			new Uint8Array([255, 255, 255, 255]));
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
 		this.distortionImgRatio = 1;
 	}
 
@@ -1124,7 +1267,11 @@ export class FluidEngine implements FluidHandle {
 		this.maskData = maskData;
 		this.maskW = maskW;
 		this.maskH = maskH;
-		this.maskAreaFractionCache = maskAreaFraction({ data: maskData, width: maskW, height: maskH });
+		this.maskAreaFractionCache = maskAreaFraction({
+			data: maskData,
+			width: maskW,
+			height: maskH
+		});
 
 		// Upload as GPU texture
 		const tex = gl.createTexture()!;
@@ -1257,9 +1404,76 @@ export class FluidEngine implements FluidHandle {
 		this.obstructionMaskTexture = tex;
 	}
 
+	private initPrescribedGridTextures(): void {
+		const gl = this.gl;
+		const prescribed = this.config.FLOW?.prescribed;
+
+		if (this.prescribedVelocityTexture) {
+			gl.deleteTexture(this.prescribedVelocityTexture);
+			this.prescribedVelocityTexture = null;
+		}
+		if (this.prescribedScalarTexture) {
+			gl.deleteTexture(this.prescribedScalarTexture);
+			this.prescribedScalarTexture = null;
+		}
+		this.prescribedVelocityScale = 1;
+		this.prescribedScalarScale = 1;
+
+		if (!prescribed || prescribed.kind !== 'grid') return;
+		if (prescribed.velocity) {
+			this.prescribedVelocityScale = prescribed.velocity.scale ?? 1000;
+			this.prescribedVelocityTexture = this.createPrescribedTexture(
+				prescribed.velocity,
+				2,
+				this.prescribedVelocityScale,
+				true
+			);
+		}
+		const scalarName =
+			this.config.FLOW?.visualization?.scalar ?? this.config.FLOW?.scalarFields?.[0]?.name ?? 'temperature';
+		const scalarGrid = prescribed.scalars?.[scalarName] ?? Object.values(prescribed.scalars ?? {})[0];
+		if (scalarGrid) {
+			this.prescribedScalarScale = scalarGrid.scale ?? 1;
+			this.prescribedScalarTexture = this.createPrescribedTexture(scalarGrid, 1, this.prescribedScalarScale, false);
+		}
+	}
+
+	private createPrescribedTexture(field: FlowGridField, channels: 1 | 2, scale: number, signed: boolean): WebGLTexture {
+		const gl = this.gl;
+		const data = new Uint8Array(field.width * field.height * 4);
+		for (let i = 0; i < field.width * field.height; i++) {
+			if (channels === 2) {
+				const x = Number(field.data[i * 2] ?? 0);
+				const y = Number(field.data[i * 2 + 1] ?? 0);
+				data[i * 4] = Math.round(clamp01((x / scale) * 0.5 + 0.5) * 255);
+				data[i * 4 + 1] = Math.round(clamp01((y / scale) * 0.5 + 0.5) * 255);
+			} else {
+				const v = Number(field.data[i] ?? 0);
+				data[i * 4] = Math.round(clamp01(signed ? (v / scale) * 0.5 + 0.5 : v / scale) * 255);
+				data[i * 4 + 1] = data[i * 4];
+				data[i * 4 + 2] = data[i * 4];
+			}
+			data[i * 4 + 3] = 255;
+		}
+		const tex = gl.createTexture()!;
+		gl.bindTexture(gl.TEXTURE_2D, tex);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, this.ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, this.ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, field.width, field.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+		gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+		return tex;
+	}
+
 	/** True when any masking work (container shape or obstructions) is active. */
 	private hasMaskWork(): boolean {
 		return !!(this.config.CONTAINER_SHAPE || (this.config.OBSTRUCTIONS && this.config.OBSTRUCTIONS.length));
+	}
+
+	private needsScalarFBO(): boolean {
+		return needsScalarFBOForFlow(this.config.FLOW);
 	}
 
 	/**
@@ -1374,10 +1588,14 @@ export class FluidEngine implements FluidHandle {
 			// Horizontal pass → temp
 			for (let y = 0; y < h; y++) {
 				for (let x = 0; x < w; x++) {
-					let sum = 0, count = 0;
+					let sum = 0,
+						count = 0;
 					for (let dx = -r; dx <= r; dx++) {
 						const nx = x + dx;
-						if (nx >= 0 && nx < w) { sum += data[y * w + nx]; count++; }
+						if (nx >= 0 && nx < w) {
+							sum += data[y * w + nx];
+							count++;
+						}
 					}
 					temp[y * w + x] = (sum / count) | 0;
 				}
@@ -1385,10 +1603,14 @@ export class FluidEngine implements FluidHandle {
 			// Vertical pass → data
 			for (let x = 0; x < w; x++) {
 				for (let y = 0; y < h; y++) {
-					let sum = 0, count = 0;
+					let sum = 0,
+						count = 0;
 					for (let dy = -r; dy <= r; dy++) {
 						const ny = y + dy;
-						if (ny >= 0 && ny < h) { sum += temp[ny * w + x]; count++; }
+						if (ny >= 0 && ny < h) {
+							sum += temp[ny * w + x];
+							count++;
+						}
 					}
 					data[y * w + x] = (sum / count) | 0;
 				}
@@ -1454,16 +1676,10 @@ export class FluidEngine implements FluidHandle {
 		if (shape.type === 'circle') {
 			gl.uniform1i(this.applyMaskProgram.uniforms.uShapeType, 0);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uRadius, shape.radius);
-			gl.uniform1f(
-				this.applyMaskProgram.uniforms.uAspect,
-				gl.drawingBufferWidth / gl.drawingBufferHeight
-			);
+			gl.uniform1f(this.applyMaskProgram.uniforms.uAspect, gl.drawingBufferWidth / gl.drawingBufferHeight);
 		} else if (shape.type === 'frame') {
 			gl.uniform1i(this.applyMaskProgram.uniforms.uShapeType, 1);
-			gl.uniform1f(
-				this.applyMaskProgram.uniforms.uAspect,
-				gl.drawingBufferWidth / gl.drawingBufferHeight
-			);
+			gl.uniform1f(this.applyMaskProgram.uniforms.uAspect, gl.drawingBufferWidth / gl.drawingBufferHeight);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfW, shape.halfW);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfH, shape.halfH);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uInnerCornerRadius, shape.innerCornerRadius ?? 0);
@@ -1472,10 +1688,7 @@ export class FluidEngine implements FluidHandle {
 			gl.uniform1f(this.applyMaskProgram.uniforms.uOuterCornerRadius, shape.outerCornerRadius ?? 0);
 		} else if (shape.type === 'roundedRect') {
 			gl.uniform1i(this.applyMaskProgram.uniforms.uShapeType, 2);
-			gl.uniform1f(
-				this.applyMaskProgram.uniforms.uAspect,
-				gl.drawingBufferWidth / gl.drawingBufferHeight
-			);
+			gl.uniform1f(this.applyMaskProgram.uniforms.uAspect, gl.drawingBufferWidth / gl.drawingBufferHeight);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfW, shape.halfW);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfH, shape.halfH);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uInnerCornerRadius, shape.cornerRadius);
@@ -1483,10 +1696,7 @@ export class FluidEngine implements FluidHandle {
 			gl.uniform1i(this.applyMaskProgram.uniforms.uShapeType, 3);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uRadius, shape.outerRadius);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uInnerRadius, shape.innerRadius);
-			gl.uniform1f(
-				this.applyMaskProgram.uniforms.uAspect,
-				gl.drawingBufferWidth / gl.drawingBufferHeight
-			);
+			gl.uniform1f(this.applyMaskProgram.uniforms.uAspect, gl.drawingBufferWidth / gl.drawingBufferHeight);
 		}
 
 		this.blit(target.write);
@@ -1504,6 +1714,7 @@ export class FluidEngine implements FluidHandle {
 		// keyword must match that guard or the display samples a stale unit.
 		if (!this.config.DISTORTION && this.config.OBSTRUCTIONS && this.config.OBSTRUCTIONS.length)
 			keywords.push('OBSTRUCTION_MASK');
+		if (this.flowVisualizationActive()) keywords.push('FLOW_VISUALIZATION');
 		// DISTORTION and REVEAL are mutually exclusive display modes
 		if (this.config.DISTORTION) keywords.push('DISTORTION');
 		else if (this.config.REVEAL) keywords.push('REVEAL');
@@ -1521,7 +1732,11 @@ export class FluidEngine implements FluidHandle {
 		this.applyInputs();
 		if (!this.config.PAUSED) {
 			this.accumulateAutoSplatTimer(dt);
-			this.step(dt);
+			const stepCount = this.simulationSubsteps(dt);
+			const stepDt = dt / stepCount;
+			for (let i = 0; i < stepCount; i++) {
+				this.step(stepDt);
+			}
 		}
 		this.render(null);
 		this.rafId = requestAnimationFrame(this.tick);
@@ -1530,9 +1745,15 @@ export class FluidEngine implements FluidHandle {
 	private calcDeltaTime(): number {
 		const now = performance.now();
 		let dt = (now - this.lastUpdateTime) / 1000;
-		dt = Math.min(dt, 0.016666);
+		dt = Math.min(dt, this.config.MAX_TIME_STEP * this.config.SUBSTEPS);
 		this.lastUpdateTime = now;
 		return dt;
+	}
+
+	private simulationSubsteps(dt: number): number {
+		const configured = Math.max(1, Math.min(8, Math.floor(this.config.SUBSTEPS)));
+		const required = Math.max(1, Math.ceil(dt / this.config.MAX_TIME_STEP));
+		return Math.max(configured, required);
 	}
 
 	private updateColors(dt: number): void {
@@ -1560,7 +1781,10 @@ export class FluidEngine implements FluidHandle {
 
 	private accumulateAutoSplatTimer(dt: number): void {
 		const rate = this.config.AUTO_SPLAT_RATE;
-		if (rate <= 0) { this.autoSplatTimer = 0; return; }
+		if (rate <= 0) {
+			this.autoSplatTimer = 0;
+			return;
+		}
 		this.autoSplatTimer += dt;
 		const baseInterval = 1 / rate;
 		// Cap accumulated time to prevent a burst avalanche when autoPause is
@@ -1585,10 +1809,14 @@ export class FluidEngine implements FluidHandle {
 				let color: RGB;
 				if (this.config.AUTO_SPLAT_COLOR) {
 					color = { ...this.config.AUTO_SPLAT_COLOR };
-					color.r *= hdr; color.g *= hdr; color.b *= hdr;
+					color.r *= hdr;
+					color.g *= hdr;
+					color.b *= hdr;
 				} else {
 					color = generateColor(this.rng);
-					color.r *= hdr; color.g *= hdr; color.b *= hdr;
+					color.r *= hdr;
+					color.g *= hdr;
+					color.b *= hdr;
 				}
 				const spawnY = this.config.AUTO_SPLAT_CENTER_Y;
 				const spread = this.config.AUTO_SPLAT_BAND_HEIGHT;
@@ -1600,8 +1828,7 @@ export class FluidEngine implements FluidHandle {
 					// Accept only inside the container (if any) AND outside every
 					// obstruction. Same attempt cap + continue-on-exhaustion as before.
 					const rejected = (xx: number, yy: number) =>
-						(shape ? containerMask(shape, xx, yy, aspect, mc) < 0.5 : false) ||
-						obstructionMask(xx, yy, octx) >= 0.5;
+						(shape ? containerMask(shape, xx, yy, aspect, mc) < 0.5 : false) || obstructionMask(xx, yy, octx) >= 0.5;
 					let attempts = 10;
 					while (attempts > 0 && rejected(x, y)) {
 						if (!evenSpacing) x = this.rng();
@@ -1615,8 +1842,8 @@ export class FluidEngine implements FluidHandle {
 				const swirl = this.config.AUTO_SPLAT_SWIRL;
 				if (swirl !== 0) {
 					const s = this.config.CONTAINER_SHAPE;
-					const cx = (s && s.type !== 'svgPath') ? s.cx : 0.5;
-					const cy = (s && s.type !== 'svgPath') ? s.cy : 0.5;
+					const cx = s && s.type !== 'svgPath' ? s.cx : 0.5;
+					const cy = s && s.type !== 'svgPath' ? s.cy : 0.5;
 					splatDx = -(y - cy) * swirl;
 					splatDy = (x - cx) * swirl;
 				}
@@ -1625,42 +1852,444 @@ export class FluidEngine implements FluidHandle {
 		}
 	}
 
-	private step(dt: number): void {
+	private flowMode(): 'live' | 'prescribed' | 'hybrid' {
+		return this.config.FLOW?.mode ?? 'live';
+	}
+
+	private applyFlowSources(dt: number, includeVelocity: boolean): void {
+		const flow = this.config.FLOW;
+		if (!flow?.sources?.length) return;
+		for (const source of flow.sources) {
+			this.applyFlowSource(source, dt, includeVelocity);
+		}
+	}
+
+	private applyFlowSource(source: FlowSource, dt: number, includeVelocity: boolean): void {
+		const sourceThickness = source.kind === 'line' ? source.thickness : undefined;
+		const radius = (source.radius ?? sourceThickness ?? this.config.SPLAT_RADIUS) / 100.0;
+		const scaleBase = (source.rate ?? 60) * dt;
+		const emitPoint = (x: number, y: number, t: number) => {
+			const weight = sourceProfileWeight(source.profile, t) * scaleBase;
+			if (includeVelocity && source.velocity) {
+				this.splatTo(
+					this.velocity,
+					x,
+					y,
+					{
+						r: source.velocity.x * weight,
+						g: source.velocity.y * weight,
+						b: 0
+					},
+					radius,
+					0
+				);
+			}
+			if (source.dye) {
+				this.splatTo(
+					this.dye,
+					x,
+					y,
+					{
+						r: source.dye.r * weight,
+						g: source.dye.g * weight,
+						b: source.dye.b * weight
+					},
+					radius,
+					this.config.STICKY ? this.config.STICKY_AMPLIFY : 0
+				);
+			}
+			if (source.scalars && this.scalar) {
+				const color = this.scalarColor(source.scalars, weight);
+				this.splatTo(this.scalar, x, y, color, radius, 0);
+			}
+		};
+
+		if (source.kind === 'point') {
+			emitPoint(source.x, source.y, 0.5);
+			return;
+		}
+
+		if (includeVelocity && source.velocity) {
+			this.applyFlowShapeSource(
+				source,
+				this.velocity,
+				{
+					r: source.velocity.x * scaleBase,
+					g: source.velocity.y * scaleBase,
+					b: 0
+				},
+				radius,
+				0
+			);
+		}
+		if (source.dye) {
+			this.applyFlowShapeSource(
+				source,
+				this.dye,
+				{
+					r: source.dye.r * scaleBase,
+					g: source.dye.g * scaleBase,
+					b: source.dye.b * scaleBase
+				},
+				radius,
+				this.config.STICKY ? this.config.STICKY_AMPLIFY : 0
+			);
+		}
+		if (source.scalars && this.scalar) {
+			this.applyFlowShapeSource(source, this.scalar, this.scalarColor(source.scalars, scaleBase), radius, 0);
+		}
+	}
+
+	private applyFlowShapeSource(
+		source: Exclude<FlowSource, { kind: 'point' }>,
+		target: DoubleFBO,
+		color: RGB,
+		radius: number,
+		stickyAmplify: number
+	): void {
 		const gl = this.gl;
-		gl.disable(gl.BLEND);
+		this.flowSourceProgram.bind();
+		this.bindStickyMask();
+		gl.uniform1i(this.flowSourceProgram.uniforms.uStickyMask, 7);
+		gl.uniform1f(this.flowSourceProgram.uniforms.uStickyAmplify, stickyAmplify);
+		gl.uniform1i(this.flowSourceProgram.uniforms.uTarget, target.read.attach(0));
+		gl.uniform1f(this.flowSourceProgram.uniforms.aspectRatio, this.canvas.width / this.canvas.height);
+		gl.uniform1i(this.flowSourceProgram.uniforms.uKind, source.kind === 'line' ? 1 : 2);
+		gl.uniform1i(this.flowSourceProgram.uniforms.uProfile, source.profile === 'parabolic' ? 1 : 0);
+		if (source.kind === 'line') {
+			gl.uniform2f(this.flowSourceProgram.uniforms.uFrom, source.from.x, source.from.y);
+			gl.uniform2f(this.flowSourceProgram.uniforms.uTo, source.to.x, source.to.y);
+			gl.uniform4f(this.flowSourceProgram.uniforms.uRect, 0, 0, 0, 0);
+		} else {
+			gl.uniform2f(this.flowSourceProgram.uniforms.uFrom, 0, 0);
+			gl.uniform2f(this.flowSourceProgram.uniforms.uTo, 0, 0);
+			gl.uniform4f(this.flowSourceProgram.uniforms.uRect, source.x, source.y, source.width, source.height);
+		}
+		gl.uniform3f(this.flowSourceProgram.uniforms.color, color.r, color.g, color.b);
+		gl.uniform1f(this.flowSourceProgram.uniforms.radius, correctRadius(radius, this.canvas.width / this.canvas.height));
+		this.blit(target.write);
+		target.swap();
+	}
 
-		if (this.config.CURL > 0) {
-			this.curlProgram.bind();
-			gl.uniform2f(
-				this.curlProgram.uniforms.texelSize,
-				this.velocity.texelSizeX,
-				this.velocity.texelSizeY
-			);
-			gl.uniform1i(this.curlProgram.uniforms.uVelocity, this.velocity.read.attach(0));
-			this.blit(this.curlFBO);
+	private scalarColor(scalars: NonNullable<FlowSource['scalars']>, weight: number): RGB {
+		const fields = this.config.FLOW?.scalarFields;
+		let r = 0,
+			g = 0,
+			b = 0;
+		for (const [name, value] of Object.entries(scalars)) {
+			const v = (value ?? 0) * weight;
+			const ch = flowScalarChannel(name, fields);
+			if (ch === 0) r += v;
+			else if (ch === 1) g += v;
+			else b += v;
+		}
+		return { r, g, b };
+	}
 
-			this.vorticityProgram.bind();
-			gl.uniform2f(
-				this.vorticityProgram.uniforms.texelSize,
-				this.velocity.texelSizeX,
-				this.velocity.texelSizeY
+	private applyFlowForces(dt: number): void {
+		const forces = this.config.FLOW?.forces;
+		if (!forces?.length) return;
+		for (const force of forces) {
+			this.applyFlowForce(force, dt);
+		}
+	}
+
+	private applyFlowForce(force: FlowForce, dt: number): void {
+		const gl = this.gl;
+		this.flowForceProgram.bind();
+		gl.uniform1i(this.flowForceProgram.uniforms.uVelocity, this.velocity.read.attach(0));
+		if (this.scalar) {
+			gl.uniform1i(this.flowForceProgram.uniforms.uScalar, this.scalar.read.attach(1));
+		} else {
+			this.bindStickyMask();
+			gl.uniform1i(this.flowForceProgram.uniforms.uScalar, 7);
+		}
+		gl.uniform1f(this.flowForceProgram.uniforms.dt, dt);
+		if (force.kind === 'gravity' || force.kind === 'pressureGradient') {
+			gl.uniform2f(this.flowForceProgram.uniforms.uGravity, force.vector.x, force.vector.y);
+			gl.uniform2f(this.flowForceProgram.uniforms.uBuoyancyDirection, 0, 1);
+			gl.uniform1f(this.flowForceProgram.uniforms.uBuoyancyStrength, 0);
+			gl.uniform1f(this.flowForceProgram.uniforms.uBuoyancyAmbient, 0);
+			gl.uniform1i(this.flowForceProgram.uniforms.uScalarChannel, 0);
+		} else {
+			const dir = force.direction ?? { x: 0, y: 1 };
+			gl.uniform2f(this.flowForceProgram.uniforms.uGravity, 0, 0);
+			gl.uniform2f(this.flowForceProgram.uniforms.uBuoyancyDirection, dir.x, dir.y);
+			gl.uniform1f(this.flowForceProgram.uniforms.uBuoyancyStrength, force.strength);
+			gl.uniform1f(this.flowForceProgram.uniforms.uBuoyancyAmbient, force.ambient ?? 0);
+			gl.uniform1i(
+				this.flowForceProgram.uniforms.uScalarChannel,
+				flowScalarChannel(force.scalar, this.config.FLOW?.scalarFields)
 			);
-			gl.uniform1i(this.vorticityProgram.uniforms.uVelocity, this.velocity.read.attach(0));
-			gl.uniform1i(this.vorticityProgram.uniforms.uCurl, this.curlFBO.attach(1));
-			gl.uniform1f(this.vorticityProgram.uniforms.curl, this.config.CURL);
-			gl.uniform1f(this.vorticityProgram.uniforms.dt, dt);
+		}
+		this.blit(this.velocity.write);
+		this.velocity.swap();
+	}
+
+	private applyFlowOutlets(targets: Array<'velocity' | 'dye' | 'scalar'>): void {
+		const outlets = this.config.FLOW?.outlets;
+		if (!outlets?.length) return;
+		for (const outlet of outlets) {
+			for (const target of targets) {
+				if (target === 'velocity' && !outlet.clearVelocity) continue;
+				if (target === 'scalar' && (!this.scalar || outlet.clearScalars === false)) continue;
+				const keep = target === 'dye' ? outlet.clearDye ?? 0 : target === 'scalar' ? 0 : 0.25;
+				const fbo = target === 'velocity' ? this.velocity : target === 'dye' ? this.dye : this.scalar!;
+				this.applyFlowOutlet(outlet, fbo, keep);
+			}
+		}
+	}
+
+	private applyFlowOutlet(outlet: FlowOutlet, target: DoubleFBO, keep: number): void {
+		const gl = this.gl;
+		this.flowOutletProgram.bind();
+		gl.uniform1i(this.flowOutletProgram.uniforms.uTarget, target.read.attach(0));
+		gl.uniform1i(
+			this.flowOutletProgram.uniforms.uEdge,
+			outlet.edge === 'left' ? 0 : outlet.edge === 'right' ? 1 : outlet.edge === 'top' ? 2 : 3
+		);
+		gl.uniform1f(this.flowOutletProgram.uniforms.uFrom, clamp01(outlet.from ?? 0));
+		gl.uniform1f(this.flowOutletProgram.uniforms.uTo, clamp01(outlet.to ?? 1));
+		gl.uniform1f(this.flowOutletProgram.uniforms.uWidth, Math.max(0.001, outlet.width ?? 0.035));
+		gl.uniform1f(this.flowOutletProgram.uniforms.uKeep, keep);
+		this.blit(target.write);
+		target.swap();
+	}
+
+	private applyPrescribedFields(): void {
+		const prescribed = this.config.FLOW?.prescribed;
+		if (!prescribed) return;
+		const mode = this.flowMode() === 'hybrid' ? 1 : 0;
+		if (prescribed.kind === 'grid') {
+			if (this.prescribedVelocityTexture)
+				this.applyPrescribedGridField(
+					this.velocity,
+					this.prescribedVelocityTexture,
+					this.prescribedVelocityScale,
+					0,
+					mode
+				);
+			if (this.scalar && this.prescribedScalarTexture)
+				this.applyPrescribedGridField(this.scalar, this.prescribedScalarTexture, this.prescribedScalarScale, 1, mode);
+		}
+	}
+
+	private applyPrescribedGridField(
+		target: DoubleFBO,
+		texture: WebGLTexture,
+		scale: number,
+		outputKind: 0 | 1,
+		mode: 0 | 1
+	): void {
+		const gl = this.gl;
+		this.prescribedFieldProgram.bind();
+		gl.uniform1i(this.prescribedFieldProgram.uniforms.uTarget, target.read.attach(0));
+		gl.uniform1i(this.prescribedFieldProgram.uniforms.uMode, mode);
+		gl.uniform1i(this.prescribedFieldProgram.uniforms.uOutputKind, outputKind);
+		gl.uniform1i(this.prescribedFieldProgram.uniforms.uUseGrid, 1);
+		gl.uniform1i(
+			this.prescribedFieldProgram.uniforms.uScalarChannel,
+			flowScalarChannel(this.config.FLOW?.visualization?.scalar, this.config.FLOW?.scalarFields)
+		);
+		gl.activeTexture(gl.TEXTURE1);
+		gl.bindTexture(gl.TEXTURE_2D, texture);
+		gl.uniform1i(this.prescribedFieldProgram.uniforms.uGridTexture, 1);
+		gl.uniform1f(this.prescribedFieldProgram.uniforms.uGridScale, scale);
+		this.blit(target.write);
+		target.swap();
+	}
+
+	private scalarDissipationVector(): RGB {
+		const fields = this.config.FLOW?.scalarFields;
+		const fallback = this.currentDensityDissipation();
+		const out: RGB = { r: fallback, g: fallback, b: fallback };
+		for (const field of fields ?? []) {
+			const dissipation = scalarDissipationForField(field, fallback);
+			const ch = flowScalarChannel(field.name, fields);
+			if (ch === 0) out.r = dissipation;
+			else if (ch === 1) out.g = dissipation;
+			else out.b = dissipation;
+		}
+		return out;
+	}
+
+	private flowScalarField(name: string | undefined): FlowScalarField | undefined {
+		const fields = this.config.FLOW?.scalarFields;
+		const n = name ?? fields?.[0]?.name ?? 'temperature';
+		return fields?.find((field) => field.name === n) ?? fields?.[0];
+	}
+
+	private advectVelocity(dt: number): void {
+		const gl = this.gl;
+		this.advectionProgram.bind();
+		gl.uniform1f(this.advectionProgram.uniforms.uMultiplicative, this.config.REVEAL || this.config.STICKY ? 1.0 : 0.0);
+		this.bindStickyMask();
+		gl.uniform1i(this.advectionProgram.uniforms.uStickyMask, 7);
+		gl.uniform1f(
+			this.advectionProgram.uniforms.uStickyStrength,
+			this.config.STICKY ? -(this.config.STICKY_STRENGTH * 0.8) : 0.0
+		);
+		gl.uniform2f(this.advectionProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
+		if (!this.ext.supportLinearFiltering) {
+			gl.uniform2f(this.advectionProgram.uniforms.dyeTexelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
+		}
+		const velocityId = this.velocity.read.attach(0);
+		gl.uniform1i(this.advectionProgram.uniforms.uVelocity, velocityId);
+		gl.uniform1i(this.advectionProgram.uniforms.uSource, velocityId);
+		gl.uniform1f(this.advectionProgram.uniforms.dt, dt);
+		gl.uniform1f(this.advectionProgram.uniforms.uUseDissipationVector, 0.0);
+		gl.uniform4f(this.advectionProgram.uniforms.dissipationVector, 0, 0, 0, 0);
+		gl.uniform1f(
+			this.advectionProgram.uniforms.dissipation,
+			this.config.REVEAL || this.config.STICKY
+				? this.config.VELOCITY_DISSIPATION > 0.5
+					? this.config.VELOCITY_DISSIPATION
+					: 0.98
+				: this.config.VELOCITY_DISSIPATION
+		);
+		this.blit(this.velocity.write);
+		this.velocity.swap();
+	}
+
+	private advectDye(dt: number): void {
+		const gl = this.gl;
+		this.advectionProgram.bind();
+		gl.uniform1f(this.advectionProgram.uniforms.uMultiplicative, this.config.REVEAL || this.config.STICKY ? 1.0 : 0.0);
+		this.bindStickyMask();
+		gl.uniform1i(this.advectionProgram.uniforms.uStickyMask, 7);
+		gl.uniform1f(
+			this.advectionProgram.uniforms.uStickyStrength,
+			this.config.STICKY ? this.config.STICKY_STRENGTH : 0.0
+		);
+		gl.uniform2f(this.advectionProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
+		if (!this.ext.supportLinearFiltering) {
+			gl.uniform2f(this.advectionProgram.uniforms.dyeTexelSize, this.dye.texelSizeX, this.dye.texelSizeY);
+		}
+		gl.uniform1i(this.advectionProgram.uniforms.uVelocity, this.velocity.read.attach(0));
+		gl.uniform1i(this.advectionProgram.uniforms.uSource, this.dye.read.attach(1));
+		gl.uniform1f(this.advectionProgram.uniforms.dt, dt);
+		gl.uniform1f(this.advectionProgram.uniforms.uUseDissipationVector, 0.0);
+		gl.uniform4f(this.advectionProgram.uniforms.dissipationVector, 0, 0, 0, 0);
+		gl.uniform1f(this.advectionProgram.uniforms.dissipation, this.currentDensityDissipation());
+		this.blit(this.dye.write);
+		this.dye.swap();
+	}
+
+	private advectScalar(dt: number): void {
+		if (!this.scalar) return;
+		const gl = this.gl;
+		this.advectionProgram.bind();
+		gl.uniform1f(this.advectionProgram.uniforms.uMultiplicative, 0.0);
+		this.bindStickyMask();
+		gl.uniform1i(this.advectionProgram.uniforms.uStickyMask, 7);
+		gl.uniform1f(this.advectionProgram.uniforms.uStickyStrength, 0.0);
+		gl.uniform2f(this.advectionProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
+		if (!this.ext.supportLinearFiltering) {
+			gl.uniform2f(this.advectionProgram.uniforms.dyeTexelSize, this.scalar.texelSizeX, this.scalar.texelSizeY);
+		}
+		gl.uniform1i(this.advectionProgram.uniforms.uVelocity, this.velocity.read.attach(0));
+		gl.uniform1i(this.advectionProgram.uniforms.uSource, this.scalar.read.attach(1));
+		gl.uniform1f(this.advectionProgram.uniforms.dt, dt);
+		const dissipation = this.scalarDissipationVector();
+		gl.uniform1f(this.advectionProgram.uniforms.uUseDissipationVector, 1.0);
+		gl.uniform4f(
+			this.advectionProgram.uniforms.dissipationVector,
+			dissipation.r,
+			dissipation.g,
+			dissipation.b,
+			this.currentDensityDissipation()
+		);
+		gl.uniform1f(this.advectionProgram.uniforms.dissipation, this.currentDensityDissipation());
+		this.blit(this.scalar.write);
+		this.scalar.swap();
+		if (this.shouldMaskPhysics()) this.applyMask(this.scalar);
+	}
+
+	private flowOpenEdges(): [number, number, number, number] {
+		const b = this.config.FLOW?.boundary;
+		const fallback = this.config.OPEN_BOUNDARY ? 1 : 0;
+		const edge = (kind: 'wall' | 'open' | undefined) => (kind === 'open' ? 1 : kind === 'wall' ? 0 : fallback);
+		return [edge(b?.left), edge(b?.right), edge(b?.top), edge(b?.bottom)];
+	}
+
+	private flowVisualizationActive(): boolean {
+		const colorBy = this.config.FLOW?.visualization?.colorBy;
+		return !!colorBy && colorBy !== 'dye' && !this.config.REVEAL && !this.config.DISTORTION;
+	}
+
+	private flowVisualizationMode(): number {
+		const colorBy = this.config.FLOW?.visualization?.colorBy ?? 'dye';
+		if (colorBy === 'speed') return 1;
+		if (colorBy === 'pressure') return 2;
+		if (colorBy === 'temperature' || colorBy === 'scalar') return 3;
+		return 0;
+	}
+
+	private flowTransferKind(): number {
+		const transfer = this.config.FLOW?.visualization?.transfer;
+		if (transfer === 'water') return 1;
+		if (transfer === 'ink') return 2;
+		if (transfer === 'viridis') return 3;
+		if (transfer === 'cfd') return 4;
+		return 0;
+	}
+
+	private bindSolidMaskUniforms(uniforms: Record<string, WebGLUniformLocation | null>, unit: number): void {
+		const gl = this.gl;
+		const has = !!this.obstructionMaskTexture;
+		gl.uniform1f(uniforms.uHasSolidMask, has ? 1.0 : 0.0);
+		if (has) {
+			gl.activeTexture(gl.TEXTURE0 + unit);
+			gl.bindTexture(gl.TEXTURE_2D, this.obstructionMaskTexture);
+			gl.uniform1i(uniforms.uSolidMask, unit);
+		}
+	}
+
+	private applyViscosity(dt: number): void {
+		const iterations = this.config.VISCOSITY_ITERATIONS;
+		if (this.config.VISCOSITY <= 0 || iterations <= 0) return;
+		const gl = this.gl;
+
+		this.copyProgram.bind();
+		gl.uniform1i(this.copyProgram.uniforms.uTexture, this.velocity.read.attach(0));
+		this.blit(this.velocitySource);
+
+		this.viscosityProgram.bind();
+		gl.uniform2f(this.viscosityProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
+		gl.uniform1i(this.viscosityProgram.uniforms.uSource, this.velocitySource.attach(1));
+		this.bindSolidMaskUniforms(this.viscosityProgram.uniforms, 2);
+		gl.uniform1f(
+			this.viscosityProgram.uniforms.uAlpha,
+			this.config.VISCOSITY * dt * Math.max(this.velocity.width, this.velocity.height)
+		);
+		for (let i = 0; i < iterations; i++) {
+			gl.uniform1i(this.viscosityProgram.uniforms.uVelocity, this.velocity.read.attach(0));
 			this.blit(this.velocity.write);
 			this.velocity.swap();
 		}
+	}
 
+	private applyWallFriction(): void {
+		if (this.config.WALL_FRICTION <= 0 || !this.obstructionMaskTexture) return;
+		const gl = this.gl;
+		this.wallFrictionProgram.bind();
+		gl.uniform2f(this.wallFrictionProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
+		gl.uniform1i(this.wallFrictionProgram.uniforms.uVelocity, this.velocity.read.attach(0));
+		this.bindSolidMaskUniforms(this.wallFrictionProgram.uniforms, 1);
+		gl.uniform1f(this.wallFrictionProgram.uniforms.uWallFriction, this.config.WALL_FRICTION);
+		gl.uniform1f(this.wallFrictionProgram.uniforms.uWallFrictionWidth, this.config.WALL_FRICTION_WIDTH);
+		this.blit(this.velocity.write);
+		this.velocity.swap();
+	}
+
+	private projectVelocity(): void {
+		const gl = this.gl;
 		this.divergenceProgram.bind();
-		gl.uniform2f(
-			this.divergenceProgram.uniforms.texelSize,
-			this.velocity.texelSizeX,
-			this.velocity.texelSizeY
-		);
+		gl.uniform2f(this.divergenceProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
 		gl.uniform1i(this.divergenceProgram.uniforms.uVelocity, this.velocity.read.attach(0));
-		gl.uniform1f(this.divergenceProgram.uniforms.uOpenBoundary, this.config.OPEN_BOUNDARY ? 1.0 : 0.0);
+		const edges = this.flowOpenEdges();
+		gl.uniform4f(this.divergenceProgram.uniforms.uOpenEdges, edges[0], edges[1], edges[2], edges[3]);
+		this.bindSolidMaskUniforms(this.divergenceProgram.uniforms, 2);
 		this.blit(this.divergence);
 
 		this.clearProgram.bind();
@@ -1670,18 +2299,12 @@ export class FluidEngine implements FluidHandle {
 		this.pressure.swap();
 
 		this.pressureProgram.bind();
-		gl.uniform2f(
-			this.pressureProgram.uniforms.texelSize,
-			this.velocity.texelSizeX,
-			this.velocity.texelSizeY
-		);
+		gl.uniform2f(this.pressureProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
 		gl.uniform1i(this.pressureProgram.uniforms.uDivergence, this.divergence.attach(0));
 		this.bindStickyMask();
 		gl.uniform1i(this.pressureProgram.uniforms.uStickyMask, 7);
-		gl.uniform1f(
-			this.pressureProgram.uniforms.uStickyPressure,
-			this.config.STICKY ? this.config.STICKY_PRESSURE : 0.0
-		);
+		this.bindSolidMaskUniforms(this.pressureProgram.uniforms, 2);
+		gl.uniform1f(this.pressureProgram.uniforms.uStickyPressure, this.config.STICKY ? this.config.STICKY_PRESSURE : 0.0);
 		for (let i = 0; i < this.config.PRESSURE_ITERATIONS; i++) {
 			gl.uniform1i(this.pressureProgram.uniforms.uPressure, this.pressure.read.attach(1));
 			this.blit(this.pressure.write);
@@ -1689,102 +2312,69 @@ export class FluidEngine implements FluidHandle {
 		}
 
 		this.gradientSubtractProgram.bind();
-		gl.uniform2f(
-			this.gradientSubtractProgram.uniforms.texelSize,
-			this.velocity.texelSizeX,
-			this.velocity.texelSizeY
-		);
-		gl.uniform1i(
-			this.gradientSubtractProgram.uniforms.uPressure,
-			this.pressure.read.attach(0)
-		);
-		gl.uniform1i(
-			this.gradientSubtractProgram.uniforms.uVelocity,
-			this.velocity.read.attach(1)
-		);
+		gl.uniform2f(this.gradientSubtractProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
+		gl.uniform1i(this.gradientSubtractProgram.uniforms.uPressure, this.pressure.read.attach(0));
+		gl.uniform1i(this.gradientSubtractProgram.uniforms.uVelocity, this.velocity.read.attach(1));
+		this.bindSolidMaskUniforms(this.gradientSubtractProgram.uniforms, 2);
 		this.blit(this.velocity.write);
 		this.velocity.swap();
+	}
 
-		this.advectionProgram.bind();
-		gl.uniform1f(
-			this.advectionProgram.uniforms.uMultiplicative,
-			(this.config.REVEAL || this.config.STICKY) ? 1.0 : 0.0
-		);
-		this.bindStickyMask();
-		gl.uniform1i(this.advectionProgram.uniforms.uStickyMask, 7);
-		// Velocity: pass negative strength to activate damping mode in the
-		// advection shader. On-mask velocity is multiplied by
-		// (1 - 0.8 * stickyStrength) each frame, so with strength=1.0
-		// velocity decays ~80%/frame, preventing dye from being advected
-		// off the mask while allowing some residual flow for natural look.
-		gl.uniform1f(
-			this.advectionProgram.uniforms.uStickyStrength,
-			this.config.STICKY ? -(this.config.STICKY_STRENGTH * 0.8) : 0.0
-		);
-		gl.uniform2f(
-			this.advectionProgram.uniforms.texelSize,
-			this.velocity.texelSizeX,
-			this.velocity.texelSizeY
-		);
-		if (!this.ext.supportLinearFiltering) {
-			gl.uniform2f(
-				this.advectionProgram.uniforms.dyeTexelSize,
-				this.velocity.texelSizeX,
-				this.velocity.texelSizeY
-			);
+	private step(dt: number): void {
+		const gl = this.gl;
+		gl.disable(gl.BLEND);
+		const prescribedOnly = this.flowMode() === 'prescribed';
+
+		if (this.config.FLOW?.prescribed && this.flowMode() !== 'live') {
+			this.applyPrescribedFields();
+			if (this.shouldMaskPhysics()) this.applyMask(this.velocity);
 		}
-		const velocityId = this.velocity.read.attach(0);
-		gl.uniform1i(this.advectionProgram.uniforms.uVelocity, velocityId);
-		gl.uniform1i(this.advectionProgram.uniforms.uSource, velocityId);
-		gl.uniform1f(this.advectionProgram.uniforms.dt, dt);
-		// In multiplicative mode (REVEAL/STICKY), the engine default
-		// VELOCITY_DISSIPATION (0.2) would kill velocity instantly
-		// (velocity *= 0.2 per frame). When the prop looks like an
-		// additive-mode value (≤ 0.5), fall back to 0.98 — gentle
-		// 2%/frame fade. When the prop is > 0.5 it was clearly set
-		// for multiplicative mode, so honor it (e.g. 0.9 or 0.95).
-		gl.uniform1f(
-			this.advectionProgram.uniforms.dissipation,
-			(this.config.REVEAL || this.config.STICKY)
-				? (this.config.VELOCITY_DISSIPATION > 0.5
-					? this.config.VELOCITY_DISSIPATION
-					: 0.98)
-				: this.config.VELOCITY_DISSIPATION
-		);
-		this.blit(this.velocity.write);
-		this.velocity.swap();
+
+		this.applyFlowSources(dt, !prescribedOnly);
+		if (!prescribedOnly) this.applyFlowForces(dt);
+		this.applyFlowOutlets(prescribedOnly ? ['dye', 'scalar'] : ['velocity', 'dye', 'scalar']);
+
+		if (prescribedOnly) {
+			this.advectDye(dt);
+			if (this.shouldMaskPhysics()) this.applyMask(this.dye);
+			this.advectScalar(dt);
+			this.applyFlowOutlets(['dye', 'scalar']);
+			return;
+		}
+
+		if (this.config.CURL > 0) {
+			this.curlProgram.bind();
+			gl.uniform2f(this.curlProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
+			gl.uniform1i(this.curlProgram.uniforms.uVelocity, this.velocity.read.attach(0));
+			this.blit(this.curlFBO);
+
+			this.vorticityProgram.bind();
+			gl.uniform2f(this.vorticityProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
+			gl.uniform1i(this.vorticityProgram.uniforms.uVelocity, this.velocity.read.attach(0));
+			gl.uniform1i(this.vorticityProgram.uniforms.uCurl, this.curlFBO.attach(1));
+			gl.uniform1f(this.vorticityProgram.uniforms.curl, this.config.CURL);
+			gl.uniform1f(this.vorticityProgram.uniforms.dt, dt);
+			this.blit(this.velocity.write);
+			this.velocity.swap();
+		}
+
+		this.advectVelocity(dt);
+		if (this.shouldMaskPhysics()) this.applyMask(this.velocity);
+		const viscosityActive = this.config.VISCOSITY > 0 && this.config.VISCOSITY_ITERATIONS > 0;
+		this.applyViscosity(dt);
+		if (viscosityActive && this.shouldMaskPhysics()) this.applyMask(this.velocity);
+		this.applyWallFriction();
+		this.projectVelocity();
 		if (this.shouldMaskPhysics()) this.applyMask(this.velocity);
 
 		// Re-bind advection program — applyMask switches the active GL
 		// program, and the dye advection below reuses advectionProgram.
 		if (this.shouldMaskPhysics()) this.advectionProgram.bind();
 
-		// Re-bind sticky mask for dye advection pass
-		this.bindStickyMask();
-		gl.uniform1i(this.advectionProgram.uniforms.uStickyMask, 7);
-
-		// Sticky modulates DYE advection only (not velocity above)
-		gl.uniform1f(
-			this.advectionProgram.uniforms.uStickyStrength,
-			this.config.STICKY ? this.config.STICKY_STRENGTH : 0.0
-		);
-
-		if (!this.ext.supportLinearFiltering) {
-			gl.uniform2f(
-				this.advectionProgram.uniforms.dyeTexelSize,
-				this.dye.texelSizeX,
-				this.dye.texelSizeY
-			);
-		}
-		gl.uniform1i(this.advectionProgram.uniforms.uVelocity, this.velocity.read.attach(0));
-		gl.uniform1i(this.advectionProgram.uniforms.uSource, this.dye.read.attach(1));
-		gl.uniform1f(
-			this.advectionProgram.uniforms.dissipation,
-			this.currentDensityDissipation()
-		);
-		this.blit(this.dye.write);
-		this.dye.swap();
+		this.advectDye(dt);
 		if (this.shouldMaskPhysics()) this.applyMask(this.dye);
+		this.advectScalar(dt);
+		this.applyFlowOutlets(['dye', 'scalar']);
 	}
 
 	private render(target: FBO | null): void {
@@ -1850,10 +2440,7 @@ export class FluidEngine implements FluidHandle {
 	private drawCheckerboard(target: FBO | null): void {
 		const gl = this.gl;
 		this.checkerboardProgram.bind();
-		gl.uniform1f(
-			this.checkerboardProgram.uniforms.aspectRatio,
-			this.canvas.width / this.canvas.height
-		);
+		gl.uniform1f(this.checkerboardProgram.uniforms.aspectRatio, this.canvas.width / this.canvas.height);
 		this.blit(target);
 	}
 
@@ -1863,16 +2450,11 @@ export class FluidEngine implements FluidHandle {
 		const height = target == null ? gl.drawingBufferHeight : target.height;
 
 		this.displayMaterial.bind();
-		if (this.config.SHADING) {
-			gl.uniform2f(this.displayMaterial.uniforms.texelSize, 1.0 / width, 1.0 / height);
-		}
+		gl.uniform2f(this.displayMaterial.uniforms.texelSize, 1.0 / width, 1.0 / height);
 		gl.uniform1i(this.displayMaterial.uniforms.uTexture, this.dye.read.attach(0));
 		if (this.config.BLOOM) {
 			gl.uniform1i(this.displayMaterial.uniforms.uBloom, this.bloom.attach(1));
-			gl.uniform1i(
-				this.displayMaterial.uniforms.uDithering,
-				this.ditheringTexture.attach(2)
-			);
+			gl.uniform1i(this.displayMaterial.uniforms.uDithering, this.ditheringTexture.attach(2));
 			const scale = getTextureScale(this.ditheringTexture, width, height);
 			gl.uniform2f(this.displayMaterial.uniforms.ditherScale, scale.x, scale.y);
 		}
@@ -1890,6 +2472,33 @@ export class FluidEngine implements FluidHandle {
 			gl.bindTexture(gl.TEXTURE_2D, this.obstructionMaskTexture);
 			gl.uniform1i(this.displayMaterial.uniforms.uObstructionMask, 6);
 		}
+		if (this.flowVisualizationActive()) {
+			const mode = this.flowVisualizationMode();
+			const primary =
+				mode === 1 ? this.velocity.read : mode === 2 ? this.pressure.read : this.scalar?.read ?? this.dye.read;
+			gl.uniform1i(this.displayMaterial.uniforms.uFlowPrimary, primary.attach(5));
+			gl.uniform1i(this.displayMaterial.uniforms.uFlowVelocity, this.velocity.read.attach(7));
+			gl.uniform1i(this.displayMaterial.uniforms.uFlowVisMode, mode);
+			gl.uniform1i(
+				this.displayMaterial.uniforms.uFlowScalarChannel,
+				flowScalarChannel(this.config.FLOW?.visualization?.scalar, this.config.FLOW?.scalarFields)
+			);
+			gl.uniform1i(this.displayMaterial.uniforms.uFlowTransfer, this.flowTransferKind());
+			const glowBy = this.config.FLOW?.visualization?.glowBy;
+			gl.uniform1i(this.displayMaterial.uniforms.uFlowGlowMode, glowBy === 'speed' ? 1 : glowBy === 'scalar' ? 2 : 0);
+			const visualizationRange = this.config.FLOW?.visualization?.range;
+			gl.uniform1i(this.displayMaterial.uniforms.uFlowUseRange, visualizationRange || mode === 3 ? 1 : 0);
+			gl.uniform1f(
+				this.displayMaterial.uniforms.uFlowScale,
+				this.config.FLOW?.visualization?.scale ??
+					(visualizationRange ? 1.0 : mode === 1 ? 0.002 : mode === 2 ? 1.0 : 1.0)
+			);
+			const field = this.flowScalarField(this.config.FLOW?.visualization?.scalar);
+			const range = visualizationRange ?? field?.range ?? [0, 1];
+			const color = field?.color ?? { r: 1, g: 1, b: 1 };
+			gl.uniform2f(this.displayMaterial.uniforms.uFlowScalarRange, range[0], range[1]);
+			gl.uniform3f(this.displayMaterial.uniforms.uFlowScalarColor, color.r, color.g, color.b);
+		}
 		if (this.config.DISTORTION) {
 			gl.activeTexture(gl.TEXTURE5);
 			gl.bindTexture(gl.TEXTURE_2D, this.distortionTexture);
@@ -1900,7 +2509,11 @@ export class FluidEngine implements FluidHandle {
 			gl.uniform1f(this.displayMaterial.uniforms.uCanvasRatio, this.canvas.width / this.canvas.height);
 			gl.uniform1f(this.displayMaterial.uniforms.uDistortionScale, this.config.DISTORTION_SCALE);
 			gl.uniform1i(this.displayMaterial.uniforms.uDistortionFit, this.config.DISTORTION_FIT === 'cover' ? 0 : 1);
-			gl.uniform2f(this.displayMaterial.uniforms.uBleed, this.config.DISTORTION_BLEED_X, this.config.DISTORTION_BLEED_Y);
+			gl.uniform2f(
+				this.displayMaterial.uniforms.uBleed,
+				this.config.DISTORTION_BLEED_X,
+				this.config.DISTORTION_BLEED_Y
+			);
 		} else if (this.config.REVEAL) {
 			gl.uniform1f(this.displayMaterial.uniforms.uRevealSensitivity, this.config.REVEAL_SENSITIVITY);
 			gl.uniform1f(this.displayMaterial.uniforms.uRevealCurve, this.config.REVEAL_CURVE);
@@ -1982,11 +2595,7 @@ export class FluidEngine implements FluidHandle {
 		gl.uniform1f(this.glassProgram.uniforms.uTransparent, this.config.TRANSPARENT ? 1.0 : 0.0);
 
 		const pointer = this.pointers[0];
-		gl.uniform2f(
-			this.glassProgram.uniforms.uLightScreenPos,
-			pointer.texcoordX,
-			pointer.texcoordY
-		);
+		gl.uniform2f(this.glassProgram.uniforms.uLightScreenPos, pointer.texcoordX, pointer.texcoordY);
 
 		// Container shape uniforms — mask texture on unit 1 (unit 0 = sceneFBO)
 		this.setContainerShapeUniforms(this.glassProgram.uniforms, width, height, 1);
@@ -2016,21 +2625,14 @@ export class FluidEngine implements FluidHandle {
 		const curve1 = knee * 2;
 		const curve2 = 0.25 / knee;
 		gl.uniform3f(this.bloomPrefilterProgram.uniforms.curve, curve0, curve1, curve2);
-		gl.uniform1f(
-			this.bloomPrefilterProgram.uniforms.threshold,
-			this.config.BLOOM_THRESHOLD
-		);
+		gl.uniform1f(this.bloomPrefilterProgram.uniforms.threshold, this.config.BLOOM_THRESHOLD);
 		gl.uniform1i(this.bloomPrefilterProgram.uniforms.uTexture, source.attach(0));
 		this.blit(last);
 
 		this.bloomBlurProgram.bind();
 		for (let i = 0; i < this.bloomFramebuffers.length; i++) {
 			const dest = this.bloomFramebuffers[i];
-			gl.uniform2f(
-				this.bloomBlurProgram.uniforms.texelSize,
-				last.texelSizeX,
-				last.texelSizeY
-			);
+			gl.uniform2f(this.bloomBlurProgram.uniforms.texelSize, last.texelSizeX, last.texelSizeY);
 			gl.uniform1i(this.bloomBlurProgram.uniforms.uTexture, last.attach(0));
 			this.blit(dest);
 			last = dest;
@@ -2041,11 +2643,7 @@ export class FluidEngine implements FluidHandle {
 
 		for (let i = this.bloomFramebuffers.length - 2; i >= 0; i--) {
 			const baseTex = this.bloomFramebuffers[i];
-			gl.uniform2f(
-				this.bloomBlurProgram.uniforms.texelSize,
-				last.texelSizeX,
-				last.texelSizeY
-			);
+			gl.uniform2f(this.bloomBlurProgram.uniforms.texelSize, last.texelSizeX, last.texelSizeY);
 			gl.uniform1i(this.bloomBlurProgram.uniforms.uTexture, last.attach(0));
 			gl.viewport(0, 0, baseTex.width, baseTex.height);
 			this.blit(baseTex);
@@ -2054,11 +2652,7 @@ export class FluidEngine implements FluidHandle {
 
 		gl.disable(gl.BLEND);
 		this.bloomFinalProgram.bind();
-		gl.uniform2f(
-			this.bloomFinalProgram.uniforms.texelSize,
-			last.texelSizeX,
-			last.texelSizeY
-		);
+		gl.uniform2f(this.bloomFinalProgram.uniforms.texelSize, last.texelSizeX, last.texelSizeY);
 		gl.uniform1i(this.bloomFinalProgram.uniforms.uTexture, last.attach(0));
 		gl.uniform1f(this.bloomFinalProgram.uniforms.intensity, this.config.BLOOM_INTENSITY);
 		this.blit(destination);
@@ -2106,7 +2700,11 @@ export class FluidEngine implements FluidHandle {
 	/** Build a MaskContext for CPU-side obstruction sampling, or undefined if N/A. */
 	private getObstructionCtx(): MaskContext | undefined {
 		if (!this.obstructionMaskData) return undefined;
-		return { data: this.obstructionMaskData, width: this.obstructionMaskW, height: this.obstructionMaskH };
+		return {
+			data: this.obstructionMaskData,
+			width: this.obstructionMaskW,
+			height: this.obstructionMaskH
+		};
 	}
 
 	private hdrMultiplier(): number {
@@ -2120,11 +2718,11 @@ export class FluidEngine implements FluidHandle {
 		if (shape.type === 'circle') {
 			areaFraction = (Math.PI * shape.radius * shape.radius) / aspect;
 		} else if (shape.type === 'frame') {
-			const outerArea = (2 * (shape.outerHalfW ?? 0.5)) * (2 * (shape.outerHalfH ?? 0.5));
-			const innerArea = (2 * shape.halfW) * (2 * shape.halfH);
+			const outerArea = 2 * (shape.outerHalfW ?? 0.5) * (2 * (shape.outerHalfH ?? 0.5));
+			const innerArea = 2 * shape.halfW * (2 * shape.halfH);
 			areaFraction = Math.max(0, outerArea - innerArea);
 		} else if (shape.type === 'roundedRect') {
-			areaFraction = (2 * shape.halfW) * (2 * shape.halfH);
+			areaFraction = 2 * shape.halfW * (2 * shape.halfH);
 		} else if (shape.type === 'annulus') {
 			areaFraction = (Math.PI * Math.max(0, shape.outerRadius ** 2 - shape.innerRadius ** 2)) / aspect;
 		} else if (shape.type === 'svgPath') {
@@ -2149,8 +2747,7 @@ export class FluidEngine implements FluidHandle {
 				const mc = this.getMaskCtx();
 				const octx = this.getObstructionCtx();
 				const rejected = (xx: number, yy: number) =>
-					(shape ? containerMask(shape, xx, yy, aspect, mc) < 0.5 : false) ||
-					obstructionMask(xx, yy, octx) >= 0.5;
+					(shape ? containerMask(shape, xx, yy, aspect, mc) < 0.5 : false) || obstructionMask(xx, yy, octx) >= 0.5;
 				let attempts = 10;
 				while (attempts > 0 && rejected(x, y)) {
 					x = this.rng();
@@ -2191,8 +2788,12 @@ export class FluidEngine implements FluidHandle {
 		}
 		window.addEventListener('mouseup', this.onMouseUp);
 		// Window-level touch listeners must be passive to avoid blocking scroll
-		target.addEventListener('touchstart', this.onTouchStart as EventListener, { passive: useWindow });
-		target.addEventListener('touchmove', this.onTouchMove as EventListener, { passive: useWindow });
+		target.addEventListener('touchstart', this.onTouchStart as EventListener, {
+			passive: useWindow
+		});
+		target.addEventListener('touchmove', this.onTouchMove as EventListener, {
+			passive: useWindow
+		});
 		window.addEventListener('touchend', this.onTouchEnd);
 		this.pointerListenersInstalled = true;
 	}
@@ -2227,15 +2828,7 @@ export class FluidEngine implements FluidHandle {
 			pointer = createPointer();
 			this.pointers.push(pointer);
 		}
-		updatePointerDownData(
-			pointer,
-			-1,
-			x,
-			y,
-			this.canvas.width,
-			this.canvas.height,
-			generateColor(this.rng)
-		);
+		updatePointerDownData(pointer, -1, x, y, this.canvas.width, this.canvas.height, generateColor(this.rng));
 	}
 
 	private handleMouseMove(e: MouseEvent): void {
@@ -2247,11 +2840,7 @@ export class FluidEngine implements FluidHandle {
 			// second move onward produces a delta that drives the splat.
 			if (!this.config.SPLAT_ON_HOVER) return;
 			const { x, y } = this.getCanvasOffset(e.clientX, e.clientY);
-			updatePointerDownData(
-				pointer, -1, x, y,
-				this.canvas.width, this.canvas.height,
-				generateColor(this.rng)
-			);
+			updatePointerDownData(pointer, -1, x, y, this.canvas.width, this.canvas.height, generateColor(this.rng));
 			return;
 		}
 		const { x, y } = this.getCanvasOffset(e.clientX, e.clientY);

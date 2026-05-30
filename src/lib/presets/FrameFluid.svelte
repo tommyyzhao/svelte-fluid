@@ -37,7 +37,7 @@
 		'aria-label': ariaLabel,
 		innerCornerRadius,
 		outerCornerRadius,
-		splatOnHover,
+		splatOnHover = true,
 		backColor
 	}: FrameFluidProps = $props();
 

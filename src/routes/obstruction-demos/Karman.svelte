@@ -15,17 +15,14 @@
 
   How the throughflow works:
   - Obstacle physics (velocity+dye zeroed inside the mask) applies even with
-    an open boundary, so `openBoundary` is ON: the cross-flow enters at the
-    left, passes the cylinder, and vents off the right edge — a real
-    downstream outflow rather than a recirculating sealed box.
-  - The left→right "stream" is a steady inflow of `autoSplat` jets along
-    the left edge pushing +x, plus opening preset splats.
+    an open boundary, so the cross-flow enters at the left, passes the
+    cylinder, and drains through a right-edge outlet.
+  - The left→right stream is a persistent flow source, not random auto splats.
 
   Geometry: a single circle (authored as two SVG arcs) centered at
   viewBox (35, 52), radius 10, in a [0,0,100,100] viewBox. SVG y is DOWN,
   so SVG y=52 maps to splat-space y≈0.48 — the cylinder sits left of
-  center and slightly BELOW the inflow band center (autoSplatCenterY
-  0.52). That deliberate vertical offset breaks the up/down symmetry to
+  center and slightly below the inflow band center. That deliberate vertical offset breaks the up/down symmetry to
   coax the wake into shedding rather than forming a stable standing pair.
 -->
 
@@ -41,7 +38,7 @@
 
 <script lang="ts">
 	import Fluid from '$lib/Fluid.svelte';
-	import type { FluidHandle, PresetSplat, Obstruction } from '$lib/engine/types.js';
+	import type { FlowConfig, FluidHandle, PresetSplat, Obstruction } from '$lib/engine/types.js';
 
 	let {
 		width,
@@ -50,25 +47,12 @@
 		style,
 		seed,
 		lazy,
-		splatOnHover,
+		splatOnHover = true,
 		'aria-label': ariaLabel,
 		backColor
 	}: KarmanProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
-
-	// Track reduced-motion. The continuous inflow (autoSplatRate) is the
-	// only motor of this demo, so we gate it to 0 when the user prefers
-	// reduced motion — the scene then renders a single static opening pulse.
-	let reducedMotion = $state(false);
-	$effect(() => {
-		if (typeof window === 'undefined') return;
-		const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-		reducedMotion = mq.matches;
-		const onChange = (e: MediaQueryListEvent) => (reducedMotion = e.matches);
-		mq.addEventListener('change', onChange);
-		return () => mq.removeEventListener('change', onChange);
-	});
 
 	// Single cylinder: a circle authored as two semicircular arcs. Center
 	// (35, 52) in viewBox units, radius 10. Left-of-center horizontally so
@@ -76,7 +60,8 @@
 	// just off the inflow centerline to break symmetry.
 	const CYLINDER: Obstruction = {
 		d: 'M 25 52 A 10 10 0 1 0 45 52 A 10 10 0 1 0 25 52 Z',
-		viewBox: [0, 0, 100, 100]
+		viewBox: [0, 0, 100, 100],
+		fit: 'fill'
 	};
 
 	// Opening scene: a column of fast +x jets along the left edge, spanning
@@ -92,6 +77,27 @@
 		{ x: 0.06, y: 0.32, dx: INFLOW_DX, dy: 0, color: { r: 1.0, g: 0.9, b: 0.3 } },
 		{ x: 0.06, y: 0.18, dx: INFLOW_DX, dy: 0, color: { r: 1.4, g: 0.5, b: 0.2 } }
 	];
+
+	const FLOW: FlowConfig = {
+		mode: 'live',
+		boundary: { left: 'open', right: 'open', top: 'open', bottom: 'open' },
+		sources: [
+			{
+				kind: 'line',
+				from: { x: 0.035, y: 0.14 },
+				to: { x: 0.035, y: 0.90 },
+				velocity: { x: INFLOW_DX, y: 0 },
+				dye: { r: 0.015, g: 0.09, b: 0.125 },
+				scalars: { ink: 0.65 },
+				rate: 58,
+				radius: 0.045,
+				profile: 'uniform'
+			}
+		],
+		outlets: [{ edge: 'right', from: 0.05, to: 0.95, width: 0.09, clearDye: 0.9, clearScalars: true, clearVelocity: true }],
+		scalarFields: [{ name: 'ink', dissipation: 0.22, advection: 'low-dissipation' }],
+		visualization: { colorBy: 'dye', scalar: 'ink' }
+	};
 
 	export const handle: FluidHandle = {
 		splat: (x, y, dx, dy, color) => inner?.handle.splat(x, y, dx, dy, color),
@@ -115,28 +121,22 @@
 	{splatOnHover}
 	aria-label={ariaLabel}
 	obstructions={[CYLINDER]}
+	flow={FLOW}
 	openBoundary
-	curl={45}
-	densityDissipation={0.6}
+	curl={34}
+	densityDissipation={2.2}
 	velocityDissipation={0.03}
 	pressure={0.9}
 	pressureIterations={26}
 	splatRadius={0.06}
 	splatForce={6000}
-	shading
+	shading={false}
 	colorful={false}
-	bloom
+	bloom={false}
+	sunrays={false}
 	simResolution={192}
 	dyeResolution={1024}
 	initialSplatCount={0}
 	backColor={backColor ?? { r: 4, g: 6, b: 14 }}
 	presetSplats={PRESET_SPLATS}
-	autoSplatRate={reducedMotion ? 0 : 26}
-	autoSplatCount={3}
-	autoSplatVelocityX={750}
-	autoSplatVelocityY={0}
-	autoSplatSwirl={0}
-	autoSplatCenterY={0.52}
-	autoSplatBandHeight={0.9}
-	autoSplatEvenX={false}
 />

@@ -13,13 +13,86 @@
 import { describe, it, expect, vi } from 'vitest';
 import { resolveConfig, DEFAULTS } from '../FluidEngine.js';
 import { containerShapeEqual, stickyMaskEqual } from '../container-shapes.js';
-import type { FluidConfig, ResolvedConfig } from '../types.js';
+import type { FlowBoundary, FlowGridField, FluidConfig, PrescribedFlowField, ResolvedConfig } from '../types.js';
 
 /* ------------------------------------------------------------------ */
 /*              setConfig bucket classification tests                  */
 /* ------------------------------------------------------------------ */
 
 describe('setConfig bucket classification', () => {
+	function flowConfigEqual(a: ResolvedConfig['FLOW'], b: ResolvedConfig['FLOW']): boolean {
+		if (!a && !b) return true;
+		if (!a || !b) return false;
+		return (
+			flowBoundaryEqual(a.boundary, b.boundary) &&
+			shallowArrayEqual(a.sources, b.sources) &&
+			shallowArrayEqual(a.outlets, b.outlets) &&
+			shallowArrayEqual(a.scalarFields, b.scalarFields) &&
+			shallowArrayEqual(a.forces, b.forces) &&
+			prescribedFlowEqual(a.prescribed, b.prescribed) &&
+			a.visualization === b.visualization &&
+			a.mode === b.mode
+		);
+	}
+
+	function shallowArrayEqual<T>(a: ReadonlyArray<T> | undefined, b: ReadonlyArray<T> | undefined): boolean {
+		if (!a && !b) return true;
+		if (!a || !b) return false;
+		if (a === b) return true;
+		if (a.length !== b.length) return false;
+		for (let i = 0; i < a.length; i++) {
+			if (a[i] !== b[i]) return false;
+		}
+		return true;
+	}
+
+	function flowBoundaryEqual(a: FlowBoundary | undefined, b: FlowBoundary | undefined): boolean {
+		return (
+			(a?.left ?? null) === (b?.left ?? null) &&
+			(a?.right ?? null) === (b?.right ?? null) &&
+			(a?.top ?? null) === (b?.top ?? null) &&
+			(a?.bottom ?? null) === (b?.bottom ?? null)
+		);
+	}
+
+	function gridEqual(a: FlowGridField | undefined, b: FlowGridField | undefined): boolean {
+		if (!a && !b) return true;
+		if (!a || !b) return false;
+		return (
+			a.width === b.width &&
+			a.height === b.height &&
+			(a.scale ?? null) === (b.scale ?? null) &&
+			(a.version ?? null) === (b.version ?? null) &&
+			a.data === b.data
+		);
+	}
+
+	function prescribedFlowEqual(a: PrescribedFlowField | undefined, b: PrescribedFlowField | undefined): boolean {
+		if (!a && !b) return true;
+		if (!a || !b) return false;
+		if (a.kind !== b.kind) return false;
+		if (a.kind === 'grid' && b.kind === 'grid') {
+			const aKeys = Object.keys(a.scalars ?? {}).sort();
+			const bKeys = Object.keys(b.scalars ?? {}).sort();
+			return (
+				gridEqual(a.velocity, b.velocity) &&
+				aKeys.length === bKeys.length &&
+				aKeys.every((key, i) => key === bKeys[i] && gridEqual(a.scalars?.[key], b.scalars?.[key]))
+			);
+		}
+		return false;
+	}
+
+	function needsScalarFBOForFlow(flow: ResolvedConfig['FLOW']): boolean {
+		if (!flow) return false;
+		if (flow.scalarFields && flow.scalarFields.length > 0) return true;
+		if (flow.visualization?.colorBy === 'temperature' || flow.visualization?.colorBy === 'scalar') return true;
+		if (flow.sources?.some((s) => s.scalars && Object.keys(s.scalars).length > 0)) return true;
+		if (flow.forces?.some((f) => f.kind === 'buoyancy')) return true;
+		if (flow.prescribed && flow.prescribed.kind === 'grid' && flow.prescribed.scalars) return true;
+		return false;
+	}
+
 	/**
 	 * Mirrors the change detection logic from FluidEngine.setConfig()
 	 * without requiring GL context. Returns which expensive operations
@@ -42,6 +115,8 @@ describe('setConfig bucket classification', () => {
 			distortionImageChanged: a.DISTORTION_IMAGE_URL !== b.DISTORTION_IMAGE_URL,
 			stickyChanged: a.STICKY !== b.STICKY,
 			stickyMaskChanged: !stickyMaskEqual(a.STICKY_MASK, b.STICKY_MASK),
+			flowChanged: !flowConfigEqual(a.FLOW, b.FLOW),
+			scalarNeedChanged: needsScalarFBOForFlow(a.FLOW) !== needsScalarFBOForFlow(b.FLOW),
 			pointerInputChanged: a.POINTER_INPUT !== b.POINTER_INPUT,
 			backColorChanged: a.BACK_COLOR !== b.BACK_COLOR,
 			config: next
@@ -54,6 +129,12 @@ describe('setConfig bucket classification', () => {
 			splatRadius: 0.5,
 			densityDissipation: 0.5,
 			velocityDissipation: 0.3,
+			maxTimeStep: 1 / 120,
+			substeps: 2,
+			viscosity: 0.02,
+			viscosityIterations: 10,
+			wallFriction: 0.2,
+			wallFrictionWidth: 2,
 			pressure: 0.6,
 			splatForce: 8000,
 			colorful: false,
@@ -160,14 +241,8 @@ describe('setConfig bucket classification', () => {
 		});
 
 		it('same containerShape triggers no change', () => {
-			const base = resolveConfig(
-				{ containerShape: { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.4 } },
-				DEFAULTS
-			);
-			const c = classifyChanges(
-				{ containerShape: { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.4 } },
-				base
-			);
+			const base = resolveConfig({ containerShape: { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.4 } }, DEFAULTS);
+			const c = classifyChanges({ containerShape: { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.4 } }, base);
 			expect(c.shapeChanged).toBe(false);
 		});
 
@@ -179,6 +254,73 @@ describe('setConfig bucket classification', () => {
 		it('changing distortionImageUrl triggers image reload', () => {
 			const c = classifyChanges({ distortionImageUrl: 'new.jpg' });
 			expect(c.distortionImageChanged).toBe(true);
+		});
+	});
+
+	describe('flow scene updates', () => {
+		it('adding a velocity-only source is a flow update without scalar FBO rebuild', () => {
+			const c = classifyChanges({
+				flow: {
+					mode: 'live',
+					sources: [{ kind: 'point', x: 0.2, y: 0.5, velocity: { x: 320, y: 0 } }]
+				}
+			});
+			expect(c.flowChanged).toBe(true);
+			expect(c.scalarNeedChanged).toBe(false);
+			expect(c.fbChanged).toBe(false);
+		});
+
+		it('adding scalar fields allocates the scalar framebuffer', () => {
+			const c = classifyChanges({
+				flow: {
+					mode: 'live',
+					scalarFields: [{ name: 'ink', dissipation: 0.02 }]
+				}
+			});
+			expect(c.flowChanged).toBe(true);
+			expect(c.scalarNeedChanged).toBe(true);
+		});
+
+		it('scalar sources and buoyancy forces also allocate scalar storage', () => {
+			const source = classifyChanges({
+				flow: {
+					mode: 'live',
+					sources: [{ kind: 'point', x: 0.5, y: 0.5, scalars: { temperature: 1 } }]
+				}
+			});
+			const force = classifyChanges({
+				flow: {
+					mode: 'live',
+					forces: [{ kind: 'buoyancy', scalar: 'ink', strength: 5 }]
+				}
+			});
+			expect(source.scalarNeedChanged).toBe(true);
+			expect(force.scalarNeedChanged).toBe(true);
+		});
+
+		it('pressure-gradient forces stay velocity-only', () => {
+			const c = classifyChanges({
+				flow: {
+					mode: 'live',
+					forces: [{ kind: 'pressureGradient', vector: { x: 40, y: 0 } }]
+				}
+			});
+			expect(c.flowChanged).toBe(true);
+			expect(c.scalarNeedChanged).toBe(false);
+		});
+
+		it('preserves identical flow config and detects scalar storage teardown', () => {
+			const flow = {
+				mode: 'live' as const,
+				scalarFields: [{ name: 'ink' as const }],
+				visualization: { colorBy: 'scalar' as const, scalar: 'ink' as const }
+			};
+			const base = resolveConfig({ flow }, DEFAULTS);
+			expect(classifyChanges({ flow: { ...flow } }, base).flowChanged).toBe(false);
+
+			const cleared = classifyChanges({ flow: null }, base);
+			expect(cleared.flowChanged).toBe(true);
+			expect(cleared.scalarNeedChanged).toBe(true);
 		});
 	});
 
@@ -261,42 +403,88 @@ describe('velocity dissipation in multiplicative mode (REVEAL/STICKY)', () => {
 		velocityDissipation: number;
 	}): number {
 		if (config.reveal || config.sticky) {
-			return config.velocityDissipation > 0.5
-				? config.velocityDissipation
-				: 0.98;
+			return config.velocityDissipation > 0.5 ? config.velocityDissipation : 0.98;
 		}
 		return config.velocityDissipation;
 	}
 
 	it('standard mode uses prop directly', () => {
-		expect(effectiveVelocityDissipation({ reveal: false, sticky: false, velocityDissipation: 0.2 })).toBe(0.2);
+		expect(
+			effectiveVelocityDissipation({
+				reveal: false,
+				sticky: false,
+				velocityDissipation: 0.2
+			})
+		).toBe(0.2);
 	});
 
 	it('reveal mode falls back to 0.98 for additive-range values', () => {
 		// Default engine VELOCITY_DISSIPATION=0.2 would kill velocity instantly
-		expect(effectiveVelocityDissipation({ reveal: true, sticky: false, velocityDissipation: 0.2 })).toBe(0.98);
+		expect(
+			effectiveVelocityDissipation({
+				reveal: true,
+				sticky: false,
+				velocityDissipation: 0.2
+			})
+		).toBe(0.98);
 	});
 
 	it('reveal mode honors multiplicative-range values (> 0.5)', () => {
 		// FluidReveal sets velocityDissipation=0.98 — should be respected
-		expect(effectiveVelocityDissipation({ reveal: true, sticky: false, velocityDissipation: 0.9 })).toBe(0.9);
-		expect(effectiveVelocityDissipation({ reveal: true, sticky: false, velocityDissipation: 0.95 })).toBe(0.95);
+		expect(
+			effectiveVelocityDissipation({
+				reveal: true,
+				sticky: false,
+				velocityDissipation: 0.9
+			})
+		).toBe(0.9);
+		expect(
+			effectiveVelocityDissipation({
+				reveal: true,
+				sticky: false,
+				velocityDissipation: 0.95
+			})
+		).toBe(0.95);
 	});
 
 	it('sticky mode also honors multiplicative-range values', () => {
-		expect(effectiveVelocityDissipation({ reveal: false, sticky: true, velocityDissipation: 0.85 })).toBe(0.85);
+		expect(
+			effectiveVelocityDissipation({
+				reveal: false,
+				sticky: true,
+				velocityDissipation: 0.85
+			})
+		).toBe(0.85);
 	});
 
 	it('sticky mode falls back for additive-range values', () => {
-		expect(effectiveVelocityDissipation({ reveal: false, sticky: true, velocityDissipation: 0.2 })).toBe(0.98);
+		expect(
+			effectiveVelocityDissipation({
+				reveal: false,
+				sticky: true,
+				velocityDissipation: 0.2
+			})
+		).toBe(0.98);
 	});
 
 	it('boundary: 0.5 is treated as additive (falls back)', () => {
-		expect(effectiveVelocityDissipation({ reveal: true, sticky: false, velocityDissipation: 0.5 })).toBe(0.98);
+		expect(
+			effectiveVelocityDissipation({
+				reveal: true,
+				sticky: false,
+				velocityDissipation: 0.5
+			})
+		).toBe(0.98);
 	});
 
 	it('boundary: 0.51 is treated as multiplicative (honored)', () => {
-		expect(effectiveVelocityDissipation({ reveal: true, sticky: false, velocityDissipation: 0.51 })).toBeCloseTo(0.51);
+		expect(
+			effectiveVelocityDissipation({
+				reveal: true,
+				sticky: false,
+				velocityDissipation: 0.51
+			})
+		).toBeCloseTo(0.51);
 	});
 });
 
@@ -317,11 +505,21 @@ describe('dispose() contract', () => {
 		const deletedResources: string[] = [];
 
 		return {
-			get disposed() { return disposed; },
-			get rafRunning() { return rafRunning; },
-			get contextLost() { return contextLost; },
-			get pointerListenersInstalled() { return pointerListenersInstalled; },
-			get deletedResources() { return deletedResources; },
+			get disposed() {
+				return disposed;
+			},
+			get rafRunning() {
+				return rafRunning;
+			},
+			get contextLost() {
+				return contextLost;
+			},
+			get pointerListenersInstalled() {
+				return pointerListenersInstalled;
+			},
+			get deletedResources() {
+				return deletedResources;
+			},
 
 			dispose() {
 				if (disposed) return;
@@ -335,8 +533,17 @@ describe('dispose() contract', () => {
 					deletedResources.push('pointerListeners');
 				}
 
-				deletedResources.push('dye', 'velocity', 'divergence', 'curl',
-					'pressure', 'bloom', 'bloomFramebuffers', 'sunrays', 'sunraysTemp');
+				deletedResources.push(
+					'dye',
+					'velocity',
+					'divergence',
+					'curl',
+					'pressure',
+					'bloom',
+					'bloomFramebuffers',
+					'sunrays',
+					'sunraysTemp'
+				);
 				deletedResources.push('ditheringTexture');
 				deletedResources.push('programs', 'displayMaterial');
 				deletedResources.push('shaders', 'buffers');
@@ -436,10 +643,18 @@ describe('context loss/restore contract', () => {
 		const operations: string[] = [];
 
 		return {
-			get disposed() { return disposed; },
-			get rafRunning() { return rafRunning; },
-			get contextLost() { return contextLost; },
-			get operations() { return operations; },
+			get disposed() {
+				return disposed;
+			},
+			get rafRunning() {
+				return rafRunning;
+			},
+			get contextLost() {
+				return contextLost;
+			},
+			get operations() {
+				return operations;
+			},
 
 			handleContextLost(e: { preventDefault: () => void }) {
 				e.preventDefault();

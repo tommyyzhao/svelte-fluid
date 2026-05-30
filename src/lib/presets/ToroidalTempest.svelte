@@ -42,7 +42,7 @@
 		style,
 		seed,
 		lazy,
-		splatOnHover,
+		splatOnHover = true,
 		'aria-label': ariaLabel,
 		backColor
 	}: ToroidalTempestProps = $props();
