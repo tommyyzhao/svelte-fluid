@@ -11,7 +11,7 @@ Repo: github.com/tommyyzhao/svelte-fluid
 ```sh
 bun install              # install deps
 bun run dev              # dev server at localhost:5173
-bun run test             # vitest (276 tests)
+bun run test             # vitest (full suite; ~386 tests)
 bun run check            # svelte-check (0 errors expected)
 bun run prepack          # svelte-package + publint (must pass before publish)
 bun run build            # full demo site build
