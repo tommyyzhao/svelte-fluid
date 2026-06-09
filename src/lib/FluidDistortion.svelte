@@ -60,7 +60,7 @@
 		 * Number of random high-velocity splats injected at startup.
 		 * Creates a chaotic distortion that settles into the undistorted
 		 * image over ~1 second. Set to 0 to start undistorted.
-		 * Default 5.
+		 * Default 20.
 		 */
 		initialSplats?: number;
 		/**

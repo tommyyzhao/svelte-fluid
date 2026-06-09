@@ -13,9 +13,10 @@
   walls fill it edge to edge — no open margin, no escape.
 
   Physics:
-  - The maze WALLS are obstruction geometry; obstruction physics is always on,
-    and a CLOSED boundary (openBoundary omitted) makes the canvas edges contain
-    the flood so it can only leave through the exit hole.
+  - The maze WALLS are obstruction geometry; the bottom edge is physically
+    open, but the bottom-wall obstruction blocks every segment except the exit
+    gap. That makes the visible exit a real pressure boundary instead of only
+    a dye-clearing sponge.
   - A sheet-like inlet, low-dissipation scalar, and downward gravity make this
     read more like incompressible liquid filling a channel than smoke diffusing
     through a room. It is still not a true free-surface/multiphase water solve.
@@ -103,7 +104,7 @@
 
 	const FLOW: FlowConfig = {
 		mode: 'live',
-		boundary: { left: 'wall', right: 'wall', top: 'wall', bottom: 'wall' },
+		boundary: { left: 'wall', right: 'wall', top: 'wall', bottom: 'open' },
 		sources: [
 			{
 				kind: 'line',
@@ -111,16 +112,16 @@
 				to: { x: ENTRANCE_RIGHT, y: ENTRANCE_Y },
 				velocity: { x: 0, y: INJECT_DY },
 				dye: DYE,
-				scalars: { ink: 0.82 },
-				rate: 46,
+				scalars: { ink: 0.38 },
+				rate: 40,
 				radius: 0.045,
 				profile: 'uniform'
 			}
 		],
-		outlets: [{ edge: 'bottom', from: 0.77, to: 0.9, width: 0.055, clearDye: 0.55, clearScalars: true, clearVelocity: true }],
-		scalarFields: [{ name: 'ink', dissipation: 0.003, advection: 'low-dissipation', color: { r: 0.75, g: 0.95, b: 1.0 }, range: [0, 1] }],
+		outlets: [{ edge: 'bottom', from: 0.77, to: 0.9, width: 0.035, clearDye: 0.75, clearScalars: true, clearVelocity: false }],
+		scalarFields: [{ name: 'ink', dissipation: 0.045, advection: 'low-dissipation', color: { r: 0.75, g: 0.95, b: 1.0 }, range: [0, 1.6] }],
 		forces: [{ kind: 'gravity', vector: { x: 0, y: -140 } }],
-		visualization: { colorBy: 'scalar', scalar: 'ink', transfer: 'water', scale: 0.85 }
+		visualization: { colorBy: 'scalar', scalar: 'ink', transfer: 'water', scale: 0.78 }
 	};
 
 	export const handle: FluidHandle = {
@@ -150,6 +151,12 @@
 	densityDissipation={0.08}
 	initialDensityDissipation={0.08}
 	velocityDissipation={0.025}
+	maxTimeStep={1 / 120}
+	substeps={2}
+	viscosity={0.01}
+	viscosityIterations={8}
+	wallFriction={0.08}
+	wallFrictionWidth={2}
 	curl={0}
 	pressure={0.9}
 	pressureIterations={40}

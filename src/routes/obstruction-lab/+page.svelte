@@ -1,6 +1,6 @@
 <!--
   TEMPORARY visual-QA gallery for the obstruction presets + demos.
-  Renders all 7 current scenes immediately (no lazy) for side-by-side inspection.
+  Renders the current scenes with lazy viewport activation for side-by-side inspection.
   Delete after verification.
 -->
 <script lang="ts">
@@ -16,61 +16,61 @@
 
 <main class="lab">
 	<h1>Obstruction Lab</h1>
-	<p class="note">Temporary visual-QA gallery. All seven current scenes render eagerly.</p>
+	<p class="note">Temporary visual-QA gallery. Scenes activate as they approach the viewport.</p>
 
 	<div class="grid">
 		<figure class="card">
 			<div class="stage">
-				<GasFlare seed={101} aria-label="GasFlare demo" />
+				<GasFlare seed={101} lazy aria-label="GasFlare demo" />
 			</div>
 			<figcaption>GasFlare — hot incompressible jet with scalar buoyancy</figcaption>
 		</figure>
 
 			<figure class="card">
 				<div class="stage">
-					<Venturi seed={102} aria-label="Venturi demo" />
+					<Venturi seed={102} lazy aria-label="Venturi demo" />
 				</div>
 				<div class="diagnostics" aria-label="Venturi diagnostics">
 					<span><strong>Drive</strong> pressureGradient x=42</span>
 					<span><strong>Contraction</strong> 5.3:1 throat target</span>
-					<span><strong>Solver</strong> 2 x 1/120s, viscosity 0.018, wall friction 0.18</span>
+					<span><strong>Solver</strong> 1 x 1/60s, viscosity 0.016, wall friction 0.16</span>
 				</div>
 				<figcaption>Venturi — pressure-drive with visible throat speed-up</figcaption>
 			</figure>
 
 		<figure class="card">
 			<div class="stage">
-				<RiverDelta seed={103} aria-label="RiverDelta demo" />
+				<RiverDelta seed={103} lazy aria-label="RiverDelta demo" />
 			</div>
-			<figcaption>RiverDelta — faithful branching (continuity)</figcaption>
+			<figcaption>RiverDelta — muted branching with constrained tracer packets</figcaption>
 		</figure>
 
 		<figure class="card">
 			<div class="stage">
-				<TeslaValve seed={108} aria-label="TeslaValve demo" />
+				<TeslaValve seed={108} lazy aria-label="TeslaValve demo" />
 			</div>
-			<figcaption>TeslaValve — reference conduit with bypass buckets and slots</figcaption>
+			<figcaption>TeslaValve — forward throughflow with bypass recirculation, not a hard stop</figcaption>
 		</figure>
 
 		<figure class="card">
 			<div class="stage">
-				<Maze seed={104} aria-label="Maze demo" />
+				<Maze seed={104} lazy aria-label="Maze demo" />
 			</div>
-			<figcaption>Maze — faithful flood-fill (single channel)</figcaption>
+			<figcaption>Maze — contained flood-fill with an open bottom exit</figcaption>
 		</figure>
 
 		<figure class="card">
 			<div class="stage">
-				<Karman seed={105} aria-label="Karman demo" />
+				<Karman seed={105} lazy aria-label="Karman demo" />
 			</div>
-			<figcaption>Karman — steady flow source past a cylinder, no random auto splats</figcaption>
+			<figcaption>Karman — pressure-driven cylinder wake with fast dye tracers</figcaption>
 		</figure>
 
 		<figure class="card">
 			<div class="stage">
-				<Airfoil seed={106} aria-label="Airfoil demo" />
+				<Airfoil seed={106} lazy aria-label="Airfoil demo" />
 			</div>
-			<figcaption>Airfoil — narrow body with a persistent speed-field inlet</figcaption>
+			<figcaption>Airfoil — dye tracers split around a narrow pressure-driven body</figcaption>
 		</figure>
 	</div>
 </main>

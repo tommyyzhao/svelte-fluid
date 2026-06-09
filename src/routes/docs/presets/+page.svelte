@@ -32,7 +32,8 @@
 	interactive splatting, and adapting the empty-canvas substrate to a host page background.
 	Presets enable <code>splatOnHover</code> by default; pass <code>splatOnHover={LB}false{RB}</code>
 	to disable pointer-driven splats. Each preset's table below shows the <code>backColor</code>
-	value that ships by default; pass your own to override.
+	value that ships by default; pass your own to override. Flow-scene presets also expose
+	<code>pointerInput</code>.
 </p>
 
 <p>
@@ -147,20 +148,23 @@
 	</thead>
 	<tbody>
 		<tr><td><code>curl</code></td><td>8</td></tr>
-		<tr><td><code>densityDissipation</code></td><td>0.18</td></tr>
-		<tr><td><code>velocityDissipation</code></td><td>0.12</td></tr>
+		<tr><td><code>densityDissipation</code></td><td>0.3</td></tr>
+		<tr><td><code>velocityDissipation</code></td><td>0.15</td></tr>
 		<tr><td><code>pressure</code></td><td>0.85</td></tr>
 		<tr><td><code>splatRadius</code></td><td>0.12</td></tr>
 		<tr><td><code>splatForce</code></td><td>800</td></tr>
 		<tr><td><code>shading</code></td><td>true</td></tr>
 		<tr><td><code>colorful</code></td><td>false</td></tr>
-		<tr><td><code>bloom</code></td><td>false</td></tr>
-		<tr><td><code>bloomIntensity</code></td><td>0.35</td></tr>
+		<tr><td><code>bloom</code></td><td>true</td></tr>
+		<tr><td><code>bloomIntensity</code></td><td>0.6</td></tr>
 		<tr><td><code>bloomThreshold</code></td><td>0.4</td></tr>
 		<tr><td><code>sunrays</code></td><td>false</td></tr>
 		<tr><td><code>backColor</code></td><td>{LB} r: 6, g: 8, b: 20 {RB}</td></tr>
 		<tr><td><code>initialSplatCount</code></td><td>0</td></tr>
-		<tr><td><code>flow</code></td><td>ink scalar source + downward ink-coupled buoyancy + scalar visualization</td></tr>
+		<tr><td><code>autoSplatRate</code></td><td>0.2</td></tr>
+		<tr><td><code>autoSplatColor</code></td><td>{LB} r: 0.06, g: 0.07, b: 0.5 {RB}</td></tr>
+		<tr><td><code>autoSplatVelocityY</code></td><td>-180</td></tr>
+		<tr><td><code>autoSplatCenterY</code></td><td>0.9</td></tr>
 		<tr><td><code>presetSplats</code></td><td>5 ink droplets near the top</td></tr>
 	</tbody>
 </table>
@@ -278,7 +282,7 @@
 
 <hr />
 
-<h2>CircularFluid</h2>
+<h2 id="circularfluid">CircularFluid</h2>
 
 <p>Vivid swirling fluid contained inside a circle. Eight inward jets converge from the compass points, and the circular boundary reflects them back inward to produce a self-sustaining vortex. Automatic splats with orbital swirl sustain the motion.</p>
 
@@ -325,7 +329,7 @@
 
 <hr />
 
-<h2>FrameFluid</h2>
+<h2 id="framefluid">FrameFluid</h2>
 
 <p>Fluid swirling around a rectangular inner cutout, like a living picture frame. Four edge jets create clockwise circulation and four diagonal jets add turbulence at the corners. Accepts optional <code>innerCornerRadius</code> and <code>outerCornerRadius</code> props.</p>
 
@@ -372,7 +376,7 @@
 
 <hr />
 
-<h2>AnnularFluid</h2>
+<h2 id="annularfluid">AnnularFluid</h2>
 
 <p>A ring-vortex of fluid contained between two concentric circles. Eight tangential jets establish a counter-clockwise ring vortex. Automatic splats with orbital swirl sustain the motion.</p>
 
@@ -416,7 +420,7 @@
 
 <hr />
 
-<h2>SvgPathFluid</h2>
+<h2 id="svgpathfluid">SvgPathFluid</h2>
 
 <p>Fluid flowing inside a bold ampersand "&amp;" glyph, demonstrating text-mode container shapes. The letter is rasterized to a mask texture via Canvas 2D <code>fillText</code>, with <code>evenodd</code> fill rule so the counter (hole) in the glyph stays transparent.</p>
 
@@ -477,18 +481,20 @@
 		<tr><td><code>initialDensityDissipation</code></td><td>0.55</td></tr>
 		<tr><td><code>velocityDissipation</code></td><td>0.055</td></tr>
 		<tr><td><code>pressure</code></td><td>0.85</td></tr>
-		<tr><td><code>pressureIterations</code></td><td>28</td></tr>
+		<tr><td><code>pressureIterations</code></td><td>24</td></tr>
 		<tr><td><code>splatRadius</code></td><td>0.06</td></tr>
 		<tr><td><code>splatForce</code></td><td>3800</td></tr>
 		<tr><td><code>shading</code></td><td>false</td></tr>
 		<tr><td><code>colorful</code></td><td>false</td></tr>
 		<tr><td><code>bloom</code></td><td>true</td></tr>
+		<tr><td><code>bloomIterations</code></td><td>5</td></tr>
+		<tr><td><code>bloomResolution</code></td><td>192</td></tr>
 		<tr><td><code>bloomThreshold</code></td><td>0.48</td></tr>
 		<tr><td><code>bloomIntensity</code></td><td>1.0</td></tr>
 		<tr><td><code>sunrays</code></td><td>false</td></tr>
 		<tr><td><code>sunraysWeight</code></td><td>0</td></tr>
-		<tr><td><code>simResolution</code></td><td>192</td></tr>
-		<tr><td><code>dyeResolution</code></td><td>1024</td></tr>
+		<tr><td><code>simResolution</code></td><td>160</td></tr>
+		<tr><td><code>dyeResolution</code></td><td>768</td></tr>
 		<tr><td><code>backColor</code></td><td>{LB} r: 6, g: 6, b: 8 {RB}</td></tr>
 		<tr><td><code>initialSplatCount</code></td><td>0</td></tr>
 		<tr><td><code>obstructions</code></td><td>2 flare-stack wall slabs around a center slot</td></tr>
@@ -517,16 +523,16 @@
 	</thead>
 	<tbody>
 		<tr><td><code>curl</code></td><td>0</td></tr>
-			<tr><td><code>densityDissipation</code></td><td>0.35</td></tr>
-			<tr><td><code>velocityDissipation</code></td><td>0.09</td></tr>
-			<tr><td><code>maxTimeStep</code></td><td>1 / 120</td></tr>
-			<tr><td><code>substeps</code></td><td>2</td></tr>
-			<tr><td><code>viscosity</code></td><td>0.018</td></tr>
-			<tr><td><code>viscosityIterations</code></td><td>10</td></tr>
-			<tr><td><code>wallFriction</code></td><td>0.18</td></tr>
-			<tr><td><code>wallFrictionWidth</code></td><td>2</td></tr>
-			<tr><td><code>pressure</code></td><td>0.9</td></tr>
-		<tr><td><code>pressureIterations</code></td><td>36</td></tr>
+		<tr><td><code>densityDissipation</code></td><td>0.35</td></tr>
+		<tr><td><code>velocityDissipation</code></td><td>0.09</td></tr>
+		<tr><td><code>maxTimeStep</code></td><td>1 / 60</td></tr>
+		<tr><td><code>substeps</code></td><td>1</td></tr>
+		<tr><td><code>viscosity</code></td><td>0.016</td></tr>
+		<tr><td><code>viscosityIterations</code></td><td>5</td></tr>
+		<tr><td><code>wallFriction</code></td><td>0.16</td></tr>
+		<tr><td><code>wallFrictionWidth</code></td><td>2</td></tr>
+		<tr><td><code>pressure</code></td><td>0.9</td></tr>
+		<tr><td><code>pressureIterations</code></td><td>26</td></tr>
 		<tr><td><code>splatRadius</code></td><td>0.055</td></tr>
 		<tr><td><code>splatForce</code></td><td>6000</td></tr>
 		<tr><td><code>shading</code></td><td>false</td></tr>
@@ -535,12 +541,12 @@
 		<tr><td><code>bloomThreshold</code></td><td>0.6</td></tr>
 		<tr><td><code>bloomIntensity</code></td><td>0.5</td></tr>
 		<tr><td><code>sunrays</code></td><td>false</td></tr>
-		<tr><td><code>simResolution</code></td><td>192</td></tr>
-		<tr><td><code>dyeResolution</code></td><td>1024</td></tr>
+		<tr><td><code>simResolution</code></td><td>160</td></tr>
+		<tr><td><code>dyeResolution</code></td><td>512</td></tr>
 		<tr><td><code>backColor</code></td><td>{LB} r: 6, g: 10, b: 14 {RB}</td></tr>
 		<tr><td><code>initialSplatCount</code></td><td>0</td></tr>
 		<tr><td><code>obstructions</code></td><td>2 concave throat islands (top + bottom)</td></tr>
-			<tr><td><code>flow</code></td><td><code>pressureGradient</code> body-force drive + velocity-draining outlet + <code>transfer: 'cfd'</code> speed visualization</td></tr>
+		<tr><td><code>flow</code></td><td><code>pressureGradient</code> body-force drive + velocity-draining outlet + <code>transfer: 'cfd'</code> speed visualization, range [0, 170], scale 1.12</td></tr>
 	</tbody>
 </table>
 
@@ -548,11 +554,11 @@
 
 <h2 id="riverdelta">RiverDelta</h2>
 
-<p>A wide river entering from the left edge and braiding around a chain of staggered teardrop islands. The flow can't go straight through, so continuity routes the flux through the open channels between islands — the single inlet stream fans out into branching distributaries, exactly like a sediment delta.</p>
+<p>A wide, muted river entering from the left edge and braiding around a chain of staggered teardrop islands. The flow can't go straight through, so continuity routes the flux through the open channels between islands; low-rate tracer packets make those braided paths visible.</p>
 
-<p><strong>Obstructions:</strong> five teardrop islands (each pointed upstream) staggered across x and y, instanced from one path via <code>offset</code>/<code>scale</code>. Open left/right boundaries let a wide left-edge inlet feed a steady sheet of fresh dye and vent downstream.</p>
+<p><strong>Obstructions:</strong> five teardrop islands (each pointed upstream) staggered across x and y, instanced from one path via <code>offset</code>/<code>scale</code>. All canvas edges are open, with four-edge dye drains so the wide left-edge inlet can braid around the islands and leave through any border.</p>
 
-<p><strong>Honest physics note:</strong> the branching around islands is <em>faithful</em> — incompressible continuity genuinely routes flux through the open channels between the obstacles. It is still not sediment transport or free-surface river physics.</p>
+<p><strong>Honest physics note:</strong> the branching around islands is solver-native routing through blocked channels, but this is still a qualitative visualization, not sediment transport or free-surface river physics.</p>
 
 <pre><code>&lt;RiverDelta /&gt;</code></pre>
 
@@ -564,26 +570,37 @@
 		</tr>
 	</thead>
 	<tbody>
-		<tr><td><code>curl</code></td><td>6</td></tr>
-		<tr><td><code>densityDissipation</code></td><td>0.5</td></tr>
-		<tr><td><code>velocityDissipation</code></td><td>0.05</td></tr>
+		<tr><td><code>curl</code></td><td>10</td></tr>
+		<tr><td><code>densityDissipation</code></td><td>0.68</td></tr>
+		<tr><td><code>velocityDissipation</code></td><td>0.07</td></tr>
+		<tr><td><code>maxTimeStep</code></td><td>1 / 60</td></tr>
+		<tr><td><code>substeps</code></td><td>1</td></tr>
+		<tr><td><code>viscosity</code></td><td>0.012</td></tr>
+		<tr><td><code>viscosityIterations</code></td><td>5</td></tr>
+		<tr><td><code>wallFriction</code></td><td>0.12</td></tr>
+		<tr><td><code>wallFrictionWidth</code></td><td>2</td></tr>
 		<tr><td><code>pressure</code></td><td>0.9</td></tr>
-		<tr><td><code>pressureIterations</code></td><td>26</td></tr>
-		<tr><td><code>splatRadius</code></td><td>0.12</td></tr>
+		<tr><td><code>pressureIterations</code></td><td>24</td></tr>
+		<tr><td><code>splatRadius</code></td><td>0.08</td></tr>
 		<tr><td><code>splatForce</code></td><td>6000</td></tr>
-		<tr><td><code>shading</code></td><td>true</td></tr>
-		<tr><td><code>colorful</code></td><td>true</td></tr>
-		<tr><td><code>bloom</code></td><td>true</td></tr>
+		<tr><td><code>shading</code></td><td>false</td></tr>
+		<tr><td><code>colorful</code></td><td>false</td></tr>
+		<tr><td><code>bloom</code></td><td>false</td></tr>
+		<tr><td><code>sunrays</code></td><td>false</td></tr>
 		<tr><td><code>simResolution</code></td><td>160</td></tr>
-		<tr><td><code>dyeResolution</code></td><td>1024</td></tr>
-		<tr><td><code>backColor</code></td><td>{LB} r: 10, g: 14, b: 18 {RB}</td></tr>
+		<tr><td><code>dyeResolution</code></td><td>640</td></tr>
+		<tr><td><code>backColor</code></td><td>{LB} r: 4, g: 9, b: 10 {RB}</td></tr>
 		<tr><td><code>initialSplatCount</code></td><td>0</td></tr>
 		<tr><td><code>obstructions</code></td><td>5 staggered teardrop islands</td></tr>
-		<tr><td><code>autoSplatRate</code></td><td>22</td></tr>
-		<tr><td><code>autoSplatCount</code></td><td>4</td></tr>
-		<tr><td><code>autoSplatVelocityX</code></td><td>700</td></tr>
-		<tr><td><code>autoSplatBandHeight</code></td><td>1.2</td></tr>
-		<tr><td><code>presetSplats</code></td><td>5 left-edge inflow jets (silt→glacial ramp)</td></tr>
+		<tr><td><code>flow</code></td><td>left-edge parabolic line inlet + four-edge dye drains</td></tr>
+		<tr><td><code>autoSplatRate</code></td><td>1.15</td></tr>
+		<tr><td><code>autoSplatCount</code></td><td>2</td></tr>
+		<tr><td><code>autoSplatColor</code></td><td>{LB} r: 0.12, g: 0.22, b: 0.18 {RB}</td></tr>
+		<tr><td><code>autoSplatVelocityX</code></td><td>260</td></tr>
+		<tr><td><code>autoSplatCenterX</code></td><td>0.035</td></tr>
+		<tr><td><code>autoSplatBandWidth</code></td><td>0.03</td></tr>
+		<tr><td><code>autoSplatBandHeight</code></td><td>0.84</td></tr>
+		<tr><td><code>presetSplats</code></td><td>4 muted left-edge startup jets</td></tr>
 	</tbody>
 </table>
 
@@ -591,11 +608,11 @@
 
 <h2 id="teslavalve">TeslaValve</h2>
 
-<p>A passive Tesla-valve-like channel with a straight conduit and patent-style alternating bypass loops. A steady left-to-right inlet remains mostly coherent in the main channel while shedding visible recirculation into the side buckets.</p>
+<p>A passive Tesla-valve-like channel with a straight conduit and patent-style alternating bypass loops. A pressure-gradient drive carries discrete multicolor left-edge splats through a high-viscosity channel, making dye packets and side-bucket recirculation easier to inspect; forward throughflow is expected.</p>
 
 <p><strong>Geometry:</strong> a cropped reference SVG path defines the conduit, side-channel buckets, and internal slots as one even-odd container mask. The filled SVG region is the physical fluid domain, so the slots and walls are solved as part of the same boundary.</p>
 
-<p><strong>Honest physics note:</strong> this is a live incompressible throughflow visualization. It gives plausible routing, separation, and recirculation cues, but it does not calculate a reverse/forward pressure-drop ratio or real valve rectification.</p>
+<p><strong>Honest physics note:</strong> this is a live incompressible throughflow visualization, not a hard-stop check valve. It gives plausible routing, separation, and recirculation cues, but it does not calculate a reverse/forward pressure-drop ratio or real valve rectification.</p>
 
 <pre><code>&lt;TeslaValve /&gt;</code></pre>
 
@@ -607,23 +624,37 @@
 		</tr>
 	</thead>
 	<tbody>
-		<tr><td><code>curl</code></td><td>4</td></tr>
-		<tr><td><code>densityDissipation</code></td><td>0.38</td></tr>
-		<tr><td><code>velocityDissipation</code></td><td>0.04</td></tr>
+		<tr><td><code>curl</code></td><td>10</td></tr>
+		<tr><td><code>densityDissipation</code></td><td>0.36</td></tr>
+		<tr><td><code>velocityDissipation</code></td><td>0.085</td></tr>
+		<tr><td><code>maxTimeStep</code></td><td>1 / 60</td></tr>
+		<tr><td><code>substeps</code></td><td>1</td></tr>
+		<tr><td><code>viscosity</code></td><td>0.04</td></tr>
+		<tr><td><code>viscosityIterations</code></td><td>10</td></tr>
+		<tr><td><code>wallFriction</code></td><td>0.14</td></tr>
+		<tr><td><code>wallFrictionWidth</code></td><td>2</td></tr>
 		<tr><td><code>pressure</code></td><td>0.9</td></tr>
-		<tr><td><code>pressureIterations</code></td><td>34</td></tr>
-		<tr><td><code>splatRadius</code></td><td>0.06</td></tr>
+		<tr><td><code>pressureIterations</code></td><td>30</td></tr>
+		<tr><td><code>splatRadius</code></td><td>0.085</td></tr>
 		<tr><td><code>splatForce</code></td><td>6000</td></tr>
+		<tr><td><code>autoSplatRate</code></td><td>5</td></tr>
+		<tr><td><code>autoSplatCount</code></td><td>4</td></tr>
+		<tr><td><code>autoSplatVelocityX</code></td><td>190</td></tr>
+		<tr><td><code>autoSplatCenterX</code></td><td>0.035</td></tr>
+		<tr><td><code>autoSplatBandWidth</code></td><td>0.024</td></tr>
+		<tr><td><code>autoSplatCenterY</code></td><td>0.49</td></tr>
+		<tr><td><code>autoSplatBandHeight</code></td><td>0.18</td></tr>
 		<tr><td><code>shading</code></td><td>false</td></tr>
 		<tr><td><code>colorful</code></td><td>false</td></tr>
 		<tr><td><code>bloom</code></td><td>false</td></tr>
-		<tr><td><code>simResolution</code></td><td>224</td></tr>
-		<tr><td><code>dyeResolution</code></td><td>1024</td></tr>
+		<tr><td><code>simResolution</code></td><td>192</td></tr>
+		<tr><td><code>dyeResolution</code></td><td>768</td></tr>
 		<tr><td><code>backColor</code></td><td>{LB} r: 5, g: 9, b: 12 {RB}</td></tr>
 		<tr><td><code>initialSplatCount</code></td><td>0</td></tr>
 		<tr><td><code>containerShape</code></td><td>reference SVG conduit + even-odd internal slots</td></tr>
-		<tr><td><code>flow</code></td><td>parabolic line inlet + right-edge outlet + ink scalar visualization</td></tr>
-		<tr><td><code>presetSplats</code></td><td>3 left-edge inflow pulses</td></tr>
+		<tr><td><code>maskResolution</code></td><td>2048</td></tr>
+		<tr><td><code>flow</code></td><td>pressure-gradient drive + right-edge outlet</td></tr>
+		<tr><td><code>presetSplats</code></td><td>none</td></tr>
 	</tbody>
 </table>
 
@@ -631,12 +662,14 @@
 
 <h2>Overriding Preset Props</h2>
 
-<p>
-	Presets hard-code their physics and visual props internally. However, each preset forwards
-	sizing props (<code>width</code>, <code>height</code>), styling props (<code>class</code>,
-	<code>style</code>), <code>seed</code>, <code>lazy</code>, and <code>aria-label</code> directly
-	to the underlying <code>&lt;Fluid&gt;</code> component.
-</p>
+	<p>
+		Presets hard-code their physics and visual props internally. However, each preset forwards
+		sizing props (<code>width</code>, <code>height</code>), styling props (<code>class</code>,
+		<code>style</code>), <code>seed</code>, <code>lazy</code>, <code>splatOnHover</code>,
+		<code>aria-label</code>, and <code>backColor</code> directly to the underlying
+		<code>&lt;Fluid&gt;</code> component. Flow-scene presets also forward
+		<code>pointerInput</code>.
+	</p>
 
 <p>
 	If you need to override a pinned physics prop, you have two options:

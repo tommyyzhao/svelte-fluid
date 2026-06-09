@@ -75,7 +75,7 @@ yarn add svelte-fluid</code></pre>
 &lt;!-- Northern-lights ribbons --&gt;
 &lt;Aurora /&gt;</code></pre>
 
-<p>See all 10 presets on the <a href="{base}/docs/presets">Presets</a> page.</p>
+<p>See all 14 presets on the <a href="{base}/docs/presets">Presets</a> page.</p>
 
 <h2>Customize</h2>
 
@@ -92,7 +92,7 @@ yarn add svelte-fluid</code></pre>
   colorful
 /&gt;</code></pre>
 
-<p>See the full list of 50+ props on the <a href="{base}/docs/configuration">Configuration</a> page.</p>
+<p>See the full list of 70+ props on the <a href="{base}/docs/configuration">Configuration</a> page.</p>
 
 <h2>Container shapes</h2>
 
@@ -119,7 +119,7 @@ yarn add svelte-fluid</code></pre>
 	<tbody>
 		<tr>
 			<td><code><a href="{base}/docs/components#fluid">&lt;Fluid&gt;</a></code></td>
-			<td>Core simulation canvas. 50+ props for physics and visuals.</td>
+			<td>Core simulation canvas. 70+ props for physics, flow, and visuals.</td>
 		</tr>
 		<tr>
 			<td><code><a href="{base}/docs/components#fluidbackground">&lt;FluidBackground&gt;</a></code></td>

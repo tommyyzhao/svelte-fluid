@@ -49,10 +49,15 @@ underlying simulation.
   buoyancy, not a rocket or combustion CFD solve. Choking, shocks, Mach
   numbers, chemical heat release, soot, radiation, and multiphase liquid
   interfaces remain future solver-track work.
-- `FlowOutlet` should be presented as a practical drain/sponge, not a full CFD
-  pressure outlet. Uploaded prescribed grids are immutable by convention or
-  carry a bumped `version` when values change.
+- `FlowOutlet` should be presented as a practical drain/sponge. Pressure-open
+  behavior comes from `flow.boundary`; a convincing exit usually uses both an
+  open edge segment/topology and an outlet drain. Uploaded prescribed grids are
+  immutable by convention or carry a bumped `version` when values change.
+- Flow sources and outlets use fixed-size batched shader paths where possible,
+  so several analytic line/rect/point emitters or outlet gates can update the
+  same FBO in one ping-pong pass without changing the additive source math or
+  multiplicative sponge math.
 - WebGL1 texture-unit pressure stays bounded by reusing units per pass and
-binding flow display inputs only when flow visualization is active.
+  binding flow display inputs only when flow visualization is active.
 - `presetSplats`, `autoSplat*`, and `handle.splat()` stay supported as simple
 visual controls.

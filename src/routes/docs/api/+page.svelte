@@ -359,6 +359,8 @@ fluidRef.handle.randomSplats(10);</code></pre>
 	for custom uploaded flow grids. In <code>mode: 'prescribed'</code>, source velocity and
 	forces are ignored so the velocity remains exactly prescribed; use
 	<code>'hybrid'</code> when you want to add live velocity before projection.
+	Outlets drain fields near an edge; use <code>flow.boundary</code> to decide which
+	edges are actual pressure-open boundaries.
 </p>
 
 <pre><code>interface FlowScalarField {LB}

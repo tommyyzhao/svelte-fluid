@@ -7,8 +7,9 @@
 		initialDensityDissipationDuration: number; velocityDissipation: number;
 		pressure: number; bloomIntensity: number; sunraysWeight: number;
 		autoSplatRate: number; autoSplatCount: number; autoSplatVelocityX: number;
-		autoSplatVelocityY: number; autoSplatCenterY: number; autoSplatEvenX: boolean;
-		autoSplatSwirl: number; autoSplatBandHeight: number; splatOnHover: boolean;
+		autoSplatVelocityY: number; autoSplatCenterX: number; autoSplatCenterY: number;
+		autoSplatEvenX: boolean; autoSplatSwirl: number; autoSplatBandHeight: number;
+		autoSplatBandWidth: number; splatOnHover: boolean;
 		shading: boolean; bloom: boolean; sunrays: boolean; colorful: boolean;
 		paused: boolean; dyeResolution: number; simResolution: number;
 		backColorR: number; backColorG: number; backColorB: number;
@@ -50,10 +51,12 @@
 		autoSplatCount: 1,
 		autoSplatVelocityX: 0,
 		autoSplatVelocityY: 0,
+		autoSplatCenterX: 0.5,
 		autoSplatCenterY: 0.5,
 		autoSplatEvenX: false,
 		autoSplatSwirl: 0,
 		autoSplatBandHeight: 0.1,
+		autoSplatBandWidth: 1.0,
 		splatOnHover: false,
 		shading: true,
 		bloom: true,
@@ -128,10 +131,12 @@
 		autoSplatCount = $bindable(D.autoSplatCount),
 		autoSplatVelocityX = $bindable(D.autoSplatVelocityX),
 		autoSplatVelocityY = $bindable(D.autoSplatVelocityY),
+		autoSplatCenterX = $bindable(D.autoSplatCenterX),
 		autoSplatCenterY = $bindable(D.autoSplatCenterY),
 		autoSplatEvenX = $bindable(D.autoSplatEvenX),
 		autoSplatSwirl = $bindable(D.autoSplatSwirl),
 		autoSplatBandHeight = $bindable(D.autoSplatBandHeight),
+		autoSplatBandWidth = $bindable(D.autoSplatBandWidth),
 		initialDensityDissipation = $bindable(D.initialDensityDissipation),
 		initialDensityDissipationDuration = $bindable(D.initialDensityDissipationDuration),
 		splatOnHover = $bindable(D.splatOnHover),
@@ -210,10 +215,12 @@
 		autoSplatCount?: number;
 		autoSplatVelocityX?: number;
 		autoSplatVelocityY?: number;
+		autoSplatCenterX?: number;
 		autoSplatCenterY?: number;
 		autoSplatEvenX?: boolean;
 		autoSplatSwirl?: number;
 		autoSplatBandHeight?: number;
+		autoSplatBandWidth?: number;
 		initialDensityDissipation?: number;
 		initialDensityDissipationDuration?: number;
 		splatOnHover?: boolean;
@@ -298,6 +305,7 @@
 	let splatChanges = $derived(countChanges([
 		[autoSplatRate, D.autoSplatRate], [autoSplatCount, D.autoSplatCount],
 		[autoSplatSwirl, D.autoSplatSwirl], [autoSplatBandHeight, D.autoSplatBandHeight],
+		[autoSplatBandWidth, D.autoSplatBandWidth], [autoSplatCenterX, D.autoSplatCenterX],
 		[autoSplatCenterY, D.autoSplatCenterY], [autoSplatVelocityX, D.autoSplatVelocityX],
 		[autoSplatVelocityY, D.autoSplatVelocityY], [autoSplatEvenX, D.autoSplatEvenX]
 	]));
@@ -355,10 +363,12 @@
 		autoSplatCount = D.autoSplatCount;
 		autoSplatVelocityX = D.autoSplatVelocityX;
 		autoSplatVelocityY = D.autoSplatVelocityY;
+		autoSplatCenterX = D.autoSplatCenterX;
 		autoSplatCenterY = D.autoSplatCenterY;
 		autoSplatEvenX = D.autoSplatEvenX;
 		autoSplatSwirl = D.autoSplatSwirl;
 		autoSplatBandHeight = D.autoSplatBandHeight;
+		autoSplatBandWidth = D.autoSplatBandWidth;
 		initialDensityDissipation = D.initialDensityDissipation;
 		initialDensityDissipationDuration = D.initialDensityDissipationDuration;
 		splatOnHover = D.splatOnHover;
@@ -453,10 +463,12 @@
 		fmt('autoSplatCount', autoSplatCount, D.autoSplatCount);
 		fmt('autoSplatVelocityX', autoSplatVelocityX, D.autoSplatVelocityX);
 		fmt('autoSplatVelocityY', autoSplatVelocityY, D.autoSplatVelocityY);
+		fmt('autoSplatCenterX', autoSplatCenterX, D.autoSplatCenterX);
 		fmt('autoSplatCenterY', autoSplatCenterY, D.autoSplatCenterY);
 		fmt('autoSplatEvenX', autoSplatEvenX, D.autoSplatEvenX);
 		fmt('autoSplatSwirl', autoSplatSwirl, D.autoSplatSwirl);
 		fmt('autoSplatBandHeight', autoSplatBandHeight, D.autoSplatBandHeight);
+		fmt('autoSplatBandWidth', autoSplatBandWidth, D.autoSplatBandWidth);
 		fmt('initialDensityDissipation', initialDensityDissipation, D.initialDensityDissipation);
 		fmt('initialDensityDissipationDuration', initialDensityDissipationDuration, D.initialDensityDissipationDuration);
 		fmt('splatOnHover', splatOnHover, D.splatOnHover);
@@ -717,10 +729,18 @@
 					<input type="range" min="0" max="3" step="0.05" bind:value={autoSplatBandHeight} />
 				</label>
 				<label>
-					<span>Spawn band center <em>{autoSplatCenterY.toFixed(2)}</em></span>
+					<span>Spawn band width <em>{autoSplatBandWidth.toFixed(2)}</em></span>
+					<input type="range" min="0" max="1" step="0.02" bind:value={autoSplatBandWidth} />
+				</label>
+				<label>
+					<span>Spawn center X <em>{autoSplatCenterX.toFixed(2)}</em></span>
+					<input type="range" min="0" max="1" step="0.05" bind:value={autoSplatCenterX} />
+				</label>
+				<label>
+					<span>Spawn center Y <em>{autoSplatCenterY.toFixed(2)}</em></span>
 					<input type="range" min="0" max="1" step="0.05" bind:value={autoSplatCenterY} />
 				</label>
-				<p class="field-hint">The center is vertical: 0 bottom, 0.5 middle, 1 top. Band height is the vertical range around it: 0 is one line, 0.1 is +/-5%, 2 covers the full canvas.</p>
+				<p class="field-hint">X/Y centers choose where splats spawn. Width and height set the random range around that center; even X positions overrides the horizontal band.</p>
 				<label>
 					<span>Velocity X <em>{autoSplatVelocityX}</em></span>
 					<input type="range" min="-1000" max="1000" step="50" bind:value={autoSplatVelocityX} />
@@ -1102,10 +1122,18 @@
 					<input type="range" min="0" max="3" step="0.05" bind:value={autoSplatBandHeight} />
 				</label>
 				<label>
-					<span>Spawn band center <em>{autoSplatCenterY.toFixed(2)}</em></span>
+					<span>Spawn band width <em>{autoSplatBandWidth.toFixed(2)}</em></span>
+					<input type="range" min="0" max="1" step="0.02" bind:value={autoSplatBandWidth} />
+				</label>
+				<label>
+					<span>Spawn center X <em>{autoSplatCenterX.toFixed(2)}</em></span>
+					<input type="range" min="0" max="1" step="0.05" bind:value={autoSplatCenterX} />
+				</label>
+				<label>
+					<span>Spawn center Y <em>{autoSplatCenterY.toFixed(2)}</em></span>
 					<input type="range" min="0" max="1" step="0.05" bind:value={autoSplatCenterY} />
 				</label>
-				<p class="field-hint">The center is vertical: 0 bottom, 0.5 middle, 1 top. Band height is the vertical range around it: 0 is one line, 0.1 is +/-5%, 2 covers the full canvas.</p>
+				<p class="field-hint">X/Y centers choose where splats spawn. Width and height set the random range around that center; even X positions overrides the horizontal band.</p>
 				<label>
 					<span>Velocity X <em>{autoSplatVelocityX}</em></span>
 					<input type="range" min="-1000" max="1000" step="50" bind:value={autoSplatVelocityX} />

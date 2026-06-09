@@ -87,6 +87,32 @@ import {
 } from './container-shapes.js';
 import * as S from './shaders.js';
 
+const FLOW_SOURCE_BATCH_SIZE = 4;
+const FLOW_OUTLET_BATCH_SIZE = 4;
+
+interface FlowSourceBatchEntry {
+	kind: 0 | 1 | 2;
+	profile: 0 | 1;
+	fromX: number;
+	fromY: number;
+	toX: number;
+	toY: number;
+	rectX: number;
+	rectY: number;
+	rectW: number;
+	rectH: number;
+	color: RGB;
+	radius: number;
+}
+
+interface FlowOutletBatchEntry {
+	edge: 0 | 1 | 2 | 3;
+	from: number;
+	to: number;
+	width: number;
+	keep: number;
+}
+
 /* -------------------------------------------------------------------------- */
 /*                                  Defaults                                  */
 /* -------------------------------------------------------------------------- */
@@ -137,9 +163,11 @@ export const DEFAULTS: ResolvedConfig = {
 	AUTO_SPLAT_VELOCITY_X: 0,
 	AUTO_SPLAT_VELOCITY_Y: 0,
 	AUTO_SPLAT_CENTER_Y: 0.5,
+	AUTO_SPLAT_CENTER_X: 0.5,
 	AUTO_SPLAT_EVEN_X: false,
 	AUTO_SPLAT_SWIRL: 0,
 	AUTO_SPLAT_BAND_HEIGHT: 0.1,
+	AUTO_SPLAT_BAND_WIDTH: 1.0,
 	CONTAINER_SHAPE: null,
 	GLASS: false,
 	GLASS_THICKNESS: 0.04,
@@ -230,9 +258,11 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 	if (input.autoSplatVelocityX !== undefined) out.AUTO_SPLAT_VELOCITY_X = input.autoSplatVelocityX;
 	if (input.autoSplatVelocityY !== undefined) out.AUTO_SPLAT_VELOCITY_Y = input.autoSplatVelocityY;
 	if (input.autoSplatCenterY !== undefined) out.AUTO_SPLAT_CENTER_Y = Math.max(0, Math.min(1, input.autoSplatCenterY));
+	if (input.autoSplatCenterX !== undefined) out.AUTO_SPLAT_CENTER_X = Math.max(0, Math.min(1, input.autoSplatCenterX));
 	if (input.autoSplatEvenX !== undefined) out.AUTO_SPLAT_EVEN_X = input.autoSplatEvenX;
 	if (input.autoSplatSwirl !== undefined) out.AUTO_SPLAT_SWIRL = input.autoSplatSwirl;
 	if (input.autoSplatBandHeight !== undefined) out.AUTO_SPLAT_BAND_HEIGHT = input.autoSplatBandHeight;
+	if (input.autoSplatBandWidth !== undefined) out.AUTO_SPLAT_BAND_WIDTH = input.autoSplatBandWidth;
 	if (input.containerShape !== undefined) out.CONTAINER_SHAPE = input.containerShape ?? null;
 	if (input.glass !== undefined) out.GLASS = input.glass;
 	if (input.glassThickness !== undefined) out.GLASS_THICKNESS = input.glassThickness;
@@ -346,12 +376,6 @@ function needsScalarFBOForFlow(flow: FlowConfig | null | undefined): boolean {
 	return false;
 }
 
-function sourceProfileWeight(profile: FlowSource['profile'] | undefined, t: number): number {
-	if (profile !== 'parabolic') return 1;
-	const centered = t * 2 - 1;
-	return Math.max(0, 1 - centered * centered);
-}
-
 function scalarDissipationForField(field: FlowScalarField | undefined, fallback: number): number {
 	const dissipation = field?.dissipation ?? fallback;
 	return field?.advection === 'low-dissipation' ? dissipation * 0.35 : dissipation;
@@ -392,7 +416,6 @@ export class FluidEngine implements FluidHandle {
 	private blurProgram!: ProgramWrap;
 	private copyProgram!: ProgramWrap;
 	private clearProgram!: ProgramWrap;
-	private colorProgram!: ProgramWrap;
 	private checkerboardProgram!: ProgramWrap;
 	private bloomPrefilterProgram!: ProgramWrap;
 	private bloomBlurProgram!: ProgramWrap;
@@ -444,6 +467,12 @@ export class FluidEngine implements FluidHandle {
 	private obstructionMaskW = 0;
 	private obstructionMaskH = 0;
 
+	// --- Combined solid mask for pressure/projection (container exterior + obstructions) ---
+	private solidMaskTexture: WebGLTexture | null = null;
+	private solidMaskData: Uint8Array | null = null;
+	private solidMaskW = 0;
+	private solidMaskH = 0;
+
 	// --- Framebuffers ---
 	private dye!: DoubleFBO;
 	private velocity!: DoubleFBO;
@@ -472,6 +501,19 @@ export class FluidEngine implements FluidHandle {
 	private rafRunning = false;
 	private normalizedBackColor: RGB = { r: 0, g: 0, b: 0 };
 	private contextLost = false;
+	private dyeMayContainContent = false;
+	private flowSourceBatchKind = new Int32Array(FLOW_SOURCE_BATCH_SIZE);
+	private flowSourceBatchProfile = new Int32Array(FLOW_SOURCE_BATCH_SIZE);
+	private flowSourceBatchFrom = new Float32Array(FLOW_SOURCE_BATCH_SIZE * 2);
+	private flowSourceBatchTo = new Float32Array(FLOW_SOURCE_BATCH_SIZE * 2);
+	private flowSourceBatchRect = new Float32Array(FLOW_SOURCE_BATCH_SIZE * 4);
+	private flowSourceBatchColor = new Float32Array(FLOW_SOURCE_BATCH_SIZE * 3);
+	private flowSourceBatchRadius = new Float32Array(FLOW_SOURCE_BATCH_SIZE);
+	private flowOutletBatchEdge = new Int32Array(FLOW_OUTLET_BATCH_SIZE);
+	private flowOutletBatchFrom = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
+	private flowOutletBatchTo = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
+	private flowOutletBatchWidth = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
+	private flowOutletBatchKeep = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
 
 	// --- Bound listeners ---
 	private onMouseDown = (e: MouseEvent) => this.handleMouseDown(e);
@@ -503,11 +545,13 @@ export class FluidEngine implements FluidHandle {
 		this.initMaskTexture();
 		this.initStickyMaskTexture();
 		this.initObstructionMaskTexture();
+		this.initSolidMaskTexture();
 		this.initPrescribedGridTextures();
 		this.initGlassFramebuffer();
 		if (this.config.DISTORTION_IMAGE_URL) {
 			this.loadDistortionImage(this.config.DISTORTION_IMAGE_URL);
 		}
+		this.dyeMayContainContent = false;
 		this.multipleSplats(this.initialRandomSplatCount());
 
 		// Construct-only preset splats. Applied after the random initial
@@ -577,6 +621,7 @@ export class FluidEngine implements FluidHandle {
 		if (this.contextLost) return;
 		const radius = this.config.SPLAT_RADIUS / 100.0;
 		this.splatTo(this.velocity, x, y, { r: dx, g: dy, b: 0 }, radius, 0);
+		this.dyeMayContainContent = true;
 		this.splatTo(this.dye, x, y, color, radius, this.config.STICKY ? this.config.STICKY_AMPLIFY : 0);
 	}
 
@@ -631,6 +676,7 @@ export class FluidEngine implements FluidHandle {
 		const distortionImageChanged = a.DISTORTION_IMAGE_URL !== b.DISTORTION_IMAGE_URL;
 		const stickyChanged = a.STICKY !== b.STICKY;
 		const stickyMaskChanged = !stickyMaskEqual(a.STICKY_MASK, b.STICKY_MASK);
+		const openBoundaryChanged = a.OPEN_BOUNDARY !== b.OPEN_BOUNDARY;
 		// Bucket-C-like: rebuild the combined obstruction mask texture, and
 		// recompile the display shader to toggle the OBSTRUCTION_MASK keyword.
 		const obstructionsChanged = !obstructionsEqual(a.OBSTRUCTIONS, b.OBSTRUCTIONS);
@@ -649,6 +695,7 @@ export class FluidEngine implements FluidHandle {
 		if (sunraysChanged) this.initSunraysFramebuffers();
 		if (shapeChanged) this.initMaskTexture();
 		if (obstructionsChanged) this.initObstructionMaskTexture();
+		if (shapeChanged || obstructionsChanged || openBoundaryChanged) this.initSolidMaskTexture();
 		if (flowChanged) this.initPrescribedGridTextures();
 		if (glassChanged) this.initGlassFramebuffer();
 		if (kwChanged || shapeChanged || revealChanged || distortionChanged || obstructionsChanged || flowChanged)
@@ -704,12 +751,14 @@ export class FluidEngine implements FluidHandle {
 		this.initMaskTexture();
 		this.initStickyMaskTexture();
 		this.initObstructionMaskTexture();
+		this.initSolidMaskTexture();
 		this.initPrescribedGridTextures();
 		this.initGlassFramebuffer();
 		// Re-load distortion image (GL texture was lost with context)
 		if (this.config.DISTORTION_IMAGE_URL) {
 			this.loadDistortionImage(this.config.DISTORTION_IMAGE_URL);
 		}
+		this.dyeMayContainContent = false;
 		this.multipleSplats(this.initialRandomSplatCount());
 		if (this.config.POINTER_INPUT && !this.pointerListenersInstalled) {
 			this.installPointerListeners();
@@ -791,6 +840,12 @@ export class FluidEngine implements FluidHandle {
 			this.obstructionMaskData = null;
 		}
 
+		if (this.solidMaskTexture) {
+			gl.deleteTexture(this.solidMaskTexture);
+			this.solidMaskTexture = null;
+			this.solidMaskData = null;
+		}
+
 		if (this.prescribedVelocityTexture) {
 			gl.deleteTexture(this.prescribedVelocityTexture);
 			this.prescribedVelocityTexture = null;
@@ -805,7 +860,6 @@ export class FluidEngine implements FluidHandle {
 			this.blurProgram,
 			this.copyProgram,
 			this.clearProgram,
-			this.colorProgram,
 			this.checkerboardProgram,
 			this.bloomPrefilterProgram,
 			this.bloomBlurProgram,
@@ -878,7 +932,6 @@ export class FluidEngine implements FluidHandle {
 			blur: compileShader(gl, gl.FRAGMENT_SHADER, S.blurShader),
 			copy: compileShader(gl, gl.FRAGMENT_SHADER, S.copyShader),
 			clear: compileShader(gl, gl.FRAGMENT_SHADER, S.clearShader),
-			color: compileShader(gl, gl.FRAGMENT_SHADER, S.colorShader),
 			checkerboard: compileShader(gl, gl.FRAGMENT_SHADER, S.checkerboardShader),
 			bloomPrefilter: compileShader(gl, gl.FRAGMENT_SHADER, S.bloomPrefilterShader),
 			bloomBlur: compileShader(gl, gl.FRAGMENT_SHADER, S.bloomBlurShader),
@@ -921,7 +974,6 @@ export class FluidEngine implements FluidHandle {
 		this.blurProgram = makeProgram(gl, this.blurVertexShader, f.blur);
 		this.copyProgram = makeProgram(gl, this.baseVertexShader, f.copy);
 		this.clearProgram = makeProgram(gl, this.baseVertexShader, f.clear);
-		this.colorProgram = makeProgram(gl, this.baseVertexShader, f.color);
 		this.checkerboardProgram = makeProgram(gl, this.baseVertexShader, f.checkerboard);
 		this.bloomPrefilterProgram = makeProgram(gl, this.baseVertexShader, f.bloomPrefilter);
 		this.bloomBlurProgram = makeProgram(gl, this.baseVertexShader, f.bloomBlur);
@@ -1404,6 +1456,74 @@ export class FluidEngine implements FluidHandle {
 		this.obstructionMaskTexture = tex;
 	}
 
+	/**
+	 * Build one binary solid texture for boundary-aware solver passes.
+	 *
+	 * `containerShape` textures encode *fluid allowed* as white; obstruction
+	 * textures encode *solid blocked* as white. Divergence, pressure,
+	 * gradient-subtract, viscosity, and wall friction all need the latter
+	 * convention, so this combines them once on the CPU:
+	 *
+	 *   solid = outside(physical container) OR inside(any obstruction)
+	 *
+	 * Open-boundary containers remain visual crops, matching applyMask().
+	 */
+	private initSolidMaskTexture(): void {
+		const gl = this.gl;
+		if (this.solidMaskTexture) {
+			gl.deleteTexture(this.solidMaskTexture);
+			this.solidMaskTexture = null;
+			this.solidMaskData = null;
+		}
+
+		const shape = this.config.OPEN_BOUNDARY ? null : this.config.CONTAINER_SHAPE;
+		const hasObstruction = !!this.obstructionMaskData;
+		if (!shape && !hasObstruction) {
+			this.solidMaskW = 0;
+			this.solidMaskH = 0;
+			return;
+		}
+
+		const baseDim = Math.max(shape?.type === 'svgPath' ? (shape.maskResolution ?? 512) : 512, hasObstruction ? 512 : 0);
+		const aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
+		const maskW = aspect >= 1 ? baseDim : Math.round(baseDim * aspect);
+		const maskH = aspect >= 1 ? Math.round(baseDim / aspect) : baseDim;
+		const containerCtx = this.getMaskCtx();
+		const obstructionCtx = this.getObstructionCtx();
+		const data = new Uint8Array(maskW * maskH);
+
+		for (let y = 0; y < maskH; y++) {
+			const uvY = 1 - (y + 0.5) / maskH;
+			for (let x = 0; x < maskW; x++) {
+				const uvX = (x + 0.5) / maskW;
+				const outsideContainer = shape ? containerMask(shape, uvX, uvY, aspect, containerCtx) < 0.5 : false;
+				const insideObstruction = obstructionMask(uvX, uvY, obstructionCtx) >= 0.5;
+				data[y * maskW + x] = outsideContainer || insideObstruction ? 255 : 0;
+			}
+		}
+
+		this.solidMaskData = data;
+		this.solidMaskW = maskW;
+		this.solidMaskH = maskH;
+
+		const tex = gl.createTexture()!;
+		gl.bindTexture(gl.TEXTURE_2D, tex);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+		gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+		if (this.ext.isWebGL2) {
+			const gl2 = gl as WebGL2RenderingContext;
+			gl2.texImage2D(gl2.TEXTURE_2D, 0, gl2.R8, maskW, maskH, 0, gl2.RED, gl2.UNSIGNED_BYTE, data);
+		} else {
+			gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, maskW, maskH, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, data);
+		}
+		gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+		this.solidMaskTexture = tex;
+	}
+
 	private initPrescribedGridTextures(): void {
 		const gl = this.gl;
 		const prescribed = this.config.FLOW?.prescribed;
@@ -1818,10 +1938,12 @@ export class FluidEngine implements FluidHandle {
 					color.g *= hdr;
 					color.b *= hdr;
 				}
+				const spawnX = this.config.AUTO_SPLAT_CENTER_X;
 				const spawnY = this.config.AUTO_SPLAT_CENTER_Y;
-				const spread = this.config.AUTO_SPLAT_BAND_HEIGHT;
-				let x = evenSpacing ? (i + 0.5) / count : this.rng();
-				let y = Math.max(0, Math.min(1, spawnY + (this.rng() - 0.5) * spread));
+				const spreadX = this.config.AUTO_SPLAT_BAND_WIDTH;
+				const spreadY = this.config.AUTO_SPLAT_BAND_HEIGHT;
+				let x = evenSpacing ? (i + 0.5) / count : Math.max(0, Math.min(1, spawnX + (this.rng() - 0.5) * spreadX));
+				let y = Math.max(0, Math.min(1, spawnY + (this.rng() - 0.5) * spreadY));
 				if (shape || this.config.OBSTRUCTIONS) {
 					const mc = this.getMaskCtx();
 					const octx = this.getObstructionCtx();
@@ -1831,8 +1953,8 @@ export class FluidEngine implements FluidHandle {
 						(shape ? containerMask(shape, xx, yy, aspect, mc) < 0.5 : false) || obstructionMask(xx, yy, octx) >= 0.5;
 					let attempts = 10;
 					while (attempts > 0 && rejected(x, y)) {
-						if (!evenSpacing) x = this.rng();
-						y = Math.max(0, Math.min(1, spawnY + (this.rng() - 0.5) * spread));
+						if (!evenSpacing) x = Math.max(0, Math.min(1, spawnX + (this.rng() - 0.5) * spreadX));
+						y = Math.max(0, Math.min(1, spawnY + (this.rng() - 0.5) * spreadY));
 						attempts--;
 					}
 					if (attempts === 0) continue;
@@ -1859,94 +1981,122 @@ export class FluidEngine implements FluidHandle {
 	private applyFlowSources(dt: number, includeVelocity: boolean): void {
 		const flow = this.config.FLOW;
 		if (!flow?.sources?.length) return;
-		for (const source of flow.sources) {
-			this.applyFlowSource(source, dt, includeVelocity);
-		}
-	}
 
-	private applyFlowSource(source: FlowSource, dt: number, includeVelocity: boolean): void {
-		const sourceThickness = source.kind === 'line' ? source.thickness : undefined;
-		const radius = (source.radius ?? sourceThickness ?? this.config.SPLAT_RADIUS) / 100.0;
-		const scaleBase = (source.rate ?? 60) * dt;
-		const emitPoint = (x: number, y: number, t: number) => {
-			const weight = sourceProfileWeight(source.profile, t) * scaleBase;
+		const velocityBatch: FlowSourceBatchEntry[] = [];
+		const dyeBatch: FlowSourceBatchEntry[] = [];
+		const scalarBatch: FlowSourceBatchEntry[] = [];
+
+		for (const source of flow.sources) {
+			const sourceThickness = source.kind === 'line' ? source.thickness : undefined;
+			const radius = (source.radius ?? sourceThickness ?? this.config.SPLAT_RADIUS) / 100.0;
+			const scaleBase = (source.rate ?? 60) * dt;
 			if (includeVelocity && source.velocity) {
-				this.splatTo(
-					this.velocity,
-					x,
-					y,
-					{
-						r: source.velocity.x * weight,
-						g: source.velocity.y * weight,
-						b: 0
-					},
-					radius,
-					0
+				velocityBatch.push(
+					this.flowSourceBatchEntry(
+						source,
+						{
+							r: source.velocity.x * scaleBase,
+							g: source.velocity.y * scaleBase,
+							b: 0
+						},
+						radius
+					)
 				);
 			}
 			if (source.dye) {
-				this.splatTo(
-					this.dye,
-					x,
-					y,
-					{
-						r: source.dye.r * weight,
-						g: source.dye.g * weight,
-						b: source.dye.b * weight
-					},
-					radius,
-					this.config.STICKY ? this.config.STICKY_AMPLIFY : 0
+				this.dyeMayContainContent = true;
+				dyeBatch.push(
+					this.flowSourceBatchEntry(
+						source,
+						{
+							r: source.dye.r * scaleBase,
+							g: source.dye.g * scaleBase,
+							b: source.dye.b * scaleBase
+						},
+						radius
+					)
 				);
 			}
 			if (source.scalars && this.scalar) {
-				const color = this.scalarColor(source.scalars, weight);
-				this.splatTo(this.scalar, x, y, color, radius, 0);
+				scalarBatch.push(this.flowSourceBatchEntry(source, this.scalarColor(source.scalars, scaleBase), radius));
 			}
-		};
+		}
 
+		this.applyFlowSourceBatches(this.velocity, velocityBatch, 0);
+		this.applyFlowSourceBatches(this.dye, dyeBatch, this.config.STICKY ? this.config.STICKY_AMPLIFY : 0);
+		if (this.scalar) this.applyFlowSourceBatches(this.scalar, scalarBatch, 0);
+	}
+
+	private flowSourceBatchEntry(source: FlowSource, color: RGB, radius: number): FlowSourceBatchEntry {
+		const aspect = this.canvas.width / this.canvas.height;
 		if (source.kind === 'point') {
-			emitPoint(source.x, source.y, 0.5);
-			return;
+			return {
+				kind: 0,
+				profile: source.profile === 'parabolic' ? 1 : 0,
+				fromX: source.x,
+				fromY: source.y,
+				toX: source.x,
+				toY: source.y,
+				rectX: 0,
+				rectY: 0,
+				rectW: 0,
+				rectH: 0,
+				color,
+				radius: correctRadius(radius, aspect)
+			};
 		}
+		if (source.kind === 'line') {
+			return {
+				kind: 1,
+				profile: source.profile === 'parabolic' ? 1 : 0,
+				fromX: source.from.x,
+				fromY: source.from.y,
+				toX: source.to.x,
+				toY: source.to.y,
+				rectX: 0,
+				rectY: 0,
+				rectW: 0,
+				rectH: 0,
+				color,
+				radius: correctRadius(radius, aspect)
+			};
+		}
+		return {
+			kind: 2,
+			profile: source.profile === 'parabolic' ? 1 : 0,
+			fromX: 0,
+			fromY: 0,
+			toX: 0,
+			toY: 0,
+			rectX: source.x,
+			rectY: source.y,
+			rectW: source.width,
+			rectH: source.height,
+			color,
+			radius: correctRadius(radius, aspect)
+		};
+	}
 
-		if (includeVelocity && source.velocity) {
-			this.applyFlowShapeSource(
-				source,
-				this.velocity,
-				{
-					r: source.velocity.x * scaleBase,
-					g: source.velocity.y * scaleBase,
-					b: 0
-				},
-				radius,
-				0
+	private applyFlowSourceBatches(target: DoubleFBO, entries: FlowSourceBatchEntry[], stickyAmplify: number): void {
+		for (let start = 0; start < entries.length; start += FLOW_SOURCE_BATCH_SIZE) {
+			this.applyFlowSourceBatch(
+				target,
+				entries,
+				start,
+				Math.min(FLOW_SOURCE_BATCH_SIZE, entries.length - start),
+				stickyAmplify
 			);
-		}
-		if (source.dye) {
-			this.applyFlowShapeSource(
-				source,
-				this.dye,
-				{
-					r: source.dye.r * scaleBase,
-					g: source.dye.g * scaleBase,
-					b: source.dye.b * scaleBase
-				},
-				radius,
-				this.config.STICKY ? this.config.STICKY_AMPLIFY : 0
-			);
-		}
-		if (source.scalars && this.scalar) {
-			this.applyFlowShapeSource(source, this.scalar, this.scalarColor(source.scalars, scaleBase), radius, 0);
 		}
 	}
 
-	private applyFlowShapeSource(
-		source: Exclude<FlowSource, { kind: 'point' }>,
+	private applyFlowSourceBatch(
 		target: DoubleFBO,
-		color: RGB,
-		radius: number,
+		entries: FlowSourceBatchEntry[],
+		start: number,
+		count: number,
 		stickyAmplify: number
 	): void {
+		if (count <= 0) return;
 		const gl = this.gl;
 		this.flowSourceProgram.bind();
 		this.bindStickyMask();
@@ -1954,19 +2104,34 @@ export class FluidEngine implements FluidHandle {
 		gl.uniform1f(this.flowSourceProgram.uniforms.uStickyAmplify, stickyAmplify);
 		gl.uniform1i(this.flowSourceProgram.uniforms.uTarget, target.read.attach(0));
 		gl.uniform1f(this.flowSourceProgram.uniforms.aspectRatio, this.canvas.width / this.canvas.height);
-		gl.uniform1i(this.flowSourceProgram.uniforms.uKind, source.kind === 'line' ? 1 : 2);
-		gl.uniform1i(this.flowSourceProgram.uniforms.uProfile, source.profile === 'parabolic' ? 1 : 0);
-		if (source.kind === 'line') {
-			gl.uniform2f(this.flowSourceProgram.uniforms.uFrom, source.from.x, source.from.y);
-			gl.uniform2f(this.flowSourceProgram.uniforms.uTo, source.to.x, source.to.y);
-			gl.uniform4f(this.flowSourceProgram.uniforms.uRect, 0, 0, 0, 0);
-		} else {
-			gl.uniform2f(this.flowSourceProgram.uniforms.uFrom, 0, 0);
-			gl.uniform2f(this.flowSourceProgram.uniforms.uTo, 0, 0);
-			gl.uniform4f(this.flowSourceProgram.uniforms.uRect, source.x, source.y, source.width, source.height);
+		gl.uniform1i(this.flowSourceProgram.uniforms.uCount, count);
+
+		for (let i = 0; i < FLOW_SOURCE_BATCH_SIZE; i++) {
+			const entry = i < count ? entries[start + i] : undefined;
+			this.flowSourceBatchKind[i] = entry?.kind ?? 0;
+			this.flowSourceBatchProfile[i] = entry?.profile ?? 0;
+			this.flowSourceBatchFrom[i * 2] = entry?.fromX ?? 0;
+			this.flowSourceBatchFrom[i * 2 + 1] = entry?.fromY ?? 0;
+			this.flowSourceBatchTo[i * 2] = entry?.toX ?? 0;
+			this.flowSourceBatchTo[i * 2 + 1] = entry?.toY ?? 0;
+			this.flowSourceBatchRect[i * 4] = entry?.rectX ?? 0;
+			this.flowSourceBatchRect[i * 4 + 1] = entry?.rectY ?? 0;
+			this.flowSourceBatchRect[i * 4 + 2] = entry?.rectW ?? 0;
+			this.flowSourceBatchRect[i * 4 + 3] = entry?.rectH ?? 0;
+			this.flowSourceBatchColor[i * 3] = entry?.color.r ?? 0;
+			this.flowSourceBatchColor[i * 3 + 1] = entry?.color.g ?? 0;
+			this.flowSourceBatchColor[i * 3 + 2] = entry?.color.b ?? 0;
+			this.flowSourceBatchRadius[i] = entry?.radius ?? 0;
 		}
-		gl.uniform3f(this.flowSourceProgram.uniforms.color, color.r, color.g, color.b);
-		gl.uniform1f(this.flowSourceProgram.uniforms.radius, correctRadius(radius, this.canvas.width / this.canvas.height));
+
+		gl.uniform1iv(this.arrayUniform(this.flowSourceProgram.uniforms, 'uKind'), this.flowSourceBatchKind);
+		gl.uniform1iv(this.arrayUniform(this.flowSourceProgram.uniforms, 'uProfile'), this.flowSourceBatchProfile);
+		gl.uniform2fv(this.arrayUniform(this.flowSourceProgram.uniforms, 'uFrom'), this.flowSourceBatchFrom);
+		gl.uniform2fv(this.arrayUniform(this.flowSourceProgram.uniforms, 'uTo'), this.flowSourceBatchTo);
+		gl.uniform4fv(this.arrayUniform(this.flowSourceProgram.uniforms, 'uRect'), this.flowSourceBatchRect);
+		gl.uniform3fv(this.arrayUniform(this.flowSourceProgram.uniforms, 'uColor'), this.flowSourceBatchColor);
+		gl.uniform1fv(this.arrayUniform(this.flowSourceProgram.uniforms, 'uRadius'), this.flowSourceBatchRadius);
+
 		this.blit(target.write);
 		target.swap();
 	}
@@ -2029,29 +2194,57 @@ export class FluidEngine implements FluidHandle {
 	private applyFlowOutlets(targets: Array<'velocity' | 'dye' | 'scalar'>): void {
 		const outlets = this.config.FLOW?.outlets;
 		if (!outlets?.length) return;
-		for (const outlet of outlets) {
-			for (const target of targets) {
+		for (const target of targets) {
+			if (target === 'scalar' && !this.scalar) continue;
+			const fbo = target === 'velocity' ? this.velocity : target === 'dye' ? this.dye : this.scalar!;
+			const batch: FlowOutletBatchEntry[] = [];
+
+			for (const outlet of outlets) {
 				if (target === 'velocity' && !outlet.clearVelocity) continue;
 				if (target === 'scalar' && (!this.scalar || outlet.clearScalars === false)) continue;
-				const keep = target === 'dye' ? outlet.clearDye ?? 0 : target === 'scalar' ? 0 : 0.25;
-				const fbo = target === 'velocity' ? this.velocity : target === 'dye' ? this.dye : this.scalar!;
-				this.applyFlowOutlet(outlet, fbo, keep);
+				batch.push({
+					edge: this.flowOutletEdgeCode(outlet.edge),
+					from: clamp01(outlet.from ?? 0),
+					to: clamp01(outlet.to ?? 1),
+					width: Math.max(0.001, outlet.width ?? 0.035),
+					keep: target === 'dye' ? outlet.clearDye ?? 0 : target === 'scalar' ? 0 : 0.25
+				});
+				if (batch.length === FLOW_OUTLET_BATCH_SIZE) {
+					this.applyFlowOutletBatch(fbo, batch);
+					batch.length = 0;
+				}
 			}
+
+			this.applyFlowOutletBatch(fbo, batch);
 		}
 	}
 
-	private applyFlowOutlet(outlet: FlowOutlet, target: DoubleFBO, keep: number): void {
+	private flowOutletEdgeCode(edge: FlowOutlet['edge']): 0 | 1 | 2 | 3 {
+		return edge === 'left' ? 0 : edge === 'right' ? 1 : edge === 'top' ? 2 : 3;
+	}
+
+	private applyFlowOutletBatch(target: DoubleFBO, batch: FlowOutletBatchEntry[]): void {
+		if (batch.length === 0) return;
 		const gl = this.gl;
 		this.flowOutletProgram.bind();
 		gl.uniform1i(this.flowOutletProgram.uniforms.uTarget, target.read.attach(0));
-		gl.uniform1i(
-			this.flowOutletProgram.uniforms.uEdge,
-			outlet.edge === 'left' ? 0 : outlet.edge === 'right' ? 1 : outlet.edge === 'top' ? 2 : 3
-		);
-		gl.uniform1f(this.flowOutletProgram.uniforms.uFrom, clamp01(outlet.from ?? 0));
-		gl.uniform1f(this.flowOutletProgram.uniforms.uTo, clamp01(outlet.to ?? 1));
-		gl.uniform1f(this.flowOutletProgram.uniforms.uWidth, Math.max(0.001, outlet.width ?? 0.035));
-		gl.uniform1f(this.flowOutletProgram.uniforms.uKeep, keep);
+		gl.uniform1i(this.flowOutletProgram.uniforms.uCount, batch.length);
+
+		for (let i = 0; i < FLOW_OUTLET_BATCH_SIZE; i++) {
+			const entry = batch[i];
+			this.flowOutletBatchEdge[i] = entry?.edge ?? 0;
+			this.flowOutletBatchFrom[i] = entry?.from ?? 0;
+			this.flowOutletBatchTo[i] = entry?.to ?? 0;
+			this.flowOutletBatchWidth[i] = entry?.width ?? 0.001;
+			this.flowOutletBatchKeep[i] = entry?.keep ?? 1;
+		}
+
+		gl.uniform1iv(this.arrayUniform(this.flowOutletProgram.uniforms, 'uEdge'), this.flowOutletBatchEdge);
+		gl.uniform1fv(this.arrayUniform(this.flowOutletProgram.uniforms, 'uFrom'), this.flowOutletBatchFrom);
+		gl.uniform1fv(this.arrayUniform(this.flowOutletProgram.uniforms, 'uTo'), this.flowOutletBatchTo);
+		gl.uniform1fv(this.arrayUniform(this.flowOutletProgram.uniforms, 'uWidth'), this.flowOutletBatchWidth);
+		gl.uniform1fv(this.arrayUniform(this.flowOutletProgram.uniforms, 'uKeep'), this.flowOutletBatchKeep);
+
 		this.blit(target.write);
 		target.swap();
 	}
@@ -2225,6 +2418,10 @@ export class FluidEngine implements FluidHandle {
 		return 0;
 	}
 
+	private shouldSimulateDye(): boolean {
+		return this.dyeMayContainContent;
+	}
+
 	private flowTransferKind(): number {
 		const transfer = this.config.FLOW?.visualization?.transfer;
 		if (transfer === 'water') return 1;
@@ -2234,13 +2431,20 @@ export class FluidEngine implements FluidHandle {
 		return 0;
 	}
 
+	private arrayUniform(
+		uniforms: Record<string, WebGLUniformLocation | null>,
+		name: string
+	): WebGLUniformLocation | null {
+		return uniforms[`${name}[0]`] ?? uniforms[name] ?? null;
+	}
+
 	private bindSolidMaskUniforms(uniforms: Record<string, WebGLUniformLocation | null>, unit: number): void {
 		const gl = this.gl;
-		const has = !!this.obstructionMaskTexture;
+		const has = !!this.solidMaskTexture;
 		gl.uniform1f(uniforms.uHasSolidMask, has ? 1.0 : 0.0);
 		if (has) {
 			gl.activeTexture(gl.TEXTURE0 + unit);
-			gl.bindTexture(gl.TEXTURE_2D, this.obstructionMaskTexture);
+			gl.bindTexture(gl.TEXTURE_2D, this.solidMaskTexture);
 			gl.uniform1i(uniforms.uSolidMask, unit);
 		}
 	}
@@ -2270,7 +2474,7 @@ export class FluidEngine implements FluidHandle {
 	}
 
 	private applyWallFriction(): void {
-		if (this.config.WALL_FRICTION <= 0 || !this.obstructionMaskTexture) return;
+		if (this.config.WALL_FRICTION <= 0 || !this.solidMaskTexture) return;
 		const gl = this.gl;
 		this.wallFrictionProgram.bind();
 		gl.uniform2f(this.wallFrictionProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
@@ -2332,13 +2536,16 @@ export class FluidEngine implements FluidHandle {
 
 		this.applyFlowSources(dt, !prescribedOnly);
 		if (!prescribedOnly) this.applyFlowForces(dt);
-		this.applyFlowOutlets(prescribedOnly ? ['dye', 'scalar'] : ['velocity', 'dye', 'scalar']);
+		if (!prescribedOnly) this.applyFlowOutlets(['velocity']);
 
 		if (prescribedOnly) {
-			this.advectDye(dt);
-			if (this.shouldMaskPhysics()) this.applyMask(this.dye);
+			const simulateDye = this.shouldSimulateDye();
+			if (simulateDye) {
+				this.advectDye(dt);
+				if (this.shouldMaskPhysics()) this.applyMask(this.dye);
+			}
 			this.advectScalar(dt);
-			this.applyFlowOutlets(['dye', 'scalar']);
+			this.applyFlowOutlets(simulateDye ? ['dye', 'scalar'] : ['scalar']);
 			return;
 		}
 
@@ -2371,17 +2578,21 @@ export class FluidEngine implements FluidHandle {
 		// program, and the dye advection below reuses advectionProgram.
 		if (this.shouldMaskPhysics()) this.advectionProgram.bind();
 
-		this.advectDye(dt);
-		if (this.shouldMaskPhysics()) this.applyMask(this.dye);
+		const simulateDye = this.shouldSimulateDye();
+		if (simulateDye) {
+			this.advectDye(dt);
+			if (this.shouldMaskPhysics()) this.applyMask(this.dye);
+		}
 		this.advectScalar(dt);
-		this.applyFlowOutlets(['dye', 'scalar']);
+		this.applyFlowOutlets(simulateDye ? ['dye', 'scalar'] : ['scalar']);
 	}
 
 	private render(target: FBO | null): void {
 		const gl = this.gl;
 
-		if (this.config.BLOOM) this.applyBloom(this.dye.read, this.bloom);
-		if (this.config.SUNRAYS) {
+		const hasDyeContent = this.shouldSimulateDye();
+		if (this.config.BLOOM && hasDyeContent) this.applyBloom(this.dye.read, this.bloom);
+		if (this.config.SUNRAYS && hasDyeContent) {
 			this.applySunrays(this.dye.read, this.dye.write, this.sunrays);
 			this.blur(this.sunrays, this.sunraysTemp, 1);
 		}
@@ -2404,37 +2615,30 @@ export class FluidEngine implements FluidHandle {
 		const useGlass = this.config.GLASS && this.config.CONTAINER_SHAPE && this.sceneFBO;
 		const displayTarget = useGlass ? this.sceneFBO! : target;
 
-		if (target == null || !this.config.TRANSPARENT) {
-			gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-			gl.enable(gl.BLEND);
-		} else {
-			gl.disable(gl.BLEND);
-		}
-
-		if (!this.config.TRANSPARENT) {
-			this.drawColor(displayTarget, this.normalizedBackColor);
-		}
+		gl.disable(gl.BLEND);
 		if (this.config.TRANSPARENT) {
 			// Clear to transparent so the canvas composites cleanly with
 			// whatever is behind it in the DOM stacking context.
-			if (displayTarget == null) {
-				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-			}
-			gl.clearColor(0, 0, 0, 0);
-			gl.clear(gl.COLOR_BUFFER_BIT);
+			this.clearRenderTarget(displayTarget, 0, 0, 0, 0);
 		}
-		this.drawDisplay(displayTarget);
+		this.drawDisplay(displayTarget, this.config.TRANSPARENT ? null : this.normalizedBackColor);
 
 		if (useGlass) {
 			this.drawGlass(target);
 		}
 	}
 
-	private drawColor(target: FBO | null, color: RGB): void {
+	private clearRenderTarget(target: FBO | null, r: number, g: number, b: number, a: number): void {
 		const gl = this.gl;
-		this.colorProgram.bind();
-		gl.uniform4f(this.colorProgram.uniforms.color, color.r, color.g, color.b, 1);
-		this.blit(target);
+		if (target == null) {
+			gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+			gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+		} else {
+			gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+			gl.viewport(0, 0, target.width, target.height);
+		}
+		gl.clearColor(r, g, b, a);
+		gl.clear(gl.COLOR_BUFFER_BIT);
 	}
 
 	private drawCheckerboard(target: FBO | null): void {
@@ -2444,13 +2648,16 @@ export class FluidEngine implements FluidHandle {
 		this.blit(target);
 	}
 
-	private drawDisplay(target: FBO | null): void {
+	private drawDisplay(target: FBO | null, backgroundColor: RGB | null = null): void {
 		const gl = this.gl;
 		const width = target == null ? gl.drawingBufferWidth : target.width;
 		const height = target == null ? gl.drawingBufferHeight : target.height;
 
 		this.displayMaterial.bind();
 		gl.uniform2f(this.displayMaterial.uniforms.texelSize, 1.0 / width, 1.0 / height);
+		gl.uniform1f(this.displayMaterial.uniforms.uCompositeBackground, backgroundColor ? 1.0 : 0.0);
+		const bg = backgroundColor ?? { r: 0, g: 0, b: 0 };
+		gl.uniform3f(this.displayMaterial.uniforms.uBackColor, bg.r, bg.g, bg.b);
 		gl.uniform1i(this.displayMaterial.uniforms.uTexture, this.dye.read.attach(0));
 		if (this.config.BLOOM) {
 			gl.uniform1i(this.displayMaterial.uniforms.uBloom, this.bloom.attach(1));

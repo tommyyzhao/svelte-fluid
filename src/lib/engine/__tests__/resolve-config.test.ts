@@ -78,10 +78,12 @@ describe('resolveConfig', () => {
 					autoSplatColor: { r: 1, g: 0, b: 0 },
 					autoSplatVelocityX: 100,
 					autoSplatVelocityY: -50,
+					autoSplatCenterX: 0.2,
 					autoSplatCenterY: 0.7,
 					autoSplatEvenX: true,
 					autoSplatSwirl: 200,
-					autoSplatBandHeight: 0.5
+					autoSplatBandHeight: 0.5,
+					autoSplatBandWidth: 0.25
 				},
 				DEFAULTS
 			);
@@ -90,10 +92,12 @@ describe('resolveConfig', () => {
 			expect(r.AUTO_SPLAT_COLOR).toEqual({ r: 1, g: 0, b: 0 });
 			expect(r.AUTO_SPLAT_VELOCITY_X).toBe(100);
 			expect(r.AUTO_SPLAT_VELOCITY_Y).toBe(-50);
+			expect(r.AUTO_SPLAT_CENTER_X).toBe(0.2);
 			expect(r.AUTO_SPLAT_CENTER_Y).toBe(0.7);
 			expect(r.AUTO_SPLAT_EVEN_X).toBe(true);
 			expect(r.AUTO_SPLAT_SWIRL).toBe(200);
 			expect(r.AUTO_SPLAT_BAND_HEIGHT).toBe(0.5);
+			expect(r.AUTO_SPLAT_BAND_WIDTH).toBe(0.25);
 		});
 
 		it('maps glass parameters', () => {
@@ -332,6 +336,12 @@ describe('resolveConfig', () => {
 			expect(resolveConfig({ autoSplatCenterY: 0.3 }, DEFAULTS).AUTO_SPLAT_CENTER_Y).toBe(0.3);
 		});
 
+		it('clamps autoSplatCenterX to [0, 1]', () => {
+			expect(resolveConfig({ autoSplatCenterX: -0.5 }, DEFAULTS).AUTO_SPLAT_CENTER_X).toBe(0);
+			expect(resolveConfig({ autoSplatCenterX: 1.5 }, DEFAULTS).AUTO_SPLAT_CENTER_X).toBe(1);
+			expect(resolveConfig({ autoSplatCenterX: 0.3 }, DEFAULTS).AUTO_SPLAT_CENTER_X).toBe(0.3);
+		});
+
 		it('clamps distortion bleed to [0, 0.5]', () => {
 			expect(resolveConfig({ distortionBleedX: -0.1 }, DEFAULTS).DISTORTION_BLEED_X).toBe(0);
 			expect(resolveConfig({ distortionBleedX: 0.8 }, DEFAULTS).DISTORTION_BLEED_X).toBe(0.5);
@@ -439,5 +449,7 @@ describe('DEFAULTS', () => {
 
 	it('has no automatic splats by default', () => {
 		expect(DEFAULTS.AUTO_SPLAT_RATE).toBe(0);
+		expect(DEFAULTS.AUTO_SPLAT_CENTER_X).toBe(0.5);
+		expect(DEFAULTS.AUTO_SPLAT_BAND_WIDTH).toBe(1.0);
 	});
 });

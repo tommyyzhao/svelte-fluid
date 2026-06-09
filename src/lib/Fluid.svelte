@@ -114,10 +114,12 @@
 		autoSplatColor,
 		autoSplatVelocityX,
 		autoSplatVelocityY,
+		autoSplatCenterX,
 		autoSplatCenterY,
 		autoSplatEvenX,
 		autoSplatSwirl,
 		autoSplatBandHeight,
+		autoSplatBandWidth,
 		containerShape,
 		obstructions,
 		flow,
@@ -164,6 +166,7 @@
 	// so other instances can use it. We save the extension ref because
 	// getExtension() returns null on an already-lost context.
 	let savedLoseExt: WEBGL_lose_context | undefined;
+	let savedLoseGl: WebGLRenderingContext | WebGL2RenderingContext | undefined;
 	let pendingRestore = false;
 
 	/**
@@ -227,10 +230,12 @@
 			autoSplatColor,
 			autoSplatVelocityX,
 			autoSplatVelocityY,
+			autoSplatCenterX,
 			autoSplatCenterY,
 			autoSplatEvenX,
 			autoSplatSwirl,
 			autoSplatBandHeight,
+			autoSplatBandWidth,
 			containerShape,
 			obstructions,
 			flow,
@@ -275,6 +280,7 @@
 				(canvasEl.getContext('webgl') as WebGLRenderingContext | null);
 			if (gl && !gl.isContextLost()) {
 				savedLoseExt = gl.getExtension('WEBGL_lose_context') ?? undefined;
+				savedLoseGl = savedLoseExt ? gl : undefined;
 			}
 		}
 		engine?.dispose();
@@ -282,13 +288,16 @@
 		// Release the context slot so other lazy instances can use it.
 		// preventDefault on contextlost is required — without it the browser
 		// won't allow restoreContext() later (per WEBGL_lose_context spec).
-		if (stableLazy && savedLoseExt && canvasEl) {
+		if (stableLazy && savedLoseExt && savedLoseGl && !savedLoseGl.isContextLost() && canvasEl) {
 			canvasEl.addEventListener(
 				'webglcontextlost',
 				(e) => e.preventDefault(),
 				{ once: true }
 			);
 			savedLoseExt.loseContext();
+		} else if (savedLoseGl?.isContextLost()) {
+			savedLoseExt = undefined;
+			savedLoseGl = undefined;
 		}
 	}
 
@@ -299,10 +308,11 @@
 		// If the context was lost by a previous lazy teardown, restore it
 		// before creating a new engine. restoreContext() is async — wait
 		// for webglcontextrestored before proceeding.
-		if (savedLoseExt) {
-			pendingRestore = true;
-			const ext = savedLoseExt;
-			savedLoseExt = undefined;
+			if (savedLoseExt) {
+				pendingRestore = true;
+				const ext = savedLoseExt;
+				savedLoseExt = undefined;
+				savedLoseGl = undefined;
 			canvasEl.addEventListener(
 				'webglcontextrestored',
 				() => {

@@ -403,6 +403,12 @@
 			<td>Y velocity for automatic splats (raw). Negative = downward in DOM. Ignored when <code>autoSplatSwirl</code> is nonzero.</td>
 		</tr>
 		<tr>
+			<td><code>autoSplatCenterX</code></td>
+			<td><code>number</code></td>
+			<td><code>0.5</code></td>
+			<td>Horizontal center of the spawn band: <code>0</code> = left, <code>0.5</code> = center, <code>1</code> = right.</td>
+		</tr>
+		<tr>
 			<td><code>autoSplatCenterY</code></td>
 			<td><code>number</code></td>
 			<td><code>0.5</code></td>
@@ -425,6 +431,12 @@
 			<td><code>number</code></td>
 			<td><code>0.1</code></td>
 			<td>Height of the spawn band. <code>0</code> = one horizontal line, <code>0.1</code> = ±5%, <code>2.0</code> = full canvas.</td>
+		</tr>
+		<tr>
+			<td><code>autoSplatBandWidth</code></td>
+			<td><code>number</code></td>
+			<td><code>1.0</code></td>
+			<td>Width of the spawn band. <code>0</code> = one vertical line, <code>1.0</code> = full canvas width. Ignored when <code>autoSplatEvenX</code> is true.</td>
 		</tr>
 	</tbody>
 </table>
