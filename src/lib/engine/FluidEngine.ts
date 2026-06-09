@@ -83,6 +83,7 @@ import {
 	maskAreaFraction,
 	obstructionsEqual,
 	obstructionMask,
+	bakeSolidNeighborData,
 	type MaskContext
 } from './container-shapes.js';
 import * as S from './shaders.js';
@@ -430,6 +431,7 @@ export class FluidEngine implements FluidHandle {
 	private viscosityProgram!: ProgramWrap;
 	private wallFrictionProgram!: ProgramWrap;
 	private pressureProgram!: ProgramWrap;
+	private pressureJacobi2Program!: ProgramWrap;
 	private gradientSubtractProgram!: ProgramWrap;
 	private flowSourceProgram!: ProgramWrap;
 	private flowOutletProgram!: ProgramWrap;
@@ -472,6 +474,10 @@ export class FluidEngine implements FluidHandle {
 	private solidMaskData: Uint8Array | null = null;
 	private solidMaskW = 0;
 	private solidMaskH = 0;
+
+	// --- Precomputed neighbor-solidity (face apertures) at sim resolution ---
+	// One RGBA fetch replaces four per-fragment solidAt probes (epic 0001 1b).
+	private solidNeighborTexture: WebGLTexture | null = null;
 
 	// --- Framebuffers ---
 	private dye!: DoubleFBO;
@@ -846,6 +852,11 @@ export class FluidEngine implements FluidHandle {
 			this.solidMaskData = null;
 		}
 
+		if (this.solidNeighborTexture) {
+			gl.deleteTexture(this.solidNeighborTexture);
+			this.solidNeighborTexture = null;
+		}
+
 		if (this.prescribedVelocityTexture) {
 			gl.deleteTexture(this.prescribedVelocityTexture);
 			this.prescribedVelocityTexture = null;
@@ -874,6 +885,7 @@ export class FluidEngine implements FluidHandle {
 			this.viscosityProgram,
 			this.wallFrictionProgram,
 			this.pressureProgram,
+			this.pressureJacobi2Program,
 			this.gradientSubtractProgram,
 			this.flowSourceProgram,
 			this.flowOutletProgram,
@@ -946,6 +958,7 @@ export class FluidEngine implements FluidHandle {
 			viscosity: compileShader(gl, gl.FRAGMENT_SHADER, S.viscosityShader),
 			wallFriction: compileShader(gl, gl.FRAGMENT_SHADER, S.wallFrictionShader),
 			pressure: compileShader(gl, gl.FRAGMENT_SHADER, S.pressureShader),
+			pressureJacobi2: compileShader(gl, gl.FRAGMENT_SHADER, S.pressureJacobi2Shader),
 			gradientSubtract: compileShader(gl, gl.FRAGMENT_SHADER, S.gradientSubtractShader),
 			flowSource: compileShader(gl, gl.FRAGMENT_SHADER, S.flowSourceShader),
 			flowOutlet: compileShader(gl, gl.FRAGMENT_SHADER, S.flowOutletShader),
@@ -988,6 +1001,7 @@ export class FluidEngine implements FluidHandle {
 		this.viscosityProgram = makeProgram(gl, this.baseVertexShader, f.viscosity);
 		this.wallFrictionProgram = makeProgram(gl, this.baseVertexShader, f.wallFriction);
 		this.pressureProgram = makeProgram(gl, this.baseVertexShader, f.pressure);
+		this.pressureJacobi2Program = makeProgram(gl, this.baseVertexShader, f.pressureJacobi2);
 		this.gradientSubtractProgram = makeProgram(gl, this.baseVertexShader, f.gradientSubtract);
 		this.flowSourceProgram = makeProgram(gl, this.baseVertexShader, f.flowSource);
 		this.flowOutletProgram = makeProgram(gl, this.baseVertexShader, f.flowOutlet);
@@ -1108,8 +1122,13 @@ export class FluidEngine implements FluidHandle {
 		this.velocitySource = createFBO(gl, simRes.width, simRes.height, rg.internalFormat, rg.format, texType, gl.NEAREST);
 		this.divergence = createFBO(gl, simRes.width, simRes.height, r.internalFormat, r.format, texType, gl.NEAREST);
 		this.curlFBO = createFBO(gl, simRes.width, simRes.height, r.internalFormat, r.format, texType, gl.NEAREST);
+		// Pressure stays plain half-float R16F on purpose: both a packed
+		// RG16F (divergence in G) and an RG32F variant measured SLOWER on the
+		// stressed bench — every Jacobi neighbor fetch drags the extra bytes
+		// along, and the loop is the hottest path in the engine. See ADR-0038.
 		this.pressure = createDoubleFBO(gl, simRes.width, simRes.height, r.internalFormat, r.format, texType, gl.NEAREST);
 
+		this.initSolidNeighborTexture();
 		this.initBloomFramebuffers();
 		this.initSunraysFramebuffers();
 		this.initGlassFramebuffer();
@@ -1481,6 +1500,8 @@ export class FluidEngine implements FluidHandle {
 		if (!shape && !hasObstruction) {
 			this.solidMaskW = 0;
 			this.solidMaskH = 0;
+			// solidMaskData is null here, so this just disposes the stale texture.
+			this.initSolidNeighborTexture();
 			return;
 		}
 
@@ -1522,6 +1543,38 @@ export class FluidEngine implements FluidHandle {
 		}
 		gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
 		this.solidMaskTexture = tex;
+		this.initSolidNeighborTexture();
+	}
+
+	/**
+	 * Bake the sim-resolution neighbor-solidity (face aperture) texture from
+	 * the combined solid mask (epic 0001 1b). RGBA = (L, R, T, B) neighbor
+	 * solidity, binary in Phase 1. Rebuilt whenever the solid mask or the
+	 * sim resolution changes; a single fetch of this texture replaces four
+	 * dependent solidAt() probes in the solver shaders.
+	 */
+	private initSolidNeighborTexture(): void {
+		const gl = this.gl;
+		if (this.solidNeighborTexture) {
+			gl.deleteTexture(this.solidNeighborTexture);
+			this.solidNeighborTexture = null;
+		}
+		if (!this.solidMaskData || !this.velocity) return;
+		const simW = this.velocity.width;
+		const simH = this.velocity.height;
+		const data = bakeSolidNeighborData(
+			{ data: this.solidMaskData, width: this.solidMaskW, height: this.solidMaskH },
+			simW,
+			simH
+		);
+		const tex = gl.createTexture()!;
+		gl.bindTexture(gl.TEXTURE_2D, tex);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, simW, simH, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+		this.solidNeighborTexture = tex;
 	}
 
 	private initPrescribedGridTextures(): void {
@@ -2315,6 +2368,7 @@ export class FluidEngine implements FluidHandle {
 	private advectVelocity(dt: number): void {
 		const gl = this.gl;
 		this.advectionProgram.bind();
+		this.bindInlineMaskUniforms(this.advectionProgram.uniforms, 2, 3);
 		gl.uniform1f(this.advectionProgram.uniforms.uMultiplicative, this.config.REVEAL || this.config.STICKY ? 1.0 : 0.0);
 		this.bindStickyMask();
 		gl.uniform1i(this.advectionProgram.uniforms.uStickyMask, 7);
@@ -2347,6 +2401,7 @@ export class FluidEngine implements FluidHandle {
 	private advectDye(dt: number): void {
 		const gl = this.gl;
 		this.advectionProgram.bind();
+		this.bindInlineMaskUniforms(this.advectionProgram.uniforms, 2, 3);
 		gl.uniform1f(this.advectionProgram.uniforms.uMultiplicative, this.config.REVEAL || this.config.STICKY ? 1.0 : 0.0);
 		this.bindStickyMask();
 		gl.uniform1i(this.advectionProgram.uniforms.uStickyMask, 7);
@@ -2372,6 +2427,7 @@ export class FluidEngine implements FluidHandle {
 		if (!this.scalar) return;
 		const gl = this.gl;
 		this.advectionProgram.bind();
+		this.bindInlineMaskUniforms(this.advectionProgram.uniforms, 2, 3);
 		gl.uniform1f(this.advectionProgram.uniforms.uMultiplicative, 0.0);
 		this.bindStickyMask();
 		gl.uniform1i(this.advectionProgram.uniforms.uStickyMask, 7);
@@ -2395,7 +2451,6 @@ export class FluidEngine implements FluidHandle {
 		gl.uniform1f(this.advectionProgram.uniforms.dissipation, this.currentDensityDissipation());
 		this.blit(this.scalar.write);
 		this.scalar.swap();
-		if (this.shouldMaskPhysics()) this.applyMask(this.scalar);
 	}
 
 	private flowOpenEdges(): [number, number, number, number] {
@@ -2438,15 +2493,103 @@ export class FluidEngine implements FluidHandle {
 		return uniforms[`${name}[0]`] ?? uniforms[name] ?? null;
 	}
 
-	private bindSolidMaskUniforms(uniforms: Record<string, WebGLUniformLocation | null>, unit: number): void {
+	private bindSolidMaskUniforms(
+		uniforms: Record<string, WebGLUniformLocation | null>,
+		unit: number,
+		neighborUnit: number
+	): void {
 		const gl = this.gl;
-		const has = !!this.solidMaskTexture;
+		const has = !!this.solidMaskTexture && !!this.solidNeighborTexture;
 		gl.uniform1f(uniforms.uHasSolidMask, has ? 1.0 : 0.0);
-		if (has) {
-			gl.activeTexture(gl.TEXTURE0 + unit);
-			gl.bindTexture(gl.TEXTURE_2D, this.solidMaskTexture);
-			gl.uniform1i(uniforms.uSolidMask, unit);
+		// Samplers always point at their dedicated units with a real or 1×1
+		// fallback texture bound. A sampler left at a stale unit can alias a
+		// later render target — ANGLE flags that as a framebuffer feedback
+		// loop even when the shader branch never samples it.
+		gl.activeTexture(gl.TEXTURE0 + unit);
+		gl.bindTexture(gl.TEXTURE_2D, has ? this.solidMaskTexture : this.stickyFallbackTexture);
+		gl.uniform1i(uniforms.uSolidMask, unit);
+		// Programs without a uSolidNeighbors uniform (wall friction) get a
+		// null location here, which WebGL silently ignores.
+		gl.activeTexture(gl.TEXTURE0 + neighborUnit);
+		gl.bindTexture(gl.TEXTURE_2D, has ? this.solidNeighborTexture : this.stickyFallbackTexture);
+		gl.uniform1i(uniforms.uSolidNeighbors, neighborUnit);
+	}
+
+	/**
+	 * Set the inline container/obstruction mask uniforms on a solver program
+	 * (epic 0001 1a). Mirrors `applyMask()`'s shape/texture decisions exactly,
+	 * including the svgPath-without-texture no-op; when masking is inactive
+	 * only `uApplyInlineMask = 0` is written and the shader multiplies by 1.
+	 */
+	private bindInlineMaskUniforms(
+		uniforms: Record<string, WebGLUniformLocation | null>,
+		maskUnit: number,
+		obstructionUnit: number
+	): boolean {
+		const gl = this.gl;
+		const shape = this.config.OPEN_BOUNDARY ? null : this.config.CONTAINER_SHAPE;
+		const hasObstruction = !!this.obstructionMaskTexture;
+		const svgPathMissingTexture = shape?.type === 'svgPath' && !this.maskTexture;
+		const active = (!!shape || hasObstruction) && !svgPathMissingTexture;
+		gl.uniform1f(uniforms.uApplyInlineMask, active ? 1.0 : 0.0);
+
+		// Both samplers always point at their dedicated units with a real or
+		// 1×1 fallback texture bound. A sampler left at a stale unit can alias
+		// a later render target — ANGLE flags that as a framebuffer feedback
+		// loop even when the shader branch never samples it (e.g. unit 5 still
+		// holding velocity.read from the speed-visualization display pass).
+		const svgMask = active && shape?.type === 'svgPath' ? this.maskTexture : null;
+		gl.activeTexture(gl.TEXTURE0 + maskUnit);
+		gl.bindTexture(gl.TEXTURE_2D, svgMask ?? this.stickyFallbackTexture);
+		gl.uniform1i(uniforms.uMaskTexture, maskUnit);
+		gl.activeTexture(gl.TEXTURE0 + obstructionUnit);
+		gl.bindTexture(gl.TEXTURE_2D, (active ? this.obstructionMaskTexture : null) ?? this.stickyFallbackTexture);
+		gl.uniform1i(uniforms.uObstructionMask, obstructionUnit);
+		if (!active) return false;
+
+		gl.uniform1f(uniforms.uHasObstruction, hasObstruction ? 1.0 : 0.0);
+
+		if (!shape) {
+			// No container: no uShapeType branch matches, mask stays 1.0 and
+			// only the obstruction subtraction acts.
+			gl.uniform1i(uniforms.uShapeType, -1);
+			return true;
 		}
+
+		if (shape.type === 'svgPath') {
+			gl.uniform1i(uniforms.uShapeType, 4);
+			return true;
+		}
+
+		gl.uniform1f(uniforms.uCx, shape.cx);
+		gl.uniform1f(uniforms.uCy, shape.cy);
+		const aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
+		if (shape.type === 'circle') {
+			gl.uniform1i(uniforms.uShapeType, 0);
+			gl.uniform1f(uniforms.uRadius, shape.radius);
+			gl.uniform1f(uniforms.uAspect, aspect);
+		} else if (shape.type === 'frame') {
+			gl.uniform1i(uniforms.uShapeType, 1);
+			gl.uniform1f(uniforms.uAspect, aspect);
+			gl.uniform1f(uniforms.uHalfW, shape.halfW);
+			gl.uniform1f(uniforms.uHalfH, shape.halfH);
+			gl.uniform1f(uniforms.uInnerCornerRadius, shape.innerCornerRadius ?? 0);
+			gl.uniform1f(uniforms.uOuterHalfW, shape.outerHalfW ?? 0.5);
+			gl.uniform1f(uniforms.uOuterHalfH, shape.outerHalfH ?? 0.5);
+			gl.uniform1f(uniforms.uOuterCornerRadius, shape.outerCornerRadius ?? 0);
+		} else if (shape.type === 'roundedRect') {
+			gl.uniform1i(uniforms.uShapeType, 2);
+			gl.uniform1f(uniforms.uAspect, aspect);
+			gl.uniform1f(uniforms.uHalfW, shape.halfW);
+			gl.uniform1f(uniforms.uHalfH, shape.halfH);
+			gl.uniform1f(uniforms.uInnerCornerRadius, shape.cornerRadius);
+		} else if (shape.type === 'annulus') {
+			gl.uniform1i(uniforms.uShapeType, 3);
+			gl.uniform1f(uniforms.uRadius, shape.outerRadius);
+			gl.uniform1f(uniforms.uInnerRadius, shape.innerRadius);
+			gl.uniform1f(uniforms.uAspect, aspect);
+		}
+		return true;
 	}
 
 	private applyViscosity(dt: number): void {
@@ -2461,12 +2604,20 @@ export class FluidEngine implements FluidHandle {
 		this.viscosityProgram.bind();
 		gl.uniform2f(this.viscosityProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
 		gl.uniform1i(this.viscosityProgram.uniforms.uSource, this.velocitySource.attach(1));
-		this.bindSolidMaskUniforms(this.viscosityProgram.uniforms, 2);
+		this.bindSolidMaskUniforms(this.viscosityProgram.uniforms, 2, 3);
 		gl.uniform1f(
 			this.viscosityProgram.uniforms.uAlpha,
 			this.config.VISCOSITY * dt * Math.max(this.velocity.width, this.velocity.height)
 		);
+		// Mask samplers bind up front so their units never alias the velocity
+		// FBO mid-loop; the crop itself applies only on the final iteration —
+		// equivalent to the old single applyMask blit after the loop.
+		const maskActive = this.bindInlineMaskUniforms(this.viscosityProgram.uniforms, 4, 5);
+		gl.uniform1f(this.viscosityProgram.uniforms.uApplyInlineMask, 0.0);
 		for (let i = 0; i < iterations; i++) {
+			if (i === iterations - 1 && maskActive) {
+				gl.uniform1f(this.viscosityProgram.uniforms.uApplyInlineMask, 1.0);
+			}
 			gl.uniform1i(this.viscosityProgram.uniforms.uVelocity, this.velocity.read.attach(0));
 			this.blit(this.velocity.write);
 			this.velocity.swap();
@@ -2479,7 +2630,7 @@ export class FluidEngine implements FluidHandle {
 		this.wallFrictionProgram.bind();
 		gl.uniform2f(this.wallFrictionProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
 		gl.uniform1i(this.wallFrictionProgram.uniforms.uVelocity, this.velocity.read.attach(0));
-		this.bindSolidMaskUniforms(this.wallFrictionProgram.uniforms, 1);
+		this.bindSolidMaskUniforms(this.wallFrictionProgram.uniforms, 1, 2);
 		gl.uniform1f(this.wallFrictionProgram.uniforms.uWallFriction, this.config.WALL_FRICTION);
 		gl.uniform1f(this.wallFrictionProgram.uniforms.uWallFrictionWidth, this.config.WALL_FRICTION_WIDTH);
 		this.blit(this.velocity.write);
@@ -2493,33 +2644,76 @@ export class FluidEngine implements FluidHandle {
 		gl.uniform1i(this.divergenceProgram.uniforms.uVelocity, this.velocity.read.attach(0));
 		const edges = this.flowOpenEdges();
 		gl.uniform4f(this.divergenceProgram.uniforms.uOpenEdges, edges[0], edges[1], edges[2], edges[3]);
-		this.bindSolidMaskUniforms(this.divergenceProgram.uniforms, 2);
+		this.bindSolidMaskUniforms(this.divergenceProgram.uniforms, 2, 3);
 		this.blit(this.divergence);
 
-		this.clearProgram.bind();
-		gl.uniform1i(this.clearProgram.uniforms.uTexture, this.pressure.read.attach(0));
-		gl.uniform1f(this.clearProgram.uniforms.value, this.config.PRESSURE);
-		this.blit(this.pressure.write);
-		this.pressure.swap();
-
-		this.pressureProgram.bind();
-		gl.uniform2f(this.pressureProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
-		gl.uniform1i(this.pressureProgram.uniforms.uDivergence, this.divergence.attach(0));
-		this.bindStickyMask();
-		gl.uniform1i(this.pressureProgram.uniforms.uStickyMask, 7);
-		this.bindSolidMaskUniforms(this.pressureProgram.uniforms, 2);
-		gl.uniform1f(this.pressureProgram.uniforms.uStickyPressure, this.config.STICKY ? this.config.STICKY_PRESSURE : 0.0);
-		for (let i = 0; i < this.config.PRESSURE_ITERATIONS; i++) {
-			gl.uniform1i(this.pressureProgram.uniforms.uPressure, this.pressure.read.attach(1));
+		const iterations = this.config.PRESSURE_ITERATIONS;
+		if (iterations <= 0) {
+			// Degenerate config: keep the old standalone warm-start decay so
+			// stored pressure doesn't freeze at its last value forever.
+			this.clearProgram.bind();
+			gl.uniform1i(this.clearProgram.uniforms.uTexture, this.pressure.read.attach(0));
+			gl.uniform1f(this.clearProgram.uniforms.value, this.config.PRESSURE);
 			this.blit(this.pressure.write);
 			this.pressure.swap();
+		}
+
+		// Jacobi runs as paired-iteration passes (two exact iterations per
+		// blit — the loop is pass-count bound, see ADR-0038), plus one single
+		// pass for an odd remainder. Warm start folds into the first inner
+		// level: Jacobi reads the previous iterate only through neighbor
+		// fetches, so scaling those by PRESSURE reproduces the old clear pass
+		// without the extra blit.
+		const stickyPressure = this.config.STICKY ? this.config.STICKY_PRESSURE : 0.0;
+		// Paired Jacobi wins where passes are overhead-bound (small grids:
+		// ~35% frame win across the production presets) and loses where they
+		// are fragment-bound (the ~33-fetch inner stencil; measured slower at
+		// 768-class grids). Crossover lies between 192- and 768-class grids;
+		// the threshold stays conservative. Measurements in ADR-0038.
+		const PAIRED_JACOBI_MAX_TEXELS = 150_000;
+		const usePairs = this.velocity.width * this.velocity.height <= PAIRED_JACOBI_MAX_TEXELS;
+		const pairs = usePairs ? Math.floor(iterations / 2) : 0;
+		const singles = iterations - pairs * 2;
+		if (pairs > 0) {
+			this.pressureJacobi2Program.bind();
+			gl.uniform2f(this.pressureJacobi2Program.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
+			gl.uniform1i(this.pressureJacobi2Program.uniforms.uDivergence, this.divergence.attach(1));
+			this.bindStickyMask();
+			gl.uniform1i(this.pressureJacobi2Program.uniforms.uStickyMask, 7);
+			this.bindSolidMaskUniforms(this.pressureJacobi2Program.uniforms, 2, 3);
+			gl.uniform1f(this.pressureJacobi2Program.uniforms.uStickyPressure, stickyPressure);
+			for (let k = 0; k < pairs; k++) {
+				gl.uniform1f(this.pressureJacobi2Program.uniforms.uScaleInner, k === 0 ? this.config.PRESSURE : 1.0);
+				gl.uniform1i(this.pressureJacobi2Program.uniforms.uPressure, this.pressure.read.attach(0));
+				this.blit(this.pressure.write);
+				this.pressure.swap();
+			}
+		}
+		if (singles > 0) {
+			this.pressureProgram.bind();
+			gl.uniform2f(this.pressureProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
+			gl.uniform1i(this.pressureProgram.uniforms.uDivergence, this.divergence.attach(1));
+			this.bindStickyMask();
+			gl.uniform1i(this.pressureProgram.uniforms.uStickyMask, 7);
+			this.bindSolidMaskUniforms(this.pressureProgram.uniforms, 2, 3);
+			gl.uniform1f(this.pressureProgram.uniforms.uStickyPressure, stickyPressure);
+			for (let i = 0; i < singles; i++) {
+				gl.uniform1f(
+					this.pressureProgram.uniforms.uPressureScale,
+					pairs === 0 && i === 0 ? this.config.PRESSURE : 1.0
+				);
+				gl.uniform1i(this.pressureProgram.uniforms.uPressure, this.pressure.read.attach(0));
+				this.blit(this.pressure.write);
+				this.pressure.swap();
+			}
 		}
 
 		this.gradientSubtractProgram.bind();
 		gl.uniform2f(this.gradientSubtractProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
 		gl.uniform1i(this.gradientSubtractProgram.uniforms.uPressure, this.pressure.read.attach(0));
 		gl.uniform1i(this.gradientSubtractProgram.uniforms.uVelocity, this.velocity.read.attach(1));
-		this.bindSolidMaskUniforms(this.gradientSubtractProgram.uniforms, 2);
+		this.bindSolidMaskUniforms(this.gradientSubtractProgram.uniforms, 2, 3);
+		this.bindInlineMaskUniforms(this.gradientSubtractProgram.uniforms, 4, 5);
 		this.blit(this.velocity.write);
 		this.velocity.swap();
 	}
@@ -2540,9 +2734,10 @@ export class FluidEngine implements FluidHandle {
 
 		if (prescribedOnly) {
 			const simulateDye = this.shouldSimulateDye();
+			// Container/obstruction masking is folded into the advection
+			// shader itself (epic 0001 1a) — no separate applyMask blits.
 			if (simulateDye) {
 				this.advectDye(dt);
-				if (this.shouldMaskPhysics()) this.applyMask(this.dye);
 			}
 			this.advectScalar(dt);
 			this.applyFlowOutlets(simulateDye ? ['dye', 'scalar'] : ['scalar']);
@@ -2565,23 +2760,17 @@ export class FluidEngine implements FluidHandle {
 			this.velocity.swap();
 		}
 
+		// Container/obstruction masking is folded into the advection,
+		// viscosity (final iteration), and gradient-subtract shaders
+		// (epic 0001 1a) — the old per-stage applyMask blits are gone.
 		this.advectVelocity(dt);
-		if (this.shouldMaskPhysics()) this.applyMask(this.velocity);
-		const viscosityActive = this.config.VISCOSITY > 0 && this.config.VISCOSITY_ITERATIONS > 0;
 		this.applyViscosity(dt);
-		if (viscosityActive && this.shouldMaskPhysics()) this.applyMask(this.velocity);
 		this.applyWallFriction();
 		this.projectVelocity();
-		if (this.shouldMaskPhysics()) this.applyMask(this.velocity);
-
-		// Re-bind advection program — applyMask switches the active GL
-		// program, and the dye advection below reuses advectionProgram.
-		if (this.shouldMaskPhysics()) this.advectionProgram.bind();
 
 		const simulateDye = this.shouldSimulateDye();
 		if (simulateDye) {
 			this.advectDye(dt);
-			if (this.shouldMaskPhysics()) this.applyMask(this.dye);
 		}
 		this.advectScalar(dt);
 		this.applyFlowOutlets(simulateDye ? ['dye', 'scalar'] : ['scalar']);

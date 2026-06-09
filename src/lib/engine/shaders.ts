@@ -1008,6 +1008,88 @@ export const prescribedFieldShader = `
     }
 `;
 
+/**
+ * Inline container/obstruction mask — Phase 1a of epic 0001.
+ *
+ * A verbatim functional copy of `applyMaskShader`'s mask computation,
+ * injectable into solver shaders so the field multiply happens in the
+ * producing pass instead of a separate full-resolution ping-pong blit.
+ * `uApplyInlineMask` gates the whole thing to 1.0 (no-op) when physics
+ * masking is inactive. Uniform names match `applyMaskShader` so the engine
+ * can share one uniform-setting helper.
+ */
+const inlineMaskGLSL = `
+    uniform highp float uApplyInlineMask;
+    uniform int uShapeType;
+    uniform highp float uCx;
+    uniform highp float uCy;
+    uniform highp float uRadius;
+    uniform highp float uAspect;
+    uniform highp float uHalfW;
+    uniform highp float uHalfH;
+    uniform highp float uInnerCornerRadius;
+    uniform highp float uInnerRadius;
+    uniform highp float uOuterHalfW;
+    uniform highp float uOuterHalfH;
+    uniform highp float uOuterCornerRadius;
+    uniform sampler2D uMaskTexture;
+    uniform sampler2D uObstructionMask;
+    uniform highp float uHasObstruction;
+
+    highp float inlineMaskValue(highp vec2 uv) {
+        if (uApplyInlineMask < 0.5) return 1.0;
+        highp float mask = 1.0;
+        if (uShapeType == 0) {
+            highp vec2 p = vec2((uv.x - uCx) * uAspect, uv.y - uCy);
+            highp float d = length(p);
+            mask = 1.0 - smoothstep(uRadius - 0.005, uRadius + 0.005, d);
+        } else if (uShapeType == 1) {
+            highp float icr = uInnerCornerRadius;
+            highp float innerMask;
+            if (icr > 0.0) {
+                highp vec2 ip = vec2((uv.x - uCx) * uAspect, uv.y - uCy);
+                highp vec2 id = abs(ip) - vec2(uHalfW * uAspect, uHalfH) + icr;
+                highp float iDist = length(max(id, 0.0)) - icr;
+                innerMask = smoothstep(-0.005, 0.005, iDist);
+            } else {
+                highp float dx = abs(uv.x - uCx) - uHalfW;
+                highp float dy = abs(uv.y - uCy) - uHalfH;
+                innerMask = smoothstep(-0.005, 0.005, max(dx, dy));
+            }
+            highp float ocr = uOuterCornerRadius;
+            highp float outerMask;
+            if (ocr > 0.0) {
+                highp vec2 op = vec2((uv.x - uCx) * uAspect, uv.y - uCy);
+                highp vec2 od = abs(op) - vec2(uOuterHalfW * uAspect, uOuterHalfH) + ocr;
+                highp float oDist = length(max(od, 0.0)) - ocr;
+                outerMask = 1.0 - smoothstep(-0.005, 0.005, oDist);
+            } else {
+                highp float odx = abs(uv.x - uCx) - uOuterHalfW;
+                highp float ody = abs(uv.y - uCy) - uOuterHalfH;
+                outerMask = 1.0 - smoothstep(-0.005, 0.005, max(odx, ody));
+            }
+            mask = innerMask * outerMask;
+        } else if (uShapeType == 2) {
+            highp vec2 rp = vec2((uv.x - uCx) * uAspect, uv.y - uCy);
+            highp vec2 rd = abs(rp) - vec2(uHalfW * uAspect, uHalfH) + uInnerCornerRadius;
+            highp float rdDist = length(max(rd, 0.0)) - uInnerCornerRadius;
+            mask = 1.0 - smoothstep(-0.005, 0.005, rdDist);
+        } else if (uShapeType == 3) {
+            highp vec2 p = vec2((uv.x - uCx) * uAspect, uv.y - uCy);
+            highp float d = length(p);
+            highp float sdf = max(d - uRadius, uInnerRadius - d);
+            mask = 1.0 - smoothstep(-0.005, 0.005, sdf);
+        } else if (uShapeType == 4) {
+            mask = texture2D(uMaskTexture, vec2(uv.x, 1.0 - uv.y)).r;
+        }
+        if (uHasObstruction > 0.5) {
+            highp float obstruct = texture2D(uObstructionMask, vec2(uv.x, 1.0 - uv.y)).r;
+            mask *= (obstruct > 0.5 ? 0.0 : 1.0);
+        }
+        return mask;
+    }
+`;
+
 export const advectionShader = `
     precision highp float;
     precision highp sampler2D;
@@ -1024,6 +1106,7 @@ export const advectionShader = `
     uniform float uMultiplicative;
     uniform sampler2D uStickyMask;
     uniform float uStickyStrength;
+${inlineMaskGLSL}
 
     vec4 bilerp (sampler2D sam, vec2 uv, vec2 tsize) {
         vec2 st = uv / tsize - 0.5;
@@ -1048,6 +1131,9 @@ export const advectionShader = `
         vec4 result = texture2D(uSource, coord);
     #endif
         float stickyVal = texture2D(uStickyMask, vec2(vUv.x, 1.0 - vUv.y)).r;
+        // Inline container/obstruction mask replaces the post-advection
+        // applyMask blit (epic 0001 Phase 1a). Identity 1.0 when inactive.
+        float im = inlineMaskValue(vUv);
         if (uMultiplicative > 0.5) {
             float scalarDissipation = mix(dissipation, dissipationVector.r, uUseDissipationVector);
             float adjDissipation;
@@ -1058,12 +1144,12 @@ export const advectionShader = `
                 // Velocity: dampen on mask (dissipation → near-zero)
                 adjDissipation = scalarDissipation * max(0.0, 1.0 + stickyVal * uStickyStrength);
             }
-            gl_FragColor = clamp(adjDissipation * result, -1000.0, 1000.0);
+            gl_FragColor = clamp(adjDissipation * result, -1000.0, 1000.0) * im;
         } else {
             vec4 baseDissipation = mix(vec4(dissipation), dissipationVector, uUseDissipationVector);
             vec4 adjDissipation = mix(baseDissipation, vec4(0.0), stickyVal * uStickyStrength);
             vec4 decay = vec4(1.0) + adjDissipation * dt;
-            gl_FragColor = clamp(result / decay, -1000.0, 1000.0);
+            gl_FragColor = clamp(result / decay, -1000.0, 1000.0) * im;
         }
     }
 `;
@@ -1080,6 +1166,7 @@ export const divergenceShader = `
     uniform sampler2D uVelocity;
     uniform vec4 uOpenEdges;
     uniform sampler2D uSolidMask;
+    uniform sampler2D uSolidNeighbors;
     uniform float uHasSolidMask;
 
     float solidAt(vec2 uv) {
@@ -1107,15 +1194,17 @@ export const divergenceShader = `
             if (vB.y < 0.0) { B = -C.y; }
         }
 
-        float sC = solidAt(vUv);
-        if (sC > 0.5) {
-            gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
-            return;
+        if (uHasSolidMask >= 0.5) {
+            if (solidAt(vUv) > 0.5) {
+                gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+                return;
+            }
+            vec4 nb = texture2D(uSolidNeighbors, vUv);
+            if (nb.x > 0.5) { L = -C.x; }
+            if (nb.y > 0.5) { R = -C.x; }
+            if (nb.z > 0.5) { T = -C.y; }
+            if (nb.w > 0.5) { B = -C.y; }
         }
-        if (solidAt(vL) > 0.5) { L = -C.x; }
-        if (solidAt(vR) > 0.5) { R = -C.x; }
-        if (solidAt(vT) > 0.5) { T = -C.y; }
-        if (solidAt(vB) > 0.5) { B = -C.y; }
 
         float div = 0.5 * (R - L + T - B);
         gl_FragColor = vec4(div, 0.0, 0.0, 1.0);
@@ -1188,32 +1277,38 @@ export const viscosityShader = `
     uniform sampler2D uVelocity;
     uniform sampler2D uSource;
     uniform sampler2D uSolidMask;
+    uniform sampler2D uSolidNeighbors;
     uniform float uHasSolidMask;
     uniform float uAlpha;
-
+${inlineMaskGLSL}
     float solidAt(vec2 uv) {
         if (uHasSolidMask < 0.5) return 0.0;
         return texture2D(uSolidMask, vec2(clamp(uv.x, 0.0, 1.0), 1.0 - clamp(uv.y, 0.0, 1.0))).r;
     }
 
-    vec2 neighborVelocity(vec2 uv, vec2 center) {
-        if (solidAt(uv) > 0.5) return center;
+    vec2 neighborVelocity(vec2 uv, float neighborSolid, vec2 center) {
+        if (neighborSolid > 0.5) return center;
         return texture2D(uVelocity, uv).xy;
     }
 
     void main () {
-        if (solidAt(vUv) > 0.5) {
-            gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
-            return;
+        float im = inlineMaskValue(vUv);
+        vec4 nb = vec4(0.0);
+        if (uHasSolidMask >= 0.5) {
+            if (solidAt(vUv) > 0.5) {
+                gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0) * im;
+                return;
+            }
+            nb = texture2D(uSolidNeighbors, vUv);
         }
         vec2 C = texture2D(uVelocity, vUv).xy;
         vec2 source = texture2D(uSource, vUv).xy;
-        vec2 L = neighborVelocity(vL, C);
-        vec2 R = neighborVelocity(vR, C);
-        vec2 T = neighborVelocity(vT, C);
-        vec2 B = neighborVelocity(vB, C);
+        vec2 L = neighborVelocity(vL, nb.x, C);
+        vec2 R = neighborVelocity(vR, nb.y, C);
+        vec2 T = neighborVelocity(vT, nb.z, C);
+        vec2 B = neighborVelocity(vB, nb.w, C);
         vec2 velocity = (source + uAlpha * (L + R + T + B)) / (1.0 + 4.0 * uAlpha);
-        gl_FragColor = vec4(clamp(velocity, -1000.0, 1000.0), 0.0, 1.0);
+        gl_FragColor = vec4(clamp(velocity, -1000.0, 1000.0), 0.0, 1.0) * im;
     }
 `;
 
@@ -1266,6 +1361,15 @@ export const wallFrictionShader = `
     }
 `;
 
+/**
+ * Jacobi pressure iteration. `uPressureScale` folds the warm-start memory
+ * coefficient into the FIRST iteration (set to PRESSURE on iteration 0,
+ * 1.0 afterwards) — the same math as the old standalone clear pass, since
+ * Jacobi only reads the previous iterate through its neighbors, without a
+ * full-resolution blit (epic 0001 1c). Neighbor solidity comes from the
+ * face-aperture texture (1b); the C4 fetch keeps the substituted neighbor
+ * consistent with the scaled center.
+ */
 export const pressureShader = `
     precision mediump float;
     precision mediump sampler2D;
@@ -1277,9 +1381,11 @@ export const pressureShader = `
     varying highp vec2 vB;
     uniform sampler2D uPressure;
     uniform sampler2D uDivergence;
+    uniform float uPressureScale;
     uniform sampler2D uStickyMask;
     uniform float uStickyPressure;
     uniform sampler2D uSolidMask;
+    uniform sampler2D uSolidNeighbors;
     uniform float uHasSolidMask;
 
     float solidAt(vec2 uv) {
@@ -1292,19 +1398,102 @@ export const pressureShader = `
         float R = texture2D(uPressure, vR).x;
         float T = texture2D(uPressure, vT).x;
         float B = texture2D(uPressure, vB).x;
-        float C = texture2D(uPressure, vUv).x;
-        if (solidAt(vUv) > 0.5) {
-            gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
-            return;
+        if (uHasSolidMask >= 0.5) {
+            if (solidAt(vUv) > 0.5) {
+                gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+                return;
+            }
+            float C = texture2D(uPressure, vUv).x;
+            vec4 nb = texture2D(uSolidNeighbors, vUv);
+            if (nb.x > 0.5) { L = C; }
+            if (nb.y > 0.5) { R = C; }
+            if (nb.z > 0.5) { T = C; }
+            if (nb.w > 0.5) { B = C; }
         }
-        if (solidAt(vL) > 0.5) { L = C; }
-        if (solidAt(vR) > 0.5) { R = C; }
-        if (solidAt(vT) > 0.5) { T = C; }
-        if (solidAt(vB) > 0.5) { B = C; }
         float divergence = texture2D(uDivergence, vUv).x;
-        float pressure = (L + R + B + T - divergence) * 0.25;
+        float pressure = ((L + R + B + T) * uPressureScale - divergence) * 0.25;
         float stickyVal = texture2D(uStickyMask, vec2(vUv.x, 1.0 - vUv.y)).r;
         pressure += stickyVal * uStickyPressure;
+        gl_FragColor = vec4(pressure, 0.0, 0.0, 1.0);
+    }
+`;
+
+/**
+ * Two Jacobi pressure iterations in ONE pass (epic 0001 — measured-regime
+ * optimization). Profiling showed the loop is pass-count bound (~40 µs of
+ * render-pass overhead per ping-pong blit on ANGLE/Metal), not bandwidth
+ * bound, so halving pass count beats minimizing fetches.
+ *
+ * The inner level evaluates iteration k at the center and 4 neighbors; the
+ * outer level combines them into iteration k+1. Positions are clamped to
+ * texel centers so out-of-domain neighbors reproduce CLAMP_TO_EDGE single-
+ * pass behavior exactly. `uScaleInner` carries the warm-start fold for the
+ * first pair (see pressureShader).
+ */
+export const pressureJacobi2Shader = `
+    precision mediump float;
+    precision mediump sampler2D;
+
+    varying highp vec2 vUv;
+    uniform highp vec2 texelSize;
+    uniform sampler2D uPressure;
+    uniform sampler2D uDivergence;
+    uniform float uScaleInner;
+    uniform sampler2D uStickyMask;
+    uniform float uStickyPressure;
+    uniform sampler2D uSolidMask;
+    uniform sampler2D uSolidNeighbors;
+    uniform float uHasSolidMask;
+
+    float solidAt(vec2 uv) {
+        if (uHasSolidMask < 0.5) return 0.0;
+        return texture2D(uSolidMask, vec2(clamp(uv.x, 0.0, 1.0), 1.0 - clamp(uv.y, 0.0, 1.0))).r;
+    }
+
+    vec2 clampToTexelCenter(vec2 uv) {
+        return clamp(uv, 0.5 * texelSize, vec2(1.0) - 0.5 * texelSize);
+    }
+
+    float innerIterate(vec2 uv) {
+        float L = texture2D(uPressure, uv - vec2(texelSize.x, 0.0)).x;
+        float R = texture2D(uPressure, uv + vec2(texelSize.x, 0.0)).x;
+        float T = texture2D(uPressure, uv + vec2(0.0, texelSize.y)).x;
+        float B = texture2D(uPressure, uv - vec2(0.0, texelSize.y)).x;
+        if (uHasSolidMask >= 0.5) {
+            if (solidAt(uv) > 0.5) return 0.0;
+            float C = texture2D(uPressure, uv).x;
+            vec4 nb = texture2D(uSolidNeighbors, uv);
+            if (nb.x > 0.5) { L = C; }
+            if (nb.y > 0.5) { R = C; }
+            if (nb.z > 0.5) { T = C; }
+            if (nb.w > 0.5) { B = C; }
+        }
+        float divergence = texture2D(uDivergence, uv).x;
+        float p = ((L + R + B + T) * uScaleInner - divergence) * 0.25;
+        p += texture2D(uStickyMask, vec2(uv.x, 1.0 - uv.y)).r * uStickyPressure;
+        return p;
+    }
+
+    void main () {
+        float L = innerIterate(clampToTexelCenter(vUv - vec2(texelSize.x, 0.0)));
+        float R = innerIterate(clampToTexelCenter(vUv + vec2(texelSize.x, 0.0)));
+        float T = innerIterate(clampToTexelCenter(vUv + vec2(0.0, texelSize.y)));
+        float B = innerIterate(clampToTexelCenter(vUv - vec2(0.0, texelSize.y)));
+        if (uHasSolidMask >= 0.5) {
+            if (solidAt(vUv) > 0.5) {
+                gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+                return;
+            }
+            float C = innerIterate(vUv);
+            vec4 nb = texture2D(uSolidNeighbors, vUv);
+            if (nb.x > 0.5) { L = C; }
+            if (nb.y > 0.5) { R = C; }
+            if (nb.z > 0.5) { T = C; }
+            if (nb.w > 0.5) { B = C; }
+        }
+        float divergence = texture2D(uDivergence, vUv).x;
+        float pressure = (L + R + B + T - divergence) * 0.25;
+        pressure += texture2D(uStickyMask, vec2(vUv.x, 1.0 - vUv.y)).r * uStickyPressure;
         gl_FragColor = vec4(pressure, 0.0, 0.0, 1.0);
     }
 `;
@@ -1321,8 +1510,9 @@ export const gradientSubtractShader = `
     uniform sampler2D uPressure;
     uniform sampler2D uVelocity;
     uniform sampler2D uSolidMask;
+    uniform sampler2D uSolidNeighbors;
     uniform float uHasSolidMask;
-
+${inlineMaskGLSL}
     float solidAt(vec2 uv) {
         if (uHasSolidMask < 0.5) return 0.0;
         return texture2D(uSolidMask, vec2(clamp(uv.x, 0.0, 1.0), 1.0 - clamp(uv.y, 0.0, 1.0))).r;
@@ -1334,17 +1524,21 @@ export const gradientSubtractShader = `
         float T = texture2D(uPressure, vT).x;
         float B = texture2D(uPressure, vB).x;
         vec2 velocity = texture2D(uVelocity, vUv).xy;
-        if (solidAt(vUv) > 0.5) {
-            gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
-            return;
+        float im = inlineMaskValue(vUv);
+        if (uHasSolidMask >= 0.5) {
+            if (solidAt(vUv) > 0.5) {
+                gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0) * im;
+                return;
+            }
+            float C = texture2D(uPressure, vUv).x;
+            vec4 nb = texture2D(uSolidNeighbors, vUv);
+            if (nb.x > 0.5) { L = C; }
+            if (nb.y > 0.5) { R = C; }
+            if (nb.z > 0.5) { T = C; }
+            if (nb.w > 0.5) { B = C; }
         }
-        float C = texture2D(uPressure, vUv).x;
-        if (solidAt(vL) > 0.5) { L = C; }
-        if (solidAt(vR) > 0.5) { R = C; }
-        if (solidAt(vT) > 0.5) { T = C; }
-        if (solidAt(vB) > 0.5) { B = C; }
         velocity.xy -= vec2(R - L, T - B);
-        gl_FragColor = vec4(velocity, 0.0, 1.0);
+        gl_FragColor = vec4(velocity, 0.0, 1.0) * im;
     }
 `;
 
