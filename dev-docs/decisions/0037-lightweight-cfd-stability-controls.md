@@ -42,6 +42,11 @@ Add `FlowForce` kind `pressureGradient` as a semantic alias for the same
 velocity-space body force implementation used by gravity. Presets can now name
 the forcing honestly without adding a new shader branch.
 
+Build one binary solver solid mask from the physical container exterior plus
+all interior obstructions. Display shaders can still use smooth antialiased
+masks, but divergence, pressure, gradient subtraction, viscosity, and wall
+friction now agree on the same solid-cell classification.
+
 ## Consequences
 
 - Flow demos can spend more GPU passes only where needed; defaults preserve the
@@ -51,8 +56,13 @@ the forcing honestly without adding a new shader branch.
   velocity.
 - Wall friction is a practical near-mask damping approximation, not a full
   no-slip finite-volume boundary condition.
+- SVG-path container scenes such as TeslaValve no longer rely on post-projection
+  clipping alone; their walls participate in the pressure solve.
 - Viscosity is dimensionless in the public API. It is scaled internally by
   timestep and simulation resolution so small values are useful at browser-grid
   sizes.
 - Reveal, distortion, sticky, and legacy splat behavior keep their existing
   shader branches; the new passes only run when their config values are nonzero.
+- Opaque-background rendering composites the authored background color inside
+  the display shader, removing a separate full-screen background pass while
+  preserving the same premultiplied blend equation.

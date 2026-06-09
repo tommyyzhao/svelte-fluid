@@ -24,7 +24,7 @@ This one is built for Svelte 5 from the ground up:
 - **True component API** — `<Fluid />` with 70+ typed props, live reactive updates, and full cleanup on unmount
 - **Multiple independent instances** per page — no shared GL state
 - **Deterministic seeding** — same `seed` reproduces the same splat pattern across resizes
-- **10 example presets** — reference configurations showing the range of what's possible
+- **14 example presets** — reference configurations showing the range of what's possible
 - **5 container shapes** — circle, frame, roundedRect, annulus, and arbitrary SVG paths / text via mask texture
 - **Glass post-processing** — refraction, specular highlights, and chromatic aberration on any container shape
 - **Lazy loading + auto-pause** — defer engine creation until viewport entry
@@ -186,8 +186,8 @@ The component also forwards any standard `<canvas>` attributes
 
 ## Presets
 
-Ten reference configurations demonstrating different physics setups and
-container shapes. Useful as starting points for building your own:
+Fourteen reference configurations demonstrating different physics setups,
+container shapes, and solver-native flow scenes. Useful as starting points for building your own:
 
 | Component | Look |
 | --- | --- |
@@ -201,6 +201,10 @@ container shapes. Useful as starting points for building your own:
 | `<FrameFluid />` | Colorful fluid swirling around a rectangular inner cutout |
 | `<AnnularFluid />` | Ring-vortex fluid between two concentric circles |
 | `<SvgPathFluid />` | Fluid shaped by an ampersand glyph via mask texture |
+| `<GasFlare />` | Temperature scalar, buoyancy, and physical nozzle obstructions |
+| `<Venturi />` | Pressure-gradient throughflow with CFD-style speed visualization |
+| `<RiverDelta />` | Open-edge routing around staggered island obstructions |
+| `<TeslaValve />` | High-viscosity multicolor splats through an SVG conduit mask |
 
 ```svelte
 <script lang="ts">
@@ -218,11 +222,12 @@ container shapes. Useful as starting points for building your own:
 ```
 
 Each preset forwards a small common set of props: `width`, `height`,
-`class`, `style`, `seed`, `lazy`, and `aria-label`. Some shape presets
-also expose small shape-specific knobs such as `splatOnHover` or corner
-radii. The main physics recipe is intentionally fixed. They all re-expose
-the imperative `handle` so you can still call `splat()` / `randomSplats()`
-from outside via `bind:this`.
+`class`, `style`, `seed`, `lazy`, `splatOnHover`, `aria-label`, and
+`backColor`. Flow-scene presets also expose `pointerInput`, and some shape
+presets expose small shape-specific knobs such as corner radii. The main
+physics recipe is intentionally fixed. They all re-expose the imperative
+`handle` so you can still call `splat()` / `randomSplats()` from outside via
+`bind:this`.
 
 ### Building your own preset
 

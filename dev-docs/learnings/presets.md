@@ -365,7 +365,7 @@ The two knobs are independent and the names make it easy to confuse them.
 
 ## Automatic splats: `autoSplatRate` and friends
 
-**What it is:** Six new config fields (`autoSplatRate`, `autoSplatCount`, `autoSplatColor`, `autoSplatVelocityX`, `autoSplatVelocityY`, `autoSplatCenterY`) that make the engine emit splats continuously at a configurable rate.
+**What it is:** Automatic splat config fields (`autoSplatRate`, `autoSplatCount`, `autoSplatColor`, `autoSplatVelocityX`, `autoSplatVelocityY`, `autoSplatCenterX`, `autoSplatCenterY`, `autoSplatBandWidth`, `autoSplatBandHeight`, `autoSplatEvenX`, `autoSplatSwirl`) that make the engine emit splats continuously at a configurable rate.
 
 **Design decisions worth preserving:**
 
@@ -373,7 +373,8 @@ The two knobs are independent and the names make it easy to confuse them.
 - Accumulation happens only while unpaused, so `paused` freezes the visual state and does not queue a delayed burst for resume.
 - When `autoSplatColor` is set, the same 10× HDR multiplier applied to `generateColor` output is applied to the fixed color. See the HDR splat colors entry above for why.
 - Velocity fields (`autoSplatVelocityX`, `autoSplatVelocityY`) are passed directly to `splat()` raw — they are NOT scaled by `splatForce`. This is consistent with `PresetSplat.dx/dy` semantics.
-- All six fields are Bucket A: hot-updatable without teardown. Setting `autoSplatRate = 0` stops generation and resets the timer.
+- `autoSplatCenterX` + `autoSplatBandWidth` let presets spawn dye packets from a left/right inlet band without component-local timers or continuous dye line sources.
+- All `autoSplat*` fields are Bucket A: hot-updatable without teardown. Setting `autoSplatRate = 0` stops generation and resets the timer.
 
 **Why this matters:** Previously, continuous effects required imperative calls to `handle.randomSplats()`. Now presets like `InkInWater` can declaratively specify a "drops in water" look. The `autoSplatColor` + `autoSplatVelocityX/Y` fields allow fixed color+velocity matching the initial preset splats, rather than the fully-random `multipleSplats()` behavior.
 
@@ -491,6 +492,12 @@ CircularFluid uses `swirl: 500` (aggressive, drives a visible vortex), FrameFlui
 The `autoSplatBandHeight` config controls vertical jitter range for automatic splat spawn positions (default 0.1 = +/-0.05). For frame shapes, the default narrow spawn band often falls inside the masked-out cutout, so splats are immediately zeroed by the mask and produce no visible effect.
 
 Setting `spread: 2.0` scatters splats across the entire canvas. The container mask naturally discards any splats that land outside the fluid domain, so only the in-bounds ones contribute. This is wasteful (many splats are discarded) but simple and correct.
+
+`autoSplatCenterX` and `autoSplatBandWidth` apply the same idea horizontally.
+Use defaults (`0.5`, `1.0`) to preserve full-width random x placement, or a
+narrow band near `0`/`1` for inlet-style presets. `autoSplatEvenX` intentionally
+overrides the horizontal random band because its purpose is deterministic column
+spacing across the full x-axis.
 
 ## Frame inner + outer corner radius
 

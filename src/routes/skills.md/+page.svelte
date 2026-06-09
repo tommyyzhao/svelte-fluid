@@ -344,10 +344,12 @@ All fields are optional. The engine fills defaults at construction.
 | autoSplatColor        | RGB|null | null    | Fixed automatic-splat color; null=fresh random. 0-1 linear. |
 | autoSplatVelocityX           | number   | 0       | X velocity; ignored when autoSplatSwirl is nonzero. |
 | autoSplatVelocityY           | number   | 0       | Y velocity; negative=downward in DOM. Ignored when autoSplatSwirl is nonzero. |
+| autoSplatCenterX       | number   | 0.5     | Horizontal center of the spawn band: 0=left, 0.5=center, 1=right. |
 | autoSplatCenterY       | number   | 0.5     | Vertical center of the spawn band: 0=bottom, 0.5=center, 1=top. |
 | autoSplatEvenX  | boolean  | false   | In each burst, use equal x positions instead of random x positions. |
 | autoSplatSwirl        | number   | 0       | Orbital velocity around the container/canvas center; positive=CCW. |
 | autoSplatBandHeight       | number   | 0.1     | Height of the spawn band. 0=single line, 0.1=±5%, 2=full canvas. |
+| autoSplatBandWidth       | number   | 1.0     | Width of the spawn band. 0=single vertical line, 1=full canvas width. |
 
 ### Container Shape
 
@@ -566,10 +568,10 @@ a host page background. Omit it to keep the preset's authored default.
 | SvgPathFluid    | Fluid inside an "&amp;" ampersand glyph              | svgPath (text mode)          |
 | GasFlare        | Hot gas flare jet with temperature-scalar buoyancy | none (2 flare-stack obstructions) |
 | Venturi         | Bernoulli throat with CFD-style velocity-magnitude colors | none (2 throat obstructions) |
-| RiverDelta      | River braiding around a chain of teardrop islands   | none (5 island obstructions) |
-| TeslaValve      | Tesla-valve conduit with bypass buckets + even-odd slots | svgPath reference channel |
+| RiverDelta      | Muted river branching around teardrop islands with constrained tracer packets | none (5 island obstructions) |
+| TeslaValve      | Forward throughflow with bypass-bucket recirculation cues | svgPath reference channel |
 
-Faithful: GasFlare/Venturi/RiverDelta/TeslaValve incompressible routing, scalar buoyancy, separation, and throat/gap speed-up.
+Solver-native qualitative routing: GasFlare/Venturi/RiverDelta/TeslaValve use live incompressible flow, scalar buoyancy, separation, and throat/gap speed-up, but they are not validated CFD. InkInWater intentionally stays on intermittent auto splats rather than flow. TeslaValve is a forward-throughflow visualization, not a hard-stop check valve.
 
 ---
 

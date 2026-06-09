@@ -37,7 +37,7 @@
 
 <script lang="ts">
 	import Fluid from '../Fluid.svelte';
-	import type { FlowConfig, FluidHandle, PresetSplat } from '../engine/types.js';
+	import type { FluidHandle, PresetSplat } from '../engine/types.js';
 
 	let {
 		width,
@@ -63,27 +63,6 @@
 		{ x: 0.60, y: 0.92, dx: 5,   dy: -190, color: { r: 0.06, g: 0.04, b: 0.52 } }  // dark indigo
 	];
 
-	const FLOW: FlowConfig = {
-		mode: 'live',
-		sources: [
-			{
-				kind: 'line',
-				from: { x: 0.28, y: 0.92 },
-				to: { x: 0.72, y: 0.92 },
-				velocity: { x: 0, y: -40 },
-				dye: { r: 0.018, g: 0.025, b: 0.16 },
-				scalars: { ink: 0.7 },
-				rate: 7,
-				radius: 0.06,
-				samples: 5,
-				profile: 'parabolic'
-			}
-		],
-		scalarFields: [{ name: 'ink', dissipation: 0.05, advection: 'low-dissipation' }],
-		forces: [{ kind: 'buoyancy', scalar: 'ink', direction: { x: 0, y: -1 }, strength: 230, ambient: 0.02 }],
-		visualization: { colorBy: 'scalar', scalar: 'ink', transfer: 'ink', scale: 1.25 }
-	};
-
 	export const handle: FluidHandle = {
 		splat: (x, y, dx, dy, color) => inner?.handle.splat(x, y, dx, dy, color),
 		randomSplats: (count) => inner?.handle.randomSplats(count),
@@ -103,19 +82,23 @@
 	{lazy}
 	{splatOnHover}
 	aria-label={ariaLabel}
-	flow={FLOW}
 	curl={8}
-	densityDissipation={0.18}
-	velocityDissipation={0.12}
+	densityDissipation={0.3}
+	velocityDissipation={0.15}
 	pressure={0.85}
 	splatRadius={0.12}
 	splatForce={800}
 	shading
 	colorful={false}
-	bloom={false}
-	bloomIntensity={0.35}
+	bloom
+	bloomIntensity={0.6}
 	bloomThreshold={0.4}
 	sunrays={false}
+	autoSplatRate={0.2}
+	autoSplatColor={{ r: 0.06, g: 0.07, b: 0.5 }}
+	autoSplatVelocityX={0}
+	autoSplatVelocityY={-180}
+	autoSplatCenterY={0.9}
 	initialSplatCount={0}
 	backColor={backColor ?? { r: 6, g: 8, b: 20 }}
 	presetSplats={PRESET_SPLATS}

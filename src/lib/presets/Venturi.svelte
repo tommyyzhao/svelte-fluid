@@ -32,7 +32,16 @@
 	/** Props consumed by `<Venturi />`. Sizing/seed/styling are forwarded; all physics props are pinned. */
 	export type VenturiProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+		| 'width'
+		| 'height'
+		| 'class'
+		| 'style'
+		| 'seed'
+		| 'lazy'
+		| 'pointerInput'
+		| 'splatOnHover'
+		| 'aria-label'
+		| 'backColor'
 	>;
 </script>
 
@@ -47,6 +56,7 @@
 		style,
 		seed,
 		lazy,
+		pointerInput = true,
 		splatOnHover = true,
 		'aria-label': ariaLabel,
 		backColor
@@ -74,9 +84,9 @@
 	const FLOW: FlowConfig = {
 		mode: 'live',
 		boundary: { left: 'open', right: 'open', top: 'wall', bottom: 'wall' },
-			forces: [{ kind: 'pressureGradient', vector: { x: 42, y: 0 } }],
+		forces: [{ kind: 'pressureGradient', vector: { x: 42, y: 0 } }],
 		outlets: [{ edge: 'right', from: 0, to: 1, width: 0.05, clearDye: 0.35, clearScalars: true, clearVelocity: true }],
-		visualization: { colorBy: 'speed', glowBy: 'none', transfer: 'cfd', range: [0, 260], scale: 1.0 }
+		visualization: { colorBy: 'speed', glowBy: 'none', transfer: 'cfd', range: [0, 170], scale: 1.12 }
 	};
 
 	export const handle: FluidHandle = {
@@ -97,22 +107,23 @@
 	{style}
 	{seed}
 	{lazy}
+	{pointerInput}
 	{splatOnHover}
 	aria-label={ariaLabel}
 	obstructions={[{ d: TOP, fit: 'fill' }, { d: BOTTOM, fit: 'fill' }]}
 	flow={FLOW}
 	openBoundary
 	curl={0}
-		densityDissipation={0.35}
-		velocityDissipation={0.09}
-		maxTimeStep={1 / 120}
-		substeps={2}
-		viscosity={0.018}
-		viscosityIterations={10}
-		wallFriction={0.18}
-		wallFrictionWidth={2}
-		pressure={0.9}
-	pressureIterations={36}
+	densityDissipation={0.35}
+	velocityDissipation={0.09}
+	maxTimeStep={1 / 60}
+	substeps={1}
+	viscosity={0.016}
+	viscosityIterations={5}
+	wallFriction={0.16}
+	wallFrictionWidth={2}
+	pressure={0.9}
+	pressureIterations={26}
 	splatRadius={0.055}
 	splatForce={6000}
 	shading={false}
@@ -121,8 +132,8 @@
 	bloomThreshold={0.6}
 	bloomIntensity={0.5}
 	sunrays={false}
-	simResolution={192}
-	dyeResolution={1024}
+	simResolution={160}
+	dyeResolution={512}
 	initialSplatCount={0}
 	backColor={backColor ?? { r: 6, g: 10, b: 14 }}
 />

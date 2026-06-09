@@ -132,6 +132,8 @@ export const displayShaderSource = `
     uniform sampler2D uDithering;
     uniform vec2 ditherScale;
     uniform vec2 texelSize;
+    uniform vec3 uBackColor;
+    uniform float uCompositeBackground;
     uniform int uContainerShapeType;
     uniform vec2 uContainerCenter;
     uniform float uContainerRadius;
@@ -353,6 +355,18 @@ export const displayShaderSource = `
         flowMask *= 1.0 - smoothstep(0.05, 0.45, solidEdge);
     #endif
 
+    #ifdef CONTAINER_MASK
+        if (uContainerShapeType == 4) {
+            vec2 containerUv = vec2(vUv.x, 1.0 - vUv.y);
+            float containerEdge = 1.0 - texture2D(uContainerMaskTexture, containerUv).r;
+            containerEdge = max(containerEdge, 1.0 - texture2D(uContainerMaskTexture, containerUv + vec2(texelSize.x, 0.0)).r);
+            containerEdge = max(containerEdge, 1.0 - texture2D(uContainerMaskTexture, containerUv - vec2(texelSize.x, 0.0)).r);
+            containerEdge = max(containerEdge, 1.0 - texture2D(uContainerMaskTexture, containerUv + vec2(0.0, texelSize.y)).r);
+            containerEdge = max(containerEdge, 1.0 - texture2D(uContainerMaskTexture, containerUv - vec2(0.0, texelSize.y)).r);
+            flowMask *= 1.0 - smoothstep(0.05, 0.45, containerEdge);
+        }
+    #endif
+
     #ifdef FLOW_VISUALIZATION
         float flowValue = 0.0;
         if (uFlowVisMode == 1) {
@@ -435,7 +449,11 @@ export const displayShaderSource = `
         vec3 color = mix(mix(uRevealCoverColor, uRevealFringeColor, outerBlend), uRevealAccentColor, innerBlend);
         gl_FragColor = vec4(color, alpha);
     #else
-        gl_FragColor = vec4(c, a);
+        if (uCompositeBackground > 0.5) {
+            gl_FragColor = vec4(c + uBackColor * (1.0 - a), 1.0);
+        } else {
+            gl_FragColor = vec4(c, a);
+        }
     #endif
     }
 `;
@@ -822,21 +840,24 @@ export const flowSourceShader = `
     precision highp float;
     precision highp sampler2D;
 
+    #define MAX_FLOW_SOURCE_BATCH 4
+
     varying vec2 vUv;
     uniform sampler2D uTarget;
     uniform float aspectRatio;
-    uniform int uKind;
-    uniform int uProfile;
-    uniform vec2 uFrom;
-    uniform vec2 uTo;
-    uniform vec4 uRect;
-    uniform vec3 color;
-    uniform float radius;
+    uniform int uCount;
+    uniform int uKind[MAX_FLOW_SOURCE_BATCH];
+    uniform int uProfile[MAX_FLOW_SOURCE_BATCH];
+    uniform vec2 uFrom[MAX_FLOW_SOURCE_BATCH];
+    uniform vec2 uTo[MAX_FLOW_SOURCE_BATCH];
+    uniform vec4 uRect[MAX_FLOW_SOURCE_BATCH];
+    uniform vec3 uColor[MAX_FLOW_SOURCE_BATCH];
+    uniform float uRadius[MAX_FLOW_SOURCE_BATCH];
     uniform sampler2D uStickyMask;
     uniform float uStickyAmplify;
 
-    float profileWeight(float t) {
-        if (uProfile != 1) return 1.0;
+    float profileWeight(int profile, float t) {
+        if (profile != 1) return 1.0;
         float centered = t * 2.0 - 1.0;
         return max(0.0, 1.0 - centered * centered);
     }
@@ -846,26 +867,36 @@ export const flowSourceShader = `
     }
 
     void main () {
-        float d2 = 0.0;
-        float t = 0.5;
+        vec3 splat = vec3(0.0);
 
-        if (uKind == 1) {
-            vec2 pa = aspectVec(vUv - uFrom);
-            vec2 ba = aspectVec(uTo - uFrom);
-            t = clamp(dot(pa, ba) / max(dot(ba, ba), 0.000001), 0.0, 1.0);
-            vec2 d = pa - ba * t;
-            d2 = dot(d, d);
-        } else {
-            vec2 mn = uRect.xy;
-            vec2 mx = uRect.xy + uRect.zw;
-            vec2 closest = clamp(vUv, mn, mx);
-            vec2 d = aspectVec(vUv - closest);
-            d2 = dot(d, d);
-            t = clamp((vUv.y - mn.y) / max(uRect.w, 0.000001), 0.0, 1.0);
+        for (int i = 0; i < MAX_FLOW_SOURCE_BATCH; i++) {
+            if (i >= uCount) break;
+
+            float d2 = 0.0;
+            float t = 0.5;
+
+            if (uKind[i] == 0) {
+                vec2 d = aspectVec(vUv - uFrom[i]);
+                d2 = dot(d, d);
+            } else if (uKind[i] == 1) {
+                vec2 pa = aspectVec(vUv - uFrom[i]);
+                vec2 ba = aspectVec(uTo[i] - uFrom[i]);
+                t = clamp(dot(pa, ba) / max(dot(ba, ba), 0.000001), 0.0, 1.0);
+                vec2 d = pa - ba * t;
+                d2 = dot(d, d);
+            } else {
+                vec2 mn = uRect[i].xy;
+                vec2 mx = uRect[i].xy + uRect[i].zw;
+                vec2 closest = clamp(vUv, mn, mx);
+                vec2 d = aspectVec(vUv - closest);
+                d2 = dot(d, d);
+                t = clamp((vUv.y - mn.y) / max(uRect[i].w, 0.000001), 0.0, 1.0);
+            }
+
+            float amount = exp(-d2 / max(uRadius[i], 0.000001)) * profileWeight(uProfile[i], t);
+            splat += amount * uColor[i];
         }
 
-        float amount = exp(-d2 / radius) * profileWeight(t);
-        vec3 splat = amount * color;
         float stickyVal = texture2D(uStickyMask, vec2(vUv.x, 1.0 - vUv.y)).r;
         splat *= 1.0 + stickyVal * uStickyAmplify;
         vec3 base = texture2D(uTarget, vUv).xyz;
@@ -877,25 +908,37 @@ export const flowOutletShader = `
     precision highp float;
     precision highp sampler2D;
 
+    #define MAX_FLOW_OUTLET_BATCH 4
+
     varying vec2 vUv;
     uniform sampler2D uTarget;
-    uniform int uEdge;
-    uniform float uFrom;
-    uniform float uTo;
-    uniform float uWidth;
-    uniform float uKeep;
+    uniform int uCount;
+    uniform int uEdge[MAX_FLOW_OUTLET_BATCH];
+    uniform float uFrom[MAX_FLOW_OUTLET_BATCH];
+    uniform float uTo[MAX_FLOW_OUTLET_BATCH];
+    uniform float uWidth[MAX_FLOW_OUTLET_BATCH];
+    uniform float uKeep[MAX_FLOW_OUTLET_BATCH];
 
     void main () {
         vec4 value = texture2D(uTarget, vUv);
-        float along = uEdge < 2 ? vUv.y : vUv.x;
-        float normal = 1.0;
-        if (uEdge == 0) normal = 1.0 - smoothstep(0.0, max(uWidth, 0.0001), vUv.x);
-        else if (uEdge == 1) normal = smoothstep(1.0 - max(uWidth, 0.0001), 1.0, vUv.x);
-        else if (uEdge == 2) normal = smoothstep(1.0 - max(uWidth, 0.0001), 1.0, vUv.y);
-        else normal = 1.0 - smoothstep(0.0, max(uWidth, 0.0001), vUv.y);
+        float keepProduct = 1.0;
 
-        float gate = step(uFrom, along) * step(along, uTo) * normal;
-        gl_FragColor = mix(value, value * uKeep, gate);
+        for (int i = 0; i < MAX_FLOW_OUTLET_BATCH; i++) {
+            if (i >= uCount) break;
+
+            float along = uEdge[i] < 2 ? vUv.y : vUv.x;
+            float width = max(uWidth[i], 0.0001);
+            float normal = 1.0;
+            if (uEdge[i] == 0) normal = 1.0 - smoothstep(0.0, width, vUv.x);
+            else if (uEdge[i] == 1) normal = smoothstep(1.0 - width, 1.0, vUv.x);
+            else if (uEdge[i] == 2) normal = smoothstep(1.0 - width, 1.0, vUv.y);
+            else normal = 1.0 - smoothstep(0.0, width, vUv.y);
+
+            float gate = step(uFrom[i], along) * step(along, uTo[i]) * normal;
+            keepProduct *= mix(1.0, uKeep[i], gate);
+        }
+
+        gl_FragColor = value * keepProduct;
     }
 `;
 

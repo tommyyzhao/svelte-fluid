@@ -2,8 +2,8 @@
   svelte-fluid — TeslaValve preset
 
   Visual intent: a passive Tesla-valve-like channel with asymmetric baffles.
-  A steady inlet enters from the left, stays mostly coherent in the main
-  channel, and sheds visible recirculation into alternating side pockets.
+  A pressure-gradient drive moves discrete multicolor inlet splats from the
+  left, keeping dye packets readable as they recirculate through side pockets.
 
   Honest note: this is a live incompressible throughflow visualization. It
   shows plausible routing, separation, and pocket recirculation cues, but it
@@ -18,13 +18,22 @@
 	/** Props consumed by `<TeslaValve />`. Sizing/seed/styling are forwarded; valve geometry and flow settings are pinned. */
 	export type TeslaValveProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+		| 'width'
+		| 'height'
+		| 'class'
+		| 'style'
+		| 'seed'
+		| 'lazy'
+		| 'pointerInput'
+		| 'splatOnHover'
+		| 'aria-label'
+		| 'backColor'
 	>;
 </script>
 
 <script lang="ts">
 	import Fluid from '../Fluid.svelte';
-	import type { ContainerShape, FlowConfig, FluidHandle, PresetSplat } from '../engine/types.js';
+	import type { ContainerShape, FlowConfig, FluidHandle } from '../engine/types.js';
 
 	let {
 		width,
@@ -33,6 +42,7 @@
 		style,
 		seed,
 		lazy,
+		pointerInput = true,
 		splatOnHover = true,
 		'aria-label': ariaLabel,
 		backColor
@@ -59,35 +69,15 @@
 		type: 'svgPath',
 		viewBox: [0, 0, 1220, 257],
 		fillRule: 'evenodd',
-		maskResolution: 1024,
+		maskResolution: 2048,
 		d: TESLA_VALVE_PATH
 	};
-
-	const PRESET_SPLATS: PresetSplat[] = [
-		{ x: 0.035, y: 0.43, dx: 760, dy: 0, color: { r: 0.08, g: 0.55, b: 0.86 } },
-		{ x: 0.035, y: 0.5, dx: 820, dy: 0, color: { r: 0.06, g: 0.7, b: 0.95 } },
-		{ x: 0.035, y: 0.57, dx: 760, dy: 0, color: { r: 0.08, g: 0.55, b: 0.86 } }
-	];
 
 	const FLOW: FlowConfig = {
 		mode: 'live',
 		boundary: { left: 'open', right: 'open', top: 'wall', bottom: 'wall' },
-		sources: [
-			{
-				kind: 'line',
-				from: { x: 0.03, y: 0.34 },
-				to: { x: 0.03, y: 0.64 },
-				velocity: { x: 1100, y: 0 },
-				dye: { r: 0.05, g: 0.62, b: 0.95 },
-				scalars: { ink: 1.0 },
-				rate: 60,
-				radius: 0.07,
-				profile: 'parabolic'
-			}
-		],
-		outlets: [{ edge: 'right', from: 0.16, to: 0.84, width: 0.08, clearDye: 0.08, clearScalars: true, clearVelocity: true }],
-		scalarFields: [{ name: 'ink', dissipation: 0.05, advection: 'low-dissipation', color: { r: 0.7, g: 1.0, b: 1.15 }, range: [0, 1] }],
-		visualization: { colorBy: 'scalar', scalar: 'ink', glowBy: 'speed', transfer: 'water', scale: 1.0 }
+		forces: [{ kind: 'pressureGradient', vector: { x: 28, y: 0 } }],
+		outlets: [{ edge: 'right', from: 0.16, to: 0.84, width: 0.08, clearDye: 0.32, clearScalars: true, clearVelocity: true }]
 	};
 
 	export const handle: FluidHandle = {
@@ -107,24 +97,38 @@
 	{style}
 	{seed}
 	{lazy}
+	{pointerInput}
 	{splatOnHover}
 	aria-label={ariaLabel}
 	containerShape={VALVE_CHANNEL}
 	flow={FLOW}
-	curl={4}
-	densityDissipation={0.38}
-	velocityDissipation={0.04}
+	curl={10}
+	densityDissipation={0.36}
+	velocityDissipation={0.085}
+	maxTimeStep={1 / 60}
+	substeps={1}
+	viscosity={0.04}
+	viscosityIterations={10}
+	wallFriction={0.14}
+	wallFrictionWidth={2}
 	pressure={0.9}
-	pressureIterations={34}
-	splatRadius={0.06}
+	pressureIterations={30}
+	splatRadius={0.085}
 	splatForce={6000}
+	autoSplatRate={5}
+	autoSplatCount={4}
+	autoSplatVelocityX={190}
+	autoSplatVelocityY={0}
+	autoSplatCenterX={0.035}
+	autoSplatBandWidth={0.024}
+	autoSplatCenterY={0.49}
+	autoSplatBandHeight={0.18}
 	shading={false}
 	colorful={false}
 	bloom={false}
 	sunrays={false}
-	simResolution={224}
-	dyeResolution={1024}
+	simResolution={192}
+	dyeResolution={768}
 	initialSplatCount={0}
 	backColor={backColor ?? { r: 5, g: 9, b: 12 }}
-	presetSplats={PRESET_SPLATS}
 />

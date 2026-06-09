@@ -11,9 +11,9 @@
 
 	<div class="grid">
 		<div class="card">
-			<h3>Star (SvgPathFluid preset)</h3>
+			<h3>Ampersand (SvgPathFluid preset)</h3>
 			<div class="canvas-wrap">
-				<SvgPathFluid seed={42} aria-label="Star preset" />
+				<SvgPathFluid seed={42} aria-label="Ampersand preset" />
 			</div>
 		</div>
 

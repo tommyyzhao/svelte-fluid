@@ -22,7 +22,16 @@
 	/** Props consumed by `<GasFlare />`. Sizing/seed/styling are forwarded; flare geometry and plume behavior are pinned. */
 	export type GasFlareProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+		| 'width'
+		| 'height'
+		| 'class'
+		| 'style'
+		| 'seed'
+		| 'lazy'
+		| 'pointerInput'
+		| 'splatOnHover'
+		| 'aria-label'
+		| 'backColor'
 	>;
 </script>
 
@@ -37,6 +46,7 @@
 		style,
 		seed,
 		lazy,
+		pointerInput = true,
 		splatOnHover = true,
 		'aria-label': ariaLabel,
 		backColor
@@ -117,6 +127,7 @@
 	{style}
 	{seed}
 	{lazy}
+	{pointerInput}
 	{splatOnHover}
 	aria-label={ariaLabel}
 	obstructions={[{ d: LEFT_STACK_WALL, fit: 'fill' }, { d: RIGHT_STACK_WALL, fit: 'fill' }]}
@@ -127,18 +138,20 @@
 	initialDensityDissipation={0.55}
 	velocityDissipation={0.055}
 	pressure={0.85}
-	pressureIterations={28}
+	pressureIterations={24}
 	splatRadius={0.06}
 	splatForce={3800}
 	shading={false}
 	colorful={false}
 	bloom={true}
+	bloomIterations={5}
+	bloomResolution={192}
 	bloomThreshold={0.48}
 	bloomIntensity={1.0}
 	sunrays={false}
 	sunraysWeight={0}
-	simResolution={192}
-	dyeResolution={1024}
+	simResolution={160}
+	dyeResolution={768}
 	initialSplatCount={0}
 	backColor={backColor ?? { r: 6, g: 6, b: 8 }}
 />

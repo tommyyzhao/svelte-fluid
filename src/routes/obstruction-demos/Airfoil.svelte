@@ -1,18 +1,20 @@
 <!--
   svelte-fluid — Airfoil obstruction demo (DEMO-ONLY, not a shipped preset)
 
-  Visual intent: a wind-tunnel "schlieren" look. A broad inlet velocity field
-  enters from the left, splits over and under a single cambered airfoil
-  obstruction, then rejoins downstream.
+  Visual intent: wind-tunnel tracer dye. A broad pressure-driven velocity
+  field enters from the left, while discrete dye splats reveal how the flow
+  splits over and under a single cambered airfoil obstruction before
+  rejoining downstream.
 
   How the flow look is produced:
   - openBoundary is ON. Obstructions are physical walls regardless of the
     canvas-edge condition, so the airfoil still deflects the fluid — but the
-    open boundary lets the wind-tunnel stream exit the right edge instead of
+    open boundary lets the wind-tunnel stream exit any canvas edge instead of
     recirculating and saturating the sealed box.
-  - A persistent line source sustains a steady +x wind-tunnel field. The
-    display colors by speed, not accumulated dye, so the view does not blow
-    out to white as the inlet keeps running.
+  - A gentle pressure-gradient body force sustains a steady +x wind-tunnel
+    field. Discrete left-edge automatic dye splats use the previous tracer
+    velocity scale, so the pattern shows the split/rejoin behavior without
+    painting a continuous inlet band.
 
   HONEST FAITHFULNESS NOTE: this is partly faithful — the streamline SPLIT
   over/under the body is real (the mask genuinely blocks the fluid). But NO
@@ -22,10 +24,9 @@
 
   Coordinate notes:
   - SVG path space is y-DOWN: SVG y=0 → TOP of canvas. The body is centered
-    near SVG y=50 (canvas middle), so injection rows in splat-space
-    (y bottom-to-top) cluster around y≈0.5 to feed the leading edge.
-  - FlowSource velocity is in solver units. The startup pulse is intentionally
-    faint; the persistent inlet and speed visualization carry the scene.
+    near SVG y=50 (canvas middle).
+  - The pressure-gradient force is in solver velocity units per second; speed
+    forcing carries the scene while dye splats supply the visible tracers.
 -->
 
 <script lang="ts" module>
@@ -40,7 +41,7 @@
 
 <script lang="ts">
 	import Fluid from '../../lib/Fluid.svelte';
-	import type { FlowConfig, FluidHandle, PresetSplat, RGB } from '../../lib/engine/types.js';
+	import type { FlowConfig, FluidHandle, PresetSplat } from '../../lib/engine/types.js';
 
 	let {
 		width,
@@ -67,57 +68,24 @@
 		' C 21 55, 17 53, 18 50' +
 		' Z';
 
-	// Faint startup tracer rows; the sustained field is speed-colored below.
-	// These are intentionally dim so they add structure without becoming the
-	// dominant visual or hiding the airfoil.
-	const STREAM_COLORS: RGB[] = [
-		{ r: 0.08, g: 0.01, b: 0.015 }, // red
-		{ r: 0.09, g: 0.05, b: 0.01 }, // amber
-		{ r: 0.01, g: 0.08, b: 0.025 }, // green
-		{ r: 0.01, g: 0.07, b: 0.10 }, // cyan
-		{ r: 0.025, g: 0.03, b: 0.10 }, // blue
-		{ r: 0.08, g: 0.015, b: 0.08 } // magenta
-	];
-
-	// Six faint tracer rows entering at the left edge. Several rows straddle
-	// the body's vertical extent so the startup dye hints at the split.
-	const INJECT_X = 0.03;
-	const INJECT_DX = 460;
-	const ROW_Y = [0.3, 0.38, 0.46, 0.54, 0.62, 0.7];
-
-	function buildStreamlines(): PresetSplat[] {
-		return ROW_Y.map((y, i) => ({
-			x: INJECT_X,
-			y,
-			dx: INJECT_DX,
-			dy: 0,
-			color: STREAM_COLORS[i]
-		}));
-	}
-
-	// Opening scene: the streamlines already present at t=0.
-	const PRESET_SPLATS: PresetSplat[] = buildStreamlines();
-
 	const FLOW: FlowConfig = {
 		mode: 'live',
 		boundary: { left: 'open', right: 'open', top: 'open', bottom: 'open' },
-		sources: [
-			{
-				kind: 'line',
-				from: { x: 0.025, y: 0.18 },
-				to: { x: 0.025, y: 0.82 },
-				velocity: { x: 560, y: 0 },
-				dye: { r: 0.004, g: 0.014, b: 0.025 },
-				scalars: { ink: 0.08 },
-				rate: 30,
-				radius: 0.032,
-				profile: 'uniform'
-			}
+		forces: [{ kind: 'pressureGradient', vector: { x: 38, y: 0 } }],
+		outlets: [
+			{ edge: 'right', from: 0, to: 1, width: 0.025, clearDye: 0.02, clearScalars: true, clearVelocity: false },
+			{ edge: 'top', from: 0, to: 1, width: 0.025, clearDye: 0.04, clearScalars: true, clearVelocity: false },
+			{ edge: 'bottom', from: 0, to: 1, width: 0.025, clearDye: 0.04, clearScalars: true, clearVelocity: false },
+			{ edge: 'left', from: 0, to: 1, width: 0.018, clearDye: 0.55, clearScalars: true, clearVelocity: false }
 		],
-		outlets: [{ edge: 'right', from: 0, to: 1, width: 0.05, clearDye: 0.45, clearScalars: true, clearVelocity: true }],
-		scalarFields: [{ name: 'ink', dissipation: 0.65, advection: 'low-dissipation' }],
-		visualization: { colorBy: 'speed', glowBy: 'speed', transfer: 'water', scale: 0.00072 }
+		visualization: { colorBy: 'dye' }
 	};
+
+	const PRESET_SPLATS: PresetSplat[] = [
+		{ x: 0.11, y: 0.6, dx: 460, dy: 0, color: { r: 0.08, g: 0.8, b: 1.2 } },
+		{ x: 0.11, y: 0.5, dx: 460, dy: 0, color: { r: 0.85, g: 0.08, b: 1.0 } },
+		{ x: 0.11, y: 0.4, dx: 460, dy: 0, color: { r: 1.1, g: 0.72, b: 0.08 } }
+	];
 
 	export const handle: FluidHandle = {
 		splat: (x, y, dx, dy, color) => inner?.handle.splat(x, y, dx, dy, color),
@@ -144,12 +112,26 @@
 	flow={FLOW}
 	openBoundary
 	curl={4}
-	densityDissipation={1.8}
-	velocityDissipation={0.04}
+	densityDissipation={0.72}
+	velocityDissipation={0.075}
+	maxTimeStep={1 / 120}
+	substeps={2}
+	viscosity={0.012}
+	viscosityIterations={8}
+	wallFriction={0.14}
+	wallFrictionWidth={2}
 	pressure={0.9}
 	pressureIterations={34}
-	splatRadius={0.035}
+	splatRadius={0.055}
 	splatForce={2800}
+	autoSplatRate={3.6}
+	autoSplatCount={3}
+	autoSplatVelocityX={460}
+	autoSplatVelocityY={0}
+	autoSplatCenterX={0.035}
+	autoSplatBandWidth={0.025}
+	autoSplatCenterY={0.5}
+	autoSplatBandHeight={0.46}
 	bloom={false}
 	bloomThreshold={0.6}
 	bloomIntensity={0.5}

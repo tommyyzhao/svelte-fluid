@@ -526,6 +526,13 @@ export interface FluidConfig {
 	 */
 	autoSplatCenterY?: number;
 	/**
+	 * Horizontal center of the automatic splat spawn band, in 0–1
+	 * (left-to-right): 0 = left edge, 0.5 = center, 1 = right edge.
+	 * Default 0.5. Actual x positions also use `autoSplatBandWidth`
+	 * unless `autoSplatEvenX` is true. Bucket A.
+	 */
+	autoSplatCenterX?: number;
+	/**
 	 * When true, each burst uses equal x positions across the horizontal
 	 * axis instead of random x positions. The `autoSplatCount` splats
 	 * are spaced at `(i + 0.5) / count` for i in 0..count-1.
@@ -549,6 +556,14 @@ export interface FluidConfig {
 	 * splats naturally). Bucket A.
 	 */
 	autoSplatBandHeight?: number;
+	/**
+	 * Width of the automatic splat spawn band. The x-coordinate is
+	 * `autoSplatCenterX + (random - 0.5) * autoSplatBandWidth`, clamped
+	 * to [0, 1]. Default 1.0 (full canvas width). Set near 0 for a
+	 * left/right inlet plume. Ignored when `autoSplatEvenX` is true.
+	 * Bucket A.
+	 */
+	autoSplatBandWidth?: number;
 	/**
 	 * Confine the fluid to a geometric shape. The simulation physically
 	 * enforces the boundary — velocity is zeroed outside after every physics
@@ -796,9 +811,11 @@ export interface ResolvedConfig {
 	AUTO_SPLAT_VELOCITY_X: number;
 	AUTO_SPLAT_VELOCITY_Y: number;
 	AUTO_SPLAT_CENTER_Y: number;
+	AUTO_SPLAT_CENTER_X: number;
 	AUTO_SPLAT_EVEN_X: boolean;
 	AUTO_SPLAT_SWIRL: number;
 	AUTO_SPLAT_BAND_HEIGHT: number;
+	AUTO_SPLAT_BAND_WIDTH: number;
 	CONTAINER_SHAPE: ContainerShape | null;
 	GLASS: boolean;
 	GLASS_THICKNESS: number;

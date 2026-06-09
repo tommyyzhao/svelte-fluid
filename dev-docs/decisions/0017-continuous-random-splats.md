@@ -23,7 +23,7 @@ splats.
 
 ## Decision
 
-Add six new config fields to `FluidConfig` / `ResolvedConfig`:
+Add eight new config fields to `FluidConfig` / `ResolvedConfig`:
 
 | camelCase | SCREAMING_CASE | Type | Default | Meaning |
 | --- | --- | --- | --- | --- |
@@ -32,13 +32,15 @@ Add six new config fields to `FluidConfig` / `ResolvedConfig`:
 | `autoSplatColor` | `AUTO_SPLAT_COLOR` | `RGB \| null` | `null` | Fixed color for continuous splats. Null = random. |
 | `autoSplatVelocityX` | `AUTO_SPLAT_VELOCITY_X` | `number` | `0` | X velocity for continuous splats. |
 | `autoSplatVelocityY` | `AUTO_SPLAT_VELOCITY_Y` | `number` | `0` | Y velocity for continuous splats. |
+| `autoSplatCenterX` | `AUTO_SPLAT_CENTER_X` | `number` | `0.5` | Normalized X position (0–1, clamped) for continuous splats. |
 | `autoSplatCenterY` | `AUTO_SPLAT_CENTER_Y` | `number` | `0.5` | Normalized Y position (0–1, clamped) for continuous splats. |
+| `autoSplatBandWidth` | `AUTO_SPLAT_BAND_WIDTH` | `number` | `1.0` | Horizontal spawn-band width. |
 
 Implementation lives entirely inside `FluidEngine` — a private method
 `accumulateAutoSplatTimer(dt)` is called from `update()`. It
 accumulates delta time; when the accumulated time exceeds
-`1 / AUTO_SPLAT_RATE`, it creates `AUTO_SPLAT_COUNT` splats at
-random x/y positions with the configured color and velocity.
+`1 / AUTO_SPLAT_RATE`, it creates `AUTO_SPLAT_COUNT` splats inside the
+configured x/y spawn band with the configured color and velocity.
 
 When `AUTO_SPLAT_COLOR` is `null`, the color is randomly generated
 via `generateColor(rng)` (matching `multipleSplats()`). When set, the
@@ -49,7 +51,7 @@ Velocity fields (`AUTO_SPLAT_VELOCITY_X`, `AUTO_SPLAT_VELOCITY_Y`) are passed
 directly to `splat()`, same as `PresetSplat.dx/dy` — not scaled by
 `splatForce`.
 
-All six fields are **Bucket A** (hot-updatable scalar). Rate changes
+All eight fields are **Bucket A** (hot-updatable scalar). Rate changes
 take effect next frame. Setting `autoSplatRate = 0` at runtime stops
 continuous generation and resets the timer.
 
@@ -69,9 +71,11 @@ The timer respects:
 - Zero cost when disabled (rate = 0): the timer path is a single
   `if` check.
 - Color and velocity decoupling allows full creative control.
+- Horizontal spawn bands allow inlet-plume presets such as `TeslaValve`
+  without component-local timers or persistent dye line sources.
 
 **Negative:**
-- Six extra fields in the config surface. The config already has ~30
+- Eight extra fields in the config surface. The config already has ~30
   fields; this is a modest increase.
 - Timer accumulation is frame-coupled (not perfectly precise
   real-time). Acceptable for a visual effect.

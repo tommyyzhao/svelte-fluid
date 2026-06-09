@@ -18,7 +18,7 @@
 	export interface FluidRevealProps extends FluidConfig {
 		/**
 		 * How easily areas reveal. Multiplier on dye intensity before
-		 * the power curve. Higher = less dye needed. Default 0.24.
+		 * the power curve. Higher = less dye needed. Default 0.1.
 		 */
 		sensitivity?: number;
 		/**

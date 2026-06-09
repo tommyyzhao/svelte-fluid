@@ -47,20 +47,98 @@ describe('preset pointer interaction defaults', () => {
 });
 
 describe('flow-sensitive obstruction demos', () => {
-	it('Karman uses persistent flow sources instead of random auto splats', () => {
-		expect(karman).toContain('const FLOW: FlowConfig');
-		expect(karman).toContain('flow={FLOW}');
-		expect(karman).not.toContain('autoSplatRate=');
-		expect(karman).not.toContain('autoSplatCount=');
+	it('InkInWater remains an intermittent droplet preset, not a flow-scene retrofit', () => {
+		expect(inkInWater).not.toContain('FlowConfig');
+		expect(inkInWater).not.toContain('flow={FLOW}');
+		expect(inkInWater).toContain('autoSplatRate={0.2}');
+		expect(inkInWater).toContain('autoSplatVelocityY={-180}');
+		expect(inkInWater).toContain('autoSplatCenterY={0.9}');
+		expect(inkInWater).toContain('bloom');
+		expect(inkInWater).toContain('bloomIntensity={0.6}');
 	});
 
-	it('Airfoil uses persistent flow sources and a narrow body', () => {
+	it('Karman uses pressure-driven throughflow with fast intermittent dye tracers', () => {
+		expect(karman).toContain('const FLOW: FlowConfig');
+		expect(karman).toContain('flow={FLOW}');
+		expect(karman).toContain("forces: [{ kind: 'pressureGradient', vector: { x: 56, y: 0 } }]");
+		expect(karman).toContain("visualization: { colorBy: 'dye' }");
+		expect(karman).toContain("boundary: { left: 'open', right: 'open', top: 'open', bottom: 'open' }");
+		expect(karman).toContain(
+			"{ edge: 'right', from: 0, to: 1, width: 0.075, clearDye: 0.08, clearScalars: true, clearVelocity: true }"
+		);
+		expect(karman).toContain(
+			"{ edge: 'top', from: 0, to: 1, width: 0.045, clearDye: 0.12, clearScalars: true, clearVelocity: false }"
+		);
+		expect(karman).toContain(
+			"{ edge: 'bottom', from: 0, to: 1, width: 0.045, clearDye: 0.12, clearScalars: true, clearVelocity: false }"
+		);
+		expect(karman).toContain(
+			"{ edge: 'left', from: 0, to: 1, width: 0.02, clearDye: 0.45, clearScalars: true, clearVelocity: false }"
+		);
+		expect(karman).toContain('autoSplatRate={5.5}');
+		expect(karman).toContain('autoSplatCount={3}');
+		expect(karman).toContain('autoSplatVelocityX={750}');
+		expect(karman).toContain('autoSplatCenterX={0.035}');
+		expect(karman).toContain('autoSplatBandWidth={0.025}');
+	});
+
+	it('RiverDelta uses a left-edge flow source plus constrained muted tracer packets', () => {
+		expect(riverDelta).toContain('const FLOW: FlowConfig');
+		expect(riverDelta).toContain('flow={FLOW}');
+		expect(riverDelta).toContain("kind: 'line'");
+		expect(riverDelta).toContain('from: { x: 0.025, y: 0.12 }');
+		expect(riverDelta).toContain("boundary: { left: 'open', right: 'open', top: 'open', bottom: 'open' }");
+		expect(riverDelta).toContain(
+			"{ edge: 'right', from: 0, to: 1, width: 0.085, clearDye: 0.08, clearScalars: true, clearVelocity: true }"
+		);
+		expect(riverDelta).toContain(
+			"{ edge: 'top', from: 0, to: 1, width: 0.055, clearDye: 0.1, clearScalars: true, clearVelocity: false }"
+		);
+		expect(riverDelta).toContain(
+			"{ edge: 'bottom', from: 0, to: 1, width: 0.055, clearDye: 0.1, clearScalars: true, clearVelocity: false }"
+		);
+		expect(riverDelta).toContain(
+			"{ edge: 'left', from: 0, to: 1, width: 0.012, clearDye: 0.65, clearScalars: true, clearVelocity: false }"
+		);
+		expect(riverDelta).toContain('autoSplatRate={1.15}');
+		expect(riverDelta).toContain('autoSplatColor={{ r: 0.12, g: 0.22, b: 0.18 }}');
+		expect(riverDelta).toContain('autoSplatCenterX={0.035}');
+		expect(riverDelta).toContain('autoSplatBandWidth={0.03}');
+		expect(riverDelta).toContain('colorful={false}');
+		expect(riverDelta).toContain('bloom={false}');
+	});
+
+	it('Airfoil uses pressure-driven flow plus dye splats around a narrow body', () => {
 		expect(airfoil).toContain('const FLOW: FlowConfig');
 		expect(airfoil).toContain('flow={FLOW}');
 		expect(airfoil).not.toContain('setInterval');
 		expect(airfoil).toContain('bloom={false}');
-		expect(airfoil).toContain("kind: 'line'");
-		expect(airfoil).toContain("visualization: { colorBy: 'speed'");
+		expect(airfoil).toContain("forces: [{ kind: 'pressureGradient'");
+		expect(airfoil).toContain("visualization: { colorBy: 'dye' }");
+		expect(airfoil).toContain("boundary: { left: 'open', right: 'open', top: 'open', bottom: 'open' }");
+		expect(airfoil).toContain("edge: 'right'");
+		expect(airfoil).toContain("edge: 'top'");
+		expect(airfoil).toContain("edge: 'bottom'");
+		expect(airfoil).toContain("edge: 'left'");
+		expect(airfoil).toContain('autoSplatRate={3.6}');
+		expect(airfoil).toContain('autoSplatCount={3}');
+		expect(airfoil).toContain('autoSplatVelocityX={460}');
+		expect(airfoil).toContain('autoSplatCenterX={0.035}');
+		expect(airfoil).toContain('autoSplatBandWidth={0.025}');
+		expect(airfoil).toContain('autoSplatBandHeight={0.46}');
+		expect(airfoil).toContain('presetSplats={PRESET_SPLATS}');
+		expect(airfoil).toContain(
+			"{ edge: 'right', from: 0, to: 1, width: 0.025, clearDye: 0.02, clearScalars: true, clearVelocity: false }"
+		);
+		expect(airfoil).toContain(
+			"{ edge: 'top', from: 0, to: 1, width: 0.025, clearDye: 0.04, clearScalars: true, clearVelocity: false }"
+		);
+		expect(airfoil).toContain(
+			"{ edge: 'bottom', from: 0, to: 1, width: 0.025, clearDye: 0.04, clearScalars: true, clearVelocity: false }"
+		);
+		expect(airfoil).toContain(
+			"{ edge: 'left', from: 0, to: 1, width: 0.018, clearDye: 0.55, clearScalars: true, clearVelocity: false }"
+		);
 		expect(airfoil).toContain("' C 22 43, 42 41, 62 44'");
 	});
 
@@ -69,8 +147,29 @@ describe('flow-sensitive obstruction demos', () => {
 		expect(teslaValve).toContain('const TESLA_VALVE_PATH');
 		expect(teslaValve).toContain('viewBox: [0, 0, 1220, 257]');
 		expect(teslaValve).toContain("fillRule: 'evenodd'");
-		expect(teslaValve).toContain('maskResolution: 1024');
+		expect(teslaValve).toContain('maskResolution: 2048');
 		expect(teslaValve).toContain('containerShape={VALVE_CHANNEL}');
+		expect(teslaValve).toContain("forces: [{ kind: 'pressureGradient', vector: { x: 28, y: 0 } }]");
+		expect(teslaValve).toContain('autoSplatRate={5}');
+		expect(teslaValve).toContain('autoSplatCount={4}');
+		expect(teslaValve).toContain('autoSplatVelocityX={190}');
+		expect(teslaValve).toContain('autoSplatCenterX={0.035}');
+		expect(teslaValve).toContain('autoSplatBandWidth={0.024}');
+		expect(teslaValve).toContain('autoSplatCenterY={0.49}');
+		expect(teslaValve).toContain('autoSplatBandHeight={0.18}');
+		expect(teslaValve).toContain('viscosity={0.04}');
+		expect(teslaValve).toContain('viscosityIterations={10}');
+		expect(teslaValve).not.toContain("kind: 'line'");
+		expect(teslaValve).not.toContain('dye: { r: 1.0, g: 0.24, b: 0.02 }');
+		expect(teslaValve).not.toContain('dye: { r: 0.0, g: 0.9, b: 1.0 }');
+		expect(teslaValve).not.toContain('dye: { r: 0.95, g: 0.08, b: 0.95 }');
+		expect(teslaValve).not.toContain('Low-rate tracer feeds');
+		expect(teslaValve).not.toContain('from: { x: 0.15');
+		expect(teslaValve).not.toContain('from: { x: 0.38');
+		expect(teslaValve).not.toContain('from: { x: 0.62');
+		expect(teslaValve).not.toContain('PresetSplat');
+		expect(teslaValve).not.toContain("visualization: { colorBy: 'speed'");
+		expect(teslaValve).not.toContain('scalarFields');
 		expect(teslaValve).not.toContain('obstructions={TONGUES}');
 	});
 
@@ -86,23 +185,27 @@ describe('flow-sensitive obstruction demos', () => {
 
 	it('Venturi uses pressure-gradient-style forcing so the throat speed-up is visible', () => {
 		expect(venturi).toContain("forces: [{ kind: 'pressureGradient', vector: { x: 42, y: 0 } }]");
-		expect(venturi).toContain('maxTimeStep={1 / 120}');
-		expect(venturi).toContain('substeps={2}');
-		expect(venturi).toContain('viscosity={0.018}');
-		expect(venturi).toContain('wallFriction={0.18}');
+		expect(venturi).toContain('maxTimeStep={1 / 60}');
+		expect(venturi).toContain('substeps={1}');
+		expect(venturi).toContain('viscosity={0.016}');
+		expect(venturi).toContain('viscosityIterations={5}');
+		expect(venturi).toContain('wallFriction={0.16}');
+		expect(venturi).toContain('pressureIterations={26}');
 		expect(venturi).not.toContain('velocity: { x:');
 		expect(venturi).not.toContain('rate:');
 		expect(venturi).toContain("outlets: [{ edge: 'right', from: 0, to: 1");
 		expect(venturi).toContain('clearVelocity: true');
 		expect(venturi).toContain("transfer: 'cfd'");
-		expect(venturi).toContain('range: [0, 260]');
+		expect(venturi).toContain('range: [0, 170]');
 		expect(venturi).not.toContain('scalars: { ink');
 	});
 
 	it('Maze uses a low-diffusion scalar sheet and gravity to read more like liquid', () => {
 		expect(maze).toContain("kind: 'line'");
 		expect(maze).toContain("forces: [{ kind: 'gravity'");
-		expect(maze).toContain('dissipation: 0.003');
+		expect(maze).toContain("bottom: 'open'");
+		expect(maze).toContain('dissipation: 0.045');
+		expect(maze).toContain('clearVelocity: false');
 		expect(maze).toContain('bloom={false}');
 	});
 });

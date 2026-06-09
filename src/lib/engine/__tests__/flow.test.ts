@@ -26,6 +26,16 @@ describe('flow outlet math', () => {
 		expect(outlet(2, 0, 1)).toBe(0);
 		expect(outlet(2, 0.25, 1)).toBe(0.5);
 	});
+
+	it('batches multiple outlet gates with the same multiplicative damping as sequential passes', () => {
+		const first = outlet(2, 0.5, 1);
+		const second = outlet(first, 0.25, 1);
+		expect(second).toBe(2 * 0.5 * 0.25);
+		expect(shadersSrc).toContain('keepProduct *= mix(1.0, uKeep[i], gate);');
+		expect(engineSrc).toContain('const FLOW_OUTLET_BATCH_SIZE = 4;');
+		expect(engineSrc).toContain('private applyFlowOutletBatch');
+		expect(engineSrc).not.toContain('private applyFlowOutlet(outlet: FlowOutlet');
+	});
 });
 
 describe('flow boundary precedence', () => {
@@ -59,6 +69,15 @@ describe('mask-aware projection shader wiring', () => {
 		expect(shadersSrc).toContain('if (solidAt(vL) > 0.5) { L = -C.x; }');
 		expect(shadersSrc).toContain('if (solidAt(vL) > 0.5) { L = C; }');
 	});
+
+	it('builds a combined binary solid mask from containers and obstructions', () => {
+		expect(engineSrc).toContain('private solidMaskTexture: WebGLTexture | null = null;');
+		expect(engineSrc).toContain('private initSolidMaskTexture(): void');
+		expect(engineSrc).toContain('outsideContainer || insideObstruction ? 255 : 0');
+		expect(engineSrc).toContain('containerMask(shape, uvX, uvY, aspect, containerCtx) < 0.5');
+		expect(engineSrc).toContain('obstructionMask(uvX, uvY, obstructionCtx) >= 0.5');
+		expect(engineSrc).toContain('const has = !!this.solidMaskTexture;');
+	});
 });
 
 describe('flow visualization precedence', () => {
@@ -75,8 +94,19 @@ describe('flow visualization precedence', () => {
 		expect(shadersSrc).toContain('float flowMask = cmask;');
 		expect(shadersSrc).toContain('flowMask *= smoothstep(0.75, 0.98, cmask);');
 		expect(shadersSrc).toContain('float solidEdge = texture2D(uObstructionMask, solidUv).r;');
+		expect(shadersSrc).toContain('float containerEdge = 1.0 - texture2D(uContainerMaskTexture, containerUv).r;');
 		expect(shadersSrc).toContain('c = max(c, flowColor * flowMask);');
 		expect(engineSrc).toContain('gl.uniform2f(this.displayMaterial.uniforms.texelSize, 1.0 / width, 1.0 / height);');
+	});
+
+	it('composites opaque backgrounds in the display shader instead of a separate full-screen pass', () => {
+		expect(shadersSrc).toContain('uniform vec3 uBackColor;');
+		expect(shadersSrc).toContain('uniform float uCompositeBackground;');
+		expect(shadersSrc).toContain('c + uBackColor * (1.0 - a)');
+		expect(engineSrc).toContain('this.drawDisplay(displayTarget, this.config.TRANSPARENT ? null : this.normalizedBackColor);');
+		expect(engineSrc).not.toContain('this.drawColor(displayTarget, this.normalizedBackColor);');
+		expect(engineSrc).not.toContain('private colorProgram');
+		expect(engineSrc).not.toContain('f.color');
 	});
 });
 
@@ -111,6 +141,22 @@ describe('solver pass order', () => {
 		);
 	});
 
+	it('drains live velocity before projection and dye/scalar only after advection', () => {
+		expect(engineSrc).toContain("if (!prescribedOnly) this.applyFlowOutlets(['velocity']);");
+		expect(engineSrc).not.toContain("this.applyFlowOutlets(prescribedOnly ? ['dye', 'scalar'] : ['velocity', 'dye', 'scalar']);");
+		expect(engineSrc).toMatch(
+			/this\.projectVelocity\(\);[\s\S]*const simulateDye = this\.shouldSimulateDye\(\);[\s\S]*this\.advectScalar\(dt\);[\s\S]*this\.applyFlowOutlets\(simulateDye \? \['dye', 'scalar'\] : \['scalar'\]\);/
+		);
+	});
+
+	it('skips empty dye advection and dye post-processing for field-visualization scenes', () => {
+		expect(engineSrc).toContain('private dyeMayContainContent = false;');
+		expect(engineSrc).toContain('private shouldSimulateDye(): boolean');
+		expect(engineSrc).toContain('this.dyeMayContainContent = true;');
+		expect(engineSrc).toContain('if (simulateDye) {');
+		expect(engineSrc).toContain('if (this.config.BLOOM && hasDyeContent) this.applyBloom(this.dye.read, this.bloom);');
+	});
+
 	it('substeps the solver from maxTimeStep instead of injecting one large frame step', () => {
 		expect(engineSrc).toContain('dt = Math.min(dt, this.config.MAX_TIME_STEP * this.config.SUBSTEPS);');
 		expect(engineSrc).toContain('const stepCount = this.simulationSubsteps(dt);');
@@ -130,11 +176,16 @@ describe('solver pass order', () => {
 });
 
 describe('flow source and scalar shader wiring', () => {
-	it('uses one shader pass per line or rect source target instead of sample loops', () => {
+	it('batches analytic flow source shapes per target instead of sample loops', () => {
 		expect(shadersSrc).toContain('export const flowSourceShader');
-		expect(shadersSrc).toContain('vec2 pa = aspectVec(vUv - uFrom);');
+		expect(shadersSrc).toContain('#define MAX_FLOW_SOURCE_BATCH 4');
+		expect(shadersSrc).toContain('uniform int uCount;');
+		expect(shadersSrc).toContain('vec2 pa = aspectVec(vUv - uFrom[i]);');
 		expect(shadersSrc).toContain('vec2 closest = clamp(vUv, mn, mx);');
-		expect(engineSrc).toContain('private applyFlowShapeSource');
+		expect(engineSrc).toContain('const FLOW_SOURCE_BATCH_SIZE = 4;');
+		expect(engineSrc).toContain('private applyFlowSourceBatch');
+		expect(engineSrc).toContain("this.arrayUniform(this.flowSourceProgram.uniforms, 'uColor')");
+		expect(engineSrc).not.toContain('private applyFlowShapeSource');
 		expect(engineSrc).not.toContain('for (let i = 0; i < samples; i++)');
 	});
 

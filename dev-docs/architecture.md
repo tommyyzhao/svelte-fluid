@@ -54,8 +54,8 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 │   • randomSplats(count)                                         │
 │   • pause() / resume() / isPaused  ← RAF control               │
 │   • setConfig(partial)        ← 4-bucket hot update             │
-│   •   includes autoSplatSwirl, autoSplatEvenX,        │
-│   •   autoSplatBandHeight (Bucket A)                              │
+│   •   includes autoSplatCenterX/Y, autoSplatBandWidth/Height,      │
+│   •   autoSplatSwirl, autoSplatEvenX (Bucket A)                    │
 │   • dispose()                 ← removes everything              │
 │                                                                 │
 │  Private (ports of script.js):                                  │
@@ -163,7 +163,8 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 2. `buildConfig()` collects current values.
 3. `engine.setConfig(cfg)` walks the four buckets:
    - **A** scalars/booleans → write to `this.config.X`, picked up next frame.
-     Includes `autoSplatSwirl`, `autoSplatEvenX`, `autoSplatBandHeight`,
+     Includes `autoSplatCenterX`, `autoSplatCenterY`, `autoSplatBandWidth`,
+     `autoSplatBandHeight`, `autoSplatSwirl`, `autoSplatEvenX`,
      `revealSensitivity`, `revealCurve`, `revealCoverColor`, `revealFringeColor`,
      `revealAccentColor`.
    - **B** SHADING/BLOOM/SUNRAYS/REVEAL/DISTORTION → `updateKeywords()` recompiles display shader.
