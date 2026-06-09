@@ -2,6 +2,13 @@
 
 **Status:** Rev 2 (revised after 4-reviewer panel: Sonnet, Opus, Gemini 3.1 Pro,
 GPT-5.5 — all blocking findings from rev 1 addressed; see §8)
+**Phase 1: ✅ shipped** (ADR-0038). Measured −35–40% frame time on the
+production lab page (target was ≥25%). Outcome deltas vs plan: profiling
+showed the Jacobi loop is pass-count bound at production grids, so 1c's RG
+packing and 1d's RG32F pressure were rejected by measurement; an adaptive
+paired-Jacobi pass (two exact iterations per blit, gated by grid size) was
+added instead. Phase 2 planning must use the two-regime cost model
+(pass-bound ≤192-class grids, fragment-bound ≥768-class).
 **Scope:** `src/lib/engine/` only, plus the minimum config-field and preset
 surface needed to exercise each engine change. Large-scale framework updates
 are out of scope (next session).

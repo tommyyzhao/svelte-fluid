@@ -326,3 +326,39 @@ export function glslSmoothstep(edge0: number, edge1: number, x: number): number 
 	const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
 	return t * t * (3 - 2 * t);
 }
+
+/**
+ * Bake the per-cell neighbor-solidity (face aperture) texture for the solver
+ * (epic 0001 Phase 1b). For each sim-grid texel, samples the combined solid
+ * mask at the four neighbor texel centers exactly the way the GLSL
+ * `solidAt()` helper does (clamp to [0,1], y-flip, NEAREST), and packs the
+ * results as RGBA = (L, R, T, B), 255 = solid.
+ *
+ * In Phase 1 the values are strictly binary so solver behavior is
+ * bit-identical to the old per-fragment probes; Phase 3 writes fractional
+ * face apertures into the same layout.
+ */
+export function bakeSolidNeighborData(solid: MaskContext, simW: number, simH: number): Uint8Array {
+	const out = new Uint8Array(simW * simH * 4);
+	const sampleSolid = (u: number, v: number): number => {
+		const cu = Math.min(1, Math.max(0, u));
+		const cv = 1 - Math.min(1, Math.max(0, v));
+		const px = Math.min(solid.width - 1, Math.max(0, Math.floor(cu * solid.width)));
+		const py = Math.min(solid.height - 1, Math.max(0, Math.floor(cv * solid.height)));
+		return solid.data[py * solid.width + px] > 127 ? 255 : 0;
+	};
+	const du = 1 / simW;
+	const dv = 1 / simH;
+	for (let j = 0; j < simH; j++) {
+		const v = (j + 0.5) / simH;
+		for (let i = 0; i < simW; i++) {
+			const u = (i + 0.5) / simW;
+			const o = (j * simW + i) * 4;
+			out[o] = sampleSolid(u - du, v);
+			out[o + 1] = sampleSolid(u + du, v);
+			out[o + 2] = sampleSolid(u, v + dv);
+			out[o + 3] = sampleSolid(u, v - dv);
+		}
+	}
+	return out;
+}

@@ -66,8 +66,11 @@ describe('flow force math', () => {
 describe('mask-aware projection shader wiring', () => {
 	it('divergence, pressure, and gradient shaders sample the solid mask', () => {
 		expect(shadersSrc.match(/uniform sampler2D uSolidMask/g)?.length).toBeGreaterThanOrEqual(3);
-		expect(shadersSrc).toContain('if (solidAt(vL) > 0.5) { L = -C.x; }');
-		expect(shadersSrc).toContain('if (solidAt(vL) > 0.5) { L = C; }');
+		// Neighbor solidity comes from the precomputed face-aperture texture
+		// (epic 0001 1b): one RGBA fetch replaces four solidAt() probes.
+		expect(shadersSrc).toContain('if (nb.x > 0.5) { L = -C.x; }');
+		expect(shadersSrc).toContain('if (nb.x > 0.5) { L = C; }');
+		expect(shadersSrc.match(/uniform sampler2D uSolidNeighbors/g)?.length).toBeGreaterThanOrEqual(3);
 	});
 
 	it('builds a combined binary solid mask from containers and obstructions', () => {
@@ -76,7 +79,7 @@ describe('mask-aware projection shader wiring', () => {
 		expect(engineSrc).toContain('outsideContainer || insideObstruction ? 255 : 0');
 		expect(engineSrc).toContain('containerMask(shape, uvX, uvY, aspect, containerCtx) < 0.5');
 		expect(engineSrc).toContain('obstructionMask(uvX, uvY, obstructionCtx) >= 0.5');
-		expect(engineSrc).toContain('const has = !!this.solidMaskTexture;');
+		expect(engineSrc).toContain('const has = !!this.solidMaskTexture && !!this.solidNeighborTexture;');
 	});
 });
 
