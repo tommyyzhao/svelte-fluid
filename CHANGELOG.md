@@ -1,5 +1,61 @@
 # Changelog
 
+## 0.3.0
+
+### Minor Changes
+
+- [`4b7daa8`](https://github.com/tommyyzhao/svelte-fluid/commit/4b7daa8a94b5e9f997dc88e88ab2dbb63995f87a) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Expose `backColor` as an optional override on every preset wrapper —
+  the six stylistic ones (`LavaLamp`, `Plasma`, `InkInWater`,
+  `FrozenSwirl`, `Aurora`, `ToroidalTempest`) and the four shape ones
+  (`CircularFluid`, `FrameFluid`, `AnnularFluid`, `SvgPathFluid`). Each wrapper still
+  ships its authored default; passing `backColor={{ r, g, b }}` (0–255)
+  overrides only the empty-canvas substrate so the preset adapts to its
+  host page. The preset's splat palette, dissipation, and dye dynamics
+  are unchanged. Additive: omitting the prop preserves prior behavior.
+  See ADR-0033.
+
+- [`e0da8d8`](https://github.com/tommyyzhao/svelte-fluid/commit/e0da8d8aeb08d99856c524c6388861036db5d39d) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Add the `flow` scene API for persistent sources, edge-drain outlets, scalar fields, forces, prescribed fields, and field-aware visualization. Migrate GasFlare, Venturi, Karman, Airfoil, RiverDelta, and the maze demo toward believable flow controls instead of timer-driven loops or overpainted source bands, and add a TeslaValve preset that demonstrates forward throughflow with bypass-pocket recirculation cues. `flow.boundary` is authoritative per edge, prescribed mode keeps velocity purely prescribed, scalar fields support per-channel dissipation/range/color, velocity visualization supports field ranges and a CFD-style transfer ramp, line/rect emitters and outlet drains use batched shader paths, and the solver now uses a combined binary solid mask for container and obstruction boundaries. Flow scenes avoid redundant dye/scalar outlet passes, skip empty dye advection/post-processing, composite opaque backgrounds in the display shader, suppress field overlays at SVG-container seams, and use four-edge dye drains where tracer dye should leave open borders instead of collecting at the frame. Automatic splats also gain `autoSplatCenterX` and `autoSplatBandWidth` so presets can declaratively spawn inlet plumes from left or right bands without component-local timers. InkInWater stays on its original intermittent droplet auto-splat recipe because that visual preset is not a throughflow scene. The homepage playground now includes solver/fidelity controls, auto-splat placement controls, and a compact custom `FlowConfig` editor while the docs and demo page surface all 14 exported presets.
+
+- [`9e24f2c`](https://github.com/tommyyzhao/svelte-fluid/commit/9e24f2c399b032ca608a937842be8667f2943c53) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Add interior obstructions — arbitrary SVG-path/text obstacles the fluid flows
+  around, orthogonal to `containerShape`. New `obstructions: Obstruction[]` config
+  field; all obstructions union into one combined mask and the allowed fluid
+  region becomes `container × (1 − obstruction)`. Each `Obstruction` supports
+  `offset`/`scale` placement and a `fit: 'contain' | 'fill'` mode (`'fill'`
+  stretches geometry to span the canvas at any aspect — for maze/nozzle channels).
+  Obstruction physics stays active even under `openBoundary` (a solid obstacle
+  blocks flow regardless of the canvas edges). See ADR-0034.
+
+- [`9e24f2c`](https://github.com/tommyyzhao/svelte-fluid/commit/9e24f2c399b032ca608a937842be8667f2943c53) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Add GasFlare, Venturi, RiverDelta, and TeslaValve presets — qualitative flow demos built on interior obstructions, SVG-path containers, and the flow scene API. RiverDelta and Karman use constrained tracer packets rather than persistent painted bands, and TeslaValve uses high viscosity plus left-edge multicolor auto-splats to make forward throughflow and loop mixing more legible without implying hard-stop valve behavior.
+
+- [`28452fb`](https://github.com/tommyyzhao/svelte-fluid/commit/28452fb8091a0319730194e118e4087db8cc8bbc) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Expose `splatOnHover` on all six stylistic preset wrappers — `LavaLamp`,
+  `Plasma`, `InkInWater`, `FrozenSwirl`, `Aurora`, `ToroidalTempest` — so
+  they match the shape preset wrappers (`CircularFluid`, `FrameFluid`,
+  `AnnularFluid`, `SvgPathFluid`) which already accept the prop. Additive:
+  omitting it preserves the existing default behavior (no hover splatting).
+  See ADR-0032.
+
+### Patch Changes
+
+- [`9e24f2c`](https://github.com/tommyyzhao/svelte-fluid/commit/9e24f2c399b032ca608a937842be8667f2943c53) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Fix several `FluidConfig` props that were never forwarded from the `Fluid`
+  component to the engine: `revealAccentColor` and `revealFringeColor` (reveal
+  fringe colors) had no effect when set, and the new `obstructions` prop was
+  inert. All are now wired through `buildConfig()`. Added a source-level guard
+  test asserting every `FluidConfig` field reaches the engine.
+
+- [`5a61387`](https://github.com/tommyyzhao/svelte-fluid/commit/5a6138775fe829b2d78e337e6fe14e5f1e0705d5) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - RiverDelta preset retune: the current is slowed to ~120 px/s (inlet,
+  startup jets, and tracer packets all halved from 260) so the braiding
+  stays legible, and the tracer packets now spawn more often (rate 2.6,
+  count 3) with a fresh generated hue per packet (`autoSplatColor: null`)
+  instead of a single muted teal.
+
+- [`2c0ffe4`](https://github.com/tommyyzhao/svelte-fluid/commit/2c0ffe440ace5116eff3bbd4890bf73b392c7a56) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Solver pass restructuring: container/obstruction masking folded into the
+  advection, viscosity, and gradient-subtract passes (no more standalone mask
+  blits); precomputed face-aperture neighbor texture replaces per-fragment
+  solid-mask probes; pressure warm-start folded into the first Jacobi
+  iteration; adaptive paired Jacobi (two exact iterations per pass) on
+  production-sized grids. Measured ~35–40% frame-time reduction across the
+  flow presets with no visual or API change. See ADR-0038.
+
 ## 0.2.2
 
 ### Patch Changes
