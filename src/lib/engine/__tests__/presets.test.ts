@@ -82,7 +82,7 @@ describe('flow-sensitive obstruction demos', () => {
 		expect(karman).toContain('autoSplatBandWidth={0.025}');
 	});
 
-	it('RiverDelta uses a left-edge flow source plus constrained muted tracer packets', () => {
+	it('RiverDelta uses a left-edge flow source plus constrained multicolor tracer packets', () => {
 		expect(riverDelta).toContain('const FLOW: FlowConfig');
 		expect(riverDelta).toContain('flow={FLOW}');
 		expect(riverDelta).toContain("kind: 'line'");
@@ -100,8 +100,13 @@ describe('flow-sensitive obstruction demos', () => {
 		expect(riverDelta).toContain(
 			"{ edge: 'left', from: 0, to: 1, width: 0.012, clearDye: 0.65, clearScalars: true, clearVelocity: false }"
 		);
-		expect(riverDelta).toContain('autoSplatRate={1.15}');
-		expect(riverDelta).toContain('autoSplatColor={{ r: 0.12, g: 0.22, b: 0.18 }}');
+		// Slow current (~120 px/s) with frequent multicolor tracer packets
+		// (autoSplatColor null → fresh generated hue per packet).
+		expect(riverDelta).toContain('velocity: { x: 120, y: 0 }');
+		expect(riverDelta).toContain('autoSplatRate={2.6}');
+		expect(riverDelta).toContain('autoSplatCount={3}');
+		expect(riverDelta).toContain('autoSplatColor={null}');
+		expect(riverDelta).toContain('autoSplatVelocityX={120}');
 		expect(riverDelta).toContain('autoSplatCenterX={0.035}');
 		expect(riverDelta).toContain('autoSplatBandWidth={0.03}');
 		expect(riverDelta).toContain('colorful={false}');

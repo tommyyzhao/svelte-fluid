@@ -16,9 +16,10 @@
     inside the islands — applies even with an open boundary, so the river
     flows in from the left, braids around the islands, and vents off any
     open canvas edge instead of recirculating.)
-  - **Wide left-edge inlet** via the `flow` scene API plus low-rate muted
-    tracer packets from the same edge. This keeps the current physically
-    legible without returning to random HDR splats across the whole canvas.
+  - **Wide left-edge inlet** via the `flow` scene API plus frequent
+    multicolor tracer packets from the same edge (autoSplatColor null →
+    fresh generated hue per packet). The slow current (~120 px/s) keeps
+    the braiding legible while the colored packets trace the channels.
   - **Moderate dissipation + no bloom** keeps the channels readable while
     the tracer packets make the braided paths visible.
   - **Sediment palette** — dark teal water with restrained silt highlights.
@@ -98,7 +99,7 @@
 	// Opening burst: a few muted rows along the left edge so the river has
 	// visible structure before the persistent flow source and tracer packets
 	// take over.
-	const V = 260;
+	const V = 120;
 	const PRESET_SPLATS: PresetSplat[] = [
 		{ x: 0.035, y: 0.2, dx: V, dy: 0, color: { r: 0.18, g: 0.28, b: 0.24 } },
 		{ x: 0.035, y: 0.38, dx: V, dy: 0, color: { r: 0.3, g: 0.28, b: 0.16 } },
@@ -114,7 +115,7 @@
 				kind: 'line',
 				from: { x: 0.025, y: 0.12 },
 				to: { x: 0.025, y: 0.88 },
-				velocity: { x: 260, y: 0 },
+				velocity: { x: 120, y: 0 },
 				dye: { r: 0.075, g: 0.17, b: 0.15 },
 				rate: 24,
 				radius: 0.07,
@@ -176,10 +177,10 @@
 	initialSplatCount={0}
 	backColor={backColor ?? { r: 4, g: 9, b: 10 }}
 	presetSplats={PRESET_SPLATS}
-	autoSplatRate={1.15}
-	autoSplatCount={2}
-	autoSplatColor={{ r: 0.12, g: 0.22, b: 0.18 }}
-	autoSplatVelocityX={260}
+	autoSplatRate={2.6}
+	autoSplatCount={3}
+	autoSplatColor={null}
+	autoSplatVelocityX={120}
 	autoSplatVelocityY={0}
 	autoSplatCenterX={0.035}
 	autoSplatBandWidth={0.03}

@@ -554,7 +554,7 @@
 
 <h2 id="riverdelta">RiverDelta</h2>
 
-<p>A wide, muted river entering from the left edge and braiding around a chain of staggered teardrop islands. The flow can't go straight through, so continuity routes the flux through the open channels between islands; low-rate tracer packets make those braided paths visible.</p>
+<p>A wide, muted river entering from the left edge and braiding around a chain of staggered teardrop islands. The flow can't go straight through, so continuity routes the flux through the open channels between islands; a slow current (~120 px/s) carries frequent multicolor tracer packets that make the braided paths visible.</p>
 
 <p><strong>Obstructions:</strong> five teardrop islands (each pointed upstream) staggered across x and y, instanced from one path via <code>offset</code>/<code>scale</code>. All canvas edges are open, with four-edge dye drains so the wide left-edge inlet can braid around the islands and leave through any border.</p>
 
@@ -593,10 +593,10 @@
 		<tr><td><code>initialSplatCount</code></td><td>0</td></tr>
 		<tr><td><code>obstructions</code></td><td>5 staggered teardrop islands</td></tr>
 		<tr><td><code>flow</code></td><td>left-edge parabolic line inlet + four-edge dye drains</td></tr>
-		<tr><td><code>autoSplatRate</code></td><td>1.15</td></tr>
-		<tr><td><code>autoSplatCount</code></td><td>2</td></tr>
-		<tr><td><code>autoSplatColor</code></td><td>{LB} r: 0.12, g: 0.22, b: 0.18 {RB}</td></tr>
-		<tr><td><code>autoSplatVelocityX</code></td><td>260</td></tr>
+		<tr><td><code>autoSplatRate</code></td><td>2.6</td></tr>
+		<tr><td><code>autoSplatCount</code></td><td>3</td></tr>
+		<tr><td><code>autoSplatColor</code></td><td>null (fresh hue per tracer packet)</td></tr>
+		<tr><td><code>autoSplatVelocityX</code></td><td>120</td></tr>
 		<tr><td><code>autoSplatCenterX</code></td><td>0.035</td></tr>
 		<tr><td><code>autoSplatBandWidth</code></td><td>0.03</td></tr>
 		<tr><td><code>autoSplatBandHeight</code></td><td>0.84</td></tr>
