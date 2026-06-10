@@ -23,9 +23,58 @@
 			type RGB
 		} from '$lib/index.js';
 	import { base } from '$app/paths';
+	import {
+		DEFAULT_THEME_ID,
+		THEME_GROUPS,
+		THEME_STORAGE_KEY,
+		THEMES,
+		hexToRgb255,
+		hexToRgb01,
+		mix01,
+		themeById,
+		themeStyle
+	} from './components/themes.js';
 
-	const paperColor: RGB = { r: 244, g: 237, b: 224 };
-	const cardColor: RGB = { r: 235, g: 227, b: 210 };
+	// ---- Theme (unified palette switcher across all design entries) ----
+	let themeId = $state(DEFAULT_THEME_ID);
+	const theme = $derived(themeById(themeId));
+	// Non-reactive snapshot used only for $state initializers below.
+	const defaultPaper = hexToRgb255(themeById(DEFAULT_THEME_ID).paper);
+	const paperColor = $derived(hexToRgb255(theme.paper));
+	const cardColor = $derived(hexToRgb255(theme.card));
+	// Reveal cover layers derive from the theme so the covered state reads
+	// as "card surface" in every palette.
+	const revealCoverColor = $derived(hexToRgb01(theme.card));
+	const revealFringeColor = $derived(mix01(theme.card, theme.accent, 0.35));
+	const revealAccentColor = $derived(hexToRgb01(theme.accent));
+
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+		const saved = window.localStorage.getItem(THEME_STORAGE_KEY);
+		if (saved && THEMES.some((t) => t.id === saved) && saved !== themeId) {
+			themeId = saved;
+			backColor = { ...hexToRgb255(themeById(saved).paper) };
+		}
+	});
+
+	function selectTheme(e: Event) {
+		const next = (e.target as HTMLSelectElement).value;
+		themeId = next;
+		// Re-anchor the playground background to the new palette.
+		backColor = { ...paperColor };
+		try {
+			window.localStorage.setItem(THEME_STORAGE_KEY, next);
+		} catch {}
+	}
+
+	$effect(() => {
+		// Paint the document behind the centered column too (the layout
+		// default is a fixed near-black).
+		if (typeof document === 'undefined') return;
+		document.documentElement.style.background = theme.paper;
+		document.body.style.background = theme.paper;
+		document.body.style.color = theme.ink;
+	});
 
 	const installCmd = 'npm install svelte-fluid';
 	let copied = $state(false);
@@ -100,13 +149,13 @@
 	let splatOnHover = $state(true);
 	let transparent = $state(false);
 
-	let backColor = $state<RGB>({ ...paperColor });
+	let backColor = $state<RGB>({ ...defaultPaper });
 
 	let containerType = $state<'none' | 'circle' | 'roundedRect' | 'frame' | 'annulus'>('none');
 	let glass = $state(false);
 
-	// Reveal-only
-	let revealSensitivity = $state(0.18);
+	// Reveal-only (defaults mirror the FluidReveal component + showcase cards)
+	let revealSensitivity = $state(0.1);
 	let revealAutoReveal = $state(false);
 	let revealAutoRevealSpeed = $state(0.8);
 	let revealFadeBack = $state(true);
@@ -150,6 +199,7 @@
 		viscosityIterations?: number;
 		wallFriction?: number;
 		wallFrictionWidth?: number;
+		pressure?: number;
 		pressureIterations?: number;
 		bloom?: boolean;
 		shading?: boolean;
@@ -165,6 +215,7 @@
 		distortionIntensity?: number;
 		revealAutoReveal?: boolean;
 		revealFadeBack?: boolean;
+		revealSensitivity?: number;
 		flowScene?: FlowScene;
 	};
 
@@ -182,13 +233,13 @@
 			viscosityIterations: 8,
 			wallFriction: 0,
 			wallFrictionWidth: 1,
+			pressure: 0.8,
 			pressureIterations: 20,
 			bloom: true,
 			shading: true,
 			sunrays: true,
 			colorful: true,
 			splatOnHover: true,
-			backColor: paperColor,
 			containerType: 'none',
 			glass: false
 		},
@@ -200,7 +251,6 @@
 			shading: true,
 			sunrays: false,
 			splatOnHover: true,
-			backColor: paperColor,
 			containerType: 'none',
 			glass: false
 		},
@@ -212,7 +262,6 @@
 			bloom: true,
 			sunrays: false,
 			splatOnHover: true,
-			backColor: paperColor,
 			containerType: 'none',
 			glass: false
 		},
@@ -228,7 +277,6 @@
 			sunrays: false,
 			colorful: true,
 			splatOnHover: true,
-			backColor: paperColor,
 			containerType: 'roundedRect',
 			glass: true
 		},
@@ -253,16 +301,18 @@
 			curl: 0,
 			velocityDissipation: 0.95,
 			splatRadius: 0.2,
+			pressure: 1.0,
+			pressureIterations: 10,
 			bloom: false,
 			shading: false,
 			sunrays: false,
 			colorful: true,
 			splatOnHover: false,
-			backColor: paperColor,
 			containerType: 'none',
 			glass: false,
 			revealAutoReveal: false,
-			revealFadeBack: true
+			revealFadeBack: true,
+			revealSensitivity: 0.1
 		},
 		Sticky: {
 			mode: 'sticky',
@@ -275,7 +325,6 @@
 			sunrays: false,
 			colorful: true,
 			splatOnHover: true,
-			backColor: paperColor,
 			containerType: 'none',
 			glass: false,
 			stickyText: 'FLUID'
@@ -290,7 +339,6 @@
 			sunrays: false,
 			colorful: false,
 			splatOnHover: false,
-			backColor: paperColor,
 			containerType: 'none',
 			glass: false,
 			distortionStrength: 0.4,
@@ -315,6 +363,7 @@
 		if (p.viscosityIterations !== undefined) viscosityIterations = p.viscosityIterations;
 		if (p.wallFriction !== undefined) wallFriction = p.wallFriction;
 		if (p.wallFrictionWidth !== undefined) wallFrictionWidth = p.wallFrictionWidth;
+		if (p.pressure !== undefined) pressure = p.pressure;
 		if (p.pressureIterations !== undefined) pressureIterations = p.pressureIterations;
 		if (p.bloom !== undefined) bloom = p.bloom;
 		if (p.shading !== undefined) shading = p.shading;
@@ -322,7 +371,9 @@
 		if (p.colorful !== undefined) colorful = p.colorful;
 		if (p.splatOnHover !== undefined) splatOnHover = p.splatOnHover;
 		if (p.transparent !== undefined) transparent = p.transparent;
-		if (p.backColor !== undefined) backColor = { ...p.backColor };
+		// Presets re-anchor the background to the active theme unless they
+		// pin an explicit color.
+		backColor = { ...(p.backColor ?? paperColor) };
 		if (p.containerType !== undefined) containerType = p.containerType;
 		if (p.glass !== undefined) glass = p.glass;
 		if (p.stickyText !== undefined) stickyText = p.stickyText;
@@ -330,6 +381,7 @@
 		if (p.distortionIntensity !== undefined) distortionIntensity = p.distortionIntensity;
 		if (p.revealAutoReveal !== undefined) revealAutoReveal = p.revealAutoReveal;
 		if (p.revealFadeBack !== undefined) revealFadeBack = p.revealFadeBack;
+		if (p.revealSensitivity !== undefined) revealSensitivity = p.revealSensitivity;
 		if (p.flowScene !== undefined) flowScene = p.flowScene;
 		activePreset = name;
 		if (mode === 'sticky') stickyKey++;
@@ -451,7 +503,7 @@
 		if (!m) return { r: 0, g: 0, b: 0 };
 		return { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) };
 	}
-	let backColorHex = $state(rgbToHex(paperColor));
+	let backColorHex = $state(rgbToHex(defaultPaper));
 	$effect(() => {
 		const next = rgbToHex(backColor);
 		if (backColorHex !== next) backColorHex = next;
@@ -523,7 +575,9 @@
 		if (curl !== 30) lines.push(`\tcurl={${curl}}`);
 		if (splatRadius !== 0.25) lines.push(`\tsplatRadius={${fmt(splatRadius)}}`);
 		if (splatForce !== 6000) lines.push(`\tsplatForce={${splatForce}}`);
-		if (densityDissipation !== 1.0) lines.push(`\tdensityDissipation={${fmt(densityDissipation)}}`);
+		// In reveal mode densityDissipation is owned by fadeBack, not the slider.
+		if (mode !== 'reveal' && densityDissipation !== 1.0)
+			lines.push(`\tdensityDissipation={${fmt(densityDissipation)}}`);
 		if (velocityDissipation !== 0.2) lines.push(`\tvelocityDissipation={${fmt(velocityDissipation)}}`);
 		if (Math.abs(maxTimeStep - 1 / 60) > 0.0008) lines.push(`\tmaxTimeStep={${fmt(maxTimeStep)}}`);
 		if (substeps !== 1) lines.push(`\tsubsteps={${substeps}}`);
@@ -553,7 +607,10 @@
 				if (splatOnHover) lines.push(`\tsplatOnHover`);
 				if (transparent) lines.push(`\ttransparent`);
 				const d = paperColor;
-				if (backColor.r !== d.r || backColor.g !== d.g || backColor.b !== d.b)
+				if (
+					mode !== 'reveal' &&
+					(backColor.r !== d.r || backColor.g !== d.g || backColor.b !== d.b)
+				)
 					lines.push(`\tbackColor={{ r: ${backColor.r}, g: ${backColor.g}, b: ${backColor.b} }}`);
 				if (containerType !== 'none' && containerShape) {
 					const cs = containerShape;
@@ -570,9 +627,14 @@
 		}
 		if (mode === 'reveal') {
 			if (revealAutoReveal) lines.push(`\tautoReveal`);
-			if (revealSensitivity !== 0.18) lines.push(`\tsensitivity={${fmt(revealSensitivity)}}`);
-			if (revealAutoRevealSpeed !== 0.8) lines.push(`\tautoRevealSpeed={${fmt(revealAutoRevealSpeed)}}`);
+			// Compare against FluidReveal component defaults, not playground state defaults.
+			if (revealSensitivity !== 0.1) lines.push(`\tsensitivity={${fmt(revealSensitivity)}}`);
+			if (revealAutoRevealSpeed !== 1.0) lines.push(`\tautoRevealSpeed={${fmt(revealAutoRevealSpeed)}}`);
 			if (!revealFadeBack) lines.push(`\tfadeBack={false}`);
+			const rgb01 = (c: RGB) => `{{ r: ${fmt(c.r)}, g: ${fmt(c.g)}, b: ${fmt(c.b)} }}`;
+			lines.push(`\tcoverColor=${rgb01(revealCoverColor)}`);
+			lines.push(`\tfringeColor=${rgb01(revealFringeColor)}`);
+			lines.push(`\taccentColor=${rgb01(revealAccentColor)}`);
 		}
 		if (lines.length === 0) return `<${tag} />`;
 		return `<${tag}\n${lines.join('\n')}\n/>`;
@@ -638,7 +700,7 @@
 	backColor={paperColor}
 	seed={777}
 >
-	<main class="page">
+	<main class="page" style={themeStyle(theme)}>
 		<nav class="nav" aria-label="Primary">
 			<a class="brand" href="{base}/">
 				<span class="brand-mark" aria-hidden="true"></span>
@@ -651,6 +713,18 @@
 				<a href="{base}/docs/api">API</a>
 				<a href="https://github.com/tommyyzhao/svelte-fluid" target="_blank" rel="noopener">GitHub</a>
 			</div>
+			<label class="theme-switcher" title="Color theme">
+				<span class="theme-dot" style={`background: ${theme.accent}`} aria-hidden="true"></span>
+				<select value={themeId} onchange={selectTheme} aria-label="Color theme">
+					{#each THEME_GROUPS as group (group)}
+						<optgroup label={group}>
+							{#each THEMES.filter((t) => t.group === group) as t (t.id)}
+								<option value={t.id}>{t.name}</option>
+							{/each}
+						</optgroup>
+					{/each}
+				</select>
+			</label>
 		</nav>
 
 		<section class="hero">
@@ -805,7 +879,7 @@
 			<div class="grid grid-2">
 				<figure class="card flow-card">
 					<div class="card-fluid">
-						<GasFlare seed={701} lazy pointerInput={false} splatOnHover={false} aria-label="GasFlare flow scene" />
+						<GasFlare seed={701} lazy pointerInput={false} splatOnHover={false} backColor={cardColor} aria-label="GasFlare flow scene" />
 					</div>
 					<figcaption>
 						<span class="card-name">GasFlare</span>
@@ -814,7 +888,7 @@
 				</figure>
 				<figure class="card flow-card">
 					<div class="card-fluid">
-						<Venturi seed={702} lazy pointerInput={false} splatOnHover={false} aria-label="Venturi flow scene" />
+						<Venturi seed={702} lazy pointerInput={false} splatOnHover={false} backColor={cardColor} aria-label="Venturi flow scene" />
 					</div>
 					<figcaption>
 						<span class="card-name">Venturi</span>
@@ -823,7 +897,7 @@
 				</figure>
 				<figure class="card flow-card">
 					<div class="card-fluid">
-						<RiverDelta seed={703} lazy pointerInput={false} splatOnHover={false} aria-label="RiverDelta flow scene" />
+						<RiverDelta seed={703} lazy pointerInput={false} splatOnHover={false} backColor={cardColor} aria-label="RiverDelta flow scene" />
 					</div>
 					<figcaption>
 						<span class="card-name">RiverDelta</span>
@@ -832,7 +906,7 @@
 				</figure>
 				<figure class="card flow-card">
 					<div class="card-fluid">
-						<TeslaValve seed={704} lazy pointerInput={false} splatOnHover={false} aria-label="TeslaValve flow scene" />
+						<TeslaValve seed={704} lazy pointerInput={false} splatOnHover={false} backColor={cardColor} aria-label="TeslaValve flow scene" />
 					</div>
 					<figcaption>
 						<span class="card-name">TeslaValve</span>
@@ -1317,9 +1391,9 @@
 							lazy
 							velocityDissipation={0.95}
 							pressureIterations={10}
-							coverColor={{ r: 0.92, g: 0.89, b: 0.82 }}
-							fringeColor={{ r: 0.85, g: 0.78, b: 0.62 }}
-							accentColor={{ r: 0.65, g: 0.4, b: 0.2 }}
+							coverColor={revealCoverColor}
+							fringeColor={revealFringeColor}
+							accentColor={revealAccentColor}
 						>
 							<div class="reveal-content">Revealed</div>
 						</FluidReveal>
@@ -1337,9 +1411,9 @@
 							fadeBack={false}
 							velocityDissipation={0.95}
 							sensitivity={0.15}
-							coverColor={{ r: 0.92, g: 0.89, b: 0.82 }}
-							fringeColor={{ r: 0.85, g: 0.78, b: 0.62 }}
-							accentColor={{ r: 0.65, g: 0.4, b: 0.2 }}
+							coverColor={revealCoverColor}
+							fringeColor={revealFringeColor}
+							accentColor={revealAccentColor}
 						>
 							<div class="reveal-content">Auto reveal</div>
 						</FluidReveal>
@@ -1458,7 +1532,6 @@
 									{curl}
 									{splatRadius}
 									{splatForce}
-										{densityDissipation}
 										{velocityDissipation}
 										{maxTimeStep}
 										{substeps}
@@ -1474,10 +1547,9 @@
 									{colorful}
 									{splatOnHover}
 									{transparent}
-									{backColor}
-									coverColor={{ r: 0.92, g: 0.89, b: 0.82 }}
-									fringeColor={{ r: 0.85, g: 0.78, b: 0.62 }}
-									accentColor={{ r: 0.65, g: 0.4, b: 0.2 }}
+									coverColor={revealCoverColor}
+									fringeColor={revealFringeColor}
+									accentColor={revealAccentColor}
 									containerShape={containerType !== 'none' ? containerShape : undefined}
 									{glass}
 								>
@@ -1548,11 +1620,11 @@
 						{:else if mode === 'flow'}
 							{#key flowScene}
 								{#if flowScene === 'GasFlare'}
-									<GasFlare lazy seed={717} pointerInput={false} splatOnHover={false} aria-label="GasFlare playground scene" />
+									<GasFlare lazy seed={717} backColor={cardColor} pointerInput={false} splatOnHover={false} aria-label="GasFlare playground scene" />
 								{:else if flowScene === 'RiverDelta'}
-									<RiverDelta lazy seed={737} pointerInput={false} splatOnHover={false} aria-label="RiverDelta playground scene" />
+									<RiverDelta lazy seed={737} backColor={cardColor} pointerInput={false} splatOnHover={false} aria-label="RiverDelta playground scene" />
 									{:else if flowScene === 'TeslaValve'}
-										<TeslaValve lazy seed={747} pointerInput={false} splatOnHover={false} aria-label="TeslaValve playground scene" />
+										<TeslaValve lazy seed={747} backColor={cardColor} pointerInput={false} splatOnHover={false} aria-label="TeslaValve playground scene" />
 									{:else if flowScene === 'CustomFlow'}
 										<Fluid
 											lazy
@@ -1581,11 +1653,11 @@
 											sunrays={false}
 											simResolution={128}
 											dyeResolution={512}
-											backColor={{ r: 6, g: 10, b: 14 }}
+											backColor={cardColor}
 											aria-label="Custom FlowConfig playground scene"
 										/>
 									{:else}
-										<Venturi lazy seed={727} pointerInput={false} splatOnHover={false} aria-label="Venturi playground scene" />
+										<Venturi lazy seed={727} backColor={cardColor} pointerInput={false} splatOnHover={false} aria-label="Venturi playground scene" />
 								{/if}
 							{/key}
 						{:else}
@@ -1782,18 +1854,21 @@
 							/>
 							<span class="knob-value">{splatForce}</span>
 						</label>
-						<label class="knob-row">
-							<span class="knob-label">densityDissipation</span>
-							<input
-								type="range"
-								min="0"
-								max="1"
-								step="0.01"
-								bind:value={densityDissipation}
-								oninput={markCustom}
-							/>
-							<span class="knob-value">{densityDissipation.toFixed(2)}</span>
-						</label>
+						{#if mode !== 'reveal'}
+							<!-- In reveal mode the fadeBack toggle owns dissipation; this slider would silently override it. -->
+							<label class="knob-row">
+								<span class="knob-label">densityDissipation</span>
+								<input
+									type="range"
+									min="0"
+									max="1"
+									step="0.01"
+									bind:value={densityDissipation}
+									oninput={markCustom}
+								/>
+								<span class="knob-value">{densityDissipation.toFixed(2)}</span>
+							</label>
+						{/if}
 						<label class="knob-row">
 							<span class="knob-label">velocityDissipation</span>
 							<input
@@ -1968,7 +2043,9 @@
 						</label>
 					</div>
 
-					<div class="knob-group">
+					{#if mode !== 'reveal'}
+						<!-- Reveal composites via coverColor; backColor is not passed to FluidReveal. -->
+						<div class="knob-group">
 						<div class="knob-group-title">Background</div>
 							<label class="color-row">
 								<span class="knob-label">backColor</span>
@@ -1985,6 +2062,7 @@
 								<span class="knob-value mono">{backColorHex}</span>
 							</label>
 					</div>
+					{/if}
 					{/if}
 
 					{#if mode === 'reveal'}
@@ -2128,6 +2206,7 @@
 		--ink-soft: rgba(26, 24, 20, 0.62);
 		--ink-faint: rgba(26, 24, 20, 0.16);
 		--rule: rgba(26, 24, 20, 0.88);
+		--hover: rgba(26, 24, 20, 0.05);
 		--accent: #8c2a1d;
 		--mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 		position: relative;
@@ -2180,6 +2259,47 @@
 		display: flex;
 		gap: 4px;
 	}
+	/* ---- Theme switcher ---- */
+	.theme-switcher {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 6px 12px;
+		border: 1px solid var(--rule);
+		border-radius: 999px;
+		background: var(--paper);
+		cursor: pointer;
+	}
+	.theme-dot {
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		border: 1px solid var(--ink-faint);
+		flex: none;
+	}
+	.theme-switcher select {
+		appearance: none;
+		-webkit-appearance: none;
+		border: none;
+		background: transparent;
+		color: var(--ink);
+		font: inherit;
+		font-size: 13px;
+		font-weight: 600;
+		cursor: pointer;
+		padding-right: 14px;
+		background-image:
+			linear-gradient(45deg, transparent 50%, currentColor 50%),
+			linear-gradient(135deg, currentColor 50%, transparent 50%);
+		background-position:
+			right 5px top 55%,
+			right 0px top 55%;
+		background-size: 5px 5px;
+		background-repeat: no-repeat;
+	}
+	.theme-switcher select:focus {
+		outline: none;
+	}
 	.nav-links a {
 		color: var(--ink-soft);
 		text-decoration: none;
@@ -2193,7 +2313,7 @@
 	}
 	.nav-links a:hover {
 		color: var(--ink);
-		background: rgba(26, 24, 20, 0.05);
+		background: var(--hover, rgba(26, 24, 20, 0.05));
 	}
 
 	/* ---- Hero ---- */
@@ -2482,7 +2602,7 @@
 			color 0.15s;
 	}
 	.preset-chip:hover {
-		background: rgba(26, 24, 20, 0.05);
+		background: var(--hover, rgba(26, 24, 20, 0.05));
 		color: var(--ink);
 		border-color: var(--rule);
 	}

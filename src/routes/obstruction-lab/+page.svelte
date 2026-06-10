@@ -1,9 +1,14 @@
 <!--
-  TEMPORARY visual-QA gallery for the obstruction presets + demos.
-  Renders the current scenes with lazy viewport activation for side-by-side inspection.
-  Delete after verification.
+  Obstruction Lab — permanent (unlisted) dev page.
+
+  Visual-QA gallery for the obstruction presets + demos, rendered with lazy
+  viewport activation for side-by-side inspection. Also hosts the canonical
+  perf bench harness at ./bench (see ADR-0038: interleaved A/B measurement
+  with mandatory visual confirmation). Not linked from the public nav, but
+  kept in-tree because engine work depends on it.
 -->
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { GasFlare, Venturi, RiverDelta, TeslaValve } from '$lib/index.js';
 	import Maze from '../obstruction-demos/Maze.svelte';
 	import Karman from '../obstruction-demos/Karman.svelte';
@@ -16,7 +21,10 @@
 
 <main class="lab">
 	<h1>Obstruction Lab</h1>
-	<p class="note">Temporary visual-QA gallery. Scenes activate as they approach the viewport.</p>
+	<p class="note">
+		Developer visual-QA gallery — scenes activate as they approach the viewport. The perf bench
+		harness lives at <a href="{base}/obstruction-lab/bench">./bench</a>.
+	</p>
 
 	<div class="grid">
 		<figure class="card">

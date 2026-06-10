@@ -568,7 +568,7 @@ a host page background. Omit it to keep the preset's authored default.
 | SvgPathFluid    | Fluid inside an "&amp;" ampersand glyph              | svgPath (text mode)          |
 | GasFlare        | Hot gas flare jet with temperature-scalar buoyancy | none (2 flare-stack obstructions) |
 | Venturi         | Bernoulli throat with CFD-style velocity-magnitude colors | none (2 throat obstructions) |
-| RiverDelta      | Muted river branching around teardrop islands with constrained tracer packets | none (5 island obstructions) |
+| RiverDelta      | Muted slow river branching around teardrop islands with multicolor tracer packets | none (5 island obstructions) |
 | TeslaValve      | Forward throughflow with bypass-bucket recirculation cues | svgPath reference channel |
 
 Solver-native qualitative routing: GasFlare/Venturi/RiverDelta/TeslaValve use live incompressible flow, scalar buoyancy, separation, and throat/gap speed-up, but they are not validated CFD. InkInWater intentionally stays on intermittent auto splats rather than flow. TeslaValve is a forward-throughflow visualization, not a hard-stop check valve.
