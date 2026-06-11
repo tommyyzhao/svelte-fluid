@@ -552,15 +552,15 @@
 
 <hr />
 
-<h2 id="riverdelta">RiverDelta</h2>
+<h2 id="karman">Karman</h2>
 
-<p>A wide, muted river entering from the left edge and braiding around a chain of staggered teardrop islands. The flow can't go straight through, so continuity routes the flux through the open channels between islands; a slow current (~120 px/s) carries frequent multicolor tracer packets that make the braided paths visible.</p>
+<p>Flow past a single cylinder, evocative of a von Kármán vortex street — the alternating wake of vortices shed behind a bluff body in steady cross-flow. A pressure-gradient body force drives the field left to right while fast multicolor tracer packets (fresh generated hue per packet) enter from the left and thread the wake, so successive sheddings read as distinct colored filaments.</p>
 
-<p><strong>Obstructions:</strong> five teardrop islands (each pointed upstream) staggered across x and y, instanced from one path via <code>offset</code>/<code>scale</code>. All canvas edges are open, with four-edge dye drains so the wide left-edge inlet can braid around the islands and leave through any border.</p>
+<p><strong>Obstruction:</strong> a single cylinder (circle authored as two SVG arcs, radius 10 in a [0,0,100,100] viewBox, <code>fit: 'fill'</code>) placed left of center and slightly below the inflow centerline — the deliberate vertical offset breaks symmetry so the wake sheds instead of forming a stable standing pair. All canvas edges are open with dye sponge drains; only the downstream outlet damps velocity.</p>
 
-<p><strong>Honest physics note:</strong> the branching around islands is solver-native routing through blocked channels, but this is still a qualitative visualization, not sediment transport or free-surface river physics.</p>
+<p><strong>Honest physics note:</strong> this is <em>evocative of</em> a vortex street, not a validated shedding simulation. The cylinder is a rasterized mask, shedding emerges from shear layers rolling up behind the disc, and its frequency is not a real Strouhal number.</p>
 
-<pre><code>&lt;RiverDelta /&gt;</code></pre>
+<pre><code>&lt;Karman /&gt;</code></pre>
 
 <table>
 	<thead>
@@ -571,36 +571,36 @@
 	</thead>
 	<tbody>
 		<tr><td><code>curl</code></td><td>10</td></tr>
-		<tr><td><code>densityDissipation</code></td><td>0.68</td></tr>
-		<tr><td><code>velocityDissipation</code></td><td>0.07</td></tr>
-		<tr><td><code>maxTimeStep</code></td><td>1 / 60</td></tr>
-		<tr><td><code>substeps</code></td><td>1</td></tr>
-		<tr><td><code>viscosity</code></td><td>0.012</td></tr>
-		<tr><td><code>viscosityIterations</code></td><td>5</td></tr>
-		<tr><td><code>wallFriction</code></td><td>0.12</td></tr>
+		<tr><td><code>densityDissipation</code></td><td>0.7</td></tr>
+		<tr><td><code>velocityDissipation</code></td><td>0.075</td></tr>
+		<tr><td><code>maxTimeStep</code></td><td>1 / 120</td></tr>
+		<tr><td><code>substeps</code></td><td>2</td></tr>
+		<tr><td><code>viscosity</code></td><td>0.014</td></tr>
+		<tr><td><code>viscosityIterations</code></td><td>8</td></tr>
+		<tr><td><code>wallFriction</code></td><td>0.16</td></tr>
 		<tr><td><code>wallFrictionWidth</code></td><td>2</td></tr>
 		<tr><td><code>pressure</code></td><td>0.9</td></tr>
-		<tr><td><code>pressureIterations</code></td><td>24</td></tr>
-		<tr><td><code>splatRadius</code></td><td>0.08</td></tr>
+		<tr><td><code>pressureIterations</code></td><td>34</td></tr>
+		<tr><td><code>splatRadius</code></td><td>0.06</td></tr>
 		<tr><td><code>splatForce</code></td><td>6000</td></tr>
 		<tr><td><code>shading</code></td><td>false</td></tr>
 		<tr><td><code>colorful</code></td><td>false</td></tr>
 		<tr><td><code>bloom</code></td><td>false</td></tr>
 		<tr><td><code>sunrays</code></td><td>false</td></tr>
-		<tr><td><code>simResolution</code></td><td>160</td></tr>
-		<tr><td><code>dyeResolution</code></td><td>640</td></tr>
-		<tr><td><code>backColor</code></td><td>{LB} r: 4, g: 9, b: 10 {RB}</td></tr>
+		<tr><td><code>simResolution</code></td><td>192</td></tr>
+		<tr><td><code>dyeResolution</code></td><td>1024</td></tr>
+		<tr><td><code>backColor</code></td><td>{LB} r: 4, g: 6, b: 14 {RB}</td></tr>
 		<tr><td><code>initialSplatCount</code></td><td>0</td></tr>
-		<tr><td><code>obstructions</code></td><td>5 staggered teardrop islands</td></tr>
-		<tr><td><code>flow</code></td><td>left-edge parabolic line inlet + four-edge dye drains</td></tr>
-		<tr><td><code>autoSplatRate</code></td><td>2.6</td></tr>
+		<tr><td><code>obstructions</code></td><td>1 off-center cylinder (fit: 'fill')</td></tr>
+		<tr><td><code>flow</code></td><td>pressureGradient drive (x: 64) + four-edge dye drains</td></tr>
+		<tr><td><code>autoSplatRate</code></td><td>4.5</td></tr>
 		<tr><td><code>autoSplatCount</code></td><td>3</td></tr>
 		<tr><td><code>autoSplatColor</code></td><td>null (fresh hue per tracer packet)</td></tr>
-		<tr><td><code>autoSplatVelocityX</code></td><td>120</td></tr>
+		<tr><td><code>autoSplatVelocityX</code></td><td>460</td></tr>
 		<tr><td><code>autoSplatCenterX</code></td><td>0.035</td></tr>
-		<tr><td><code>autoSplatBandWidth</code></td><td>0.03</td></tr>
-		<tr><td><code>autoSplatBandHeight</code></td><td>0.84</td></tr>
-		<tr><td><code>presetSplats</code></td><td>4 muted left-edge startup jets</td></tr>
+		<tr><td><code>autoSplatBandWidth</code></td><td>0.025</td></tr>
+		<tr><td><code>autoSplatBandHeight</code></td><td>0.5</td></tr>
+		<tr><td><code>presetSplats</code></td><td>5 startup freestream jets (full-height curtain)</td></tr>
 	</tbody>
 </table>
 

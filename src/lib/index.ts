@@ -64,5 +64,5 @@ export { default as Toroidal, type ToroidalProps } from './presets/Toroidal.svel
 export { default as ToroidalTempest, type ToroidalProps as ToroidalTempestProps } from './presets/Toroidal.svelte';
 export { default as GasFlare, type GasFlareProps } from './presets/GasFlare.svelte';
 export { default as Venturi, type VenturiProps } from './presets/Venturi.svelte';
-export { default as RiverDelta, type RiverDeltaProps } from './presets/RiverDelta.svelte';
+export { default as Karman, type KarmanProps } from './presets/Karman.svelte';
 export { default as TeslaValve, type TeslaValveProps } from './presets/TeslaValve.svelte';

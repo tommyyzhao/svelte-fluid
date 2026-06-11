@@ -9,9 +9,8 @@
 -->
 <script lang="ts">
 	import { base } from '$app/paths';
-	import { GasFlare, Venturi, RiverDelta, TeslaValve } from '$lib/index.js';
+	import { GasFlare, Venturi, Karman, TeslaValve } from '$lib/index.js';
 	import Maze from '../obstruction-demos/Maze.svelte';
-	import Karman from '../obstruction-demos/Karman.svelte';
 	import Airfoil from '../obstruction-demos/Airfoil.svelte';
 </script>
 
@@ -45,13 +44,6 @@
 				</div>
 				<figcaption>Venturi — pressure-drive with visible throat speed-up</figcaption>
 			</figure>
-
-		<figure class="card">
-			<div class="stage">
-				<RiverDelta seed={103} lazy aria-label="RiverDelta demo" />
-			</div>
-			<figcaption>RiverDelta — muted branching with constrained tracer packets</figcaption>
-		</figure>
 
 		<figure class="card">
 			<div class="stage">

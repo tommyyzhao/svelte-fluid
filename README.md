@@ -203,7 +203,7 @@ container shapes, and solver-native flow scenes. Useful as starting points for b
 | `<SvgPathFluid />` | Fluid shaped by an ampersand glyph via mask texture |
 | `<GasFlare />` | Temperature scalar, buoyancy, and physical nozzle obstructions |
 | `<Venturi />` | Pressure-gradient throughflow with CFD-style speed visualization |
-| `<RiverDelta />` | Open-edge routing around staggered island obstructions |
+| `<Karman />` | Alternating cylinder-wake vortex street with multicolor tracers |
 | `<TeslaValve />` | High-viscosity multicolor splats through an SVG conduit mask |
 
 ```svelte
