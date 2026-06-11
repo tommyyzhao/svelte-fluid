@@ -13,7 +13,7 @@
 		InkInWater,
 		LavaLamp,
 		Plasma,
-		ToroidalTempest,
+		Toroidal,
 		type RGB
 	} from '$lib/index.js';
 	import { base } from '$app/paths';
@@ -71,8 +71,8 @@
 			desc: 'Sheets of green-violet light.'
 		},
 		{
-			name: 'ToroidalTempest',
-			component: ToroidalTempest,
+			name: 'Toroidal',
+			component: Toroidal,
 			seed: 72,
 			desc: 'Annular storm with sustained flow.'
 		}
@@ -189,7 +189,7 @@
 			colorful: true,
 			backColor: { r: 0, g: 4, b: 14 }
 		},
-		'Toroidal Tempest': {
+		'Toroidal': {
 			curl: 45,
 			splatRadius: 0.3,
 			splatForce: 7000,
@@ -400,8 +400,8 @@
 								<FrozenSwirl seed={p.seed} lazy aria-label="FrozenSwirl preview" backColor={{ r: 0, g: 0, b: 0 }} />
 							{:else if p.name === 'Aurora'}
 								<Aurora seed={p.seed} lazy aria-label="Aurora preview" backColor={{ r: 0, g: 0, b: 0 }} />
-							{:else if p.name === 'ToroidalTempest'}
-								<ToroidalTempest seed={p.seed} lazy aria-label="ToroidalTempest preview" backColor={{ r: 0, g: 0, b: 0 }} />
+							{:else if p.name === 'Toroidal'}
+								<Toroidal seed={p.seed} lazy aria-label="Toroidal preview" backColor={{ r: 0, g: 0, b: 0 }} />
 							{/if}
 						</div>
 						<div class="preset-meta">

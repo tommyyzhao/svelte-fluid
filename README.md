@@ -196,7 +196,7 @@ container shapes, and solver-native flow scenes. Useful as starting points for b
 | `<InkInWater />` | India ink sinking through dark water with volumetric bloom |
 | `<FrozenSwirl />` | An icy whirlpool frozen inside a circular vessel |
 | `<Aurora />` | Green, magenta, and pale-blue ribbons glowing like northern lights |
-| `<ToroidalTempest />` | Full-spectrum storm circulating in a high-velocity ring |
+| `<Toroidal />` | Full-spectrum storm circulating in a high-velocity ring |
 | `<CircularFluid />` | Vivid swirling fluid contained inside a circle |
 | `<FrameFluid />` | Colorful fluid swirling around a rectangular inner cutout |
 | `<AnnularFluid />` | Ring-vortex fluid between two concentric circles |
@@ -208,7 +208,7 @@ container shapes, and solver-native flow scenes. Useful as starting points for b
 
 ```svelte
 <script lang="ts">
-  import { LavaLamp, Plasma, ToroidalTempest } from 'svelte-fluid';
+  import { LavaLamp, Plasma, Toroidal } from 'svelte-fluid';
 </script>
 
 <div style="height: 100vh">
@@ -217,7 +217,7 @@ container shapes, and solver-native flow scenes. Useful as starting points for b
 
 <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:16px">
   <Plasma />
-  <ToroidalTempest />
+  <Toroidal />
 </div>
 ```
 

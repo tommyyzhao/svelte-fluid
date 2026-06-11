@@ -10,7 +10,7 @@
 		InkInWater,
 		LavaLamp,
 		Plasma,
-		ToroidalTempest,
+		Toroidal,
 		type RGB
 	} from '$lib/index.js';
 	import { base } from '$app/paths';
@@ -499,10 +499,10 @@
 				</figure>
 				<figure class="card preset-card">
 					<div class="card-fluid">
-						<ToroidalTempest seed={66} lazy backColor={cardColor} aria-label="ToroidalTempest preset" />
+						<Toroidal seed={66} lazy backColor={cardColor} aria-label="Toroidal preset" />
 					</div>
 					<figcaption>
-						<span class="card-name">ToroidalTempest</span>
+						<span class="card-name">Toroidal</span>
 						<span class="card-blurb">Annular storm.</span>
 					</figcaption>
 				</figure>

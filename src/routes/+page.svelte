@@ -17,12 +17,13 @@
 			RiverDelta,
 			SvgPathFluid,
 			TeslaValve,
-			ToroidalTempest,
+			Toroidal,
 			Venturi,
 			type FlowConfig,
 			type RGB
 		} from '$lib/index.js';
 	import { base } from '$app/paths';
+	import Card from './components/Card.svelte';
 	import {
 		DEFAULT_THEME_ID,
 		THEME_GROUPS,
@@ -393,6 +394,62 @@
 		applyPreset('Default');
 		activePreset = null;
 	}
+
+	/**
+	 * "Open in playground" on showcase cards: apply the nearest playground
+	 * preset (optionally overriding the container shape for shape/glass
+	 * cards) and scroll down to the playground stage.
+	 */
+	function openInPlayground(preset: string, container?: typeof containerType) {
+		applyPreset(preset);
+		if (container !== undefined) {
+			containerType = container;
+			markCustom();
+		}
+		document.getElementById('playground')?.scrollIntoView({ behavior: 'smooth' });
+	}
+
+	// "View code" snippets for the showcase cards. Wrapper presets are
+	// zero-config one-liners; raw <Fluid> cards mirror their live props
+	// (minus seed/lazy/backColor, which are site presentation concerns).
+	const SHAPE_GLASS_PROPS =
+		'\tglass\n\tglassRefraction={0.45}\n\tglassReflectivity={0.12}\n\tglassChromatic={0.25}\n\tglassThickness={0.05}\n';
+	const SHAPE_PHYSICS_PROPS =
+		'\tcurl={28}\n\tdensityDissipation={0.35}\n\tvelocityDissipation={0.1}\n\tsplatRadius={0.32}\n\tsplatForce={4500}\n\tbloomIntensity={0.5}\n\tsunrays={false}\n\tinitialSplatCount={10}\n\tautoSplatRate={0.45}\n\tautoSplatSwirl={350}\n\tsplatOnHover\n';
+	const SNIPPETS = {
+		roundedRect:
+			'<Fluid\n' +
+			SHAPE_GLASS_PROPS +
+			"\tcontainerShape={{ type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.5, halfH: 0.5, cornerRadius: 0.07 }}\n" +
+			SHAPE_PHYSICS_PROPS +
+			'/>',
+		svgPath:
+			'<Fluid\n' +
+			SHAPE_GLASS_PROPS +
+			"\tcontainerShape={{ type: 'svgPath', d: lightningPath, viewBox: [0, 0, 100, 100] }}\n" +
+			SHAPE_PHYSICS_PROPS +
+			'/>',
+		crystalOrb:
+			"<Fluid\n\tglass\n\tglassRefraction={0.85}\n\tglassReflectivity={0.18}\n\tglassChromatic={0.6}\n\tglassThickness={0.1}\n\tcontainerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.42 }}\n\tcurl={32}\n\tdensityDissipation={0.18}\n\tvelocityDissipation={0.06}\n\tsplatRadius={0.35}\n\tsplatForce={4500}\n\tbloomIntensity={0.4}\n\tsunrays={false}\n\tinitialSplatCount={12}\n\tautoSplatRate={1.0}\n\tautoSplatBandHeight={0.8}\n\tautoSplatSwirl={500}\n\tsplatOnHover\n/>",
+		softLens:
+			"<Fluid\n\tglass\n\tglassRefraction={0.3}\n\tglassReflectivity={0.08}\n\tglassChromatic={0.12}\n\tglassThickness={0.04}\n\tcontainerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.42 }}\n\tcurl={28}\n\tdensityDissipation={0.4}\n\tvelocityDissipation={0.12}\n\tsplatRadius={0.25}\n\tsplatForce={4500}\n\tbloomIntensity={0.4}\n\tsunraysWeight={0.4}\n\tinitialSplatCount={15}\n\tautoSplatRate={2.0}\n\tautoSplatCount={2}\n\tautoSplatBandHeight={0.8}\n\tautoSplatSwirl={400}\n\tsplatOnHover\n/>",
+		portalRing:
+			"<Fluid\n\tglass\n\tglassRefraction={0.7}\n\tglassReflectivity={0.18}\n\tglassChromatic={0.7}\n\tglassThickness={0.06}\n\tcontainerShape={{ type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.18, outerRadius: 0.42 }}\n\tcurl={36}\n\tdensityDissipation={0.25}\n\tvelocityDissipation={0.1}\n\tsplatRadius={0.3}\n\tsplatForce={4500}\n\tbloomIntensity={0.45}\n\tsunrays={false}\n\tinitialSplatCount={10}\n\tautoSplatRate={1.2}\n\tautoSplatBandHeight={0.6}\n\tautoSplatSwirl={400}\n\tsplatOnHover\n/>",
+		glassFrame:
+			"<Fluid\n\tglass\n\tglassRefraction={0.6}\n\tglassReflectivity={0.2}\n\tglassChromatic={0.5}\n\tglassThickness={0.07}\n\tcontainerShape={{\n\t\ttype: 'frame',\n\t\tcx: 0.5, cy: 0.5,\n\t\thalfW: 0.22, halfH: 0.22, innerCornerRadius: 0.04,\n\t\touterHalfW: 0.48, outerHalfH: 0.48, outerCornerRadius: 0.05\n\t}}\n\tcurl={24}\n\tdensityDissipation={0.22}\n\tvelocityDissipation={0.1}\n\tsplatRadius={0.32}\n\tsplatForce={4500}\n\tbloomIntensity={0.55}\n\tsunrays={false}\n\tinitialSplatCount={10}\n\tautoSplatRate={2.5}\n\tautoSplatCount={2}\n\tautoSplatBandHeight={1.5}\n\tautoSplatSwirl={350}\n\tsplatOnHover\n/>",
+		stickyFluid:
+			'<FluidStick\n\ttext="FLUID"\n\tfont="900 110px Geist, Inter, sans-serif"\n\tautoAnimateDuration={4}\n\tdensityDissipation={0.92}\n\tsplatRadius={0.18}\n\tbloom={false}\n/>',
+		stickyInfinity:
+			'<FluidStick\n\ttext="∞"\n\tfont="220px Georgia, serif"\n\tautoAnimateDuration={4}\n\tdensityDissipation={0.997}\n\tsplatRadius={0.18}\n\tbloom={false}\n/>',
+		revealScratch:
+			'<FluidReveal velocityDissipation={0.95} pressureIterations={10}>\n\t<div>Revealed</div>\n</FluidReveal>',
+		revealAuto:
+			'<FluidReveal\n\tautoReveal\n\tautoRevealSpeed={0.8}\n\tfadeBack={false}\n\tsensitivity={0.15}\n\tvelocityDissipation={0.95}\n>\n\t<div>Auto reveal</div>\n</FluidReveal>',
+		distortSubtle:
+			'<FluidDistortion src="/bosch-garden.jpg" strength={0.3} intensity={20} fit="cover" initialSplats={6} />',
+		distortStrong:
+			'<FluidDistortion src="/bosch-garden.jpg" strength={0.45} intensity={28} fit="cover" initialSplats={6} />'
+	};
 
 	function markCustom() {
 		activePreset = null;
@@ -767,106 +824,24 @@
 					<p>Six featured visual wrappers from the 14 exported presets.</p>
 				</header>
 				<div class="grid grid-3">
-				<figure class="card preset-card">
-					<div class="card-fluid">
+					<Card title="LavaLamp" blurb="Slow warm blobs." snippet="<LavaLamp />">
 						<LavaLamp seed={11} lazy backColor={cardColor} aria-label="LavaLamp preset" />
-					</div>
-					<figcaption>
-						<span class="card-name">LavaLamp</span>
-						<span class="card-blurb">Slow warm blobs.</span>
-					</figcaption>
-				</figure>
-				<figure class="card preset-card">
-					<div class="card-fluid">
+					</Card>
+					<Card title="Plasma" blurb="High-energy chromatic turbulence." snippet="<Plasma />">
 						<Plasma seed={22} lazy backColor={cardColor} aria-label="Plasma preset" />
-					</div>
-					<figcaption>
-						<span class="card-name">Plasma</span>
-						<span class="card-blurb">High-energy chromatic turbulence.</span>
-					</figcaption>
-				</figure>
-				<figure class="card preset-card">
-					<div class="card-fluid">
+					</Card>
+					<Card title="InkInWater" blurb="Saturated dye dispersing." snippet="<InkInWater />">
 						<InkInWater seed={33} lazy backColor={cardColor} aria-label="InkInWater preset" />
-					</div>
-					<figcaption>
-						<span class="card-name">InkInWater</span>
-						<span class="card-blurb">Saturated dye dispersing.</span>
-					</figcaption>
-				</figure>
-				<figure class="card preset-card">
-					<div class="card-fluid">
+					</Card>
+					<Card title="FrozenSwirl" blurb="Crystalline vortex." snippet="<FrozenSwirl />">
 						<FrozenSwirl seed={44} lazy backColor={cardColor} aria-label="FrozenSwirl preset" />
-					</div>
-					<figcaption>
-						<span class="card-name">FrozenSwirl</span>
-						<span class="card-blurb">Crystalline vortex.</span>
-					</figcaption>
-				</figure>
-				<figure class="card preset-card">
-					<div class="card-fluid">
+					</Card>
+					<Card title="Aurora" blurb="Drifting polar ribbons." snippet="<Aurora />">
 						<Aurora seed={55} lazy backColor={cardColor} aria-label="Aurora preset" />
-					</div>
-					<figcaption>
-						<span class="card-name">Aurora</span>
-						<span class="card-blurb">Drifting polar ribbons.</span>
-					</figcaption>
-				</figure>
-				<figure class="card preset-card">
-					<div class="card-fluid">
-						<ToroidalTempest seed={66} lazy backColor={cardColor} aria-label="ToroidalTempest preset" />
-					</div>
-					<figcaption>
-						<span class="card-name">ToroidalTempest</span>
-						<span class="card-blurb">Annular storm.</span>
-					</figcaption>
-				</figure>
-				</div>
-			</section>
-
-			<!-- SHAPE WRAPPERS -->
-			<section class="section">
-				<header class="section-head">
-					<h2>Shape preset wrappers</h2>
-					<p>Exported container presets for common bounded-fluid layouts.</p>
-				</header>
-				<div class="grid grid-2">
-					<figure class="card preset-card">
-						<div class="card-fluid">
-							<CircularFluid seed={81} lazy splatOnHover={false} backColor={cardColor} aria-label="CircularFluid preset" />
-						</div>
-						<figcaption>
-							<span class="card-name">CircularFluid</span>
-							<span class="card-blurb">Vivid fluid in a circular boundary.</span>
-						</figcaption>
-					</figure>
-					<figure class="card preset-card">
-						<div class="card-fluid">
-							<FrameFluid seed={82} lazy splatOnHover={false} backColor={cardColor} aria-label="FrameFluid preset" />
-						</div>
-						<figcaption>
-							<span class="card-name">FrameFluid</span>
-							<span class="card-blurb">Circulation around an inner cutout.</span>
-						</figcaption>
-					</figure>
-					<figure class="card preset-card">
-						<div class="card-fluid">
-							<AnnularFluid seed={83} lazy splatOnHover={false} backColor={cardColor} aria-label="AnnularFluid preset" />
-						</div>
-						<figcaption>
-							<span class="card-name">AnnularFluid</span>
-							<span class="card-blurb">Ring vortex between two circles.</span>
-						</figcaption>
-					</figure>
-					<figure class="card preset-card">
-						<div class="card-fluid">
-							<SvgPathFluid seed={84} lazy splatOnHover={false} backColor={cardColor} aria-label="SvgPathFluid preset" />
-						</div>
-						<figcaption>
-							<span class="card-name">SvgPathFluid</span>
-							<span class="card-blurb">Text-mode SVG mask container.</span>
-						</figcaption>
-					</figure>
+					</Card>
+					<Card title="Toroidal" blurb="Annular storm." snippet="<Toroidal />">
+						<Toroidal seed={66} lazy backColor={cardColor} aria-label="Toroidal preset" />
+					</Card>
 				</div>
 			</section>
 
@@ -874,288 +849,170 @@
 		<section class="section" id="flow-scenes">
 			<header class="section-head">
 				<h2>Flow scenes</h2>
-				<p>Persistent sources, scalar fields, outlets, and physical obstruction masks.</p>
+				<p>
+					Persistent sources, scalar fields, outlets, and physical obstruction masks. Move the
+					cursor through a scene to stir it.
+				</p>
 			</header>
 			<div class="grid grid-2">
-				<figure class="card flow-card">
-					<div class="card-fluid">
-						<GasFlare seed={701} lazy pointerInput={false} splatOnHover={false} backColor={cardColor} aria-label="GasFlare flow scene" />
-					</div>
-					<figcaption>
-						<span class="card-name">GasFlare</span>
-						<span class="card-blurb">Temperature scalar with buoyancy.</span>
-					</figcaption>
-				</figure>
-				<figure class="card flow-card">
-					<div class="card-fluid">
-						<Venturi seed={702} lazy pointerInput={false} splatOnHover={false} backColor={cardColor} aria-label="Venturi flow scene" />
-					</div>
-					<figcaption>
-						<span class="card-name">Venturi</span>
-						<span class="card-blurb">Pressure-driven throat speed-up.</span>
-					</figcaption>
-				</figure>
-				<figure class="card flow-card">
-					<div class="card-fluid">
-						<RiverDelta seed={703} lazy pointerInput={false} splatOnHover={false} backColor={cardColor} aria-label="RiverDelta flow scene" />
-					</div>
-					<figcaption>
-						<span class="card-name">RiverDelta</span>
-						<span class="card-blurb">Braided channels with tracer packets.</span>
-					</figcaption>
-				</figure>
-				<figure class="card flow-card">
-					<div class="card-fluid">
-						<TeslaValve seed={704} lazy pointerInput={false} splatOnHover={false} backColor={cardColor} aria-label="TeslaValve flow scene" />
-					</div>
-					<figcaption>
-						<span class="card-name">TeslaValve</span>
-						<span class="card-blurb">Forward routing with bypass recirculation.</span>
-					</figcaption>
-				</figure>
+				<Card
+					title="GasFlare"
+					blurb="Temperature scalar with buoyancy."
+					snippet="<GasFlare />"
+					onCustomize={() => openInPlayground('GasFlare')}
+				>
+					<GasFlare seed={701} lazy aria-label="GasFlare flow scene" />
+				</Card>
+				<Card
+					title="Venturi"
+					blurb="Pressure-driven throat speed-up."
+					snippet="<Venturi />"
+					onCustomize={() => openInPlayground('Venturi')}
+				>
+					<Venturi seed={702} lazy backColor={cardColor} aria-label="Venturi flow scene" />
+				</Card>
+				<Card
+					title="RiverDelta"
+					blurb="Braided channels with tracer packets."
+					snippet="<RiverDelta />"
+					onCustomize={() => openInPlayground('RiverDelta')}
+				>
+					<RiverDelta seed={703} lazy aria-label="RiverDelta flow scene" />
+				</Card>
+				<Card
+					title="TeslaValve"
+					blurb="Forward routing with bypass recirculation."
+					snippet="<TeslaValve />"
+					onCustomize={() => openInPlayground('TeslaValve')}
+				>
+					<TeslaValve seed={704} lazy aria-label="TeslaValve flow scene" />
+				</Card>
 			</div>
 		</section>
 
-		<!-- SHAPES -->
+		<!-- SHAPES (merged: exported shape wrappers + raw containerShape configs) -->
 		<section class="section">
 			<header class="section-head">
 				<h2>Shapes</h2>
-				<p>Six container primitives. Each card uses the engine's glass shader at its edge.</p>
+				<p>
+					Six container primitives — as exported shape wrappers where one exists, or raw
+					<code>containerShape</code> configs otherwise.
+				</p>
 			</header>
 			<div class="grid grid-3">
-				<figure class="card shape-card">
-					<div class="card-fluid">
-						<Fluid
-							seed={601}
-							lazy
-							glass
-							glassRefraction={0.45}
-							glassReflectivity={0.12}
-							glassChromatic={0.25}
-							glassThickness={0.05}
-							containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.42 }}
-							backColor={cardColor}
-							curl={28}
-							densityDissipation={0.35}
-							velocityDissipation={0.1}
-							splatRadius={0.32}
-							splatForce={4500}
-							shading
-							bloom
-							bloomIntensity={0.5}
-							sunrays={false}
-							colorful
-							initialSplatCount={10}
-							autoSplatRate={stickyAutoAnimate ? 0.45 : 0}
-							autoSplatCount={1}
-							autoSplatBandHeight={1.6}
-							autoSplatSwirl={350}
-							splatOnHover
-							aria-label="Circle container demo"
-						/>
-					</div>
-					<figcaption>
-						<span class="card-name">Circle</span>
-					</figcaption>
-				</figure>
-				<figure class="card shape-card">
-					<div class="card-fluid">
-						<Fluid
-							seed={602}
-							lazy
-							glass
-							glassRefraction={0.45}
-							glassReflectivity={0.12}
-							glassChromatic={0.25}
-							glassThickness={0.05}
-							containerShape={{
-								type: 'roundedRect',
-								cx: 0.5,
-								cy: 0.5,
-								halfW: cardHalfW,
-								halfH: cardHalfH,
-								cornerRadius: cardCorner
-							}}
-							backColor={cardColor}
-							curl={28}
-							densityDissipation={0.35}
-							velocityDissipation={0.1}
-							splatRadius={0.32}
-							splatForce={4500}
-							shading
-							bloom
-							bloomIntensity={0.5}
-							sunrays={false}
-							colorful
-							initialSplatCount={10}
-							autoSplatRate={stickyAutoAnimate ? 0.45 : 0}
-							autoSplatCount={1}
-							autoSplatBandHeight={1.6}
-							autoSplatSwirl={350}
-							splatOnHover
-							aria-label="Rounded rect container demo"
-						/>
-					</div>
-					<figcaption>
-						<span class="card-name">Rounded Rect</span>
-					</figcaption>
-				</figure>
-				<figure class="card shape-card">
-					<div class="card-fluid">
-						<Fluid
-							seed={603}
-							lazy
-							glass
-							glassRefraction={0.45}
-							glassReflectivity={0.12}
-							glassChromatic={0.25}
-							glassThickness={0.05}
-							containerShape={{
-								type: 'frame',
-								cx: 0.5,
-								cy: 0.5,
-								halfW: 0.22,
-								halfH: 0.22,
-								innerCornerRadius: 0.04,
-								outerHalfW: 0.48,
-								outerHalfH: 0.48,
-								outerCornerRadius: 0.06
-							}}
-							backColor={cardColor}
-							curl={28}
-							densityDissipation={0.3}
-							velocityDissipation={0.1}
-							splatRadius={0.3}
-							splatForce={4500}
-							shading
-							bloom
-							bloomIntensity={0.5}
-							sunrays={false}
-							colorful
-							initialSplatCount={10}
-							autoSplatRate={stickyAutoAnimate ? 0.45 : 0}
-							autoSplatCount={1}
-							autoSplatBandHeight={1.6}
-							autoSplatSwirl={350}
-							splatOnHover
-							aria-label="Frame container demo"
-						/>
-					</div>
-					<figcaption>
-						<span class="card-name">Frame</span>
-					</figcaption>
-				</figure>
-				<figure class="card shape-card">
-					<div class="card-fluid">
-						<Fluid
-							seed={604}
-							lazy
-							glass
-							glassRefraction={0.45}
-							glassReflectivity={0.12}
-							glassChromatic={0.3}
-							glassThickness={0.05}
-							containerShape={{
-								type: 'annulus',
-								cx: 0.5,
-								cy: 0.5,
-								innerRadius: 0.16,
-								outerRadius: 0.42
-							}}
-							backColor={cardColor}
-							curl={32}
-							densityDissipation={0.3}
-							velocityDissipation={0.1}
-							splatRadius={0.3}
-							splatForce={4500}
-							shading
-							bloom
-							bloomIntensity={0.55}
-							sunrays={false}
-							colorful
-							initialSplatCount={10}
-							autoSplatRate={stickyAutoAnimate ? 0.45 : 0}
-							autoSplatCount={1}
-							autoSplatBandHeight={1.6}
-							autoSplatSwirl={350}
-							splatOnHover
-							aria-label="Annulus container demo"
-						/>
-					</div>
-					<figcaption>
-						<span class="card-name">Annulus</span>
-					</figcaption>
-				</figure>
-				<figure class="card shape-card">
-					<div class="card-fluid">
-						<Fluid
-							seed={605}
-							lazy
-							glass
-							glassRefraction={0.45}
-							glassReflectivity={0.1}
-							glassChromatic={0.35}
-							glassThickness={0.05}
-							containerShape={{ type: 'svgPath', d: lightning, viewBox: [0, 0, 100, 100] }}
-							backColor={cardColor}
-							curl={32}
-							densityDissipation={0.3}
-							velocityDissipation={0.1}
-							splatRadius={0.3}
-							splatForce={4500}
-							shading
-							bloom
-							bloomIntensity={0.55}
-							sunrays={false}
-							colorful
-							initialSplatCount={10}
-							autoSplatRate={stickyAutoAnimate ? 0.45 : 0}
-							autoSplatCount={1}
-							autoSplatBandHeight={1.6}
-							autoSplatSwirl={350}
-							splatOnHover
-							aria-label="SVG path lightning container demo"
-						/>
-					</div>
-					<figcaption>
-						<span class="card-name">SVG Path</span>
-					</figcaption>
-				</figure>
-				<figure class="card shape-card">
-					<div class="card-fluid">
-						<Fluid
-							seed={606}
-							lazy
-							glass
-							glassRefraction={0.45}
-							glassReflectivity={0.1}
-							glassChromatic={0.35}
-							glassThickness={0.05}
-							containerShape={{ type: 'svgPath', text: '&', font: '900 280px Geist, Inter, sans-serif' }}
-							backColor={cardColor}
-							curl={28}
-							densityDissipation={0.3}
-							velocityDissipation={0.1}
-							splatRadius={0.32}
-							splatForce={4500}
-							shading
-							bloom
-							bloomIntensity={0.55}
-							sunrays={false}
-							colorful
-							initialSplatCount={10}
-							autoSplatRate={stickyAutoAnimate ? 0.45 : 0}
-							autoSplatCount={1}
-							autoSplatBandHeight={1.6}
-							autoSplatSwirl={350}
-							splatOnHover
-							aria-label="Text glyph container demo"
-						/>
-					</div>
-					<figcaption>
-						<span class="card-name">Text Glyph</span>
-					</figcaption>
-				</figure>
+				<Card
+					title="CircularFluid"
+					blurb="Vivid fluid in a circular boundary."
+					snippet="<CircularFluid />"
+					height={220}
+					onCustomize={() => openInPlayground('Glass', 'circle')}
+				>
+					<CircularFluid seed={81} lazy backColor={cardColor} aria-label="CircularFluid preset" />
+				</Card>
+				<Card
+					title="Rounded Rect"
+					blurb="Raw containerShape with a glass edge."
+					snippet={SNIPPETS.roundedRect}
+					height={220}
+					onCustomize={() => openInPlayground('Glass', 'roundedRect')}
+				>
+					<Fluid
+						seed={602}
+						lazy
+						glass
+						glassRefraction={0.45}
+						glassReflectivity={0.12}
+						glassChromatic={0.25}
+						glassThickness={0.05}
+						containerShape={{
+							type: 'roundedRect',
+							cx: 0.5,
+							cy: 0.5,
+							halfW: cardHalfW,
+							halfH: cardHalfH,
+							cornerRadius: cardCorner
+						}}
+						backColor={cardColor}
+						curl={28}
+						densityDissipation={0.35}
+						velocityDissipation={0.1}
+						splatRadius={0.32}
+						splatForce={4500}
+						shading
+						bloom
+						bloomIntensity={0.5}
+						sunrays={false}
+						colorful
+						initialSplatCount={10}
+						autoSplatRate={stickyAutoAnimate ? 0.45 : 0}
+						autoSplatCount={1}
+						autoSplatBandHeight={1.6}
+						autoSplatSwirl={350}
+						splatOnHover
+						aria-label="Rounded rect container demo"
+					/>
+				</Card>
+				<Card
+					title="FrameFluid"
+					blurb="Circulation around an inner cutout."
+					snippet="<FrameFluid />"
+					height={220}
+					onCustomize={() => openInPlayground('Glass', 'frame')}
+				>
+					<FrameFluid seed={82} lazy backColor={cardColor} aria-label="FrameFluid preset" />
+				</Card>
+				<Card
+					title="AnnularFluid"
+					blurb="Ring vortex between two circles."
+					snippet="<AnnularFluid />"
+					height={220}
+					onCustomize={() => openInPlayground('Glass', 'annulus')}
+				>
+					<AnnularFluid seed={83} lazy backColor={cardColor} aria-label="AnnularFluid preset" />
+				</Card>
+				<Card
+					title="SVG Path"
+					blurb="Raw svgPath container (lightning)."
+					snippet={SNIPPETS.svgPath}
+					height={220}
+				>
+					<Fluid
+						seed={605}
+						lazy
+						glass
+						glassRefraction={0.45}
+						glassReflectivity={0.1}
+						glassChromatic={0.35}
+						glassThickness={0.05}
+						containerShape={{ type: 'svgPath', d: lightning, viewBox: [0, 0, 100, 100] }}
+						backColor={cardColor}
+						curl={32}
+						densityDissipation={0.3}
+						velocityDissipation={0.1}
+						splatRadius={0.3}
+						splatForce={4500}
+						shading
+						bloom
+						bloomIntensity={0.55}
+						sunrays={false}
+						colorful
+						initialSplatCount={10}
+						autoSplatRate={stickyAutoAnimate ? 0.45 : 0}
+						autoSplatCount={1}
+						autoSplatBandHeight={1.6}
+						autoSplatSwirl={350}
+						splatOnHover
+						aria-label="SVG path lightning container demo"
+					/>
+				</Card>
+				<Card
+					title="SvgPathFluid"
+					blurb="Text-mode SVG mask container."
+					snippet="<SvgPathFluid />"
+					height={220}
+				>
+					<SvgPathFluid seed={84} lazy backColor={cardColor} aria-label="SvgPathFluid preset" />
+				</Card>
 			</div>
 		</section>
 
@@ -1166,169 +1023,165 @@
 				<p>Refraction, reflectivity, and chromatic fringe. The shader does the work.</p>
 			</header>
 			<div class="grid grid-2">
-				<figure class="card glass-card">
-					<div class="card-fluid">
-						<Fluid
-							seed={1111}
-							lazy
-							glass
-							glassRefraction={0.85}
-							glassReflectivity={0.18}
-							glassChromatic={0.6}
-							glassThickness={0.1}
-							containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.42 }}
-							backColor={cardColor}
-							curl={32}
-							densityDissipation={0.18}
-							velocityDissipation={0.06}
-							splatRadius={0.35}
-							splatForce={4500}
-							shading
-							bloom
-							bloomIntensity={0.4}
-							sunrays={false}
-							colorful
-							initialSplatCount={12}
-							autoSplatRate={stickyAutoAnimate ? 1.0 : 0}
-							autoSplatCenterY={0.5}
-							autoSplatBandHeight={0.8}
-							autoSplatSwirl={500}
-							splatOnHover
-							aria-label="Crystal orb glass demo"
-						/>
-					</div>
-					<figcaption>
-						<span class="card-name">Crystal orb</span>
-						<span class="card-blurb">High refraction, vivid chroma.</span>
-					</figcaption>
-				</figure>
-				<figure class="card glass-card">
-					<div class="card-fluid">
-						<Fluid
-							seed={1212}
-							lazy
-							glass
-							glassRefraction={0.3}
-							glassReflectivity={0.08}
-							glassChromatic={0.12}
-							glassThickness={0.04}
-							containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.42 }}
-							backColor={cardColor}
-							curl={28}
-							densityDissipation={0.4}
-							velocityDissipation={0.12}
-							splatRadius={0.25}
-							splatForce={4500}
-							shading
-							bloom
-							bloomIntensity={0.4}
-							sunrays
-							sunraysWeight={0.4}
-							colorful
-							initialSplatCount={15}
-							autoSplatRate={stickyAutoAnimate ? 2.0 : 0}
-							autoSplatCount={2}
-							autoSplatCenterY={0.5}
-							autoSplatBandHeight={0.8}
-							autoSplatSwirl={400}
-							splatOnHover
-							aria-label="Soft lens glass demo"
-						/>
-					</div>
-					<figcaption>
-						<span class="card-name">Soft lens</span>
-						<span class="card-blurb">Low refraction, gentle chroma.</span>
-					</figcaption>
-				</figure>
-				<figure class="card glass-card">
-					<div class="card-fluid">
-						<Fluid
-							seed={1313}
-							lazy
-							glass
-							glassRefraction={0.7}
-							glassReflectivity={0.18}
-							glassChromatic={0.7}
-							glassThickness={0.06}
-							containerShape={{
-								type: 'annulus',
-								cx: 0.5,
-								cy: 0.5,
-								innerRadius: 0.18,
-								outerRadius: 0.42
-							}}
-							backColor={cardColor}
-							curl={36}
-							densityDissipation={0.25}
-							velocityDissipation={0.1}
-							splatRadius={0.3}
-							splatForce={4500}
-							shading
-							bloom
-							bloomIntensity={0.45}
-							sunrays={false}
-							colorful
-							initialSplatCount={10}
-							autoSplatRate={stickyAutoAnimate ? 1.2 : 0}
-							autoSplatCenterY={0.5}
-							autoSplatBandHeight={0.6}
-							autoSplatSwirl={400}
-							splatOnHover
-							aria-label="Portal ring glass demo"
-						/>
-					</div>
-					<figcaption>
-						<span class="card-name">Portal ring</span>
-						<span class="card-blurb">Annular shape, prismatic edges.</span>
-					</figcaption>
-				</figure>
-				<figure class="card glass-card">
-					<div class="card-fluid">
-						<Fluid
-							seed={1414}
-							lazy
-							glass
-							glassRefraction={0.6}
-							glassReflectivity={0.2}
-							glassChromatic={0.5}
-							glassThickness={0.07}
-							containerShape={{
-								type: 'frame',
-								cx: 0.5,
-								cy: 0.5,
-								halfW: 0.22,
-								halfH: 0.22,
-								innerCornerRadius: 0.04,
-								outerHalfW: 0.48,
-								outerHalfH: 0.48,
-								outerCornerRadius: 0.05
-							}}
-							backColor={cardColor}
-							curl={24}
-							densityDissipation={0.22}
-							velocityDissipation={0.1}
-							splatRadius={0.32}
-							splatForce={4500}
-							shading
-							bloom
-							bloomIntensity={0.55}
-							sunrays={false}
-							colorful
-							initialSplatCount={10}
-							autoSplatRate={stickyAutoAnimate ? 2.5 : 0}
-							autoSplatCount={2}
-							autoSplatCenterY={0.5}
-							autoSplatBandHeight={1.5}
-							autoSplatSwirl={350}
-							splatOnHover
-							aria-label="Glass frame demo"
-						/>
-					</div>
-					<figcaption>
-						<span class="card-name">Glass frame</span>
-						<span class="card-blurb">Frame shape, framed.</span>
-					</figcaption>
-				</figure>
+				<Card
+					title="Crystal orb"
+					blurb="High refraction, vivid chroma."
+					snippet={SNIPPETS.crystalOrb}
+					onCustomize={() => openInPlayground('Glass', 'circle')}
+				>
+					<Fluid
+						seed={1111}
+						lazy
+						glass
+						glassRefraction={0.85}
+						glassReflectivity={0.18}
+						glassChromatic={0.6}
+						glassThickness={0.1}
+						containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.42 }}
+						backColor={cardColor}
+						curl={32}
+						densityDissipation={0.18}
+						velocityDissipation={0.06}
+						splatRadius={0.35}
+						splatForce={4500}
+						shading
+						bloom
+						bloomIntensity={0.4}
+						sunrays={false}
+						colorful
+						initialSplatCount={12}
+						autoSplatRate={stickyAutoAnimate ? 1.0 : 0}
+						autoSplatCenterY={0.5}
+						autoSplatBandHeight={0.8}
+						autoSplatSwirl={500}
+						splatOnHover
+						aria-label="Crystal orb glass demo"
+					/>
+				</Card>
+				<Card
+					title="Soft lens"
+					blurb="Low refraction, gentle chroma."
+					snippet={SNIPPETS.softLens}
+					onCustomize={() => openInPlayground('Glass', 'circle')}
+				>
+					<Fluid
+						seed={1212}
+						lazy
+						glass
+						glassRefraction={0.3}
+						glassReflectivity={0.08}
+						glassChromatic={0.12}
+						glassThickness={0.04}
+						containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.42 }}
+						backColor={cardColor}
+						curl={28}
+						densityDissipation={0.4}
+						velocityDissipation={0.12}
+						splatRadius={0.25}
+						splatForce={4500}
+						shading
+						bloom
+						bloomIntensity={0.4}
+						sunrays
+						sunraysWeight={0.4}
+						colorful
+						initialSplatCount={15}
+						autoSplatRate={stickyAutoAnimate ? 2.0 : 0}
+						autoSplatCount={2}
+						autoSplatCenterY={0.5}
+						autoSplatBandHeight={0.8}
+						autoSplatSwirl={400}
+						splatOnHover
+						aria-label="Soft lens glass demo"
+					/>
+				</Card>
+				<Card
+					title="Portal ring"
+					blurb="Annular shape, prismatic edges."
+					snippet={SNIPPETS.portalRing}
+					onCustomize={() => openInPlayground('Glass', 'annulus')}
+				>
+					<Fluid
+						seed={1313}
+						lazy
+						glass
+						glassRefraction={0.7}
+						glassReflectivity={0.18}
+						glassChromatic={0.7}
+						glassThickness={0.06}
+						containerShape={{
+							type: 'annulus',
+							cx: 0.5,
+							cy: 0.5,
+							innerRadius: 0.18,
+							outerRadius: 0.42
+						}}
+						backColor={cardColor}
+						curl={36}
+						densityDissipation={0.25}
+						velocityDissipation={0.1}
+						splatRadius={0.3}
+						splatForce={4500}
+						shading
+						bloom
+						bloomIntensity={0.45}
+						sunrays={false}
+						colorful
+						initialSplatCount={10}
+						autoSplatRate={stickyAutoAnimate ? 1.2 : 0}
+						autoSplatCenterY={0.5}
+						autoSplatBandHeight={0.6}
+						autoSplatSwirl={400}
+						splatOnHover
+						aria-label="Portal ring glass demo"
+					/>
+				</Card>
+				<Card
+					title="Glass frame"
+					blurb="Frame shape, framed."
+					snippet={SNIPPETS.glassFrame}
+					onCustomize={() => openInPlayground('Glass', 'frame')}
+				>
+					<Fluid
+						seed={1414}
+						lazy
+						glass
+						glassRefraction={0.6}
+						glassReflectivity={0.2}
+						glassChromatic={0.5}
+						glassThickness={0.07}
+						containerShape={{
+							type: 'frame',
+							cx: 0.5,
+							cy: 0.5,
+							halfW: 0.22,
+							halfH: 0.22,
+							innerCornerRadius: 0.04,
+							outerHalfW: 0.48,
+							outerHalfH: 0.48,
+							outerCornerRadius: 0.05
+						}}
+						backColor={cardColor}
+						curl={24}
+						densityDissipation={0.22}
+						velocityDissipation={0.1}
+						splatRadius={0.32}
+						splatForce={4500}
+						shading
+						bloom
+						bloomIntensity={0.55}
+						sunrays={false}
+						colorful
+						initialSplatCount={10}
+						autoSplatRate={stickyAutoAnimate ? 2.5 : 0}
+						autoSplatCount={2}
+						autoSplatCenterY={0.5}
+						autoSplatBandHeight={1.5}
+						autoSplatSwirl={350}
+						splatOnHover
+						aria-label="Glass frame demo"
+					/>
+				</Card>
 			</div>
 		</section>
 
@@ -1339,42 +1192,50 @@
 				<p>Dye clings to text or SVG paths.</p>
 			</header>
 			<div class="grid grid-2">
-				<div class="card sticky-card">
-					<div class="card-fluid">
-						<FluidStick
-							text="FLUID"
-							font="900 110px Geist, Inter, sans-serif"
-							seed={211}
-							autoAnimate={stickyAutoAnimate}
-							autoAnimateDuration={4}
-							colorful
-							shading
-							bloom={false}
-							densityDissipation={0.92}
-							splatRadius={0.18}
-							backColor={cardColor}
-							lazy
-						/>
-					</div>
-				</div>
-				<div class="card sticky-card">
-					<div class="card-fluid">
-						<FluidStick
-							text="∞"
-							font="220px Georgia, serif"
-							seed={222}
-							autoAnimate={stickyAutoAnimate}
-							autoAnimateDuration={4}
-							colorful
-							shading
-							bloom={false}
-							densityDissipation={0.92}
-							splatRadius={0.18}
-							backColor={cardColor}
-							lazy
-						/>
-					</div>
-				</div>
+				<Card
+					title="Quick fade"
+					blurb="Trails evaporate within a second."
+					snippet={SNIPPETS.stickyFluid}
+					height={240}
+					onCustomize={() => openInPlayground('Sticky')}
+				>
+					<FluidStick
+						text="FLUID"
+						font="900 110px Geist, Inter, sans-serif"
+						seed={211}
+						autoAnimate={stickyAutoAnimate}
+						autoAnimateDuration={4}
+						colorful
+						shading
+						bloom={false}
+						densityDissipation={0.92}
+						splatRadius={0.18}
+						backColor={cardColor}
+						lazy
+					/>
+				</Card>
+				<Card
+					title="Long-lasting dye"
+					blurb="Slow dissipation keeps cursor trails around."
+					snippet={SNIPPETS.stickyInfinity}
+					height={240}
+					onCustomize={() => openInPlayground('Sticky')}
+				>
+					<FluidStick
+						text="∞"
+						font="220px Georgia, serif"
+						seed={222}
+						autoAnimate={stickyAutoAnimate}
+						autoAnimateDuration={4}
+						colorful
+						shading
+						bloom={false}
+						densityDissipation={0.997}
+						splatRadius={0.18}
+						backColor={cardColor}
+						lazy
+					/>
+				</Card>
 			</div>
 		</section>
 
@@ -1385,43 +1246,43 @@
 				<p>The simulation as an opacity mask. Move the cursor to uncover.</p>
 			</header>
 			<div class="grid grid-2">
-				<div class="card reveal-card">
-					<div class="card-fluid">
-						<FluidReveal
-							lazy
-							velocityDissipation={0.95}
-							pressureIterations={10}
-							coverColor={revealCoverColor}
-							fringeColor={revealFringeColor}
-							accentColor={revealAccentColor}
-						>
-							<div class="reveal-content">Revealed</div>
-						</FluidReveal>
-					</div>
-					<div class="card-caption-row">
-						<span class="card-name">Scratch to reveal</span>
-					</div>
-				</div>
-				<div class="card reveal-card">
-					<div class="card-fluid">
-						<FluidReveal
-							lazy
-							autoReveal={stickyAutoAnimate}
-							autoRevealSpeed={0.8}
-							fadeBack={false}
-							velocityDissipation={0.95}
-							sensitivity={0.15}
-							coverColor={revealCoverColor}
-							fringeColor={revealFringeColor}
-							accentColor={revealAccentColor}
-						>
-							<div class="reveal-content">Auto reveal</div>
-						</FluidReveal>
-					</div>
-					<div class="card-caption-row">
-						<span class="card-name">Auto-reveal</span>
-					</div>
-				</div>
+				<Card
+					title="Scratch to reveal"
+					snippet={SNIPPETS.revealScratch}
+					height={260}
+					onCustomize={() => openInPlayground('Reveal')}
+				>
+					<FluidReveal
+						lazy
+						velocityDissipation={0.95}
+						pressureIterations={10}
+						coverColor={revealCoverColor}
+						fringeColor={revealFringeColor}
+						accentColor={revealAccentColor}
+					>
+						<div class="reveal-content">Revealed</div>
+					</FluidReveal>
+				</Card>
+				<Card
+					title="Auto-reveal"
+					snippet={SNIPPETS.revealAuto}
+					height={260}
+					onCustomize={() => openInPlayground('Reveal')}
+				>
+					<FluidReveal
+						lazy
+						autoReveal={stickyAutoAnimate}
+						autoRevealSpeed={0.8}
+						fadeBack={false}
+						velocityDissipation={0.95}
+						sensitivity={0.15}
+						coverColor={revealCoverColor}
+						fringeColor={revealFringeColor}
+						accentColor={revealAccentColor}
+					>
+						<div class="reveal-content">Auto reveal</div>
+					</FluidReveal>
+				</Card>
 			</div>
 		</section>
 
@@ -1432,42 +1293,42 @@
 				<p>An image, warped by the velocity field.</p>
 			</header>
 			<div class="grid grid-2">
-				<div class="card distort-card">
-					<div class="card-fluid">
-						<FluidDistortion
-							src="{base}/bosch-garden.jpg"
-							seed={311}
-							strength={0.3}
-							intensity={20}
-							scale={1.0}
-							fit="cover"
-							initialSplats={6}
-							lazy
-						/>
-					</div>
-					<div class="card-caption-row">
-						<span class="card-name">Subtle</span>
-						<code class="card-code">strength=&#123;0.3&#125;</code>
-					</div>
-				</div>
-				<div class="card distort-card">
-					<div class="card-fluid">
-						<FluidDistortion
-							src="{base}/bosch-garden.jpg"
-							seed={322}
-							strength={0.45}
-							intensity={28}
-							scale={1.0}
-							fit="cover"
-							initialSplats={6}
-							lazy
-						/>
-					</div>
-					<div class="card-caption-row">
-						<span class="card-name">Strong</span>
-						<code class="card-code">strength=&#123;0.45&#125;</code>
-					</div>
-				</div>
+				<Card
+					title="Subtle"
+					blurb="strength 0.3, intensity 20."
+					snippet={SNIPPETS.distortSubtle}
+					height={280}
+					onCustomize={() => openInPlayground('Distortion')}
+				>
+					<FluidDistortion
+						src="{base}/bosch-garden.jpg"
+						seed={311}
+						strength={0.3}
+						intensity={20}
+						scale={1.0}
+						fit="cover"
+						initialSplats={6}
+						lazy
+					/>
+				</Card>
+				<Card
+					title="Strong"
+					blurb="strength 0.45, intensity 28."
+					snippet={SNIPPETS.distortStrong}
+					height={280}
+					onCustomize={() => openInPlayground('Distortion')}
+				>
+					<FluidDistortion
+						src="{base}/bosch-garden.jpg"
+						seed={322}
+						strength={0.45}
+						intensity={28}
+						scale={1.0}
+						fit="cover"
+						initialSplats={6}
+						lazy
+					/>
+				</Card>
 			</div>
 		</section>
 
@@ -1620,11 +1481,11 @@
 						{:else if mode === 'flow'}
 							{#key flowScene}
 								{#if flowScene === 'GasFlare'}
-									<GasFlare lazy seed={717} backColor={cardColor} pointerInput={false} splatOnHover={false} aria-label="GasFlare playground scene" />
+									<GasFlare lazy seed={717} aria-label="GasFlare playground scene" />
 								{:else if flowScene === 'RiverDelta'}
-									<RiverDelta lazy seed={737} backColor={cardColor} pointerInput={false} splatOnHover={false} aria-label="RiverDelta playground scene" />
+									<RiverDelta lazy seed={737} aria-label="RiverDelta playground scene" />
 									{:else if flowScene === 'TeslaValve'}
-										<TeslaValve lazy seed={747} backColor={cardColor} pointerInput={false} splatOnHover={false} aria-label="TeslaValve playground scene" />
+										<TeslaValve lazy seed={747} aria-label="TeslaValve playground scene" />
 									{:else if flowScene === 'CustomFlow'}
 										<Fluid
 											lazy
@@ -1653,11 +1514,11 @@
 											sunrays={false}
 											simResolution={128}
 											dyeResolution={512}
-											backColor={cardColor}
+											backColor={{ r: 6, g: 10, b: 14 }}
 											aria-label="Custom FlowConfig playground scene"
 										/>
 									{:else}
-										<Venturi lazy seed={727} backColor={cardColor} pointerInput={false} splatOnHover={false} aria-label="Venturi playground scene" />
+										<Venturi lazy seed={727} backColor={cardColor} aria-label="Venturi playground scene" />
 								{/if}
 							{/key}
 						{:else}
@@ -2452,31 +2313,6 @@
 		display: block;
 		background: var(--card);
 	}
-	.card figcaption,
-	.card-caption-row {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: 14px;
-		padding: 12px 16px 14px;
-		border-top: 1px solid var(--rule);
-		font-size: 13px;
-	}
-	.card-name {
-		color: var(--ink);
-		font-weight: 600;
-		letter-spacing: -0.005em;
-	}
-	.card-blurb {
-		color: var(--ink-soft);
-		font-size: 12.5px;
-	}
-	.card-code {
-		font-family: var(--mono);
-		font-size: 11.5px;
-		color: var(--ink-soft);
-	}
-
 	/* ---- Grids ---- */
 	.grid {
 		display: grid;
@@ -2487,23 +2323,6 @@
 	}
 	.grid-2 {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
-	}
-	.preset-card .card-fluid,
-	.flow-card .card-fluid,
-	.glass-card .card-fluid {
-		height: 300px;
-	}
-	.shape-card .card-fluid {
-		height: 220px;
-	}
-	.sticky-card .card-fluid {
-		height: 240px;
-	}
-	.reveal-card .card-fluid {
-		height: 260px;
-	}
-	.distort-card .card-fluid {
-		height: 280px;
 	}
 
 	.reveal-content {
@@ -2859,11 +2678,6 @@
 		.grid-3,
 		.grid-2 {
 			grid-template-columns: 1fr;
-		}
-		.preset-card .card-fluid,
-		.flow-card .card-fluid,
-		.glass-card .card-fluid {
-			height: 260px;
 		}
 		.footer-row {
 			grid-template-columns: 1fr;

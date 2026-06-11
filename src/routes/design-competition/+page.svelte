@@ -6,7 +6,7 @@
 		InkInWater,
 		LavaLamp,
 		Plasma,
-		ToroidalTempest
+		Toroidal
 	} from '$lib/index.js';
 
 	let reducedMotion = $state(false);
@@ -121,7 +121,7 @@
 			num: 11,
 			label: 'Editorial Dark Orange',
 			descriptor: 'Serif numerals, split grids, orange accent',
-			preview: ToroidalTempest,
+			preview: Toroidal,
 			seed: 1100
 		},
 		{
@@ -137,7 +137,7 @@
 			num: 14,
 			label: 'Full Showcase',
 			descriptor: 'Comprehensive, hi-res sticky variant',
-			preview: ToroidalTempest,
+			preview: Toroidal,
 			seed: 1400
 		},
 		{
@@ -177,7 +177,7 @@
 			num: 19,
 			label: 'Vortex (psychedelic purple)',
 			descriptor: 'Rave grid, neon pink + acid green, max curl',
-			preview: ToroidalTempest,
+			preview: Toroidal,
 			seed: 1900
 		},
 		{

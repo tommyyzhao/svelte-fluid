@@ -11,7 +11,7 @@ import riverDelta from '../../presets/RiverDelta.svelte?raw';
 import gasFlare from '../../presets/GasFlare.svelte?raw';
 import svgPathFluid from '../../presets/SvgPathFluid.svelte?raw';
 import teslaValve from '../../presets/TeslaValve.svelte?raw';
-import toroidalTempest from '../../presets/ToroidalTempest.svelte?raw';
+import toroidal from '../../presets/Toroidal.svelte?raw';
 import venturi from '../../presets/Venturi.svelte?raw';
 import airfoil from '../../../routes/obstruction-demos/Airfoil.svelte?raw';
 import karman from '../../../routes/obstruction-demos/Karman.svelte?raw';
@@ -30,7 +30,7 @@ const presets = {
 	GasFlare: gasFlare,
 	SvgPathFluid: svgPathFluid,
 	TeslaValve: teslaValve,
-	ToroidalTempest: toroidalTempest,
+	Toroidal: toroidal,
 	Venturi: venturi,
 	Airfoil: airfoil,
 	Karman: karman,
@@ -212,5 +212,18 @@ describe('flow-sensitive obstruction demos', () => {
 		expect(maze).toContain('dissipation: 0.045');
 		expect(maze).toContain('clearVelocity: false');
 		expect(maze).toContain('bloom={false}');
+	});
+});
+
+describe('Toroidal rename', () => {
+	it('index.ts exports Toroidal and keeps the deprecated ToroidalTempest alias', async () => {
+		const index = (await import('../../index.js?raw' as string)) as unknown as { default: string };
+		expect(index.default).toContain(
+			"export { default as Toroidal, type ToroidalProps } from './presets/Toroidal.svelte';"
+		);
+		expect(index.default).toContain('@deprecated');
+		expect(index.default).toContain(
+			"export { default as ToroidalTempest, type ToroidalProps as ToroidalTempestProps } from './presets/Toroidal.svelte';"
+		);
 	});
 });

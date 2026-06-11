@@ -242,13 +242,13 @@
 
 <hr />
 
-<h2 id="toroidaltempest">ToroidalTempest</h2>
+<h2 id="toroidal">Toroidal</h2>
 
 <p>A violent full-spectrum storm circulating in a toroidal ring. Eight high-velocity dye blobs orbit inside an annular container with fierce counter-clockwise flow. Periodic re-injection every 2 seconds keeps the ring fed with fresh color.</p>
 
 <p><strong>Container shape:</strong> <code>annulus</code> (cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.42).</p>
 
-<pre><code>&lt;ToroidalTempest /&gt;</code></pre>
+<pre><code>&lt;Toroidal /&gt;</code></pre>
 
 <table>
 	<thead>

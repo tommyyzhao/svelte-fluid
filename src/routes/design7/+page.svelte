@@ -14,7 +14,7 @@
 		InkInWater,
 		FrozenSwirl,
 		Aurora,
-		ToroidalTempest,
+		Toroidal,
 		type RGB
 	} from '$lib/index.js';
 	import { base } from '$app/paths';
@@ -122,7 +122,7 @@
 		'Ink in Water': { curl: 12, splatRadius: 0.32, splatForce: 5200, densityDissipation: 0.4, velocityDissipation: 0.1, bloom: false, shading: true, colorful: false, backColor: { r: 244, g: 240, b: 232 } },
 		'Frozen Swirl': { curl: 35, splatRadius: 0.28, splatForce: 5800, densityDissipation: 0.2, velocityDissipation: 0.05, bloom: true, shading: true, colorful: false, backColor: { r: 2, g: 8, b: 18 } },
 		Aurora: { curl: 22, splatRadius: 0.38, splatForce: 6200, densityDissipation: 0.15, velocityDissipation: 0.08, bloom: true, shading: true, colorful: true, backColor: { r: 0, g: 4, b: 14 } },
-		'Toroidal Tempest': { curl: 45, splatRadius: 0.3, splatForce: 7000, densityDissipation: 0.25, velocityDissipation: 0.1, bloom: true, shading: false, colorful: true, backColor: { r: 6, g: 2, b: 16 } }
+		'Toroidal': { curl: 45, splatRadius: 0.3, splatForce: 7000, densityDissipation: 0.25, velocityDissipation: 0.1, bloom: true, shading: false, colorful: true, backColor: { r: 6, g: 2, b: 16 } }
 	};
 
 	const presetNames = Object.keys(PLAYGROUND_PRESETS);
@@ -376,14 +376,14 @@
 		</div>
 	</section>
 
-	<!-- 08 Preset: ToroidalTempest (full-bleed) -->
+	<!-- 08 Preset: Toroidal (full-bleed) -->
 	<section class="snap full-bleed" bind:this={sections[7]}>
 		<div class="bleed-canvas">
-			<ToroidalTempest lazy seed={606} aria-label="ToroidalTempest preset" backColor={{ r: 10, g: 10, b: 10 }} />
+			<Toroidal lazy seed={606} aria-label="Toroidal preset" backColor={{ r: 10, g: 10, b: 10 }} />
 		</div>
 		<aside class="bleed-caption">
-			<div class="kicker light">Preset 07 &mdash; tempest</div>
-			<h3 class="caption-h">Toroidal Tempest.</h3>
+			<div class="kicker light">Preset 07 &mdash; toroidal</div>
+			<h3 class="caption-h">Toroidal.</h3>
 			<p class="caption-body">
 				Maximum curl in a toroidal topology&mdash;fluid wraps edge to edge in an endless
 				storm. The preset for when restraint is not an option.
