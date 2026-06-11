@@ -3,9 +3,11 @@
 
   Visual intent: flow past a single cylinder, evocative of a von Kármán
   vortex street — the alternating wake of vortices shed behind a bluff
-  body in a steady cross-flow. Multicolor tracer packets (fresh generated
-  hue per packet) enter from the left and thread the wake, so successive
-  sheddings read as distinct colored filaments.
+  body in a steady cross-flow. A rake of six colored streakline sources
+  (persistent flow emitters, one hue each — the classic wind-tunnel
+  smoke-rake) feeds continuous filaments through the wake, and the
+  cylinder itself is painted via `obstructionColor` so the bluff body
+  reads as a visible object instead of a background-colored hole.
 
   HONEST NOTE (faithful vs. evocative): this is *evocative of* a vortex
   street, NOT a validated shedding simulation. Real Kármán shedding is a
@@ -17,9 +19,9 @@
 
   How the throughflow works:
   - A pressure-gradient body force drives the live velocity field from left
-    to right, while intermittent tracer packets enter from the left at the
-    same speed as the startup jets. The tracers reveal the wake without
-    repainting a persistent dye line every frame.
+    to right, while a rake of persistent dye-only point sources marks the
+    flow. The streaklines reveal the wake the way smoke lines do in a
+    wind tunnel — the smoke rides the flow, it doesn't drive it.
   - A curtain of startup presetSplats establishes the freestream instantly;
     without it the first tracer packets mushroom into still fluid near the
     inlet while the body force spins up (the force needs ~10 s to reach
@@ -84,7 +86,7 @@
 	};
 
 	// Startup jets: a full-height curtain of rightward impulses that
-	// establishes the freestream immediately, so the first tracer packets
+	// establishes the freestream immediately, so the first streaklines
 	// ride a moving field instead of mushrooming into still fluid while
 	// the pressure-gradient drive spins up (~10 s to terminal velocity).
 	const V0 = 460;
@@ -96,10 +98,34 @@
 		{ x: 0.04, y: 0.86, dx: V0, dy: 0, color: { r: 0.3, g: 0.12, b: 0.18 } }
 	];
 
+	// Streakline rake: six persistent dye-only point sources at the left
+	// edge, each with its own hue — the classic wind-tunnel smoke-rake.
+	// They are passive emitters: the pressure-gradient drive (plus the
+	// startup curtain) carries the freestream, and the rake just marks it,
+	// so each line is a continuous colored filament threading the wake.
+	// (Injecting velocity here would accumulate per-frame into the tiny
+	// point footprints and curl the inlet into a giant recirculation cell —
+	// the smoke must ride the flow, not drive it.) The middle pair
+	// straddles the cylinder band (splat-space y≈0.38–0.58); the outer
+	// lines pass by as freestream reference.
+	const RAKE_X = 0.03;
+	const RAKE_RATE = 26;
+	const RAKE_RADIUS = 0.028;
+	const rakeLine = (y: number, dye: { r: number; g: number; b: number }) =>
+		({ kind: 'point', x: RAKE_X, y, dye, rate: RAKE_RATE, radius: RAKE_RADIUS }) as const;
+
 	const FLOW: FlowConfig = {
 		mode: 'live',
 		boundary: { left: 'open', right: 'open', top: 'open', bottom: 'open' },
 		forces: [{ kind: 'pressureGradient', vector: { x: 64, y: 0 } }],
+		sources: [
+			rakeLine(0.2, { r: 0.42, g: 0.07, b: 0.1 }),
+			rakeLine(0.32, { r: 0.42, g: 0.26, b: 0.05 }),
+			rakeLine(0.44, { r: 0.36, g: 0.4, b: 0.07 }),
+			rakeLine(0.56, { r: 0.07, g: 0.38, b: 0.18 }),
+			rakeLine(0.68, { r: 0.06, g: 0.26, b: 0.44 }),
+			rakeLine(0.8, { r: 0.34, g: 0.1, b: 0.4 })
+		],
 		outlets: [
 			{ edge: 'right', from: 0, to: 1, width: 0.075, clearDye: 0.08, clearScalars: true, clearVelocity: true },
 			{ edge: 'top', from: 0, to: 1, width: 0.045, clearDye: 0.12, clearScalars: true, clearVelocity: false },
@@ -132,6 +158,7 @@
 	{splatOnHover}
 	aria-label={ariaLabel}
 	obstructions={[CYLINDER]}
+	obstructionColor={{ r: 86, g: 98, b: 122 }}
 	flow={FLOW}
 	openBoundary
 	curl={10}
@@ -147,16 +174,6 @@
 	pressureIterations={34}
 	splatRadius={0.06}
 	splatForce={6000}
-	autoSplatRate={4.5}
-	autoSplatCount={3}
-	autoSplatColor={null}
-	autoSplatVelocityX={460}
-	autoSplatVelocityY={0}
-	autoSplatCenterX={0.035}
-	autoSplatBandWidth={0.025}
-	autoSplatCenterY={0.52}
-	autoSplatBandHeight={0.5}
-	autoSplatSwirl={0}
 	shading={false}
 	colorful={false}
 	bloom={false}

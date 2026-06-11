@@ -254,6 +254,19 @@ describe('resolveConfig', () => {
 			expect(r.OBSTRUCTIONS).toBeNull();
 		});
 
+		it('obstructionColor defaults to null (silhouette)', () => {
+			expect(resolveConfig({}, DEFAULTS).OBSTRUCTION_COLOR).toBeNull();
+		});
+
+		it('maps and clears obstructionColor', () => {
+			const base = resolveConfig({ obstructionColor: { r: 86, g: 98, b: 122 } }, DEFAULTS);
+			expect(base.OBSTRUCTION_COLOR).toEqual({ r: 86, g: 98, b: 122 });
+			const kept = resolveConfig({}, base);
+			expect(kept.OBSTRUCTION_COLOR).toEqual({ r: 86, g: 98, b: 122 });
+			const cleared = resolveConfig({ obstructionColor: null }, base);
+			expect(cleared.OBSTRUCTION_COLOR).toBeNull();
+		});
+
 		it('flow defaults to null', () => {
 			expect(resolveConfig({}, DEFAULTS).FLOW).toBeNull();
 		});

@@ -755,6 +755,16 @@ export interface FluidConfig {
 	 */
 	obstructions?: ReadonlyArray<Obstruction>;
 	/**
+	 * Fill color painted over obstruction footprints in the display pass,
+	 * in **0–255 RGB** (CSS-style, same convention as `backColor`). Makes
+	 * solid bodies read as visible objects instead of `backColor`-colored
+	 * silhouettes — e.g. a cylinder in a vortex-street scene. Uses the
+	 * anti-aliased obstruction mask, so edges stay smooth. `null` (default)
+	 * keeps the legacy silhouette behavior. Bucket B (keyword recompile).
+	 * See ADR-0039.
+	 */
+	obstructionColor?: RGB | null;
+	/**
 	 * Additive v1 flow-scene controls for physically-plausible presets:
 	 * persistent sources, edge-drain outlets, scalar fields, forces, prescribed fields,
 	 * and field-aware visualization. `undefined` preserves legacy behavior.
@@ -842,6 +852,7 @@ export interface ResolvedConfig {
 	STICKY_PRESSURE: number;
 	STICKY_AMPLIFY: number;
 	OBSTRUCTIONS: ReadonlyArray<Obstruction> | null;
+	OBSTRUCTION_COLOR: RGB | null;
 	FLOW: FlowConfig | null;
 }
 

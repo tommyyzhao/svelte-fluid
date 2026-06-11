@@ -554,7 +554,7 @@
 
 <h2 id="karman">Karman</h2>
 
-<p>Flow past a single cylinder, evocative of a von Kármán vortex street — the alternating wake of vortices shed behind a bluff body in steady cross-flow. A pressure-gradient body force drives the field left to right while fast multicolor tracer packets (fresh generated hue per packet) enter from the left and thread the wake, so successive sheddings read as distinct colored filaments.</p>
+<p>Flow past a single cylinder, evocative of a von Kármán vortex street — the alternating wake of vortices shed behind a bluff body in steady cross-flow. A pressure-gradient body force drives the field left to right while a rake of six persistent dye-only streakline sources (one hue each — the classic wind-tunnel smoke-rake, passively riding the flow) feeds continuous colored filaments through the wake. The cylinder is painted via <code>obstructionColor</code> so the bluff body reads as a visible object.</p>
 
 <p><strong>Obstruction:</strong> a single cylinder (circle authored as two SVG arcs, radius 10 in a [0,0,100,100] viewBox, <code>fit: 'fill'</code>) placed left of center and slightly below the inflow centerline — the deliberate vertical offset breaks symmetry so the wake sheds instead of forming a stable standing pair. All canvas edges are open with dye sponge drains; only the downstream outlet damps velocity.</p>
 
@@ -592,14 +592,8 @@
 		<tr><td><code>backColor</code></td><td>{LB} r: 4, g: 6, b: 14 {RB}</td></tr>
 		<tr><td><code>initialSplatCount</code></td><td>0</td></tr>
 		<tr><td><code>obstructions</code></td><td>1 off-center cylinder (fit: 'fill')</td></tr>
-		<tr><td><code>flow</code></td><td>pressureGradient drive (x: 64) + four-edge dye drains</td></tr>
-		<tr><td><code>autoSplatRate</code></td><td>4.5</td></tr>
-		<tr><td><code>autoSplatCount</code></td><td>3</td></tr>
-		<tr><td><code>autoSplatColor</code></td><td>null (fresh hue per tracer packet)</td></tr>
-		<tr><td><code>autoSplatVelocityX</code></td><td>460</td></tr>
-		<tr><td><code>autoSplatCenterX</code></td><td>0.035</td></tr>
-		<tr><td><code>autoSplatBandWidth</code></td><td>0.025</td></tr>
-		<tr><td><code>autoSplatBandHeight</code></td><td>0.5</td></tr>
+		<tr><td><code>obstructionColor</code></td><td>{LB} r: 86, g: 98, b: 122 {RB} (visible slate cylinder)</td></tr>
+		<tr><td><code>flow</code></td><td>pressureGradient drive (x: 64) + 6-source dye-only streakline rake (point sources, rate 26) + four-edge dye drains</td></tr>
 		<tr><td><code>presetSplats</code></td><td>5 startup freestream jets (full-height curtain)</td></tr>
 	</tbody>
 </table>

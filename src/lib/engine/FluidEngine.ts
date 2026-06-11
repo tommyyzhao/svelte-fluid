@@ -195,6 +195,7 @@ export const DEFAULTS: ResolvedConfig = {
 	STICKY_PRESSURE: 0.15,
 	STICKY_AMPLIFY: 0.3,
 	OBSTRUCTIONS: null,
+	OBSTRUCTION_COLOR: null,
 	FLOW: null
 };
 /** @internal Exported for tests — not part of the public API. */
@@ -291,6 +292,7 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 	if (input.stickyPressure !== undefined) out.STICKY_PRESSURE = input.stickyPressure;
 	if (input.stickyAmplify !== undefined) out.STICKY_AMPLIFY = input.stickyAmplify;
 	if (input.obstructions !== undefined) out.OBSTRUCTIONS = input.obstructions ?? null;
+	if (input.obstructionColor !== undefined) out.OBSTRUCTION_COLOR = input.obstructionColor ?? null;
 	if (input.flow !== undefined) out.FLOW = input.flow ?? null;
 	return out;
 }
@@ -686,6 +688,9 @@ export class FluidEngine implements FluidHandle {
 		// Bucket-C-like: rebuild the combined obstruction mask texture, and
 		// recompile the display shader to toggle the OBSTRUCTION_MASK keyword.
 		const obstructionsChanged = !obstructionsEqual(a.OBSTRUCTIONS, b.OBSTRUCTIONS);
+		// Bucket B: the OBSTRUCTION_FILL keyword tracks color *presence*; the
+		// color value itself is a per-frame uniform (Bucket A).
+		const obstructionColorChanged = !!a.OBSTRUCTION_COLOR !== !!b.OBSTRUCTION_COLOR;
 		const flowChanged = !flowConfigEqual(a.FLOW, b.FLOW);
 		const scalarNeedChanged = needsScalarFBOForFlow(a.FLOW) !== needsScalarFBOForFlow(b.FLOW);
 		const pointerInputChanged = a.POINTER_INPUT !== b.POINTER_INPUT;
@@ -704,7 +709,15 @@ export class FluidEngine implements FluidHandle {
 		if (shapeChanged || obstructionsChanged || openBoundaryChanged) this.initSolidMaskTexture();
 		if (flowChanged) this.initPrescribedGridTextures();
 		if (glassChanged) this.initGlassFramebuffer();
-		if (kwChanged || shapeChanged || revealChanged || distortionChanged || obstructionsChanged || flowChanged)
+		if (
+			kwChanged ||
+			shapeChanged ||
+			revealChanged ||
+			distortionChanged ||
+			obstructionsChanged ||
+			obstructionColorChanged ||
+			flowChanged
+		)
 			this.updateKeywords();
 		if (stickyChanged || stickyMaskChanged) this.initStickyMaskTexture();
 		if (distortionImageChanged) this.loadDistortionImage(b.DISTORTION_IMAGE_URL);
@@ -1885,8 +1898,11 @@ export class FluidEngine implements FluidHandle {
 		// Obstructions and distortion share display texture unit 6; the
 		// obstruction mask is only bound when distortion is off, so the
 		// keyword must match that guard or the display samples a stale unit.
-		if (!this.config.DISTORTION && this.config.OBSTRUCTIONS && this.config.OBSTRUCTIONS.length)
+		if (!this.config.DISTORTION && this.config.OBSTRUCTIONS && this.config.OBSTRUCTIONS.length) {
 			keywords.push('OBSTRUCTION_MASK');
+			// Paint obstruction footprints in a solid color (ADR-0039).
+			if (this.config.OBSTRUCTION_COLOR) keywords.push('OBSTRUCTION_FILL');
+		}
 		if (this.flowVisualizationActive()) keywords.push('FLOW_VISUALIZATION');
 		// DISTORTION and REVEAL are mutually exclusive display modes
 		if (this.config.DISTORTION) keywords.push('DISTORTION');
@@ -2867,6 +2883,10 @@ export class FluidEngine implements FluidHandle {
 			gl.activeTexture(gl.TEXTURE6);
 			gl.bindTexture(gl.TEXTURE_2D, this.obstructionMaskTexture);
 			gl.uniform1i(this.displayMaterial.uniforms.uObstructionMask, 6);
+			if (this.config.OBSTRUCTION_COLOR) {
+				const oc = normalizeColor(this.config.OBSTRUCTION_COLOR);
+				gl.uniform3f(this.displayMaterial.uniforms.uObstructionFillColor, oc.r, oc.g, oc.b);
+			}
 		}
 		if (this.flowVisualizationActive()) {
 			const mode = this.flowVisualizationMode();
