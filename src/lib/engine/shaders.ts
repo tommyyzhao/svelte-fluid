@@ -149,6 +149,9 @@ export const displayShaderSource = `
 
 #ifdef OBSTRUCTION_MASK
     uniform sampler2D uObstructionMask;
+#ifdef OBSTRUCTION_FILL
+    uniform vec3 uObstructionFillColor;
+#endif
 #endif
 
 #ifdef FLOW_VISUALIZATION
@@ -329,7 +332,10 @@ export const displayShaderSource = `
     #ifdef OBSTRUCTION_MASK
         // Interior obstructions cut out of the visible region too, so the
         // display matches the masked physics. Orthogonal to CONTAINER_MASK.
-        cmask *= (1.0 - texture2D(uObstructionMask, vec2(vUv.x, 1.0 - vUv.y)).r);
+        // Coverage is kept for the optional OBSTRUCTION_FILL paint below —
+        // the rasterized mask is anti-aliased, so fill edges stay smooth.
+        float obCoverage = texture2D(uObstructionMask, vec2(vUv.x, 1.0 - vUv.y)).r;
+        cmask *= (1.0 - obCoverage);
     #endif
 
     #if defined(CONTAINER_MASK) || defined(OBSTRUCTION_MASK)
@@ -449,6 +455,12 @@ export const displayShaderSource = `
         vec3 color = mix(mix(uRevealCoverColor, uRevealFringeColor, outerBlend), uRevealAccentColor, innerBlend);
         gl_FragColor = vec4(color, alpha);
     #else
+    #ifdef OBSTRUCTION_FILL
+        // Paint the obstruction footprint as a solid object on top of the
+        // (already cropped) dye, before background compositing.
+        c = mix(c, uObstructionFillColor, obCoverage);
+        a = max(a, obCoverage);
+    #endif
         if (uCompositeBackground > 0.5) {
             gl_FragColor = vec4(c + uBackColor * (1.0 - a), 1.0);
         } else {

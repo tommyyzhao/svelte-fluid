@@ -76,14 +76,19 @@ describe('flow-sensitive obstruction demos', () => {
 		expect(karman).toContain(
 			"{ edge: 'left', from: 0, to: 1, width: 0.02, clearDye: 0.45, clearScalars: true, clearVelocity: false }"
 		);
-		expect(karman).toContain('autoSplatRate={4.5}');
-		expect(karman).toContain('autoSplatCount={3}');
-		// Multicolor tracer packets: fresh generated hue per packet.
-		expect(karman).toContain('autoSplatColor={null}');
-		expect(karman).toContain('autoSplatVelocityX={460}');
-		expect(karman).toContain('autoSplatCenterX={0.035}');
-		expect(karman).toContain('autoSplatBandWidth={0.025}');
-		expect(karman).toContain('autoSplatBandHeight={0.5}');
+		// Genuine flow tracers: a six-line streakline rake of persistent
+		// dye-only point sources, not autosplat packets. The rake is passive
+		// (no velocity injection) — point-footprint velocity accumulation
+		// would curl the inlet into a recirculation cell.
+		expect(karman).not.toContain('autoSplatRate');
+		expect(karman).not.toContain('velocity: RAKE_V');
+		expect(karman).toContain("kind: 'point'");
+		expect(karman).toContain('sources: [');
+		expect(karman).toContain('rakeLine(0.2,');
+		expect(karman).toContain('rakeLine(0.8,');
+		expect(karman).toContain('const RAKE_RATE = 26');
+		// The cylinder is painted so the bluff body is visible (ADR-0039).
+		expect(karman).toContain('obstructionColor={{ r: 86, g: 98, b: 122 }}');
 		// Library preset conventions: pointer interactivity is exposed.
 		expect(karman).toContain('pointerInput = true');
 		expect(karman).toContain('{pointerInput}');

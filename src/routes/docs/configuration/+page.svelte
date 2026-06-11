@@ -696,6 +696,12 @@
 			<td><code>undefined</code></td>
 			<td>Interior obstacles the fluid flows around. Union into one combined mask; allowed region is <code>container × (1 − obstruction)</code>. Changing it rebuilds the obstruction mask texture (Bucket C) and recompiles the display shader. Mutually exclusive with <code>distortion</code>.</td>
 		</tr>
+		<tr>
+			<td><code>obstructionColor</code></td>
+			<td><code>RGB | null</code></td>
+			<td><code>null</code></td>
+			<td>Fill color painted over obstruction footprints in the display pass, in 0–255 RGB (same convention as <code>backColor</code>). Makes solid bodies read as visible objects instead of background-colored silhouettes (e.g. the Karman cylinder). Anti-aliased edges from the rasterized mask. <code>null</code> keeps the silhouette. Presence toggles a display keyword (Bucket B); the value itself is a per-frame uniform.</td>
+		</tr>
 	</tbody>
 </table>
 

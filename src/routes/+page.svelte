@@ -873,7 +873,7 @@
 				</Card>
 				<Card
 					title="Karman"
-					blurb="Alternating cylinder wake with multicolor tracers."
+					blurb="Streakline rake shedding around a painted cylinder."
 					snippet="<Karman />"
 					onCustomize={() => openInPlayground('Karman')}
 				>

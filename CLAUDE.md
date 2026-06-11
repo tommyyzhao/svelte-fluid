@@ -34,7 +34,7 @@ Run `bun run prepack` before committing to verify publint.
 When props change at runtime, `engine.setConfig()` classifies each field:
 
 - **Bucket A** (hot scalars): written to `this.config.X`, picked up next frame.
-- **Bucket B** (keyword recompile): `shading`, `bloom`, `sunrays`, `reveal`, `distortion` → `updateKeywords()` recompiles the display shader.
+- **Bucket B** (keyword recompile): `shading`, `bloom`, `sunrays`, `reveal`, `distortion`, `obstructionColor` presence → `updateKeywords()` recompiles the display shader.
 - **Bucket C** (FBO rebuild): `simResolution`, `dyeResolution`, `bloomResolution`, `bloomIterations`, `sunraysResolution` → `initFramebuffers()` / `initBloom()` / `initSunrays()`.
 - **Bucket D** (construct-only): `seed`, `initialSplatCount*`, `presetSplats` → ignored after construction.
 
