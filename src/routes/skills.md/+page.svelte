@@ -561,7 +561,7 @@ a host page background. Omit it to keep the preset's authored default.
 | InkInWater      | Concentrated ink droplets sinking through water  | none                         |
 | FrozenSwirl     | Single icy vortex that freezes in place          | circle + glass               |
 | Aurora          | Layered northern-lights ribbons with heavy glow    | none                         |
-| ToroidalTempest | Violent full-spectrum storm in a ring             | annulus                      |
+| Toroidal        | Violent full-spectrum storm in a ring             | annulus                      |
 | CircularFluid   | Vivid swirling fluid in a circle                  | circle                       |
 | FrameFluid      | Fluid around a rectangular cutout (picture frame) | frame                        |
 | AnnularFluid    | Ring-vortex between two concentric circles        | annulus                      |

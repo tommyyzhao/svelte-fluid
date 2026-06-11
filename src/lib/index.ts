@@ -59,7 +59,9 @@ export { default as CircularFluid, type CircularFluidProps } from './presets/Cir
 export { default as FrameFluid, type FrameFluidProps } from './presets/FrameFluid.svelte';
 export { default as AnnularFluid, type AnnularFluidProps } from './presets/AnnularFluid.svelte';
 export { default as SvgPathFluid, type SvgPathFluidProps } from './presets/SvgPathFluid.svelte';
-export { default as ToroidalTempest, type ToroidalTempestProps } from './presets/ToroidalTempest.svelte';
+export { default as Toroidal, type ToroidalProps } from './presets/Toroidal.svelte';
+/** @deprecated Renamed to `Toroidal` in 0.4.0; this alias will be removed at 1.0. */
+export { default as ToroidalTempest, type ToroidalProps as ToroidalTempestProps } from './presets/Toroidal.svelte';
 export { default as GasFlare, type GasFlareProps } from './presets/GasFlare.svelte';
 export { default as Venturi, type VenturiProps } from './presets/Venturi.svelte';
 export { default as RiverDelta, type RiverDeltaProps } from './presets/RiverDelta.svelte';

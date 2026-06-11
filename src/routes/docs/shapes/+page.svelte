@@ -273,7 +273,7 @@
 
 <p>
 	Creates a donut-shaped fluid region. Aspect correction is applied like <code>circle</code>. The
-	ToroidalTempest preset uses this shape to create a violent storm circulating in a ring. Pair with
+	Toroidal preset uses this shape to create a violent storm circulating in a ring. Pair with
 	<code>autoSplatSwirl</code> to sustain orbital motion.
 </p>
 

@@ -13,7 +13,7 @@
 		InkInWater,
 		FrozenSwirl,
 		Aurora,
-		ToroidalTempest,
+		Toroidal,
 		type RGB
 	} from '$lib/index.js';
 
@@ -31,7 +31,7 @@
 		{ name: 'Ink In Water', mark: '❀', tint: '#c8d9c4', Component: InkInWater, blurb: 'Soft diffusion, like a dropper in a glass.' },
 		{ name: 'Frozen Swirl', mark: '◌', tint: '#cfe3ec', Component: FrozenSwirl, blurb: 'Pale, suspended, almost glacial.' },
 		{ name: 'Aurora', mark: '✦', tint: '#cde6d4', Component: Aurora, blurb: 'Long curtains of light, low and luminous.' },
-		{ name: 'Toroidal Tempest', mark: '✿', tint: '#ffd9b3', Component: ToroidalTempest, blurb: 'A storm folded into a doughnut.' }
+		{ name: 'Toroidal', mark: '✿', tint: '#ffd9b3', Component: Toroidal, blurb: 'A storm folded into a doughnut.' }
 	];
 
 	const features = [
@@ -79,7 +79,7 @@
 		'Ink in Water':     { curl: 12, splatRadius: 0.32, splatForce: 5200, densityDissipation: 0.4,  velocityDissipation: 0.1,  bloom: false, shading: true,  colorful: false, backColor: { r: 244, g: 240, b: 232 } },
 		'Frozen Swirl':     { curl: 35, splatRadius: 0.28, splatForce: 5800, densityDissipation: 0.2,  velocityDissipation: 0.05, bloom: true,  shading: true,  colorful: false, backColor: { r: 2, g: 8, b: 18 } },
 		'Aurora':           { curl: 22, splatRadius: 0.38, splatForce: 6200, densityDissipation: 0.15, velocityDissipation: 0.08, bloom: true,  shading: true,  colorful: true,  backColor: { r: 0, g: 4, b: 14 } },
-		'Toroidal Tempest': { curl: 45, splatRadius: 0.3,  splatForce: 7000, densityDissipation: 0.25, velocityDissipation: 0.1,  bloom: true,  shading: false, colorful: true,  backColor: { r: 6, g: 2, b: 16 } }
+		'Toroidal': { curl: 45, splatRadius: 0.3,  splatForce: 7000, densityDissipation: 0.25, velocityDissipation: 0.1,  bloom: true,  shading: false, colorful: true,  backColor: { r: 6, g: 2, b: 16 } }
 	};
 
 	const presetNames = Object.keys(PLAYGROUND_PRESETS);

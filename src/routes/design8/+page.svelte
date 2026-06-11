@@ -12,7 +12,7 @@
 		InkInWater,
 		LavaLamp,
 		Plasma,
-		ToroidalTempest,
+		Toroidal,
 		type RGB
 	} from '$lib/index.js';
 	import { base } from '$app/paths';
@@ -108,11 +108,11 @@
 			snippet: '<Aurora />'
 		},
 		{
-			name: 'ToroidalTempest',
-			component: ToroidalTempest,
+			name: 'Toroidal',
+			component: Toroidal,
 			seed: 72,
 			desc: 'Annular storm with circulating bands.',
-			snippet: '<ToroidalTempest />'
+			snippet: '<Toroidal />'
 		}
 	];
 
@@ -178,7 +178,7 @@
 		'Ink in Water':     { curl: 12, splatRadius: 0.32, splatForce: 5200, densityDissipation: 0.4,  velocityDissipation: 0.1,  bloom: false, shading: true,  colorful: false, backColor: { r: 244, g: 240, b: 232 } },
 		'Frozen Swirl':     { curl: 35, splatRadius: 0.28, splatForce: 5800, densityDissipation: 0.2,  velocityDissipation: 0.05, bloom: true,  shading: true,  colorful: false, backColor: { r: 2, g: 8, b: 18 } },
 		'Aurora':           { curl: 22, splatRadius: 0.38, splatForce: 6200, densityDissipation: 0.15, velocityDissipation: 0.08, bloom: true,  shading: true,  colorful: true,  backColor: { r: 0, g: 4, b: 14 } },
-		'Toroidal Tempest': { curl: 45, splatRadius: 0.3,  splatForce: 7000, densityDissipation: 0.25, velocityDissipation: 0.1,  bloom: true,  shading: false, colorful: true,  backColor: { r: 6, g: 2, b: 16 } }
+		'Toroidal': { curl: 45, splatRadius: 0.3,  splatForce: 7000, densityDissipation: 0.25, velocityDissipation: 0.1,  bloom: true,  shading: false, colorful: true,  backColor: { r: 6, g: 2, b: 16 } }
 	};
 
 	const presetNames = Object.keys(PLAYGROUND_PRESETS);

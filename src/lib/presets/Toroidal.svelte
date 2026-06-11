@@ -1,5 +1,5 @@
 <!--
-  svelte-fluid — Toroidal Tempest preset
+  svelte-fluid — Toroidal preset
 
   Visual intent: a violent full-spectrum storm circulating in a toroidal
   ring. Eight high-velocity dye blobs orbit inside an annular container
@@ -23,8 +23,8 @@
 <script lang="ts" module>
 	import type { FluidProps } from '../Fluid.svelte';
 
-	/** Props consumed by `<ToroidalTempest />`. Sizing/seed/styling are forwarded; all other physics props are hard-coded. */
-	export type ToroidalTempestProps = Pick<
+	/** Props consumed by `<Toroidal />`. Sizing/seed/styling are forwarded; all other physics props are hard-coded. */
+	export type ToroidalProps = Pick<
 		FluidProps,
 		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 	>;
@@ -45,7 +45,7 @@
 		splatOnHover = true,
 		'aria-label': ariaLabel,
 		backColor
-	}: ToroidalTempestProps = $props();
+	}: ToroidalProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
 

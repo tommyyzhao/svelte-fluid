@@ -1,17 +1,26 @@
+<!--
+  Demo-site showcase card: fluid canvas + caption row with optional
+  "View code" (expandable snippet + copy) and "Playground" (jump to the
+  playground with a matching preset) actions. Colors come from the
+  theme CSS vars set on .page, so cards follow the active theme.
+-->
 <script lang="ts">
 	import { slide } from 'svelte/transition';
 	import type { Snippet } from 'svelte';
 
 	let {
 		title,
-		description,
+		blurb,
 		snippet,
+		height = 300,
 		onCustomize,
 		children
 	}: {
 		title: string;
-		description?: string;
+		blurb?: string;
 		snippet?: string;
+		/** Canvas height in px (sections use 220–300). */
+		height?: number;
 		onCustomize?: () => void;
 		children: Snippet;
 	} = $props();
@@ -30,39 +39,37 @@
 </script>
 
 <figure class="card">
-	<div class="canvas-slot">{@render children()}</div>
+	<div class="card-fluid" style:height={`${height}px`}>{@render children()}</div>
 	<figcaption>
 		<div class="caption-row">
-			<div>
-				<h3>{title}</h3>
-				{#if description}
-					<p>{description}</p>
-				{/if}
-			</div>
-			<div class="caption-actions">
+			<span class="card-name">{title}</span>
+			{#if blurb}
+				<span class="card-blurb">{blurb}</span>
+			{/if}
+			<span class="card-actions">
 				{#if onCustomize}
 					<button
-						class="customize-btn"
+						class="card-btn"
 						onclick={onCustomize}
-						aria-label="Open in playground"
+						aria-label="Open {title} in playground"
 						title="Open in playground"
-					>Customize</button>
+					>Playground</button>
 				{/if}
 				{#if snippet}
 					<button
-						class="code-toggle"
+						class="card-btn"
 						class:active={showCode}
 						onclick={() => (showCode = !showCode)}
 						aria-label={showCode ? 'Hide code' : 'View code'}
 					>{showCode ? 'Hide code' : 'View code'}</button>
 				{/if}
-			</div>
+			</span>
 		</div>
 		{#if snippet && showCode}
 			<div class="snippet-wrap" transition:slide={{ duration: 180 }}>
 				<pre><code>{snippet}</code></pre>
 				<button class="copy-btn" onclick={copySnippet} aria-live="polite">
-					{#if copyState === 'copied'}Copied!{:else}Copy{/if}
+					{#if copyState === 'copied'}Copied{:else}Copy{/if}
 				</button>
 			</div>
 		{/if}
@@ -71,117 +78,108 @@
 
 <style>
 	.card {
+		position: relative;
 		margin: 0;
-		display: flex;
-		flex-direction: column;
-		background: #141414;
-		border: 1px solid #222;
-		border-radius: 12px;
+		background: var(--card, #ebe3d2);
+		border: 1px solid var(--rule, rgba(26, 24, 20, 0.88));
+		border-radius: 8px;
 		overflow: hidden;
-		box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 	}
-	.canvas-slot {
+	.card-fluid {
 		position: relative;
 		width: 100%;
-		height: 240px;
-		background: #000;
+		display: block;
+		background: var(--card, #ebe3d2);
 	}
 	figcaption {
-		padding: 14px 18px 18px;
+		border-top: 1px solid var(--rule, rgba(26, 24, 20, 0.88));
+		font-size: 13px;
 	}
 	.caption-row {
 		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
 		justify-content: space-between;
-		align-items: flex-start;
-		gap: 8px;
+		gap: 6px 14px;
+		padding: 12px 16px 14px;
 	}
-	.caption-actions {
-		display: flex;
-		gap: 4px;
-		flex-shrink: 0;
-	}
-	h3 {
-		margin: 0 0 4px;
-		font-size: 0.95rem;
+	.card-name {
+		color: var(--ink, #1a1814);
 		font-weight: 600;
-		letter-spacing: 0.01em;
+		letter-spacing: -0.005em;
+		white-space: nowrap;
 	}
-	p {
-		margin: 0;
-		font-size: 0.8rem;
-		color: #888;
-		line-height: 1.4;
+	.card-blurb {
+		color: var(--ink-soft, rgba(26, 24, 20, 0.62));
+		font-size: 12.5px;
+		flex: 1 1 12ch;
+		min-width: 0;
 	}
-	.customize-btn {
-		padding: 2px 8px;
-		font-size: 0.7rem;
-		background: #1c2a3a;
-		border: 1px solid #2a4a6a;
-		border-radius: 4px;
-		color: #8bc;
+	.card-actions {
+		display: flex;
+		gap: 6px;
+		flex-shrink: 0;
+		margin-left: auto;
+	}
+	.card-btn {
+		padding: 3px 10px;
+		font-size: 11px;
+		font-weight: 600;
+		font-family: inherit;
+		background: transparent;
+		border: 1px solid var(--ink-faint, rgba(26, 24, 20, 0.16));
+		border-radius: 999px;
+		color: var(--ink-soft, rgba(26, 24, 20, 0.62));
 		cursor: pointer;
-		transition: all 120ms;
+		transition:
+			color 0.15s,
+			background 0.15s,
+			border-color 0.15s;
 	}
-	.customize-btn:hover {
-		background: #243a52;
-		color: #cfe;
-	}
-	.code-toggle {
-		padding: 2px 8px;
-		font-size: 0.7rem;
-		background: #1c2a3a;
-		border: 1px solid #2a4a6a;
-		border-radius: 4px;
-		color: #8bc;
-		cursor: pointer;
-		transition: all 120ms;
-	}
-	.code-toggle:hover,
-	.code-toggle.active {
-		background: #243a52;
-		color: #cfe;
+	.card-btn:hover,
+	.card-btn.active {
+		background: var(--hover, rgba(26, 24, 20, 0.05));
+		border-color: var(--rule, rgba(26, 24, 20, 0.88));
+		color: var(--ink, #1a1814);
 	}
 	.snippet-wrap {
 		position: relative;
-		margin-top: 10px;
+		border-top: 1px solid var(--rule, rgba(26, 24, 20, 0.88));
 	}
 	pre {
 		margin: 0;
-		padding: 10px 12px;
-		background: #0d0d0d;
-		border: 1px solid #222;
-		border-radius: 6px;
+		padding: 12px 14px;
 		overflow-x: auto;
-		font-size: 0.72rem;
-		line-height: 1.5;
-		color: #b0c4de;
+		font-family: var(--mono, ui-monospace, monospace);
+		font-size: 11.5px;
+		line-height: 1.55;
+		color: var(--ink, #1a1814);
+		background: var(--hover, rgba(26, 24, 20, 0.05));
 	}
 	.copy-btn {
 		position: absolute;
-		top: 6px;
-		right: 6px;
-		padding: 2px 8px;
-		font-size: 0.65rem;
-		background: #222;
-		border: 1px solid #333;
-		border-radius: 3px;
-		color: #888;
+		top: 8px;
+		right: 8px;
+		padding: 2px 9px;
+		font-size: 10.5px;
+		font-weight: 600;
+		font-family: inherit;
+		background: var(--card, #ebe3d2);
+		border: 1px solid var(--ink-faint, rgba(26, 24, 20, 0.16));
+		border-radius: 999px;
+		color: var(--ink-soft, rgba(26, 24, 20, 0.62));
 		cursor: pointer;
 	}
 	.copy-btn:hover {
-		color: #fff;
-		border-color: #555;
+		color: var(--ink, #1a1814);
+		border-color: var(--rule, rgba(26, 24, 20, 0.88));
 	}
 
 	@media (max-width: 600px) {
-		.canvas-slot {
-			height: 200px;
+		.card-fluid {
+			height: 200px !important;
 		}
-		.customize-btn {
-			padding: 6px 10px;
-			font-size: 0.72rem;
-		}
-		.code-toggle {
+		.card-btn {
 			padding: 6px 10px;
 		}
 	}
