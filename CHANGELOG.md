@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.6.0
+
+### Minor Changes
+
+- [`778d4c1`](https://github.com/tommyyzhao/svelte-fluid/commit/778d4c10c992667fd4554ff729f4c36b76a593d8) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - New `obstructionColor` config: paint obstruction footprints in a solid
+  color in the display pass (0–255 RGB, `backColor` convention; `null`
+  keeps the legacy background-colored silhouette). Anti-aliased edges come
+  free from the rasterized mask. See ADR-0039.
+
+  Karman preset reworked to genuine flow: the autosplat tracer packets are
+  replaced by a rake of six persistent streakline point sources (one hue
+  each, injecting dye and velocity every frame — the classic wind-tunnel
+  smoke-rake), and the cylinder is now painted slate via
+  `obstructionColor` so the bluff body is clearly visible against the
+  scene background.
+
 ## 0.5.0
 
 ### Minor Changes
