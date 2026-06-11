@@ -7,14 +7,13 @@ import frozenSwirl from '../../presets/FrozenSwirl.svelte?raw';
 import inkInWater from '../../presets/InkInWater.svelte?raw';
 import lavaLamp from '../../presets/LavaLamp.svelte?raw';
 import plasma from '../../presets/Plasma.svelte?raw';
-import riverDelta from '../../presets/RiverDelta.svelte?raw';
 import gasFlare from '../../presets/GasFlare.svelte?raw';
 import svgPathFluid from '../../presets/SvgPathFluid.svelte?raw';
 import teslaValve from '../../presets/TeslaValve.svelte?raw';
 import toroidal from '../../presets/Toroidal.svelte?raw';
 import venturi from '../../presets/Venturi.svelte?raw';
 import airfoil from '../../../routes/obstruction-demos/Airfoil.svelte?raw';
-import karman from '../../../routes/obstruction-demos/Karman.svelte?raw';
+import karman from '../../presets/Karman.svelte?raw';
 import maze from '../../../routes/obstruction-demos/Maze.svelte?raw';
 
 const presets = {
@@ -26,7 +25,6 @@ const presets = {
 	InkInWater: inkInWater,
 	LavaLamp: lavaLamp,
 	Plasma: plasma,
-	RiverDelta: riverDelta,
 	GasFlare: gasFlare,
 	SvgPathFluid: svgPathFluid,
 	TeslaValve: teslaValve,
@@ -60,7 +58,10 @@ describe('flow-sensitive obstruction demos', () => {
 	it('Karman uses pressure-driven throughflow with fast intermittent dye tracers', () => {
 		expect(karman).toContain('const FLOW: FlowConfig');
 		expect(karman).toContain('flow={FLOW}');
-		expect(karman).toContain("forces: [{ kind: 'pressureGradient', vector: { x: 56, y: 0 } }]");
+		expect(karman).toContain("forces: [{ kind: 'pressureGradient', vector: { x: 64, y: 0 } }]");
+		// Startup freestream curtain — without it the first tracer packets
+		// mushroom into still fluid while the body force spins up.
+		expect(karman).toContain('presetSplats={PRESET_SPLATS}');
 		expect(karman).toContain("visualization: { colorBy: 'dye' }");
 		expect(karman).toContain("boundary: { left: 'open', right: 'open', top: 'open', bottom: 'open' }");
 		expect(karman).toContain(
@@ -75,42 +76,17 @@ describe('flow-sensitive obstruction demos', () => {
 		expect(karman).toContain(
 			"{ edge: 'left', from: 0, to: 1, width: 0.02, clearDye: 0.45, clearScalars: true, clearVelocity: false }"
 		);
-		expect(karman).toContain('autoSplatRate={5.5}');
+		expect(karman).toContain('autoSplatRate={4.5}');
 		expect(karman).toContain('autoSplatCount={3}');
-		expect(karman).toContain('autoSplatVelocityX={750}');
+		// Multicolor tracer packets: fresh generated hue per packet.
+		expect(karman).toContain('autoSplatColor={null}');
+		expect(karman).toContain('autoSplatVelocityX={460}');
 		expect(karman).toContain('autoSplatCenterX={0.035}');
 		expect(karman).toContain('autoSplatBandWidth={0.025}');
-	});
-
-	it('RiverDelta uses a left-edge flow source plus constrained multicolor tracer packets', () => {
-		expect(riverDelta).toContain('const FLOW: FlowConfig');
-		expect(riverDelta).toContain('flow={FLOW}');
-		expect(riverDelta).toContain("kind: 'line'");
-		expect(riverDelta).toContain('from: { x: 0.025, y: 0.12 }');
-		expect(riverDelta).toContain("boundary: { left: 'open', right: 'open', top: 'open', bottom: 'open' }");
-		expect(riverDelta).toContain(
-			"{ edge: 'right', from: 0, to: 1, width: 0.085, clearDye: 0.08, clearScalars: true, clearVelocity: true }"
-		);
-		expect(riverDelta).toContain(
-			"{ edge: 'top', from: 0, to: 1, width: 0.055, clearDye: 0.1, clearScalars: true, clearVelocity: false }"
-		);
-		expect(riverDelta).toContain(
-			"{ edge: 'bottom', from: 0, to: 1, width: 0.055, clearDye: 0.1, clearScalars: true, clearVelocity: false }"
-		);
-		expect(riverDelta).toContain(
-			"{ edge: 'left', from: 0, to: 1, width: 0.012, clearDye: 0.65, clearScalars: true, clearVelocity: false }"
-		);
-		// Slow current (~120 px/s) with frequent multicolor tracer packets
-		// (autoSplatColor null → fresh generated hue per packet).
-		expect(riverDelta).toContain('velocity: { x: 120, y: 0 }');
-		expect(riverDelta).toContain('autoSplatRate={2.6}');
-		expect(riverDelta).toContain('autoSplatCount={3}');
-		expect(riverDelta).toContain('autoSplatColor={null}');
-		expect(riverDelta).toContain('autoSplatVelocityX={120}');
-		expect(riverDelta).toContain('autoSplatCenterX={0.035}');
-		expect(riverDelta).toContain('autoSplatBandWidth={0.03}');
-		expect(riverDelta).toContain('colorful={false}');
-		expect(riverDelta).toContain('bloom={false}');
+		expect(karman).toContain('autoSplatBandHeight={0.5}');
+		// Library preset conventions: pointer interactivity is exposed.
+		expect(karman).toContain('pointerInput = true');
+		expect(karman).toContain('{pointerInput}');
 	});
 
 	it('Airfoil uses pressure-driven flow plus dye splats around a narrow body', () => {

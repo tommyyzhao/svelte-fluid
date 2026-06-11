@@ -14,7 +14,7 @@
 			InkInWater,
 			LavaLamp,
 			Plasma,
-			RiverDelta,
+			Karman,
 			SvgPathFluid,
 			TeslaValve,
 			Toroidal,
@@ -110,7 +110,7 @@
 
 	// ---- Comprehensive playground state ----
 	type Mode = 'fluid' | 'flow' | 'reveal' | 'sticky' | 'distortion';
-	type FlowScene = 'GasFlare' | 'Venturi' | 'RiverDelta' | 'TeslaValve' | 'CustomFlow';
+	type FlowScene = 'GasFlare' | 'Venturi' | 'Karman' | 'TeslaValve' | 'CustomFlow';
 	type FlowBoundaryPreset = 'channel' | 'open' | 'box';
 	type FlowVisualizationChoice = 'dye' | 'speed' | 'temperature';
 	type FlowTransferChoice = 'ink' | 'water' | 'fire' | 'cfd';
@@ -289,9 +289,9 @@
 			mode: 'flow',
 			flowScene: 'Venturi'
 		},
-		RiverDelta: {
+		Karman: {
 			mode: 'flow',
-			flowScene: 'RiverDelta'
+			flowScene: 'Karman'
 		},
 		TeslaValve: {
 			mode: 'flow',
@@ -872,12 +872,12 @@
 					<Venturi seed={702} lazy backColor={cardColor} aria-label="Venturi flow scene" />
 				</Card>
 				<Card
-					title="RiverDelta"
-					blurb="Braided channels with tracer packets."
-					snippet="<RiverDelta />"
-					onCustomize={() => openInPlayground('RiverDelta')}
+					title="Karman"
+					blurb="Alternating cylinder wake with multicolor tracers."
+					snippet="<Karman />"
+					onCustomize={() => openInPlayground('Karman')}
 				>
-					<RiverDelta seed={703} lazy aria-label="RiverDelta flow scene" />
+					<Karman seed={703} lazy aria-label="Karman flow scene" />
 				</Card>
 				<Card
 					title="TeslaValve"
@@ -1482,8 +1482,8 @@
 							{#key flowScene}
 								{#if flowScene === 'GasFlare'}
 									<GasFlare lazy seed={717} aria-label="GasFlare playground scene" />
-								{:else if flowScene === 'RiverDelta'}
-									<RiverDelta lazy seed={737} aria-label="RiverDelta playground scene" />
+								{:else if flowScene === 'Karman'}
+									<Karman lazy seed={737} aria-label="Karman playground scene" />
 									{:else if flowScene === 'TeslaValve'}
 										<TeslaValve lazy seed={747} aria-label="TeslaValve playground scene" />
 									{:else if flowScene === 'CustomFlow'}
@@ -1573,7 +1573,7 @@
 								<select value={flowScene} onchange={selectFlowScene} class="select">
 									<option value="GasFlare">GasFlare</option>
 									<option value="Venturi">Venturi</option>
-									<option value="RiverDelta">RiverDelta</option>
+									<option value="Karman">Karman</option>
 									<option value="TeslaValve">TeslaValve</option>
 									<option value="CustomFlow">Custom FlowConfig</option>
 								</select>
