@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0
+
+### Minor Changes
+
+- [`1b7ae40`](https://github.com/tommyyzhao/svelte-fluid/commit/1b7ae40ce7b836d89df37ebf85fa1cb05ebd19b7) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Rename the `ToroidalTempest` preset to `Toroidal` (exported as `Toroidal`
+  with `ToroidalProps`). The old `ToroidalTempest` / `ToroidalTempestProps`
+  names remain available as deprecated aliases of the same component and
+  will be removed at 1.0.
+
 ## 0.3.0
 
 ### Minor Changes
