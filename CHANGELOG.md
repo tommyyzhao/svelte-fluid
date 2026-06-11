@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.0
+
+### Minor Changes
+
+- [`8d71269`](https://github.com/tommyyzhao/svelte-fluid/commit/8d712692798988bef2ba4c61f687a00f5fff4f13) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Replace the `RiverDelta` preset with `Karman` — a calibrated von Kármán
+  vortex street: a pressure-gradient drive past a single off-center
+  cylinder (fit-to-canvas obstruction mask), four-edge dye drains, a
+  high-fidelity solver configuration (1/120 step × 2 substeps, 34 pressure
+  iterations, 192 sim / 1024 dye resolution), and fast multicolor tracer
+  packets (fresh generated hue per packet) that render successive
+  sheddings as distinct colored filaments. `RiverDelta` and
+  `RiverDeltaProps` are removed; `Karman` accepts the same wrapper props
+  (including `pointerInput`/`splatOnHover`, both on by default).
+
 ## 0.4.0
 
 ### Minor Changes
