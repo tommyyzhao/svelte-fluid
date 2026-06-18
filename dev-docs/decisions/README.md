@@ -43,6 +43,9 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0035](./0035-obstruction-physics-presets.md)                   | Obstruction-based fluid-dynamics presets + demos                        | Accepted |
 | [0036](./0036-believable-flow-scene-api.md)                     | Believable Flow Scene API                                               | Accepted |
 | [0037](./0037-lightweight-cfd-stability-controls.md)            | Lightweight CFD stability controls                                      | Accepted |
+| [0038](./0038-solver-pass-restructuring.md)                     | Solver pass restructuring                                               | Accepted |
+| [0039](./0039-obstruction-fill-color.md)                        | Obstruction fill color (`obstructionColor`)                             | Accepted |
+| [0040](./0040-preset-config-registry.md)                        | Internal preset config registry (single source of truth)               | Accepted |
 
 ## How to add a new ADR
 

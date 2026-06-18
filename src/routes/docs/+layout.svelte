@@ -14,7 +14,8 @@
 		{ label: 'Configuration', href: `${base}/docs/configuration` },
 		{ label: 'Container Shapes', href: `${base}/docs/shapes` },
 		{ label: 'Presets', href: `${base}/docs/presets` },
-		{ label: 'API Reference', href: `${base}/docs/api` }
+		{ label: 'API Reference', href: `${base}/docs/api` },
+		{ label: 'For Agents', href: `${base}/for-agents` }
 	];
 
 	function isActive(href: string, path: string): boolean {
