@@ -56,7 +56,7 @@
 	Drop the <code>llms.txt</code> URL (or the raw <code>SKILL.md</code>) into your agent's context,
 	or fetch it directly:
 </p>
-<pre><code>curl -s https://tommyyzhao.github.io/svelte-fluid/SKILL.md</code></pre>
+<pre><code>curl -s https://svelte-fluid.dev/SKILL.md</code></pre>
 
 <style>
 	.agent-resources {
