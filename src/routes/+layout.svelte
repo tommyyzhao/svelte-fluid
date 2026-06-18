@@ -4,7 +4,7 @@
 
 	let { children } = $props();
 
-	const siteUrl = 'https://tommyyzhao.github.io/svelte-fluid';
+	const siteUrl = 'https://svelte-fluid.dev';
 	let canonicalUrl = $derived.by(() => {
 		const path = $page.url.pathname;
 		const localPath = base && path.startsWith(base) ? path.slice(base.length) || '/' : path;

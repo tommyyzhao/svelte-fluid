@@ -14,7 +14,7 @@ import { PRESETS } from '$lib/presets/registry.js';
 import { presetUsageSnippet, presetConfigSnippet } from '$lib/presets/snippet.js';
 
 /** Default deploy origin (incl. GitHub Pages base path). Swappable per host. */
-export const DEFAULT_SITE = 'https://tommyyzhao.github.io/svelte-fluid';
+export const DEFAULT_SITE = 'https://svelte-fluid.dev';
 
 const COMPONENTS: Array<{ name: string; summary: string }> = [
 	{ name: 'Fluid', summary: 'Core component. Renders the WebGL fluid sim on a canvas; accepts all FluidConfig props.' },

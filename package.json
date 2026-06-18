@@ -8,7 +8,7 @@
 		"type": "git",
 		"url": "git+https://github.com/tommyyzhao/svelte-fluid.git"
 	},
-	"homepage": "https://tommyyzhao.github.io/svelte-fluid/",
+	"homepage": "https://svelte-fluid.dev/",
 	"bugs": {
 		"url": "https://github.com/tommyyzhao/svelte-fluid/issues"
 	},

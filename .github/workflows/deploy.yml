@@ -35,7 +35,8 @@ jobs:
 
       - name: Build demo site
         env:
-          BASE_PATH: '/svelte-fluid'
+          # Custom apex domain (svelte-fluid.dev) serves at the root — no base path.
+          BASE_PATH: ''
         run: bun run build
 
       - name: Upload Pages artifact

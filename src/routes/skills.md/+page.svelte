@@ -20,7 +20,7 @@
 Package: svelte-fluid
 License: MIT
 Repository: https://github.com/tommyyzhao/svelte-fluid
-Homepage: https://tommyyzhao.github.io/svelte-fluid/
+Homepage: https://svelte-fluid.dev/
 
 ## Install
 
