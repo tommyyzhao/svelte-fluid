@@ -7,6 +7,9 @@
   fill rule so the counter (hole) in the glyph stays transparent.
 
   Random splats spawn via rejection sampling against the CPU-side mask.
+
+  The pinned configuration lives in `registry.ts` (SVG_PATH_FLUID_CONFIG);
+  see that file and ADR-0040.
 -->
 
 <script lang="ts" module>
@@ -22,6 +25,7 @@
 <script lang="ts">
 	import Fluid from '../Fluid.svelte';
 	import type { FluidHandle } from '../engine/types.js';
+	import { SVG_PATH_FLUID_CONFIG } from './registry.js';
 
 	let {
 		width,
@@ -37,9 +41,6 @@
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
 
-	const LETTER = '&';
-	const FONT = 'bold 200px Georgia, serif';
-
 	export const handle: FluidHandle = {
 		splat: (x, y, dx, dy, color) => inner?.handle.splat(x, y, dx, dy, color),
 		randomSplats: (count) => inner?.handle.randomSplats(count),
@@ -51,6 +52,7 @@
 
 <Fluid
 	bind:this={inner}
+	{...SVG_PATH_FLUID_CONFIG}
 	{width}
 	{height}
 	class={className}
@@ -59,22 +61,5 @@
 	{lazy}
 	{splatOnHover}
 	aria-label={ariaLabel}
-	containerShape={{ type: 'svgPath', text: LETTER, font: FONT, fillRule: 'evenodd' }}
-	curl={30}
-	densityDissipation={0.3}
-	velocityDissipation={0.1}
-	pressure={0.8}
-	splatRadius={0.3}
-	splatForce={5000}
-	shading
-	colorful
-	bloom
-	bloomIntensity={0.9}
-	sunrays={false}
-	initialSplatCount={8}
-	backColor={backColor ?? { r: 2, g: 2, b: 8 }}
-	autoSplatRate={0.8}
-	autoSplatCount={1}
-	autoSplatBandHeight={2.0}
-	autoSplatSwirl={400}
+	backColor={backColor ?? SVG_PATH_FLUID_CONFIG.backColor}
 />
