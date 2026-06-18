@@ -13,7 +13,7 @@ Fluid simulation for Svelte 5.
 </p>
 
 <p align="center">
-  <strong><a href="https://tommyyzhao.github.io/svelte-fluid/">Live demo</a></strong>
+  <strong><a href="https://svelte-fluid.dev/">Live demo</a></strong>
 </p>
 
 ### Why svelte-fluid?
