@@ -23,6 +23,9 @@
 			type RGB
 		} from '$lib/index.js';
 	import { base } from '$app/paths';
+	import { PRESETS as REGISTRY_PRESETS, PRESET_BY_ID } from '$lib/presets/registry.js';
+	import { presetUsageSnippet } from '$lib/presets/snippet.js';
+	import { parsePresetParam, presetToEditorState } from './components/presetTransfer.js';
 	import Card from './components/Card.svelte';
 	import {
 		DEFAULT_THEME_ID,
@@ -85,6 +88,23 @@
 			await navigator.clipboard.writeText(installCmd);
 			copied = true;
 			setTimeout(() => (copied = false), 1600);
+		} catch {}
+	}
+
+	// Above-the-fold quickstart: the minimal end-to-end usage.
+	const quickstartCode = `<` + `script>
+  import { Fluid } from 'svelte-fluid';
+</` + `script>
+
+<div style="width: 100%; height: 420px">
+  <Fluid />
+</div>`;
+	let copiedQuick = $state(false);
+	async function copyQuickstart() {
+		try {
+			await navigator.clipboard.writeText(quickstartCode);
+			copiedQuick = true;
+			setTimeout(() => (copiedQuick = false), 1600);
 		} catch {}
 	}
 
@@ -182,6 +202,9 @@
 	let flowTransfer = $state<FlowTransferChoice>('ink');
 
 	let activePreset = $state<string | null>(null);
+	// When set, the stage renders the exact registry preset (full fidelity).
+	// Adjusting any control or switching modes forks into the editor.
+	let presetView = $state<string | null>(null);
 	let copiedSnippet = $state(false);
 	let stickyKey = $state(0);
 	let distortKey = $state(0);
@@ -352,6 +375,7 @@
 	function applyPreset(name: string) {
 		const p = PRESETS[name];
 		if (!p) return;
+		presetView = null;
 		mode = p.mode;
 		if (p.curl !== undefined) curl = p.curl;
 		if (p.splatRadius !== undefined) splatRadius = p.splatRadius;
@@ -453,7 +477,74 @@
 
 	function markCustom() {
 		activePreset = null;
+		// Touching a control forks out of the faithful preset render into the editor.
+		presetView = null;
 	}
+
+	/**
+	 * "Open in Playground" for a registry preset: render the EXACT preset for
+	 * full fidelity (presetView) and hydrate the editable controls from its
+	 * config so adjusting any control forks into the editor. Flow/SVG presets
+	 * keep dimensions the sliders can't represent (presetSplats, flow scene,
+	 * obstruction masks) until you fork.
+	 */
+	function openRegistryPreset(id: string) {
+		const def = PRESET_BY_ID[id];
+		if (!def) return;
+		const s = presetToEditorState(def);
+		mode = s.mode;
+		if (s.flowScene) flowScene = s.flowScene;
+		containerType = s.containerType;
+		glass = s.glass;
+		if (s.backColor) backColor = { ...s.backColor };
+		const sc = s.scalars;
+		if (sc.curl !== undefined) curl = sc.curl;
+		if (sc.splatRadius !== undefined) splatRadius = sc.splatRadius;
+		if (sc.splatForce !== undefined) splatForce = sc.splatForce;
+		if (sc.densityDissipation !== undefined) densityDissipation = sc.densityDissipation;
+		if (sc.velocityDissipation !== undefined) velocityDissipation = sc.velocityDissipation;
+		if (sc.maxTimeStep !== undefined) maxTimeStep = sc.maxTimeStep;
+		if (sc.substeps !== undefined) substeps = sc.substeps;
+		if (sc.viscosity !== undefined) viscosity = sc.viscosity;
+		if (sc.viscosityIterations !== undefined) viscosityIterations = sc.viscosityIterations;
+		if (sc.wallFriction !== undefined) wallFriction = sc.wallFriction;
+		if (sc.wallFrictionWidth !== undefined) wallFrictionWidth = sc.wallFrictionWidth;
+		if (sc.pressure !== undefined) pressure = sc.pressure;
+		if (sc.pressureIterations !== undefined) pressureIterations = sc.pressureIterations;
+		if (sc.autoSplatRate !== undefined) autoSplatRate = sc.autoSplatRate;
+		if (sc.autoSplatCount !== undefined) autoSplatCount = sc.autoSplatCount;
+		if (sc.autoSplatVelocityX !== undefined) autoSplatVelocityX = sc.autoSplatVelocityX;
+		if (sc.autoSplatVelocityY !== undefined) autoSplatVelocityY = sc.autoSplatVelocityY;
+		if (sc.autoSplatCenterX !== undefined) autoSplatCenterX = sc.autoSplatCenterX;
+		if (sc.autoSplatCenterY !== undefined) autoSplatCenterY = sc.autoSplatCenterY;
+		if (sc.autoSplatBandWidth !== undefined) autoSplatBandWidth = sc.autoSplatBandWidth;
+		if (sc.autoSplatBandHeight !== undefined) autoSplatBandHeight = sc.autoSplatBandHeight;
+		if (sc.autoSplatSwirl !== undefined) autoSplatSwirl = sc.autoSplatSwirl;
+		const bo = s.bools;
+		if (bo.bloom !== undefined) bloom = bo.bloom;
+		if (bo.shading !== undefined) shading = bo.shading;
+		if (bo.sunrays !== undefined) sunrays = bo.sunrays;
+		if (bo.colorful !== undefined) colorful = bo.colorful;
+		if (bo.splatOnHover !== undefined) splatOnHover = bo.splatOnHover;
+		if (bo.transparent !== undefined) transparent = bo.transparent;
+		if (bo.autoSplatEvenX !== undefined) autoSplatEvenX = bo.autoSplatEvenX;
+		activePreset = id;
+		presetView = id;
+		document.getElementById('playground')?.scrollIntoView({ behavior: 'smooth' });
+	}
+
+	// Deep link: `/?preset=<id>#playground` opens that preset in the playground.
+	let deepLinkHandled = false;
+	$effect(() => {
+		if (deepLinkHandled || typeof window === 'undefined') return;
+		deepLinkHandled = true;
+		const param = new URLSearchParams(window.location.search).get('preset');
+		const id = parsePresetParam(
+			param,
+			REGISTRY_PRESETS.map((p) => p.id)
+		);
+		if (id) openRegistryPreset(id);
+	});
 
 	const flowBoundary = $derived.by(() => {
 		if (flowBoundaryPreset === 'open') {
@@ -605,6 +696,8 @@
 	});
 
 	const playgroundSnippet = $derived.by(() => {
+		// Viewing a library preset: the code is the zero-config wrapper.
+		if (presetView) return presetUsageSnippet(presetView);
 		if (mode === 'flow' && flowScene !== 'CustomFlow') return `<${flowScene} />`;
 		const lines: string[] = [];
 		const tag =
@@ -715,6 +808,7 @@
 	}
 
 	function setMode(m: Mode) {
+		presetView = null;
 		if (m === mode) return;
 		mode = m;
 		activePreset = m === 'flow' ? flowScene : null;
@@ -724,6 +818,7 @@
 	}
 
 	function selectFlowScene(e: Event) {
+		presetView = null;
 		flowScene = (e.currentTarget as HTMLSelectElement).value as FlowScene;
 		activePreset = flowScene;
 	}
@@ -765,6 +860,7 @@
 			</a>
 			<div class="nav-links">
 				<a href="{base}/docs">Docs</a>
+				<a href="{base}/for-agents">For Agents</a>
 				<a href="{base}/#flow-scenes">Flow</a>
 				<a href="{base}/docs/presets">Presets</a>
 				<a href="{base}/docs/api">API</a>
@@ -815,6 +911,26 @@
 			<button class="copy-btn" type="button" onclick={copyInstall} aria-label="Copy install command">
 				{copied ? 'Copied' : 'Copy'}
 			</button>
+		</section>
+
+		<section class="quickstart" aria-label="Quick start">
+			<div class="quickstart-head">
+				<span class="quickstart-title">Get started in 10 seconds</span>
+				<button
+					class="copy-btn"
+					type="button"
+					onclick={copyQuickstart}
+					aria-label="Copy quick-start code"
+				>
+					{copiedQuick ? 'Copied' : 'Copy'}
+				</button>
+			</div>
+			<pre class="quickstart-code"><code>{quickstartCode}</code></pre>
+			<p class="quickstart-note">
+				No props required — <code>&lt;Fluid /&gt;</code> fills its parent. Requires Svelte 5, zero
+				runtime dependencies. See the <a href="{base}/docs">docs</a> for presets, container shapes,
+				and the imperative API.
+			</p>
 		</section>
 
 		<!-- PRESETS -->
@@ -1379,10 +1495,42 @@
 				<button type="button" class="preset-chip reset" onclick={resetPlayground}>Reset</button>
 			</div>
 
+			<div class="preset-chips library-chips" role="group" aria-label="Library presets">
+				<span style="opacity:0.6;font-size:0.8rem;align-self:center;margin-right:0.25rem;">Library presets</span>
+				{#each REGISTRY_PRESETS as p (p.id)}
+					<button
+						type="button"
+						class="preset-chip"
+						class:active={presetView === p.id}
+						aria-pressed={presetView === p.id}
+						title={p.blurb}
+						onclick={() => openRegistryPreset(p.id)}
+					>
+						{p.name}
+					</button>
+				{/each}
+			</div>
+
+			{#if presetView}
+				<p style="margin:0 0 0.75rem;font-size:0.85rem;opacity:0.8;" aria-live="polite">
+					Viewing the <strong>{PRESET_BY_ID[presetView].name}</strong> preset, rendered from its exact
+					config. Adjust any control or switch tabs to fork it into an editable &lt;Fluid&gt;.
+				</p>
+			{/if}
+
 			<div class="playground-grid">
 				<div class="card playground-stage" aria-label="Interactive playground stage">
 					<div class="card-fluid playground-canvas">
-						{#if mode === 'reveal'}
+						{#if presetView}
+							{#key presetView}
+								<Fluid
+									{...PRESET_BY_ID[presetView].config}
+									lazy
+									seed={4242}
+									aria-label={`${PRESET_BY_ID[presetView].name} preset`}
+								/>
+							{/key}
+						{:else if mode === 'reveal'}
 							{#key revealKey}
 								<FluidReveal
 									lazy
@@ -2263,6 +2411,50 @@
 		color: var(--ink-soft);
 		margin-right: 8px;
 		user-select: none;
+	}
+
+	/* ---- Above-the-fold quickstart ---- */
+	.quickstart {
+		max-width: 640px;
+		margin: 14px auto 0;
+		width: 100%;
+		box-sizing: border-box;
+		background: var(--card);
+		border: 1px solid var(--rule);
+		border-radius: 8px;
+		padding: 12px 16px 14px;
+	}
+	.quickstart-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 16px;
+		margin-bottom: 8px;
+	}
+	.quickstart-title {
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--ink-soft);
+		letter-spacing: -0.01em;
+	}
+	.quickstart-code {
+		margin: 0;
+		font-family: var(--mono);
+		font-size: 12.5px;
+		line-height: 1.5;
+		color: var(--ink);
+		overflow-x: auto;
+		white-space: pre;
+	}
+	.quickstart-note {
+		margin: 10px 0 0;
+		font-size: 12.5px;
+		color: var(--ink-soft);
+		line-height: 1.5;
+	}
+	.quickstart-note code {
+		font-family: var(--mono);
+		font-size: 12px;
 	}
 
 	/* ---- Section primitives ---- */

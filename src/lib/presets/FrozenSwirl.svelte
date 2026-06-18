@@ -6,14 +6,9 @@
   dissipation freezes the motion fast, leaving a permanent crystalline
   curl on a deep navy backdrop.
 
-  Trade-offs:
-  - `velocityDissipation: 1.0` is aggressive — the simulation comes to a
-    near-stop within a couple of seconds. That's the entire point: a
-    snapshot rather than an animation.
-  - `densityDissipation: 0` so the dye that the swirl draws stays put
-    after motion ceases.
-  - High curl + high splatForce + a single off-center splat with strong
-    horizontal velocity → asymmetric vortex.
+  The pinned configuration lives in `registry.ts` (FROZEN_SWIRL_CONFIG); see
+  that file and ADR-0040. `velocityDissipation: 1.0` is the intentional point:
+  a snapshot rather than an animation.
 -->
 
 <script lang="ts" module>
@@ -28,7 +23,8 @@
 
 <script lang="ts">
 	import Fluid from '../Fluid.svelte';
-	import type { FluidHandle, PresetSplat } from '../engine/types.js';
+	import type { FluidHandle } from '../engine/types.js';
+	import { FROZEN_SWIRL_CONFIG } from './registry.js';
 
 	let {
 		width,
@@ -44,16 +40,6 @@
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
 
-	// One large central splat plus two smaller off-axis ones to break
-	// perfect symmetry. The central splat carries strong horizontal
-	// velocity so vorticity confinement spins it into a vortex before
-	// the high velocity dissipation locks it in place.
-	const PRESET_SPLATS: PresetSplat[] = [
-		{ x: 0.5, y: 0.5, dx: 1100, dy: 0, color: { r: 0.4, g: 0.85, b: 1.6 } },
-		{ x: 0.35, y: 0.42, dx: -300, dy: 200, color: { r: 0.55, g: 0.95, b: 1.5 } },
-		{ x: 0.62, y: 0.58, dx: 400, dy: -150, color: { r: 0.7, g: 1.1, b: 1.7 } }
-	];
-
 	export const handle: FluidHandle = {
 		splat: (x, y, dx, dy, color) => inner?.handle.splat(x, y, dx, dy, color),
 		randomSplats: (count) => inner?.handle.randomSplats(count),
@@ -65,6 +51,7 @@
 
 <Fluid
 	bind:this={inner}
+	{...FROZEN_SWIRL_CONFIG}
 	{width}
 	{height}
 	class={className}
@@ -73,19 +60,5 @@
 	{lazy}
 	{splatOnHover}
 	aria-label={ariaLabel}
-	containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 }}
-	curl={50}
-	densityDissipation={0}
-	velocityDissipation={1.0}
-	pressure={0.95}
-	splatRadius={0.5}
-	splatForce={8000}
-	shading
-	colorful={false}
-	bloom
-	bloomIntensity={1.0}
-	sunrays={false}
-	initialSplatCount={0}
-	backColor={backColor ?? { r: 4, g: 8, b: 24 }}
-	presetSplats={PRESET_SPLATS}
+	backColor={backColor ?? FROZEN_SWIRL_CONFIG.backColor}
 />

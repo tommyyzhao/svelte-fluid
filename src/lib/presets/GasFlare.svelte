@@ -5,15 +5,14 @@
   simple stack/nozzle near the bottom of the canvas, rolls into shear-layer
   vortices, and rises as the temperature scalar adds buoyancy.
 
-  Geometry: two obstruction slabs form the left/right walls of a short flare
-  stack. The center slot remains open, so the live solver injects a vertical
-  gas jet through a physical nozzle mouth rather than pretending to model a
-  compressible rocket throat.
-
   Honest note: this is a qualitative incompressible jet/plume scene. The
   solver captures obstruction routing, entrainment, advection, and scalar
   buoyancy; it does not solve combustion chemistry, compressibility, soot,
   radiation, or heat release.
+
+  The pinned configuration lives in `registry.ts` (GAS_FLARE_CONFIG); see
+  that file and ADR-0040 — the two stack-wall obstructions, the hot line
+  source, scalar buoyancy, and temperature visualization are defined there.
 -->
 
 <script lang="ts" module>
@@ -37,7 +36,8 @@
 
 <script lang="ts">
 	import Fluid from '../Fluid.svelte';
-	import type { FlowConfig, FluidHandle } from '../engine/types.js';
+	import type { FluidHandle } from '../engine/types.js';
+	import { GAS_FLARE_CONFIG } from './registry.js';
 
 	let {
 		width,
@@ -54,59 +54,6 @@
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
 
-	// Flare stack walls in viewBox [0,0,100,100], SVG y DOWN. The pipe occupies
-	// the lower quarter of the canvas; the center slot at x≈45..55 is open.
-	const LEFT_STACK_WALL =
-		'M 34 100 ' +
-		'L 46 100 ' +
-		'L 46 74 ' +
-		'C 44 72, 41 71, 37 72 ' +
-		'L 34 76 ' +
-		'Z';
-
-	const RIGHT_STACK_WALL =
-		'M 54 100 ' +
-		'L 66 100 ' +
-		'L 66 76 ' +
-		'L 63 72 ' +
-		'C 59 71, 56 72, 54 74 ' +
-		'Z';
-
-	const FLOW: FlowConfig = {
-		mode: 'live',
-		boundary: { left: 'open', right: 'open', top: 'open', bottom: 'wall' },
-		sources: [
-			{
-				kind: 'line',
-				from: { x: 0.455, y: 0.245 },
-				to: { x: 0.545, y: 0.245 },
-				velocity: { x: 25, y: 760 },
-				dye: { r: 0.9, g: 0.24, b: 0.025 },
-				scalars: { temperature: 2.4 },
-				rate: 60,
-				radius: 0.045,
-				profile: 'parabolic'
-			},
-			{
-				kind: 'line',
-				from: { x: 0.18, y: 0.42 },
-				to: { x: 0.18, y: 0.82 },
-				velocity: { x: 42, y: 0 },
-				rate: 10,
-				radius: 0.18,
-				profile: 'uniform'
-			}
-		],
-		outlets: [
-			{ edge: 'top', from: 0, to: 1, width: 0.09, clearDye: 0.18, clearScalars: true, clearVelocity: true },
-			{ edge: 'left', from: 0.36, to: 1, width: 0.035, clearDye: 0.35, clearScalars: false, clearVelocity: false },
-			{ edge: 'right', from: 0.36, to: 1, width: 0.035, clearDye: 0.35, clearScalars: false, clearVelocity: false }
-		],
-		scalarFields: [{ name: 'temperature', dissipation: 0.5, advection: 'standard', range: [0, 3.2] }],
-		forces: [{ kind: 'buoyancy', scalar: 'temperature', direction: { x: 0, y: 1 }, strength: 160, ambient: 0.03 }],
-		visualization: { colorBy: 'temperature', scalar: 'temperature', glowBy: 'scalar', transfer: 'fire', range: [0, 3.2], scale: 0.9 }
-	};
-
 	export const handle: FluidHandle = {
 		splat: (x, y, dx, dy, color) => inner?.handle.splat(x, y, dx, dy, color),
 		randomSplats: (count) => inner?.handle.randomSplats(count),
@@ -116,11 +63,11 @@
 			return inner?.handle.isPaused ?? true;
 		}
 	};
-
 </script>
 
 <Fluid
 	bind:this={inner}
+	{...GAS_FLARE_CONFIG}
 	{width}
 	{height}
 	class={className}
@@ -130,28 +77,5 @@
 	{pointerInput}
 	{splatOnHover}
 	aria-label={ariaLabel}
-	obstructions={[{ d: LEFT_STACK_WALL, fit: 'fill' }, { d: RIGHT_STACK_WALL, fit: 'fill' }]}
-	flow={FLOW}
-	openBoundary
-	curl={16}
-	densityDissipation={0.42}
-	initialDensityDissipation={0.55}
-	velocityDissipation={0.055}
-	pressure={0.85}
-	pressureIterations={24}
-	splatRadius={0.06}
-	splatForce={3800}
-	shading={false}
-	colorful={false}
-	bloom={true}
-	bloomIterations={5}
-	bloomResolution={192}
-	bloomThreshold={0.48}
-	bloomIntensity={1.0}
-	sunrays={false}
-	sunraysWeight={0}
-	simResolution={160}
-	dyeResolution={768}
-	initialSplatCount={0}
-	backColor={backColor ?? { r: 6, g: 6, b: 8 }}
+	backColor={backColor ?? GAS_FLARE_CONFIG.backColor}
 />

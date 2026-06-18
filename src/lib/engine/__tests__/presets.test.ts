@@ -15,6 +15,15 @@ import venturi from '../../presets/Venturi.svelte?raw';
 import airfoil from '../../../routes/obstruction-demos/Airfoil.svelte?raw';
 import karman from '../../presets/Karman.svelte?raw';
 import maze from '../../../routes/obstruction-demos/Maze.svelte?raw';
+import {
+	GAS_FLARE_CONFIG,
+	INK_IN_WATER_CONFIG,
+	KARMAN_CONFIG,
+	PRESET_BY_ID,
+	PRESETS,
+	TESLA_VALVE_CONFIG,
+	VENTURI_CONFIG
+} from '../../presets/registry.js';
 
 const presets = {
 	AnnularFluid: annularFluid,
@@ -46,49 +55,45 @@ describe('preset pointer interaction defaults', () => {
 
 describe('flow-sensitive obstruction demos', () => {
 	it('InkInWater remains an intermittent droplet preset, not a flow-scene retrofit', () => {
+		// Source-level: no flow-scene wiring.
 		expect(inkInWater).not.toContain('FlowConfig');
 		expect(inkInWater).not.toContain('flow={FLOW}');
-		expect(inkInWater).toContain('autoSplatRate={0.2}');
-		expect(inkInWater).toContain('autoSplatVelocityY={-180}');
-		expect(inkInWater).toContain('autoSplatCenterY={0.9}');
-		expect(inkInWater).toContain('bloom');
-		expect(inkInWater).toContain('bloomIntensity={0.6}');
+		// Config (registry): intermittent auto-splat droplets with bloom glow.
+		expect(INK_IN_WATER_CONFIG.flow).toBeUndefined();
+		expect(INK_IN_WATER_CONFIG.autoSplatRate).toBe(0.2);
+		expect(INK_IN_WATER_CONFIG.autoSplatVelocityY).toBe(-180);
+		expect(INK_IN_WATER_CONFIG.autoSplatCenterY).toBe(0.9);
+		expect(INK_IN_WATER_CONFIG.bloom).toBe(true);
+		expect(INK_IN_WATER_CONFIG.bloomIntensity).toBe(0.6);
 	});
 
-	it('Karman uses pressure-driven throughflow with fast intermittent dye tracers', () => {
-		expect(karman).toContain('const FLOW: FlowConfig');
-		expect(karman).toContain('flow={FLOW}');
-		expect(karman).toContain("forces: [{ kind: 'pressureGradient', vector: { x: 64, y: 0 } }]");
+	it('Karman uses pressure-driven throughflow with a passive streakline rake', () => {
+		const flow = KARMAN_CONFIG.flow!;
+		expect(flow.forces).toEqual([{ kind: 'pressureGradient', vector: { x: 64, y: 0 } }]);
+		expect(flow.visualization).toEqual({ colorBy: 'dye' });
+		expect(flow.boundary).toEqual({ left: 'open', right: 'open', top: 'open', bottom: 'open' });
 		// Startup freestream curtain — without it the first tracer packets
 		// mushroom into still fluid while the body force spins up.
-		expect(karman).toContain('presetSplats={PRESET_SPLATS}');
-		expect(karman).toContain("visualization: { colorBy: 'dye' }");
-		expect(karman).toContain("boundary: { left: 'open', right: 'open', top: 'open', bottom: 'open' }");
-		expect(karman).toContain(
-			"{ edge: 'right', from: 0, to: 1, width: 0.075, clearDye: 0.08, clearScalars: true, clearVelocity: true }"
-		);
-		expect(karman).toContain(
-			"{ edge: 'top', from: 0, to: 1, width: 0.045, clearDye: 0.12, clearScalars: true, clearVelocity: false }"
-		);
-		expect(karman).toContain(
-			"{ edge: 'bottom', from: 0, to: 1, width: 0.045, clearDye: 0.12, clearScalars: true, clearVelocity: false }"
-		);
-		expect(karman).toContain(
-			"{ edge: 'left', from: 0, to: 1, width: 0.02, clearDye: 0.45, clearScalars: true, clearVelocity: false }"
-		);
+		expect(KARMAN_CONFIG.presetSplats?.length).toBe(5);
+		// Drains on all four edges so the wake can exit rather than saturate.
+		expect(flow.outlets).toEqual([
+			{ edge: 'right', from: 0, to: 1, width: 0.075, clearDye: 0.08, clearScalars: true, clearVelocity: true },
+			{ edge: 'top', from: 0, to: 1, width: 0.045, clearDye: 0.12, clearScalars: true, clearVelocity: false },
+			{ edge: 'bottom', from: 0, to: 1, width: 0.045, clearDye: 0.12, clearScalars: true, clearVelocity: false },
+			{ edge: 'left', from: 0, to: 1, width: 0.02, clearDye: 0.45, clearScalars: true, clearVelocity: false }
+		]);
 		// Genuine flow tracers: a six-line streakline rake of persistent
 		// dye-only point sources, not autosplat packets. The rake is passive
 		// (no velocity injection) — point-footprint velocity accumulation
 		// would curl the inlet into a recirculation cell.
-		expect(karman).not.toContain('autoSplatRate');
-		expect(karman).not.toContain('velocity: RAKE_V');
-		expect(karman).toContain("kind: 'point'");
-		expect(karman).toContain('sources: [');
-		expect(karman).toContain('rakeLine(0.2,');
-		expect(karman).toContain('rakeLine(0.8,');
-		expect(karman).toContain('const RAKE_RATE = 26');
+		expect(KARMAN_CONFIG.autoSplatRate).toBeUndefined();
+		expect(flow.sources?.length).toBe(6);
+		expect(flow.sources?.every((s) => s.kind === 'point')).toBe(true);
+		expect(flow.sources?.every((s) => !('velocity' in s))).toBe(true);
+		expect(flow.sources?.[0]).toMatchObject({ kind: 'point', x: 0.03, y: 0.2, rate: 26, radius: 0.028 });
+		expect(flow.sources?.[5]).toMatchObject({ kind: 'point', y: 0.8 });
 		// The cylinder is painted so the bluff body is visible (ADR-0039).
-		expect(karman).toContain('obstructionColor={{ r: 86, g: 98, b: 122 }}');
+		expect(KARMAN_CONFIG.obstructionColor).toEqual({ r: 86, g: 98, b: 122 });
 		// Library preset conventions: pointer interactivity is exposed.
 		expect(karman).toContain('pointerInput = true');
 		expect(karman).toContain('{pointerInput}');
@@ -128,62 +133,63 @@ describe('flow-sensitive obstruction demos', () => {
 		expect(airfoil).toContain("' C 22 43, 42 41, 62 44'");
 	});
 
-	it('TeslaValve uses a channel-shaped container with bypass loops, not a generic zigzag obstruction block', () => {
-		expect(teslaValve).toContain('const VALVE_CHANNEL: ContainerShape');
-		expect(teslaValve).toContain('const TESLA_VALVE_PATH');
-		expect(teslaValve).toContain('viewBox: [0, 0, 1220, 257]');
-		expect(teslaValve).toContain("fillRule: 'evenodd'");
-		expect(teslaValve).toContain('maskResolution: 2048');
-		expect(teslaValve).toContain('containerShape={VALVE_CHANNEL}');
-		expect(teslaValve).toContain("forces: [{ kind: 'pressureGradient', vector: { x: 28, y: 0 } }]");
-		expect(teslaValve).toContain('autoSplatRate={5}');
-		expect(teslaValve).toContain('autoSplatCount={4}');
-		expect(teslaValve).toContain('autoSplatVelocityX={190}');
-		expect(teslaValve).toContain('autoSplatCenterX={0.035}');
-		expect(teslaValve).toContain('autoSplatBandWidth={0.024}');
-		expect(teslaValve).toContain('autoSplatCenterY={0.49}');
-		expect(teslaValve).toContain('autoSplatBandHeight={0.18}');
-		expect(teslaValve).toContain('viscosity={0.04}');
-		expect(teslaValve).toContain('viscosityIterations={10}');
-		expect(teslaValve).not.toContain("kind: 'line'");
-		expect(teslaValve).not.toContain('dye: { r: 1.0, g: 0.24, b: 0.02 }');
-		expect(teslaValve).not.toContain('dye: { r: 0.0, g: 0.9, b: 1.0 }');
-		expect(teslaValve).not.toContain('dye: { r: 0.95, g: 0.08, b: 0.95 }');
-		expect(teslaValve).not.toContain('Low-rate tracer feeds');
-		expect(teslaValve).not.toContain('from: { x: 0.15');
-		expect(teslaValve).not.toContain('from: { x: 0.38');
-		expect(teslaValve).not.toContain('from: { x: 0.62');
-		expect(teslaValve).not.toContain('PresetSplat');
-		expect(teslaValve).not.toContain("visualization: { colorBy: 'speed'");
-		expect(teslaValve).not.toContain('scalarFields');
-		expect(teslaValve).not.toContain('obstructions={TONGUES}');
+	it('TeslaValve uses one channel-shaped container with bypass loops, not separate tongue obstructions', () => {
+		const shape = TESLA_VALVE_CONFIG.containerShape!;
+		expect(shape).toMatchObject({
+			type: 'svgPath',
+			viewBox: [0, 0, 1220, 257],
+			fillRule: 'evenodd',
+			maskResolution: 2048
+		});
+		const flow = TESLA_VALVE_CONFIG.flow!;
+		expect(flow.forces).toEqual([{ kind: 'pressureGradient', vector: { x: 28, y: 0 } }]);
+		// Inlet auto-splat band drives readable dye packets through the channel.
+		expect(TESLA_VALVE_CONFIG.autoSplatRate).toBe(5);
+		expect(TESLA_VALVE_CONFIG.autoSplatCount).toBe(4);
+		expect(TESLA_VALVE_CONFIG.autoSplatVelocityX).toBe(190);
+		expect(TESLA_VALVE_CONFIG.autoSplatCenterX).toBe(0.035);
+		expect(TESLA_VALVE_CONFIG.autoSplatBandWidth).toBe(0.024);
+		expect(TESLA_VALVE_CONFIG.autoSplatCenterY).toBe(0.49);
+		expect(TESLA_VALVE_CONFIG.autoSplatBandHeight).toBe(0.18);
+		expect(TESLA_VALVE_CONFIG.viscosity).toBe(0.04);
+		expect(TESLA_VALVE_CONFIG.viscosityIterations).toBe(10);
+		// One physical container — no separate tongue obstructions, no per-source
+		// line tracers, no scalar fields, no speed visualization.
+		expect(TESLA_VALVE_CONFIG.obstructions).toBeUndefined();
+		expect(flow.sources).toBeUndefined();
+		expect(flow.scalarFields).toBeUndefined();
+		expect(flow.visualization).toBeUndefined();
 	});
 
 	it('GasFlare uses an upward hot jet with scalar buoyancy from a physical nozzle slot', () => {
-		expect(gasFlare).toContain('const LEFT_STACK_WALL');
-		expect(gasFlare).toContain('const RIGHT_STACK_WALL');
-		expect(gasFlare).toContain('velocity: { x: 25, y: 760 }');
-		expect(gasFlare).toContain('scalars: { temperature: 2.4 }');
-		expect(gasFlare).toContain("forces: [{ kind: 'buoyancy'");
-		expect(gasFlare).toContain("visualization: { colorBy: 'temperature'");
+		const flow = GAS_FLARE_CONFIG.flow!;
+		// Two physical stack-wall obstructions form the nozzle slot.
+		expect(GAS_FLARE_CONFIG.obstructions?.length).toBe(2);
+		// Hot line jet injects velocity + temperature scalar.
+		expect(flow.sources?.[0]).toMatchObject({
+			kind: 'line',
+			velocity: { x: 25, y: 760 },
+			scalars: { temperature: 2.4 }
+		});
+		expect(flow.forces?.[0]).toMatchObject({ kind: 'buoyancy', scalar: 'temperature' });
+		expect(flow.visualization?.colorBy).toBe('temperature');
+		// Honest framing: not a compressible rocket-throat model.
 		expect(gasFlare).not.toContain('de Laval');
 	});
 
 	it('Venturi uses pressure-gradient-style forcing so the throat speed-up is visible', () => {
-		expect(venturi).toContain("forces: [{ kind: 'pressureGradient', vector: { x: 42, y: 0 } }]");
-		expect(venturi).toContain('maxTimeStep={1 / 60}');
-		expect(venturi).toContain('substeps={1}');
-		expect(venturi).toContain('viscosity={0.016}');
-		expect(venturi).toContain('viscosityIterations={5}');
-		expect(venturi).toContain('wallFriction={0.16}');
-		expect(venturi).toContain('pressureIterations={26}');
-		expect(venturi).not.toContain('velocity: { x:');
-		expect(venturi).not.toContain('rate:');
-		expect(venturi).toContain("outlets: [{ edge: 'right', from: 0, to: 1");
-		expect(venturi).toContain('clearVelocity: true');
-		expect(venturi).toContain("transfer: 'cfd'");
-		expect(venturi).toContain('range: [0, 170]');
-		expect(venturi).not.toContain('scalars: { ink');
+		const flow = VENTURI_CONFIG.flow!;
+		expect(flow.forces).toEqual([{ kind: 'pressureGradient', vector: { x: 42, y: 0 } }]);
+		expect(VENTURI_CONFIG.maxTimeStep).toBe(1 / 60);
+		expect(VENTURI_CONFIG.substeps).toBe(1);
+		expect(VENTURI_CONFIG.viscosity).toBe(0.016);
+		expect(VENTURI_CONFIG.viscosityIterations).toBe(5);
+		expect(VENTURI_CONFIG.wallFriction).toBe(0.16);
+		expect(VENTURI_CONFIG.pressureIterations).toBe(26);
+		// Field visualization (speed/CFD), not dye coloring, and no inlet source.
+		expect(flow.sources).toBeUndefined();
+		expect(flow.outlets?.[0]).toMatchObject({ edge: 'right', from: 0, to: 1, clearVelocity: true });
+		expect(flow.visualization).toMatchObject({ colorBy: 'speed', transfer: 'cfd', range: [0, 170] });
 	});
 
 	it('Maze uses a low-diffusion scalar sheet and gravity to read more like liquid', () => {
