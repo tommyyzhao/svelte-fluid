@@ -24,9 +24,11 @@ describe('buildSkillMd', () => {
 	it('covers engine model, components, config, API, and presets', () => {
 		expect(out).toContain('# svelte-fluid — Agent Skill');
 		expect(out).toContain('Mental model');
-		expect(out).toContain('<FluidReveal>');
 		expect(out).toContain('FluidHandle');
 		expect(out).toContain('containerShape');
+		// All six public components must be listed (count must match the prose).
+		for (const c of ['Fluid', 'FluidBackground', 'FluidReveal', 'FluidDistortion', 'FluidStick', 'FluidText'])
+			expect(out, c).toContain(`<${c}>`);
 		for (const p of PRESETS) expect(out, p.id).toContain(`**${p.id}**`);
 	});
 });

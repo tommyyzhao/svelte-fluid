@@ -19,9 +19,18 @@ export function presetUsageSnippet(id: string): string {
 
 /** Serialize a config value as a Svelte-style JS literal (unquoted keys, single quotes). */
 export function configValueLiteral(value: unknown): string {
-	return JSON.stringify(value, null, '\t')
-		.replace(/"([A-Za-z_$][\w$]*)":/g, '$1:')
-		.replace(/"/g, "'");
+	return (
+		JSON.stringify(value, null, '\t')
+			// unquote object keys: "type": -> type:
+			.replace(/"([A-Za-z_$][\w$]*)":/g, '$1:')
+			// convert remaining JSON string literals to single-quoted JS strings,
+			// unescaping \" and escaping bare ' so quotes/apostrophes in a value
+			// (e.g. a font name or path) can't corrupt or terminate the literal.
+			.replace(
+				/"((?:[^"\\]|\\.)*)"/g,
+				(_m, body: string) => `'${body.replace(/\\"/g, '"').replace(/'/g, "\\'")}'`
+			)
+	);
 }
 
 /** One Svelte attribute for a config entry (may span multiple lines for objects). */

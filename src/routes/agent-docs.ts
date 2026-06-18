@@ -21,7 +21,8 @@ const COMPONENTS: Array<{ name: string; summary: string }> = [
 	{ name: 'FluidBackground', summary: 'Fixed full-viewport fluid behind page content, with DOM exclusion zones.' },
 	{ name: 'FluidReveal', summary: 'Uses the fluid as an opacity mask to reveal slotted content underneath.' },
 	{ name: 'FluidDistortion', summary: 'Velocity-driven image warping of a supplied src image.' },
-	{ name: 'FluidStick', summary: 'Physics-level dye sticking to text/shape masks (e.g. a word).' }
+	{ name: 'FluidStick', summary: 'Physics-level dye sticking to text/shape masks (e.g. a word).' },
+	{ name: 'FluidText', summary: 'Fluid confined inside text letterforms — wraps Fluid with an svgPath text-mode container and auto aspect-ratio via measureText().' }
 ];
 
 function presetLine(p: (typeof PRESETS)[number]): string {

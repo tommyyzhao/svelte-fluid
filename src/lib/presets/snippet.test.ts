@@ -44,6 +44,18 @@ describe('configValueLiteral', () => {
 		expect(out).toContain("'circle'");
 		expect(out).not.toContain('"');
 	});
+
+	it('safely escapes quotes and apostrophes in string values', () => {
+		// A double-quote in a value must not leak a raw " that breaks the literal.
+		const dq = configValueLiteral({ font: 'bold 200px "Times New Roman", serif' });
+		expect(dq).toContain(`font: 'bold 200px "Times New Roman", serif'`);
+		// An apostrophe must be escaped so it can't terminate the single-quoted literal.
+		const ap = configValueLiteral({ text: "O'Brien" });
+		expect(ap).toContain("text: 'O\\'Brien'");
+		// Both must remain syntactically valid JS object literals.
+		expect(() => new Function(`return (${dq})`)).not.toThrow();
+		expect(() => new Function(`return (${ap})`)).not.toThrow();
+	});
 });
 
 describe('presetConfigSnippet', () => {
