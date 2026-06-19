@@ -12,6 +12,7 @@
 		title,
 		blurb,
 		snippet,
+		fullSnippet,
 		height = 300,
 		onCustomize,
 		children
@@ -19,6 +20,8 @@
 		title: string;
 		blurb?: string;
 		snippet?: string;
+		/** Optional full recreate-from-scratch code shown alongside the quick snippet. */
+		fullSnippet?: string;
 		/** Canvas height in px (sections use 220–300). */
 		height?: number;
 		onCustomize?: () => void;
@@ -26,15 +29,16 @@
 	} = $props();
 
 	let showCode = $state(false);
-	let copyState = $state<'idle' | 'copied'>('idle');
+	let copied = $state<'snippet' | 'full' | null>(null);
 	let copyTimer: ReturnType<typeof setTimeout> | undefined;
 
-	function copySnippet() {
-		if (!snippet) return;
-		navigator.clipboard.writeText(snippet);
-		copyState = 'copied';
+	function copy(which: 'snippet' | 'full') {
+		const text = which === 'snippet' ? snippet : fullSnippet;
+		if (!text) return;
+		navigator.clipboard.writeText(text);
+		copied = which;
 		clearTimeout(copyTimer);
-		copyTimer = setTimeout(() => (copyState = 'idle'), 1800);
+		copyTimer = setTimeout(() => (copied = null), 1800);
 	}
 </script>
 
@@ -67,11 +71,21 @@
 		</div>
 		{#if snippet && showCode}
 			<div class="snippet-wrap" transition:slide={{ duration: 180 }}>
+				{#if fullSnippet}<span class="snippet-label">Use the preset</span>{/if}
 				<pre><code>{snippet}</code></pre>
-				<button class="copy-btn" onclick={copySnippet} aria-live="polite">
-					{#if copyState === 'copied'}Copied{:else}Copy{/if}
+				<button class="copy-btn" onclick={() => copy('snippet')} aria-live="polite">
+					{#if copied === 'snippet'}Copied{:else}Copy{/if}
 				</button>
 			</div>
+			{#if fullSnippet}
+				<div class="snippet-wrap" transition:slide={{ duration: 180 }}>
+					<span class="snippet-label">From scratch with &lt;Fluid&gt;</span>
+					<pre><code>{fullSnippet}</code></pre>
+					<button class="copy-btn" onclick={() => copy('full')} aria-live="polite">
+						{#if copied === 'full'}Copied{:else}Copy{/if}
+					</button>
+				</div>
+			{/if}
 		{/if}
 	</figcaption>
 </figure>
@@ -145,6 +159,15 @@
 	.snippet-wrap {
 		position: relative;
 		border-top: 1px solid var(--rule, rgba(26, 24, 20, 0.88));
+	}
+	.snippet-label {
+		display: block;
+		padding: 6px 14px 0;
+		font-size: 10.5px;
+		letter-spacing: 0.02em;
+		text-transform: uppercase;
+		opacity: 0.55;
+		color: var(--ink, #1a1814);
 	}
 	pre {
 		margin: 0;
