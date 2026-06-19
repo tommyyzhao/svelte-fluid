@@ -46,6 +46,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0038](./0038-solver-pass-restructuring.md)                     | Solver pass restructuring                                               | Accepted |
 | [0039](./0039-obstruction-fill-color.md)                        | Obstruction fill color (`obstructionColor`)                             | Accepted |
 | [0040](./0040-preset-config-registry.md)                        | Internal preset config registry (single source of truth)               | Accepted |
+| [0041](./0041-webgl-unavailable-fallback.md)                    | Graceful, accessible WebGL-unavailable fallback                        | Accepted |
 
 ## How to add a new ADR
 

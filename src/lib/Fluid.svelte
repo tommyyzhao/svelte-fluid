@@ -11,8 +11,10 @@
 -->
 
 <script lang="ts" module>
+	import type { Snippet } from 'svelte';
 	import type { HTMLCanvasAttributes } from 'svelte/elements';
 	import type { FluidConfig } from './engine/types.js';
+	import type { WebGLUnavailableReason } from './engine/gl-utils.js';
 
 	/** Public props for the `<Fluid />` component. */
 	export interface FluidProps
@@ -55,12 +57,47 @@
 		 * `autoPause` still handles tab-level visibility (Page Visibility API).
 		 */
 		autoPause?: boolean;
+		/**
+		 * Custom UI rendered when WebGL is permanently unavailable (no WebGL,
+		 * or no half-float texture support). Receives the typed failure
+		 * `reason`. Takes precedence over {@link poster}. Transient failures
+		 * (e.g. hitting the browser's live-context limit) do NOT trigger it —
+		 * those stay blank and retry on the next reconcile — EXCEPT in `reveal`
+		 * mode, where any failure (including transient) surfaces the fallback,
+		 * because the transparent reveal canvas would otherwise expose the
+		 * covered content. See ADR-0041.
+		 */
+		fallback?: Snippet<[{ reason: WebGLUnavailableReason }]>;
+		/**
+		 * Static image shown (object-fit: cover) when WebGL is permanently
+		 * unavailable and no {@link fallback} snippet is provided. A graceful
+		 * still of what the animation would have rendered.
+		 */
+		poster?: string;
+		/**
+		 * Alt text for the {@link poster} image. Defaults to `''` (decorative) —
+		 * the poster is a graceful still of a decorative visual, so it is not
+		 * announced unless you describe it. Set this when the poster conveys
+		 * meaning a screen-reader user needs.
+		 */
+		posterAlt?: string;
+		/**
+		 * Visually-hidden message for the default fallback, discoverable (not
+		 * announced) by assistive tech when WebGL is permanently unavailable. It
+		 * is rendered for the `backColor`-fill fallback AND alongside a
+		 * {@link poster} (since the dead canvas is `aria-hidden`), but NOT for a
+		 * custom {@link fallback} snippet (which owns its own semantics). Set `''`
+		 * to suppress for a purely decorative instance. Default: "This animation
+		 * requires WebGL, which isn't available in your browser."
+		 */
+		fallbackText?: string;
 	}
 </script>
 
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
 	import { FluidEngine } from './engine/FluidEngine.js';
+	import { WebGLUnavailableError } from './engine/gl-utils.js';
 	import { randomSeed } from './engine/rng.js';
 	import type { FluidHandle } from './engine/types.js';
 
@@ -148,8 +185,14 @@
 		stickyStrength,
 		stickyPressure,
 		stickyAmplify,
+		requireHardwareAcceleration,
 		lazy = false,
 		autoPause = true,
+		fallback,
+		poster,
+		posterAlt,
+		fallbackText = "This animation requires WebGL, which isn't available in your browser.",
+		'aria-hidden': ariaHidden,
 		...rest
 	}: FluidProps = $props();
 
@@ -160,7 +203,49 @@
 	// mount has no effect — the observer wiring is decided in `onMount`.
 	const stableLazy = untrack(() => lazy);
 	const stableAutoPause = untrack(() => autoPause);
+	// Like `seed`, captured once — re-acquiring a context mid-life isn't
+	// supported, so this is construct-only (Bucket D).
+	const stableRequireHW = untrack(() => requireHardwareAcceleration);
 	let isVisible = !stableLazy;
+
+	/**
+	 * The last engine-init WebGL failure, or `null` when the engine is running.
+	 * Stored raw (not pre-resolved) so {@link failureReason} can recompute the
+	 * displayed state reactively when `reveal` changes at runtime. See ADR-0041.
+	 */
+	let lastError = $state<WebGLUnavailableError | null>(null);
+
+	/**
+	 * The reason to SHOW the accessible fallback, or `null` to stay blank.
+	 * Permanent reasons always surface; a transient `context-limit` stays blank
+	 * and retries — EXCEPT in reveal mode, where the canvas is transparent and a
+	 * blank box would expose the content the reveal is meant to cover, so any
+	 * failure masks. Derived (not set imperatively) so toggling `reveal` re-masks
+	 * without waiting for a reconcile.
+	 */
+	const failureReason = $derived<WebGLUnavailableReason | null>(
+		lastError && (lastError.reason !== 'context-limit' || reveal) ? lastError.reason : null
+	);
+
+	// Fill color for the default fallback box. Mode-aware so the fallback never
+	// contradicts the live render's intent:
+	//   - transparent mode → stay see-through (filling backColor would paint an
+	//     opaque box where the author wanted compositing);
+	//   - reveal mode → use the reveal COVER color (0–1 linear), because the
+	//     canvas is transparent and a blank box would expose the very content
+	//     the reveal is meant to hide;
+	//   - otherwise → backColor (0–255 RGB, default black) to preserve layout.
+	const fallbackFill = $derived.by(() => {
+		// reveal's no-exposure guarantee outranks transparent: a reveal canvas is
+		// transparent, so even with `transparent` also set the fallback must paint
+		// the opaque cover color rather than leave covered content exposed.
+		if (reveal) {
+			const c = revealCoverColor ?? { r: 1, g: 1, b: 1 };
+			return `rgb(${Math.round(c.r * 255)}, ${Math.round(c.g * 255)}, ${Math.round(c.b * 255)})`;
+		}
+		if (transparent) return 'transparent';
+		return backColor ? `rgb(${backColor.r}, ${backColor.g}, ${backColor.b})` : '#000';
+	});
 
 	// Context slot management for lazy mode. Browsers cap WebGL contexts
 	// at ~16 per tab — calling loseContext() after dispose frees the slot
@@ -268,6 +353,7 @@
 			pointerInput,
 			pointerTarget,
 			splatOnHover,
+			requireHardwareAcceleration: stableRequireHW,
 			seed: stableSeed,
 			presetSplats: stablePresetSplats
 		};
@@ -306,6 +392,12 @@
 	function instantiate() {
 		if (!canvasEl || cssW === 0 || cssH === 0 || !isVisible) return;
 		if (pendingRestore) return;
+		// A permanent failure won't recover by retrying — skip re-instantiation
+		// (and the capability probe / doomed engine init it entails) on every
+		// resize/scroll reconcile. The fallback overlay already fills the resized
+		// container. Transient context-limit still retries (failureReason is null,
+		// or 'context-limit' when reveal masked it).
+		if (failureReason === 'no-webgl' || failureReason === 'no-float-textures') return;
 
 		// If the context was lost by a previous lazy teardown, restore it
 		// before creating a new engine. restoreContext() is async — wait
@@ -367,11 +459,20 @@
 
 		try {
 			engine = new FluidEngine({ canvas: canvasEl, config: cfg });
-		} catch {
-			// WebGL context creation can fail when the browser's context limit
-			// is exceeded or when half-float textures are unsupported. Degrade
-			// gracefully — the canvas stays blank rather than crashing the page.
+			lastError = null;
+		} catch (err) {
+			// Engine init can fail. Degrade gracefully — never crash the host page.
+			// The transient/permanent + reveal-masking policy lives in the
+			// `failureReason` derived; here we just record the typed error (or, for
+			// a non-WebGL engine error like a shader-compile failure per ADR-0008,
+			// stay blank and surface it rather than misdiagnose an unsupported browser).
 			engine = undefined;
+			if (err instanceof WebGLUnavailableError) {
+				lastError = err;
+			} else {
+				lastError = null;
+				console.error('svelte-fluid: engine initialization failed', err);
+			}
 		}
 	}
 
@@ -503,7 +604,32 @@
 	style:height={height != null ? `${height}px` : undefined}
 	{style}
 >
-	<canvas bind:this={canvasEl} style:background={transparent || reveal ? 'transparent' : undefined} {...rest}></canvas>
+	<canvas
+		bind:this={canvasEl}
+		style:background={transparent || reveal ? 'transparent' : undefined}
+		{...rest}
+		aria-hidden={failureReason ? 'true' : ariaHidden}
+	></canvas>
+	{#if failureReason}
+		<div
+			class="svelte-fluid-fallback"
+			class:inert={!fallback}
+			style:background={fallback ? undefined : fallbackFill}
+		>
+			{#if fallback}
+				{@render fallback({ reason: failureReason })}
+			{:else}
+				{#if poster}
+					<img class="svelte-fluid-poster" src={poster} alt={posterAlt ?? ''} />
+				{/if}
+				{#if fallbackText}
+					<!-- Discoverable (not announced) failure text. Rendered alongside a
+					     decorative poster too, since the dead canvas is aria-hidden. -->
+					<span class="svelte-fluid-fallback-text">{fallbackText}</span>
+				{/if}
+			{/if}
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -519,5 +645,40 @@
 		height: 100%;
 		background: #000;
 		touch-action: none;
+	}
+	/* Accessible WebGL fallback overlay (ADR-0041). Covers the blank canvas
+	   when WebGL is permanently unavailable. */
+	.svelte-fluid-fallback {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	/* Default (non-snippet) fallbacks are inert — don't intercept pointer events
+	   meant for content behind a full-bleed instance (e.g. FluidBackground). A
+	   consumer-supplied `fallback` snippet keeps pointer events so it can be
+	   interactive. */
+	.svelte-fluid-fallback.inert {
+		pointer-events: none;
+	}
+	.svelte-fluid-poster {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+	}
+	/* Visually hidden, still announced to assistive tech. */
+	.svelte-fluid-fallback-text {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		clip-path: inset(50%);
+		white-space: nowrap;
+		border: 0;
 	}
 </style>

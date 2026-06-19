@@ -70,8 +70,16 @@ ${SCRIPT_CLOSE}
 		<tr><td><code>style</code></td><td><code>string</code></td><td>—</td><td>Inline style on wrapper div.</td></tr>
 		<tr><td><code>lazy</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Defer engine until the element enters the viewport. Frees the WebGL context slot. Recommended when you have 6+ instances on one page.</td></tr>
 		<tr><td><code>autoPause</code></td><td><code>boolean</code></td><td><code>true</code></td><td>Pause the RAF loop when not visible or tab is hidden.</td></tr>
+		<tr><td><code>fallback</code></td><td><code>Snippet&lt;[{'{'} reason {'}'}]&gt;</code></td><td>—</td><td>Custom UI rendered when WebGL is permanently unavailable. Receives the typed failure <code>reason</code>. Takes precedence over <code>poster</code>.</td></tr>
+		<tr><td><code>poster</code></td><td><code>string</code></td><td>—</td><td>Static image (object-fit: cover) shown when WebGL is unavailable and no <code>fallback</code> is given. A graceful still of the animation.</td></tr>
+		<tr><td><code>posterAlt</code></td><td><code>string</code></td><td><code>''</code></td><td>Alt text for the <code>poster</code> image. Defaults to empty (decorative) — set it when the poster conveys meaning.</td></tr>
+		<tr><td><code>fallbackText</code></td><td><code>string</code></td><td><em>see below</em></td><td>Visually-hidden message for the default fallback, discoverable by assistive tech (rendered alongside a <code>poster</code> too). Set <code>''</code> to suppress for purely decorative instances.</td></tr>
 	</tbody>
 </table>
+
+<div class="callout">
+	<strong>WebGL fallback (ADR-0041):</strong> when WebGL is <em>permanently</em> unavailable — no WebGL, or no half-float texture support — <code>&lt;Fluid&gt;</code> never crashes the page. It renders, in order of preference, your <code>fallback</code> snippet, then a <code>poster</code> image, else it fills the box with <code>backColor</code> and exposes a visually-hidden <code>fallbackText</code> message (default: <em>"This animation requires WebGL, which isn't available in your browser."</em>). <em>Transient</em> failures (hitting the browser's live-context cap on a dense <code>lazy</code> page) stay blank and retry on the next scroll. The fill is mode-aware: <code>transparent</code> stays see-through, and <code>reveal</code> uses the cover color and masks on <em>any</em> failure so hidden content is never exposed. For <code>distortion</code>, pass <code>poster=&#123;yourImageUrl&#125;</code> so the still image stands in for the warp. Set <a href="{base}/docs/configuration"><code>requireHardwareAcceleration</code></a> to also treat a software-only renderer as unavailable. The helper <code>isWebGLAvailable()</code> is exported if you want to gate rendering yourself.
+</div>
 
 <p>Exposes a <a href="{base}/docs/api"><code>FluidHandle</code></a> via <code>bind:this</code> for programmatic control (splats, pause, resume).</p>
 
