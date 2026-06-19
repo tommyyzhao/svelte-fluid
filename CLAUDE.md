@@ -83,9 +83,10 @@ route as part of the same change — not as a follow-up.
 | `src/routes/docs/components/+page.svelte` | All 6 components with props and examples |
 | `src/routes/docs/configuration/+page.svelte` | Full FluidConfig prop reference (70+ props) |
 | `src/routes/docs/shapes/+page.svelte` | ContainerShape variants and fields |
-| `src/routes/docs/presets/+page.svelte` | All 14 presets with pinned prop tables |
+| `src/routes/docs/presets/+page.svelte` | All 14 presets (registry-driven tables via `PresetReference`) |
 | `src/routes/docs/api/+page.svelte` | FluidHandle imperative API, RGB, PresetSplat |
-| `src/routes/skills.md/+page.svelte` | LLM-friendly API reference |
+| `src/routes/for-agents/+page.svelte` | "For Agents" hub linking the generated agent docs |
+| `src/routes/agent-docs.ts` | Generates `/llms.txt`, `/llms-full.txt`, `/SKILL.md` from the preset registry |
 
 ## Further reading (internal)
 

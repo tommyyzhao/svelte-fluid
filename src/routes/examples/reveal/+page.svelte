@@ -1,84 +1,28 @@
 <script lang="ts">
-	import { base } from '$app/paths';
 	import FluidReveal from '$lib/FluidReveal.svelte';
-	import CopyPageButton from '../components/CopyPageButton.svelte';
-
-	const pageMarkdown = [
-		'# FluidReveal — svelte-fluid',
-		'',
-		'Fluid simulation as an opacity mask. Move your cursor to reveal content below.',
-		'',
-		'## Default (fade-back)',
-		'',
-		'Content is hidden behind a fluid mask. Move your cursor to reveal it. The reveal fades back over time.',
-		'',
-		'```svelte',
-		'<FluidReveal>',
-		'  <div>Your content here</div>',
-		'</FluidReveal>',
-		'```',
-		'',
-		'## Permanent reveal',
-		'',
-		'Once revealed, content stays visible permanently.',
-		'',
-		'```svelte',
-		'<FluidReveal fadeBack={false}>',
-		'  <div>Your content here</div>',
-		'</FluidReveal>',
-		'```',
-		'',
-		'## Auto-reveal animation',
-		'',
-		'An automated cursor traces a pattern to reveal content. Touch or click to take over.',
-		'',
-		'```svelte',
-		'<FluidReveal autoReveal autoRevealSpeed={0.8} fadeBack={false} sensitivity={0.15}>',
-		'  <div>Your content here</div>',
-		'</FluidReveal>',
-		'```',
-		'',
-		'## Soft reveal (high curve)',
-		'',
-		'Higher curve values create a softer, more gradual reveal transition.',
-		'',
-		'```svelte',
-		'<FluidReveal curve={0.5} sensitivity={0.2} splatRadius={0.3}>',
-		'  <div>Your content here</div>',
-		'</FluidReveal>',
-		'```',
-		'',
-		'## With container shape (circular reveal zone)',
-		'',
-		'The reveal only works inside the circle. Outside is transparent.',
-		'',
-		'```svelte',
-		'<FluidReveal',
-		'  containerShape={{ type: \'circle\', cx: 0.5, cy: 0.5, radius: 0.4 }}',
-		'  fadeBack={false}',
-		'>',
-		'  <div>Your content here</div>',
-		'</FluidReveal>',
-		'```',
-	].join('\n');
 </script>
 
 <svelte:head>
-	<title>FluidReveal — svelte-fluid</title>
+	<title>Reveal — svelte-fluid</title>
+	<meta
+		name="description"
+		content="FluidReveal demo: drag across the fluid to wipe away an opacity mask and reveal the content underneath."
+	/>
 </svelte:head>
 
 <div class="page">
-	<div class="page-top-row">
-		<a href="{base}/" class="back-link">&larr; Back to demos</a>
-		<CopyPageButton content={pageMarkdown} />
-	</div>
-	<h1>FluidReveal</h1>
-	<p class="subtitle">Fluid simulation as an opacity mask. Move your cursor to reveal content below.</p>
+	<h1>Reveal</h1>
+	<p class="subtitle">
+		<code>FluidReveal</code> uses the fluid simulation as an opacity mask over your own content. Drag
+		your cursor (or finger) across each panel to push the fluid aside and reveal what is hidden
+		underneath. Depending on the configuration the reveal fades back over time, stays permanent, or
+		is confined to a container shape.
+	</p>
 
 	<section>
 		<h2>Default (fade-back)</h2>
-		<div class="demo-row">
-			<FluidReveal class="demo-card">
+		<div class="demo-row" role="img" aria-label="Drag to reveal a greeting hidden behind a fading fluid mask">
+			<FluidReveal lazy class="demo-card">
 				<div class="content gradient-content">
 					<h3>Hello, World!</h3>
 					<p>This content is hidden behind a fluid mask. Move your cursor to reveal it. The reveal fades back over time.</p>
@@ -89,8 +33,9 @@
 
 	<section>
 		<h2>Permanent reveal</h2>
-		<div class="demo-row">
+		<div class="demo-row" role="img" aria-label="Drag to permanently reveal a grid of colored blocks">
 			<FluidReveal
+				lazy
 				fadeBack={false}
 				class="demo-card"
 			>
@@ -113,8 +58,9 @@
 
 	<section>
 		<h2>Auto-reveal animation</h2>
-		<div class="demo-row">
+		<div class="demo-row" role="img" aria-label="Auto-revealing panel; drag or tap to take over the cursor">
 			<FluidReveal
+				lazy
 				autoReveal
 				autoRevealSpeed={0.8}
 				fadeBack={false}
@@ -136,8 +82,9 @@
 
 	<section>
 		<h2>Soft reveal (high curve)</h2>
-		<div class="demo-row">
+		<div class="demo-row" role="img" aria-label="Drag to reveal content with soft, gradual edges">
 			<FluidReveal
+				lazy
 				curve={0.5}
 				sensitivity={0.2}
 				splatRadius={0.3}
@@ -153,8 +100,9 @@
 
 	<section>
 		<h2>With container shape (circular reveal zone)</h2>
-		<div class="demo-row">
+		<div class="demo-row" role="img" aria-label="Drag to reveal content, confined to a circular zone">
 			<FluidReveal
+				lazy
 				containerShape={{ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.4 }}
 				fadeBack={false}
 				class="demo-card"
@@ -178,24 +126,20 @@
 		background: #0a0a1a;
 		min-height: 100vh;
 	}
-	.page-top-row {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-	}
-	.back-link {
-		color: #88f;
-		text-decoration: none;
-		font-size: 0.9rem;
-	}
-	.back-link:hover { text-decoration: underline; }
 	h1 {
 		font-size: 2.5rem;
-		margin: 1rem 0 0.25rem;
+		margin: 0 0 0.5rem;
 	}
 	.subtitle {
-		color: #999;
-		margin-bottom: 2rem;
+		color: #aaa;
+		line-height: 1.6;
+		max-width: 70ch;
+		margin-bottom: 2.5rem;
+	}
+	.subtitle code {
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-size: 0.9em;
+		color: #ddd;
 	}
 	section {
 		margin-bottom: 3rem;
