@@ -98,6 +98,7 @@
 		border: 1px solid var(--rule, rgba(26, 24, 20, 0.88));
 		border-radius: 8px;
 		overflow: hidden;
+		min-width: 0;
 	}
 	.card-fluid {
 		position: relative;
@@ -159,6 +160,7 @@
 	.snippet-wrap {
 		position: relative;
 		border-top: 1px solid var(--rule, rgba(26, 24, 20, 0.88));
+		overflow: hidden;
 	}
 	.snippet-label {
 		display: block;
@@ -172,12 +174,20 @@
 	pre {
 		margin: 0;
 		padding: 12px 14px;
-		overflow-x: auto;
+		max-width: 100%;
+		max-height: 340px;
+		box-sizing: border-box;
+		overflow: auto;
 		font-family: var(--mono, ui-monospace, monospace);
 		font-size: 11.5px;
 		line-height: 1.55;
 		color: var(--ink, #1a1814);
 		background: var(--hover, rgba(26, 24, 20, 0.05));
+	}
+	pre code {
+		display: block;
+		width: max-content;
+		min-width: 100%;
 	}
 	.copy-btn {
 		position: absolute;
@@ -201,6 +211,10 @@
 	@media (max-width: 600px) {
 		.card-fluid {
 			height: 200px !important;
+		}
+		pre {
+			max-height: 280px;
+			font-size: 11px;
 		}
 		.card-btn {
 			padding: 6px 10px;
