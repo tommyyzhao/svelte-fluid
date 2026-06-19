@@ -2406,6 +2406,9 @@
 		font-family: var(--mono);
 		font-size: 13.5px;
 		color: var(--ink);
+		min-width: 0;
+		overflow-x: auto;
+		white-space: nowrap;
 	}
 	.prompt {
 		color: var(--ink-soft);
@@ -2423,6 +2426,7 @@
 		border: 1px solid var(--rule);
 		border-radius: 8px;
 		padding: 12px 16px 14px;
+		overflow: hidden;
 	}
 	.quickstart-head {
 		display: flex;
@@ -2443,8 +2447,15 @@
 		font-size: 12.5px;
 		line-height: 1.5;
 		color: var(--ink);
-		overflow-x: auto;
+		max-width: 100%;
+		box-sizing: border-box;
+		overflow: auto;
 		white-space: pre;
+	}
+	.quickstart-code code {
+		display: block;
+		width: max-content;
+		min-width: 100%;
 	}
 	.quickstart-note {
 		margin: 10px 0 0;
@@ -2509,6 +2520,7 @@
 	.grid {
 		display: grid;
 		gap: 18px;
+		align-items: start;
 	}
 	.grid-3 {
 		grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2635,22 +2647,29 @@
 			grid-template-columns: 1fr 340px;
 			gap: 22px;
 			align-items: start;
+			min-width: 0;
 		}
 	.playground-stage {
 		display: flex;
 		flex-direction: column;
+		min-width: 0;
+		width: 100%;
 	}
 	.playground-canvas {
 		height: 520px;
+		min-width: 0;
 	}
 	.panel {
 		background: var(--card);
 		border: 1px solid var(--rule);
 		border-radius: 8px;
 		padding: 18px 18px 20px;
+		box-sizing: border-box;
 		display: flex;
 		flex-direction: column;
 		gap: 18px;
+		min-width: 0;
+		width: 100%;
 	}
 	.knob-group {
 		display: flex;
@@ -2681,6 +2700,7 @@
 	}
 	.knob-row input[type='range'] {
 		flex: 1;
+		min-width: 0;
 		accent-color: var(--accent);
 	}
 	.knob-value {
@@ -2791,12 +2811,19 @@
 		border-radius: 8px;
 		padding: 12px 14px;
 		margin: 0;
+		max-width: 100%;
+		box-sizing: border-box;
 		font-family: var(--mono);
 		font-size: 11px;
 		color: var(--ink);
-		overflow-x: auto;
+		overflow: auto;
 		line-height: 1.55;
 		white-space: pre;
+	}
+	.snippet-code code {
+		display: block;
+		width: max-content;
+		min-width: 100%;
 	}
 
 	/* ---- Footer ---- */
@@ -2871,6 +2898,9 @@
 		.grid-2 {
 			grid-template-columns: 1fr;
 		}
+		.playground-grid > * {
+			min-width: 0;
+		}
 		.footer-row {
 			grid-template-columns: 1fr;
 			text-align: left;
@@ -2878,6 +2908,41 @@
 		.footer-mid,
 		.footer-row > :last-child {
 			text-align: left;
+		}
+	}
+	@media (max-width: 360px) {
+		.install,
+		.quickstart {
+			padding-inline: 14px;
+		}
+		.quickstart-head {
+			gap: 10px;
+		}
+		.quickstart-code {
+			font-size: 11.5px;
+			white-space: pre-wrap;
+			overflow-wrap: anywhere;
+		}
+		.quickstart-code code {
+			width: auto;
+			min-width: 0;
+		}
+		.playground-canvas {
+			height: 360px;
+		}
+		.panel {
+			padding: 14px;
+		}
+		.knob-row {
+			gap: 8px;
+		}
+		.knob-label {
+			min-width: 98px;
+			font-size: 10.5px;
+		}
+		.knob-value {
+			min-width: 32px;
+			font-size: 10.5px;
 		}
 	}
 </style>
