@@ -110,6 +110,7 @@ export function buildSkillMd(site = DEFAULT_SITE): string {
 		'- The sim is a real incompressible fluid solver: advection → (viscosity) → divergence → pressure (Jacobi) → gradient subtract, then dye advection, vorticity confinement (`curl`), bloom/sunrays/shading display.',
 		'- Determinism: pass `seed` for reproducible initial splats; the seed survives resize (the engine tears down + rebuilds on resize but keeps the seed).',
 		'- Lifecycle: all WebGL access is deferred to `onMount` (SSR-safe). `autoPause` (default true) stops the RAF loop when offscreen/hidden; `lazy` defers engine creation until in view.',
+		'- Resilience: if WebGL is permanently unavailable, `<Fluid>` never crashes — it renders a `fallback` snippet, else a `poster` image, else fills `backColor` + a visually-hidden message. `isWebGLAvailable()` is exported; `requireHardwareAcceleration` treats a software-only renderer as unavailable.',
 		'- Runtime prop changes go through `setConfig`, which classifies each field: hot scalars (next frame), keyword recompiles (shading/bloom/sunrays/reveal/distortion), FBO rebuilds (resolutions), or construct-only (seed, initial splat counts).',
 		'',
 		'## Components',
@@ -167,7 +168,7 @@ export function buildSkillMd(site = DEFAULT_SITE): string {
 		'',
 		'- SSR: components are SSR-safe (engine starts in `onMount`); nothing renders fluid on the server.',
 		'- Dense pages: set `lazy` to stay under the WebGL context cap.',
-		'- Accessibility: respect `prefers-reduced-motion` in your own auto-animation triggers; pass `aria-label`.',
+		'- Accessibility: respect `prefers-reduced-motion` in your own auto-animation triggers; pass `aria-label`. WebGL-unavailable fallback exposes a visually-hidden message by default; override with `fallback`/`poster`/`fallbackText`.',
 		'- Colors: `backColor` is 0–255 RGB; splat/dye colors in `presetSplats` are 0–1 (HDR, can exceed 1).',
 		''
 	);

@@ -22,6 +22,12 @@ export { default as FluidText } from './FluidText.svelte';
 export type { FluidTextProps } from './FluidText.svelte';
 
 export { FluidEngine, type FluidEngineOptions } from './engine/FluidEngine.js';
+export {
+	isWebGLAvailable,
+	WebGLUnavailableError,
+	type WebGLUnavailableReason,
+	type GetContextOptions
+} from './engine/gl-utils.js';
 export type {
 	FluidConfig,
 	FluidHandle,

@@ -1,6 +1,7 @@
 # Plan: WebGL-unsupported graceful fallback
 
-Status: **Proposed** (planning only — implement later as ADR-0041)
+Status: **Phase 1 implemented** — see [ADR-0041](../decisions/0041-webgl-unavailable-fallback.md).
+Phase 2 (reduced-motion poster still) remains proposed.
 Related: [ADR-0008](../decisions/0008-throw-on-shader-errors.md) (throw on shader
 errors), [ADR-0013](../decisions/0013-ssr-safety-via-onmount.md) (onMount/SSR),
 [ADR-0019](../decisions/0019-auto-pause-and-context-loss-recovery.md) (context-loss recovery).

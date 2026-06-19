@@ -158,6 +158,7 @@ export const DEFAULTS: ResolvedConfig = {
 	POINTER_TARGET: 'canvas' as const,
 	SPLAT_ON_HOVER: false,
 	SEED: 0,
+	REQUIRE_HARDWARE_ACCELERATION: false,
 	AUTO_SPLAT_RATE: 0,
 	AUTO_SPLAT_COUNT: 1,
 	AUTO_SPLAT_COLOR: null,
@@ -254,6 +255,8 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 	if (input.pointerTarget !== undefined) out.POINTER_TARGET = input.pointerTarget;
 	if (input.splatOnHover !== undefined) out.SPLAT_ON_HOVER = input.splatOnHover;
 	if (input.seed !== undefined) out.SEED = input.seed >>> 0;
+	if (input.requireHardwareAcceleration !== undefined)
+		out.REQUIRE_HARDWARE_ACCELERATION = input.requireHardwareAcceleration;
 	if (input.autoSplatRate !== undefined) out.AUTO_SPLAT_RATE = input.autoSplatRate;
 	if (input.autoSplatCount !== undefined) out.AUTO_SPLAT_COUNT = input.autoSplatCount;
 	if (input.autoSplatColor !== undefined) out.AUTO_SPLAT_COLOR = input.autoSplatColor;
@@ -926,7 +929,9 @@ export class FluidEngine implements FluidHandle {
 	/* ---------------------------------------------------------------------- */
 
 	private initContext(): void {
-		const { gl, ext } = getWebGLContext(this.canvas);
+		const { gl, ext } = getWebGLContext(this.canvas, {
+			requireHardwareAcceleration: this.config.REQUIRE_HARDWARE_ACCELERATION
+		});
 		this.gl = gl;
 		this.ext = ext;
 

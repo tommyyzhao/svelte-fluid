@@ -352,6 +352,12 @@
 			<td>—</td>
 			<td>Hand-crafted splats applied after the random initial splats. Combine with <code>initialSplatCount: 0</code> to suppress random splats.</td>
 		</tr>
+		<tr>
+			<td><code>requireHardwareAcceleration</code></td>
+			<td><code>boolean</code></td>
+			<td><code>false</code></td>
+			<td>Reject a software/SwiftShader rendering path (<code>failIfMajorPerformanceCaveat</code>). When <code>true</code> and only a software renderer exists, the component shows its <a href="{base}/docs/components#fluid">WebGL fallback</a> instead of animating on a slow CPU path. Construct-only. See ADR-0041.</td>
+		</tr>
 	</tbody>
 </table>
 
@@ -784,5 +790,6 @@
 <p>
 	Ignored by <code>setConfig()</code> after construction. These values are consumed once when the
 	engine is created: <code>seed</code>, <code>initialSplatCountMin</code>,
-	<code>initialSplatCountMax</code>, <code>initialSplatCount</code>, and <code>presetSplats</code>.
+	<code>initialSplatCountMax</code>, <code>initialSplatCount</code>, <code>presetSplats</code>, and
+	<code>requireHardwareAcceleration</code>.
 </p>

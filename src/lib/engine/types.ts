@@ -493,6 +493,17 @@ export interface FluidConfig {
 	 */
 	seed?: number;
 	/**
+	 * Reject a software/SwiftShader rendering path by passing
+	 * `failIfMajorPerformanceCaveat` to the WebGL context. When `true` and only
+	 * a software renderer is available, context creation fails and the component
+	 * shows its WebGL fallback instead of animating on a slow CPU path.
+	 *
+	 * Off by default — many legitimate integrated GPUs would otherwise be
+	 * misclassified. Construct-only (consumed once at context creation;
+	 * `setConfig` ignores it). See ADR-0041.
+	 */
+	requireHardwareAcceleration?: boolean;
+	/**
 	 * Hand-crafted initial splats applied immediately after the random
 	 * initial splats. Construct-only — `setConfig` ignores this field.
 	 * Intended for preset wrapper components that paint a deterministic
@@ -815,6 +826,7 @@ export interface ResolvedConfig {
 	POINTER_TARGET: 'canvas' | 'window';
 	SPLAT_ON_HOVER: boolean;
 	SEED: number;
+	REQUIRE_HARDWARE_ACCELERATION: boolean;
 	AUTO_SPLAT_RATE: number;
 	AUTO_SPLAT_COUNT: number;
 	AUTO_SPLAT_COLOR: RGB | null;
