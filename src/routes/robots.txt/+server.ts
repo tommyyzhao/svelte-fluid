@@ -2,16 +2,10 @@ import { DEFAULT_SITE } from '../agent-docs.js';
 
 export const prerender = true;
 
-// Design-exploration and test routes ship in the static build but are not part
-// of the public site — keep crawlers out of them and off the legacy agent page.
-const DISALLOW = [
-	'/design',
-	'/capture',
-	'/maze-test',
-	'/test-boundary',
-	'/obstruction-lab',
-	'/skills.md'
-];
+// The /examples/* feature demos ship in the static build but are intentionally
+// unlisted for now (see dev-docs/plans/scratch-route-consolidation.md) — keep
+// crawlers out until we choose to feature them.
+const DISALLOW = ['/examples'];
 
 export function GET() {
 	const body = [
