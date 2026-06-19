@@ -24,18 +24,118 @@ export interface ProgramWrap {
 /* -------------------------------------------------------------------------- */
 
 /**
+ * Why a WebGL context could not be acquired. Lets the component layer
+ * distinguish a **permanent** failure (no WebGL / no float textures → show a
+ * fallback) from a **transient** one (`context-limit`: the page hit the
+ * browser's live-context cap → stay blank and retry on the next reconcile).
+ */
+export type WebGLUnavailableReason = 'no-webgl' | 'no-float-textures' | 'context-limit';
+
+/**
+ * Thrown by {@link getWebGLContext} when a usable context cannot be created.
+ * Carries a typed {@link WebGLUnavailableReason} so callers can react without
+ * string-matching the message.
+ */
+export class WebGLUnavailableError extends Error {
+	readonly reason: WebGLUnavailableReason;
+	constructor(reason: WebGLUnavailableReason, message: string) {
+		super(message);
+		this.name = 'WebGLUnavailableError';
+		this.reason = reason;
+	}
+}
+
+/**
+ * Report whether a WebGL context can be created at all, right now. Creates a
+ * throwaway context on a detached canvas and releases it immediately via
+ * `WEBGL_lose_context`. This is the correct way to detect support — actually
+ * creating a context — rather than sniffing `window.WebGLRenderingContext`,
+ * which false-positives on blacklisted/disabled GPUs.
+ *
+ * SSR-safe: returns `false` when `document` is unavailable. Pass the same
+ * {@link WebGLContextAttributes} the real context uses (notably
+ * `failIfMajorPerformanceCaveat`) so the probe's answer matches.
+ *
+ * NOTE: this reports only whether a context can be *created*. The simulation
+ * additionally needs a renderable half-float format; a browser can pass this
+ * check and still fail engine init with `no-float-textures`. Treat it as a
+ * fast "is WebGL fundamentally available" gate, not a guarantee the engine will
+ * start.
+ */
+export function isWebGLAvailable(attributes?: WebGLContextAttributes): boolean {
+	if (typeof document === 'undefined') return false;
+	try {
+		const canvas = document.createElement('canvas');
+		const gl = (canvas.getContext('webgl2', attributes) ??
+			canvas.getContext('webgl', attributes) ??
+			canvas.getContext('experimental-webgl', attributes)) as GL | null;
+		if (!gl) return false;
+		// Release the probe context right away so it doesn't hold a slot.
+		gl.getExtension('WEBGL_lose_context')?.loseContext();
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Memoized capability cache for {@link getWebGLContext}'s failure classification,
+ * keyed by whether hardware acceleration was required. This is NOT GL state (it
+ * holds no context/buffer/program/FBO — invariant #2 is about not sharing GL
+ * *resources* across instances): it is a single flag per key so that classifying
+ * a null-context failure does not spawn a fresh probe context on *every* failure.
+ * Repeatedly creating probe contexts on a page already at the live-context cap
+ * could evict a sibling engine's context (Chromium LRU) or leak a slot when
+ * `WEBGL_lose_context` is absent — so a confirmed `true` is probed at most once
+ * per key. We deliberately cache ONLY positive results: a one-off transient
+ * `false` (e.g. a fluke during a context storm) must not become a permanent,
+ * page-wide "no WebGL" verdict, and the component's permanent-failure
+ * short-circuit already prevents re-probing on a genuine `no-webgl`.
+ */
+const webglSupportCache: { [key: string]: true } = {};
+
+function webglSupportedMemo(attributes?: WebGLContextAttributes): boolean {
+	const key = attributes?.failIfMajorPerformanceCaveat ? 'hw' : 'any';
+	if (webglSupportCache[key]) return true;
+	const result = isWebGLAvailable(attributes);
+	if (result) webglSupportCache[key] = true;
+	return result;
+}
+
+/** @internal Test-only: clear the memoized capability probe between cases. */
+export function _resetWebGLSupportCache(): void {
+	delete webglSupportCache.hw;
+	delete webglSupportCache.any;
+}
+
+/** Options for {@link getWebGLContext}. */
+export interface GetContextOptions {
+	/**
+	 * Reject a software/SwiftShader rendering path via
+	 * `failIfMajorPerformanceCaveat`. Off by default to avoid false negatives
+	 * on legitimate integrated GPUs.
+	 */
+	requireHardwareAcceleration?: boolean;
+}
+
+/**
  * Acquire a WebGL2 (preferred) or WebGL1 context plus the half-float /
- * format extensions the simulation needs. Throws if neither is available.
+ * format extensions the simulation needs. Throws a {@link WebGLUnavailableError}
+ * (with a typed reason) if a usable context cannot be created.
  *
  * Ported from script.js:118-168.
  */
-export function getWebGLContext(canvas: HTMLCanvasElement): { gl: GL; ext: ExtInfo } {
+export function getWebGLContext(
+	canvas: HTMLCanvasElement,
+	options: GetContextOptions = {}
+): { gl: GL; ext: ExtInfo } {
 	const params: WebGLContextAttributes = {
 		alpha: true,
 		depth: false,
 		stencil: false,
 		antialias: false,
-		preserveDrawingBuffer: false
+		preserveDrawingBuffer: false,
+		failIfMajorPerformanceCaveat: options.requireHardwareAcceleration ?? false
 	};
 
 	let gl: GL | null = canvas.getContext('webgl2', params) as WebGL2RenderingContext | null;
@@ -46,7 +146,22 @@ export function getWebGLContext(canvas: HTMLCanvasElement): { gl: GL; ext: ExtIn
 			(canvas.getContext('experimental-webgl', params) as WebGLRenderingContext | null);
 	}
 	if (!gl) {
-		throw new Error('svelte-fluid: WebGL is not supported in this browser');
+		// Classify via the memoized capability probe (see webglSupportCache). If
+		// WebGL can be created at all, this canvas's failure was situational —
+		// almost always the page hit its live-context limit — and may recover on
+		// a later reconcile (transient). Otherwise WebGL is genuinely unavailable,
+		// disabled, or (with requireHardwareAcceleration) only a rejected software
+		// path exists (permanent). NOTE: a browser that hard-caps without LRU
+		// eviction (Firefox-class) can make the probe also fail at the cap, which
+		// would misclassify context-limit as no-webgl on a dense page; that is an
+		// accepted limitation documented in ADR-0041.
+		const reason: WebGLUnavailableReason = webglSupportedMemo(params) ? 'context-limit' : 'no-webgl';
+		throw new WebGLUnavailableError(
+			reason,
+			reason === 'context-limit'
+				? 'svelte-fluid: could not acquire a WebGL context (the page may have reached its WebGL context limit)'
+				: 'svelte-fluid: WebGL is not supported in this browser'
+		);
 	}
 
 	let halfFloat: OES_texture_half_float | null = null;
@@ -81,7 +196,10 @@ export function getWebGLContext(canvas: HTMLCanvasElement): { gl: GL; ext: ExtIn
 	}
 
 	if (!formatRGBA) {
-		throw new Error('svelte-fluid: required half-float texture format is not supported');
+		throw new WebGLUnavailableError(
+			'no-float-textures',
+			'svelte-fluid: required half-float texture format is not supported'
+		);
 	}
 
 	return {
