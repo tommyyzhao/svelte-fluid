@@ -62,7 +62,10 @@
 		 * or no half-float texture support). Receives the typed failure
 		 * `reason`. Takes precedence over {@link poster}. Transient failures
 		 * (e.g. hitting the browser's live-context limit) do NOT trigger it —
-		 * those stay blank and retry on the next reconcile. See ADR-0041.
+		 * those stay blank and retry on the next reconcile — EXCEPT in `reveal`
+		 * mode, where any failure (including transient) surfaces the fallback,
+		 * because the transparent reveal canvas would otherwise expose the
+		 * covered content. See ADR-0041.
 		 */
 		fallback?: Snippet<[{ reason: WebGLUnavailableReason }]>;
 		/**
@@ -189,6 +192,7 @@
 		poster,
 		posterAlt,
 		fallbackText = "This animation requires WebGL, which isn't available in your browser.",
+		'aria-hidden': ariaHidden,
 		...rest
 	}: FluidProps = $props();
 
@@ -232,11 +236,14 @@
 	//     the reveal is meant to hide;
 	//   - otherwise → backColor (0–255 RGB, default black) to preserve layout.
 	const fallbackFill = $derived.by(() => {
-		if (transparent) return 'transparent';
+		// reveal's no-exposure guarantee outranks transparent: a reveal canvas is
+		// transparent, so even with `transparent` also set the fallback must paint
+		// the opaque cover color rather than leave covered content exposed.
 		if (reveal) {
 			const c = revealCoverColor ?? { r: 1, g: 1, b: 1 };
 			return `rgb(${Math.round(c.r * 255)}, ${Math.round(c.g * 255)}, ${Math.round(c.b * 255)})`;
 		}
+		if (transparent) return 'transparent';
 		return backColor ? `rgb(${backColor.r}, ${backColor.g}, ${backColor.b})` : '#000';
 	});
 
@@ -601,7 +608,7 @@
 		bind:this={canvasEl}
 		style:background={transparent || reveal ? 'transparent' : undefined}
 		{...rest}
-		aria-hidden={failureReason ? 'true' : undefined}
+		aria-hidden={failureReason ? 'true' : ariaHidden}
 	></canvas>
 	{#if failureReason}
 		<div

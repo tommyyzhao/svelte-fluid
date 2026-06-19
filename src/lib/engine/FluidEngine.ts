@@ -545,48 +545,61 @@ export class FluidEngine implements FluidHandle {
 		this.normalizedBackColor = normalizeColor(this.config.BACK_COLOR);
 		this.rng = mulberry32(this.config.SEED);
 
+		// initContext() throws BEFORE a context is acquired (getContext → null),
+		// so it needs no cleanup. Everything after it runs against a live GL
+		// context and can still throw (e.g. a shader-compile failure, ADR-0008);
+		// if it does, release the context slot we already hold so a failed
+		// construction doesn't orphan a GL context, then re-throw.
 		this.initContext();
-		this.compileShaders();
-		this.initBuffersAndPrograms();
-		this.ditheringTexture = createDitheringTexture(this.gl);
+		try {
+			this.compileShaders();
+			this.initBuffersAndPrograms();
+			this.ditheringTexture = createDitheringTexture(this.gl);
 
-		this.initDistortionFallback();
-		this.updateKeywords();
-		this.initFramebuffers();
-		this.initMaskTexture();
-		this.initStickyMaskTexture();
-		this.initObstructionMaskTexture();
-		this.initSolidMaskTexture();
-		this.initPrescribedGridTextures();
-		this.initGlassFramebuffer();
-		if (this.config.DISTORTION_IMAGE_URL) {
-			this.loadDistortionImage(this.config.DISTORTION_IMAGE_URL);
-		}
-		this.dyeMayContainContent = false;
-		this.multipleSplats(this.initialRandomSplatCount());
-
-		// Construct-only preset splats. Applied after the random initial
-		// splats so wrappers can either combine with or suppress them
-		// (via `initialSplatCount: 0`). Read directly from the raw input
-		// config because this field is intentionally absent from
-		// `ResolvedConfig` — it has no meaning after construction.
-		const presetSplats = opts.config?.presetSplats;
-		if (presetSplats) {
-			for (const s of presetSplats) {
-				this.splat(s.x, s.y, s.dx, s.dy, s.color);
+			this.initDistortionFallback();
+			this.updateKeywords();
+			this.initFramebuffers();
+			this.initMaskTexture();
+			this.initStickyMaskTexture();
+			this.initObstructionMaskTexture();
+			this.initSolidMaskTexture();
+			this.initPrescribedGridTextures();
+			this.initGlassFramebuffer();
+			if (this.config.DISTORTION_IMAGE_URL) {
+				this.loadDistortionImage(this.config.DISTORTION_IMAGE_URL);
 			}
+			this.dyeMayContainContent = false;
+			this.multipleSplats(this.initialRandomSplatCount());
+
+			// Construct-only preset splats. Applied after the random initial
+			// splats so wrappers can either combine with or suppress them
+			// (via `initialSplatCount: 0`). Read directly from the raw input
+			// config because this field is intentionally absent from
+			// `ResolvedConfig` — it has no meaning after construction.
+			const presetSplats = opts.config?.presetSplats;
+			if (presetSplats) {
+				for (const s of presetSplats) {
+					this.splat(s.x, s.y, s.dx, s.dy, s.color);
+				}
+			}
+
+			if (this.config.POINTER_INPUT) {
+				this.installPointerListeners();
+			}
+
+			this.canvas.addEventListener('webglcontextlost', this.onContextLost);
+			this.canvas.addEventListener('webglcontextrestored', this.onContextRestored);
+
+			this.lastUpdateTime = performance.now();
+			this.engineStartTime = this.lastUpdateTime;
+			this.startRaf();
+		} catch (err) {
+			// Unlike dispose() (which deliberately keeps the context for lazy
+			// rebuild — invariant #6), a construction failure has no instance to
+			// rebuild, so free the GPU context slot before propagating.
+			this.gl.getExtension('WEBGL_lose_context')?.loseContext();
+			throw err;
 		}
-
-		if (this.config.POINTER_INPUT) {
-			this.installPointerListeners();
-		}
-
-		this.canvas.addEventListener('webglcontextlost', this.onContextLost);
-		this.canvas.addEventListener('webglcontextrestored', this.onContextRestored);
-
-		this.lastUpdateTime = performance.now();
-		this.engineStartTime = this.lastUpdateTime;
-		this.startRaf();
 	}
 
 	/**

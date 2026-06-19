@@ -104,11 +104,14 @@ Exported from `src/lib/index.ts`: `isWebGLAvailable`, `WebGLUnavailableError`,
 - The transient/permanent split keeps dense `lazy` pages flicker-free: a
   context-limit miss stays blank and recovers on the next reconcile, exactly as
   before, while a true no-WebGL browser shows the fallback.
-- The classification probe creates an extra throwaway context **only on the
-  failure path, and at most once per page** (memoized). On a real context-limit a
-  single probe could, in principle, evict an LRU sibling — the same pressure the
-  failed acquisition itself applied — but the memo prevents the per-failure
-  eviction *storm* an unbounded probe would cause on a dense page.
+- The classification probe creates an extra throwaway **context** only on the
+  failure path, and at most once per page (only a *positive* probe creates a
+  context, and that result is memoized). A *negative* probe's `getContext` returns
+  `null` — no context, no slot, no eviction — so re-probing a genuine `no-webgl`
+  (which the positive-only cache does not memoize) is effectively free, and the
+  permanent-failure short-circuit stops it after the first attempt per instance
+  anyway. The net effect: the memo prevents the per-failure eviction *storm* an
+  unbounded probe would cause on a dense page, with no sticky false-negative.
 - **Known limitation:** a browser that hard-caps contexts *without* LRU eviction
   (Firefox-class) makes the probe also fail at the cap, so `context-limit` is
   misclassified as `no-webgl` there — a dense page may show the fallback while
