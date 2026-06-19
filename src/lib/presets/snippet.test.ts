@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+	configAssetNotes,
 	configAttribute,
 	configValueLiteral,
 	configToAttributeLines,
 	presetConfigSnippet,
+	presetScaffoldSnippet,
 	presetUsageSnippet
 } from './snippet.js';
 import { PRESETS } from './registry.js';
@@ -93,5 +95,47 @@ describe('configToAttributeLines', () => {
 	it('skips undefined values', () => {
 		const lines = configToAttributeLines({ curl: 5, splatForce: undefined });
 		expect(lines).toEqual(['curl={5}']);
+	});
+});
+
+describe('configAssetNotes', () => {
+	it('returns nothing for config-only presets', () => {
+		for (const p of PRESETS) expect(configAssetNotes(p.config), p.id).toEqual([]);
+	});
+
+	it('flags external asset props', () => {
+		const notes = configAssetNotes({ distortionImageUrl: '/photo.jpg' });
+		expect(notes).toHaveLength(1);
+		expect(notes[0]).toContain('distortionImageUrl');
+		expect(notes[0]).toContain('/photo.jpg');
+	});
+});
+
+describe('presetScaffoldSnippet', () => {
+	it('returns empty string for unknown presets', () => {
+		expect(presetScaffoldSnippet('NotAPreset')).toBe('');
+	});
+
+	it('produces a complete from-scratch component for every preset', () => {
+		for (const p of PRESETS) {
+			const s = presetScaffoldSnippet(p.id);
+			expect(s, p.id).toContain("import { Fluid } from 'svelte-fluid';");
+			expect(s, p.id).toContain('<div style="width: 100%; height: 420px">');
+			expect(s, p.id).toContain('<Fluid');
+			expect(s, p.id).toContain('</div>');
+			// config-only presets carry no asset comments
+			expect(s, p.id).not.toContain('<!-- Asset:');
+		}
+	});
+
+	it('embeds the full pinned config (Venturi flow recipe)', () => {
+		const s = presetScaffoldSnippet('Venturi');
+		expect(s).toContain('curl={0}');
+		expect(s).toContain('flow={');
+		expect(s).toContain("kind: 'pressureGradient'");
+	});
+
+	it('honors a custom height', () => {
+		expect(presetScaffoldSnippet('LavaLamp', 600)).toContain('height: 600px');
 	});
 });
