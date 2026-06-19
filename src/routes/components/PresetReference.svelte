@@ -2,29 +2,30 @@
   Registry-driven reference block for a single preset on /docs/presets.
 
   Generates the pinned-prop table from the registry (so it can never drift from
-  what `<Preset />` renders — ADR-0040), plus a Show Code action (wrapper usage
-  + expandable <Fluid> recipe) and an Open-in-Playground link. The page keeps
+  what `<Preset />` renders — ADR-0040). "Show code" reveals BOTH the zero-config
+  wrapper usage AND the full recreate-from-scratch `<Fluid>` component (imports +
+  sizing wrapper + any assets). Plus an Open-in-Playground link. The page keeps
   its hand-authored prose; this owns the table + actions.
 -->
 <script lang="ts">
 	import { base } from '$app/paths';
 	import { slide } from 'svelte/transition';
 	import { PRESET_BY_ID } from '$lib/presets/registry.js';
-	import { presetUsageSnippet, presetConfigSnippet } from '$lib/presets/snippet.js';
+	import { presetUsageSnippet, presetScaffoldSnippet } from '$lib/presets/snippet.js';
 
 	let { id }: { id: string } = $props();
 
 	const def = $derived(PRESET_BY_ID[id]);
 	const usage = $derived(presetUsageSnippet(id));
-	const recipe = $derived(presetConfigSnippet(id));
+	// The full recreate-from-scratch component (raw <Fluid> + imports + assets).
+	const scaffold = $derived(presetScaffoldSnippet(id));
 
 	let showCode = $state(false);
-	let showRecipe = $state(false);
-	let copied = $state<'usage' | 'recipe' | null>(null);
+	let copied = $state<'usage' | 'scaffold' | null>(null);
 	let copyTimer: ReturnType<typeof setTimeout> | undefined;
 
-	function copy(which: 'usage' | 'recipe') {
-		navigator.clipboard.writeText(which === 'usage' ? usage : recipe);
+	function copy(which: 'usage' | 'scaffold') {
+		navigator.clipboard.writeText(which === 'usage' ? usage : scaffold);
 		copied = which;
 		clearTimeout(copyTimer);
 		copyTimer = setTimeout(() => (copied = null), 1600);
@@ -68,27 +69,20 @@
 	{#if showCode}
 		<div class="preset-ref-code" transition:slide={{ duration: 160 }}>
 			<div class="code-head">
-				<span>Usage</span>
+				<span>Use the preset</span>
 				<button type="button" class="copy" onclick={() => copy('usage')}>
 					{copied === 'usage' ? 'Copied' : 'Copy'}
 				</button>
 			</div>
 			<pre><code>{usage}</code></pre>
 
-			<button type="button" class="recipe-toggle" onclick={() => (showRecipe = !showRecipe)}>
-				{showRecipe ? '▾' : '▸'} {showRecipe ? 'Hide' : 'Show'} the full &lt;Fluid&gt; recipe (to fork)
-			</button>
-			{#if showRecipe}
-				<div transition:slide={{ duration: 160 }}>
-					<div class="code-head">
-						<span>Recipe</span>
-						<button type="button" class="copy" onclick={() => copy('recipe')}>
-							{copied === 'recipe' ? 'Copied' : 'Copy'}
-						</button>
-					</div>
-					<pre><code>{recipe}</code></pre>
-				</div>
-			{/if}
+			<div class="code-head">
+				<span>Or recreate it from scratch with &lt;Fluid&gt;</span>
+				<button type="button" class="copy" onclick={() => copy('scaffold')}>
+					{copied === 'scaffold' ? 'Copied' : 'Copy'}
+				</button>
+			</div>
+			<pre><code>{scaffold}</code></pre>
 		</div>
 	{/if}
 
@@ -140,7 +134,7 @@
 		align-items: center;
 		font-size: 0.78rem;
 		opacity: 0.7;
-		margin: 0.5rem 0 0.2rem;
+		margin: 0.6rem 0 0.2rem;
 	}
 	.copy {
 		font: inherit;
@@ -150,15 +144,6 @@
 		border-radius: 0.3rem;
 		background: transparent;
 		color: inherit;
-		cursor: pointer;
-	}
-	.recipe-toggle {
-		font: inherit;
-		font-size: 0.8rem;
-		padding: 0.3rem 0;
-		border: none;
-		background: transparent;
-		color: var(--accent, #6060ff);
 		cursor: pointer;
 	}
 	.preset-ref-table {

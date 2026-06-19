@@ -63,3 +63,43 @@ export function configToAttributeLines(config: PresetConfig): string[] {
 		.filter(([, v]) => v !== undefined)
 		.map(([key, value]) => configAttribute(key, value));
 }
+
+/**
+ * Asset-setup notes for a config that references external files (images, masks,
+ * etc.), so a from-scratch example is self-contained. Config-only presets — all
+ * fourteen — reference no external assets and return `[]`.
+ */
+export function configAssetNotes(config: PresetConfig): string[] {
+	const notes: string[] = [];
+	for (const [key, value] of Object.entries(config)) {
+		if (typeof value === 'string' && /url$|image|mask|src/i.test(key)) {
+			notes.push(`<!-- Asset: serve the file for ${key} (${value}) from your static/ folder -->`);
+		}
+	}
+	return notes;
+}
+
+/**
+ * A complete, copy-paste Svelte component that recreates a preset FROM SCRATCH
+ * with the raw `<Fluid>` API — imports, a sizing wrapper, the full pinned
+ * config, and any required asset notes — rather than the zero-config wrapper.
+ */
+export function presetScaffoldSnippet(id: string, height = 420): string {
+	const recipe = presetConfigSnippet(id);
+	if (!recipe) return '';
+	const fluid = recipe
+		.split('\n')
+		.map((l) => `\t${l}`)
+		.join('\n');
+	const assets = configAssetNotes(PRESET_BY_ID[id].config);
+	return [
+		'<' + 'script>',
+		"\timport { Fluid } from 'svelte-fluid';",
+		'<' + '/script>',
+		'',
+		...(assets.length ? [...assets, ''] : []),
+		`<div style="width: 100%; height: ${height}px">`,
+		fluid,
+		'</div>'
+	].join('\n');
+}

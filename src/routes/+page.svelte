@@ -24,7 +24,7 @@
 		} from '$lib/index.js';
 	import { base } from '$app/paths';
 	import { PRESETS as REGISTRY_PRESETS, PRESET_BY_ID } from '$lib/presets/registry.js';
-	import { presetUsageSnippet } from '$lib/presets/snippet.js';
+	import { presetUsageSnippet, presetScaffoldSnippet } from '$lib/presets/snippet.js';
 	import { parsePresetParam, presetToEditorState } from './components/presetTransfer.js';
 	import Card from './components/Card.svelte';
 	import {
@@ -940,22 +940,22 @@
 					<p>Six featured visual wrappers from the 14 exported presets.</p>
 				</header>
 				<div class="grid grid-3">
-					<Card title="LavaLamp" blurb="Slow warm blobs." snippet="<LavaLamp />">
+					<Card title="LavaLamp" blurb="Slow warm blobs." snippet="<LavaLamp />" fullSnippet={presetScaffoldSnippet('LavaLamp')}>
 						<LavaLamp seed={11} lazy backColor={cardColor} aria-label="LavaLamp preset" />
 					</Card>
-					<Card title="Plasma" blurb="High-energy chromatic turbulence." snippet="<Plasma />">
+					<Card title="Plasma" blurb="High-energy chromatic turbulence." snippet="<Plasma />" fullSnippet={presetScaffoldSnippet('Plasma')}>
 						<Plasma seed={22} lazy backColor={cardColor} aria-label="Plasma preset" />
 					</Card>
-					<Card title="InkInWater" blurb="Saturated dye dispersing." snippet="<InkInWater />">
+					<Card title="InkInWater" blurb="Saturated dye dispersing." snippet="<InkInWater />" fullSnippet={presetScaffoldSnippet('InkInWater')}>
 						<InkInWater seed={33} lazy backColor={cardColor} aria-label="InkInWater preset" />
 					</Card>
-					<Card title="FrozenSwirl" blurb="Crystalline vortex." snippet="<FrozenSwirl />">
+					<Card title="FrozenSwirl" blurb="Crystalline vortex." snippet="<FrozenSwirl />" fullSnippet={presetScaffoldSnippet('FrozenSwirl')}>
 						<FrozenSwirl seed={44} lazy backColor={cardColor} aria-label="FrozenSwirl preset" />
 					</Card>
-					<Card title="Aurora" blurb="Drifting polar ribbons." snippet="<Aurora />">
+					<Card title="Aurora" blurb="Drifting polar ribbons." snippet="<Aurora />" fullSnippet={presetScaffoldSnippet('Aurora')}>
 						<Aurora seed={55} lazy backColor={cardColor} aria-label="Aurora preset" />
 					</Card>
-					<Card title="Toroidal" blurb="Annular storm." snippet="<Toroidal />">
+					<Card title="Toroidal" blurb="Annular storm." snippet="<Toroidal />" fullSnippet={presetScaffoldSnippet('Toroidal')}>
 						<Toroidal seed={66} lazy backColor={cardColor} aria-label="Toroidal preset" />
 					</Card>
 				</div>
@@ -974,7 +974,7 @@
 				<Card
 					title="GasFlare"
 					blurb="Temperature scalar with buoyancy."
-					snippet="<GasFlare />"
+					snippet="<GasFlare />" fullSnippet={presetScaffoldSnippet('GasFlare')}
 					onCustomize={() => openInPlayground('GasFlare')}
 				>
 					<GasFlare seed={701} lazy aria-label="GasFlare flow scene" />
@@ -982,7 +982,7 @@
 				<Card
 					title="Venturi"
 					blurb="Pressure-driven throat speed-up."
-					snippet="<Venturi />"
+					snippet="<Venturi />" fullSnippet={presetScaffoldSnippet('Venturi')}
 					onCustomize={() => openInPlayground('Venturi')}
 				>
 					<Venturi seed={702} lazy backColor={cardColor} aria-label="Venturi flow scene" />
@@ -990,7 +990,7 @@
 				<Card
 					title="Karman"
 					blurb="Streakline rake shedding around a painted cylinder."
-					snippet="<Karman />"
+					snippet="<Karman />" fullSnippet={presetScaffoldSnippet('Karman')}
 					onCustomize={() => openInPlayground('Karman')}
 				>
 					<Karman seed={703} lazy aria-label="Karman flow scene" />
@@ -998,7 +998,7 @@
 				<Card
 					title="TeslaValve"
 					blurb="Forward routing with bypass recirculation."
-					snippet="<TeslaValve />"
+					snippet="<TeslaValve />" fullSnippet={presetScaffoldSnippet('TeslaValve')}
 					onCustomize={() => openInPlayground('TeslaValve')}
 				>
 					<TeslaValve seed={704} lazy aria-label="TeslaValve flow scene" />
@@ -1019,7 +1019,7 @@
 				<Card
 					title="CircularFluid"
 					blurb="Vivid fluid in a circular boundary."
-					snippet="<CircularFluid />"
+					snippet="<CircularFluid />" fullSnippet={presetScaffoldSnippet('CircularFluid')}
 					height={220}
 					onCustomize={() => openInPlayground('Glass', 'circle')}
 				>
@@ -1071,7 +1071,7 @@
 				<Card
 					title="FrameFluid"
 					blurb="Circulation around an inner cutout."
-					snippet="<FrameFluid />"
+					snippet="<FrameFluid />" fullSnippet={presetScaffoldSnippet('FrameFluid')}
 					height={220}
 					onCustomize={() => openInPlayground('Glass', 'frame')}
 				>
@@ -1080,7 +1080,7 @@
 				<Card
 					title="AnnularFluid"
 					blurb="Ring vortex between two circles."
-					snippet="<AnnularFluid />"
+					snippet="<AnnularFluid />" fullSnippet={presetScaffoldSnippet('AnnularFluid')}
 					height={220}
 					onCustomize={() => openInPlayground('Glass', 'annulus')}
 				>
@@ -1124,7 +1124,7 @@
 				<Card
 					title="SvgPathFluid"
 					blurb="Text-mode SVG mask container."
-					snippet="<SvgPathFluid />"
+					snippet="<SvgPathFluid />" fullSnippet={presetScaffoldSnippet('SvgPathFluid')}
 					height={220}
 				>
 					<SvgPathFluid seed={84} lazy backColor={cardColor} aria-label="SvgPathFluid preset" />
