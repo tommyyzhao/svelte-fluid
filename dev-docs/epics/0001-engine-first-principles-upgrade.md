@@ -1,489 +1,223 @@
 # Epic 0001 — Engine First-Principles Upgrade
 
-**Status:** Rev 2 (revised after 4-reviewer panel: Sonnet, Opus, Gemini 3.1 Pro,
-GPT-5.5 — all blocking findings from rev 1 addressed; see §8)
-**Phase 1: ✅ shipped** (ADR-0038). Measured −35–40% frame time on the
-production lab page (target was ≥25%). Outcome deltas vs plan: profiling
-showed the Jacobi loop is pass-count bound at production grids, so 1c's RG
-packing and 1d's RG32F pressure were rejected by measurement; an adaptive
-paired-Jacobi pass (two exact iterations per blit, gated by grid size) was
-added instead. Phase 2 planning must use the two-regime cost model
-(pass-bound ≤192-class grids, fragment-bound ≥768-class).
-**Scope:** `src/lib/engine/` only, plus the minimum config-field and preset
-surface needed to exercise each engine change. Large-scale framework updates
-are out of scope (next session).
-**Owner:** engine
-**Created:** 2026-06-09
+**Status:** Rev 3 (restructured 2026-06-25 after a 10-agent readiness audit + a
+9-agent first-principles interrogation; see §8). Rev 2's six-phase monolith is
+split into a tight quality epic, a deferred perf/scale epic, and a standalone
+render-modes feature. **Phase 1: ✅ shipped** (ADR-0038, −35–40 % frame time on
+the production lab page). The restructure, the Phase 0 harness architecture, and
+the planning-process fixes are recorded in **ADR-0042** — read it for the *why*
+behind every decision summarized here.
+
+**Scope:** `src/lib/engine/` plus the minimum config/preset surface and the
+dev-only test/bench harness needed to exercise and validate each change.
+
+**Owner:** engine · **Created:** 2026-06-09 · **Restructured:** 2026-06-25
 
 ---
 
-## 1. Motivation (first-principles diagnosis)
+## 1. Motivation (first-principles diagnosis — unchanged from Rev 2)
 
 The engine is a faithful Stam *Stable Fluids* operator-splitting solver
 (semi-Lagrangian advection → optional implicit viscosity → wall friction →
 Chorin projection via Jacobi) with half-float FBOs and the ADR-0037
 advect-before-project ordering. Three places lose physics, and they explain
-every visual compromise the presets currently tune around:
+the visual compromises the presets tune around:
 
-1. **First-order advection** — semi-Lagrangian back-trace + bilinear sampling
-   is an aggressive low-pass filter. Vortices die in tens of frames; vorticity
-   confinement papers over it with positive-feedback "curl donuts".
+1. **First-order advection** — semi-Lagrangian back-trace + bilinear sampling is
+   an aggressive low-pass filter. Vortices die in tens of frames; vorticity
+   confinement papers over it with positive-feedback "curl donuts". → **Phase 2.**
 2. **Jacobi pressure under-convergence** — Jacobi removes only high-frequency
-   divergence. Public empirical comparisons (vassvik) show ~1000 Jacobi
-   iterations ≈ one multigrid V-cycle ≈ the cost of ~10 Jacobi iterations.
-   Karman spends 34 iterations × 2 substeps and still carries low-frequency
-   divergence (dye "compression", apparent leakage near obstacles).
-3. **Binary solid masks staircase curved boundaries** — solver passes branch on
-   `solidAt(uv) > 0.5`; curved obstructions (Airfoil, Venturi throat) pin
-   spurious vortices to mask steps. The anti-aliased coverage the SVG
-   rasterizer produces is thresholded away before the solver sees it.
+   divergence; low-frequency divergence persists (dye "compression", apparent
+   leakage near obstacles). Phase 1's adaptive paired-Jacobi already bought most
+   of the recoverable budget here. → residual addressed (if ever) in **Epic B**.
+3. **Binary solid masks staircase curved boundaries** — curved obstructions pin
+   spurious vortices to mask steps. → **deferred Phase 3** (variational apertures).
 
-**Cost budget (Karman, heaviest preset), exact per-substep pass table:**
+**Resolution-coupling findings** (undocumented behavior the gauge in Phase 5 fixes):
+the viscosity Jacobi α (`ν·dt·max(w,h)`) and the vorticity-confinement ε are not
+grid-spacing-normalized, so the same `viscosity`/`curl` values behave differently
+at different `simResolution`. The divergence/pressure stencils assume uniform grid
+spacing — which holds in *screen* space because `getResolution` keeps sim cells
+square (see Phase 5).
 
-| Pass | Count | Resolution |
-|------|-------|------------|
-| curl | 1 | sim (192) |
-| vorticity | 1 | sim |
-| advect velocity | 1 | sim |
-| applyMask velocity | 1 | sim |
-| viscosity source copy | 1 | sim |
-| viscosity Jacobi | 8 | sim |
-| applyMask velocity | 1 | sim |
-| wall friction | 1 | sim |
-| divergence | 1 | sim |
-| pressure clear (warm start) | 1 | sim |
-| pressure Jacobi | 34 | sim |
-| gradient subtract | 1 | sim |
-| applyMask velocity | 1 | sim |
-| **sim-res subtotal** | **53** | |
-| advect dye | 1 | dye (1024) |
-| applyMask dye | 1 | dye |
-| outlets (dye) | 1 | dye |
-
-× 2 substeps, + bloom/sunrays/display. Pressure Jacobi alone is 34/53 ≈ 64%
-of sim-res passes. One dye-res pass ≈ (1024/192)² ≈ 28 sim-res passes of
-fill, so the dye-res `applyMask` is the single most expensive solver pass in
-the frame. (When a scalar field is active, add advect+mask+outlet at dye res.)
-These counts are derived from `step()`; the Phase 1 improvement target is
-judged against **measured** baseline timings, not this table (§4).
-
-**Dimensional-consistency findings** (resolution-coupled behavior, currently
-undocumented):
-
-- Viscosity Jacobi α is `ν·dt·max(w,h)` (`FluidEngine.ts:2467`). The
-  physically consistent implicit-diffusion coefficient is `ν·dt/h²` — and the
-  grid is **anisotropic** (`getResolution` produces width ≠ height;
-  `texelSize.x ≠ texelSize.y`), so there is no single `N²`. The same
-  `viscosity` value behaves differently at different `simResolution`.
-- Vorticity confinement ε is not grid-spacing-scaled (Fedkiw's ε·h), so
-  `curl: 18` feels different across resolutions.
-- The divergence (`0.5·(R−L+T−B)`) and pressure (`0.25` factor) stencils
-  assume uniform grid spacing, which the anisotropic grid violates today.
-  This is a pre-existing approximation that Phase 3's variational work will
-  expose; it is acknowledged there explicitly.
-- The curl/vorticity passes are solid-mask-blind: confinement injects
-  momentum into boundary-adjacent cells, fighting the projection exactly
-  where staircasing already hurts.
+**What Phase 1 actually shipped (ADR-0038), which Rev 2 predates:** mask multiply
+folded into producing passes; a binary face-aperture/neighbor-solidity RGBA8
+texture; a warm-start fold; and **adaptive paired Jacobi** (`pressureJacobi2Shader`,
+two exact iterations per blit, gated below `PAIRED_JACOBI_MAX_TEXELS` = 150 k).
+RG-pressure-packing (1c) and RG32F pressure (1d) were **rejected by measurement**.
+Consequence carried through this epic: **the pressure stencil now lives in three
+math sites across two shaders** (`pressureShader` + `pressureJacobi2Shader` inner
+and outer), so any pressure-stencil change is a triple-copy edit that must stay
+bit-identical across the 150 k gate, tested at both a sub- and super-threshold grid.
 
 ## 2. Goals / non-goals
 
-**Goals**
+**Goals (Epic A — Engine Quality):**
+- A real measurement & validation harness so quality claims are testable (Phase 0).
+- Second-order advection for genuine vortex longevity (Phase 2, velocity-only).
+- Resolution-invariant solver feel via an in-place reference-anchored gauge,
+  plus adaptive confinement and the confinement-boundary bugfix (Phase 5).
 
-- Reduce measured per-frame GPU cost of flow presets by ≥25% with zero visual
-  change (Phase 1), creating headroom for quality features.
-- Second-order advection as an opt-in scheme (Phase 2).
-- De-staircase curved obstructions via variational face apertures behind an
-  experimental flag (Phase 3).
-- Cheap liveliness (curl-noise, adaptive confinement) for low-res mobile
-  (Phase 4).
-- Resolution-normalized solver fields as a precondition for the governor
-  (Phase 5).
-- Multigrid pressure as a quality tier for CFD-flavored presets (Phase 6).
-- Tracer-particle render mode + frame-time governor (Phase 7).
+**Deferred (Epic B — Performance & Scale; Render Modes):**
+- Multigrid pressure tier — gated on Phase 3 shipping *enabled* and a reproduced,
+  measured under-convergence complaint that the cheap convergence ladder
+  (more iterations → Chebyshev/red-black Jacobi → two-grid) cannot fix.
+- Frame-time governor — rescoped to a Bucket-A-first shed ladder; the
+  `simResolution` tier (its only Phase-5 hard-dep) is deferred from v1.
+- Lagrangian tracers — a standalone render-modes feature owning the GLSL ES 3.00
+  dialect decision; not part of this solver-physics epic.
 
-**Non-goals**
+**Non-goals:** WebGPU backend; LBM/FFT/BiMocq/IVOCK/wavelet turbulence;
+free-surface/liquid; component/docs restructuring beyond what each phase needs.
 
-- WebGPU backend (revisit in 12–18 months; keep GL boundary clean).
-- LBM engine, FFT pressure, BiMocq/IVOCK/full wavelet turbulence,
-  advection-reflection (deferred; see research survey rationale).
-- Free-surface / liquid effects (out of reach for a single-phase grid solver).
-- Component/docs-site restructuring beyond what each phase's testing needs.
-
-**Invariants that must hold throughout** (CLAUDE.md): engine never imports
-Svelte; no module-level GL state; gl-utils stateless; shaders.ts GL-free;
-dispose() frees everything explicitly (including any new FBO pyramids and
-scratch targets); every new config field is classified into the 4-bucket
-`setConfig` system; engine changes get an ADR; no new runtime dependencies;
-`bun run test && bun run check` after every change, `bun run prepack` before
-every commit.
+**Invariants that must hold throughout** (CLAUDE.md): engine never imports Svelte;
+no module-level GL state; gl-utils stateless; shaders.ts GL-free; `dispose()` frees
+everything explicitly; every new config field is classified into the 4-bucket
+`setConfig` system; every engine **decision** gets an ADR (mechanical edits exempt);
+**no new *runtime* dependencies** (`dependencies`; devDeps for test/dev infra are
+unrestricted — see ADR-0042); `bun run test && bun run check` after every change,
+`bun run prepack` before every commit.
 
 ---
 
-## 3. Phases
+## 3. Phases (Epic A)
 
-Phases land in order; 6 hard-depends on 3, and 7's governor hard-depends on 5
-(normalization). Each phase is independently shippable and testable.
+Order: **Phase 0 → { Phase 2 ∥ Phase 5 } → (deferred Phase 3)**. Each phase is one
+PR/commit-series ending in the full verification suite. ADR numbers are assigned at
+write time (next free = `ls dev-docs/decisions`), **never pre-reserved**.
 
-### Phase 1 — Cost reduction (no algorithm change, no visual change)
+### Phase 0 — Measurement & validation harness (blocking prerequisite)
 
-The point: every later phase spends GPU; this phase buys the budget.
-**Hard acceptance bar: visually indistinguishable output** (pixel-diff QA on
-all presets) — anything that changes solver feel is out of this phase.
+Two tools with opposite natures (ADR-0042 §2):
 
-**1a. Fold mask multiplication into producing passes.**
-Advection, gradient-subtract, and viscosity already write the target field;
-multiply by the container/obstruction mask inside those shaders (shared GLSL
-helper extracted from `applyMaskShader`) and delete the separate `applyMask`
-ping-pong passes in the step loop (3×/substep on velocity, 1×/substep at dye
-resolution — the latter is the most expensive solver pass in the frame).
-The standalone `applyMask` program stays for non-step uses until all call
-sites migrate.
-*Files:* `shaders.ts` (advection, gradientSubtract, viscosity), `FluidEngine.ts`
-(`step()`, `advectDye`, `advectScalar`, uniform plumbing).
-*Precondition (hard gate before coding):* per-pass texture-unit map written
-into ADR-0038. Solver passes currently bind ≤4 units; the display pass's 0–7
-exhaustion is a separate, already-handled concern. Each fused pass is audited
-individually against the WebGL minimum of 8 units.
-*Risk:* the analytic-shape smoothstep SDF must produce identical masks in its
-new inline location; svgPath path binds the mask texture in the new passes.
+- **Deterministic readback acceptance (CI-gateable).** `FluidEngine.readField()`
+  (`@internal`, `gl.readPixels` + RGBA8/FLOAT decode); a no-autostart constructor
+  option + `advance(steps, dt)` for synchronous fixed-dt stepping; pure-TS reducers
+  (`__benches__/reducers.ts`: l2Norm, divergenceL2, trackPeakAlongPath,
+  signChangeCount, fluxAcrossLine, fieldEnergy, hasNonFinite) unit-tested in the node
+  tier; a shared scene registry (`__benches__/scenes.ts`: dipole, kelvinHelmholtz,
+  rayleighBenard, thinWallTeslaValve) imported by both tests and the bench route; a
+  two-project vitest workspace (`node` default + `browser` via `@vitest/browser` +
+  Playwright). `bun run test` stays node-only.
+- **Interactive timing profiler (not CI-gateable).** A restored `/examples/bench`
+  route reading the shared scenes, `EXT_disjoint_timer_query_webgl2` (behind a
+  default-off `instrument` ctor flag) with rAF-EMA fallback, `window.__benchResult`
+  including `energy`. All ms/fps numbers go in ADRs against a pinned Chromium, never CI.
+- **Liveness guard (mandatory):** assert `fieldEnergy > floor && !hasNonFinite` before
+  trusting any metric.
 
-**1b. Face-aperture boundary texture (format forward-compatible with Phase 3).**
-Precompute one **RGBA8 texture at sim resolution** holding the four
-face apertures (L, R, T, B ∈ [0,1]; **binary-valued 0/255 in this phase**),
-plus the existing R8 center-solidity mask. Divergence, pressure (×N),
-gradient-subtract, and viscosity then do **2 fetches (apertures + center)
-instead of 5** dependent `solidAt` probes. Rebuilt on the existing solid-mask
-trigger *and* on `simResolution` change (extend Bucket C).
-Phase 3 later writes fractional values into the *same* texture — no format
-rewrite. Wall friction (9 probes at `wallFrictionWidth: 2`) keeps its own
-sampling: it runs once per substep, not 34×, and its 2-ring kernel doesn't fit
-the face-aperture encoding; it is explicitly out of scope of the fetch-count
-claim.
-*Files:* `FluidEngine.ts` (`initSolidMaskTexture` → also emit aperture
-texture), `shaders.ts` (aperture decode helper replacing neighbor probes).
+**Acceptance:** node tier green (reducers + scene configs + workspace split); the
+browser tier runs a dipole/energy smoke scene; the bench route renders a live scene
+with a non-zero `energy` readout. ADR at write time.
 
-**1c. Divergence/clear merge via pressure packing.**
-Pressure becomes an RG16F double-FBO: R = pressure, G = divergence. One merged
-pass computes divergence from velocity *and* applies the warm-start scaling
-(`pressure_old × PRESSURE`) into R — eliminating both the standalone
-divergence FBO/pass and the separate clear pass. Each Jacobi iteration reads
-RG of one texture (center G = divergence) and passes G through.
-**Dropped from rev 1 after review:** fusing gradient-subtract into the last
-Jacobi iteration (needs *updated* neighbor pressures — not expressible in one
-fragment pass — and would lose the final iterate for next frame's warm start),
-and fusing curl+vorticity (the fused stencil needs ~13 unique velocity fetches
-vs 10 across the two passes; the only win is one draw call, and mobile texture
-cache behavior makes it a measure-first experiment, not a planned change).
+### Phase 2 — Velocity-only MacCormack advection
 
-**1d. Pressure precision.**
-Where `EXT_color_buffer_float` exists, allocate the pressure RG target as
-RG32F (pressure uses NEAREST, so non-filterable float is fine); keep the
-half-float fallback. Removes FP16 pressure banding on long iteration runs.
+Velocity-only second-order advection reusing `velocitySource` (zero new memory).
+**No public `advectionScheme`** — internal capability+quality flag compiled once like
+`MANUAL_FILTERING` (extend `advectionKeywords`, no runtime Material). Mandatory
+limiter (clamp to the forward back-trace's bilinear stencil); first-order fallback
+near solids and within 2 cells of an open edge; forced off on no-linear-filtering
+devices. Presets retuned with it on. Dye MacCormack **deferred**.
 
-**Acceptance:** full vitest suite green (plus new unit tests for aperture
-encode/decode and the merged divergence/warm-start pass); svelte-check clean;
-pixel-level visual QA on all presets shows no regression; **measured** frame
-time on Karman/TeslaValve/Venturi improves ≥25% vs the §4 baseline; `prepack`
-passes.
-**ADR:** 0038 — solver pass restructuring and face-aperture boundary masks.
+**Acceptance:** node — SL `#else` path byte-identical to pre-change (shader-string
+assertion) + a TS mirror of the limiter math (sticky.test.ts pattern). Harness —
+dipole vorticity retention ≥ 30 % of initial at x=0.9 @ simRes 128 (SL < 10 %); a
+scripted NaN/Inf soak at max `SPLAT_FORCE` with open boundaries. ADR at write time.
 
-### Phase 2 — MacCormack advection (opt-in scheme)
+### Phase 5 — Resolution normalization + adaptive confinement (consolidation hub)
 
-Opt-in second-order advection: forward semi-Lagrangian trace, backward trace
-of the result, add half the error to the forward result.
+Reinterpret `viscosity`/`curl` **in place** via the reference-anchored gauge
+(`N_ref = 128`, identity at default res); single screen-isotropic
+`h = 1/min(simWidth, simHeight)` pinned epic-wide; viscosity shader form untouched
+(CPU-coefficient change only). Land adaptive confinement as a `uAdaptiveMix` uniform
+(0 = byte-identical legacy) and the confinement-by-fluid-fraction bugfix (existing
+binary solid texture). Retune only the 4 resolution-overriding presets.
 
-- New config field `advectionScheme: 'semilagrangian' | 'maccormack'`
-  (default `'semilagrangian'`).
-- **Program management (explicit, per review):** `advectionProgram` becomes an
-  `advectionMaterial: Material` with runtime `setKeywords()` (today only the
-  display shader is a Material; `MANUAL_FILTERING` is compiled once from
-  hardware capability and is *not* runtime-switchable). `updateKeywords()`
-  composes `['MACCORMACK'] + ['MANUAL_FILTERING']` as applicable; `setConfig`
-  treats `advectionScheme` as Bucket B.
-- **Scratch FBO (explicit, per review):** MacCormack needs the original field,
-  the forward result, and the correction target simultaneously — a DoubleFBO
-  is insufficient. Velocity reuses the existing `velocitySource` scratch FBO
-  (sim res). Dye opt-in allocates one extra dye-res FBO (~15 MB RGBA16F at
-  1024 on a 16:9 canvas) — allocated only while `advectionScheme` is
-  `'maccormack'` *and* dye participation is enabled; freed in `dispose()` and
-  on scheme switch-off.
-- **Limiter (mandatory):** clamp the corrected value to the min/max of the
-  **forward back-trace's bilinear fetch stencil** (the 4 texels sampled when
-  fetching φⁿ at the back-traced position — Selle et al. 2008). This
-  suppresses new extrema; it does **not** make the scheme unconditionally
-  stable in this engine's environment (sources, masks, clamps, sticky
-  pressure, outlets) — the existing ±1000 velocity clamp and NaN soak tests
-  remain the backstop.
-- **Fallback guards:** revert to plain semi-Lagrangian per-texel when
-  *either* trace's fetch stencil touches a solid cell, **or** within 2 cells
-  of any open boundary edge (open-edge back-traces sample clamped UVs and are
-  the most probable overshoot site — Karman has open inflow/outflow).
-- **Capability gate:** on no-linear-filtering devices (`MANUAL_FILTERING`
-  path), `advectionScheme` is forced to `'semilagrangian'` — the manual-bilerp
-  + limiter + guard combination exceeds practical mobile fragment budgets.
-- Cost: ~2 extra sim-res passes (velocity); ~2 dye-res passes if dye opted in.
+**Acceptance:** node — analytic resolution-invariance test (effective diffusion- and
+confinement-per-frame constant under N for fixed config) + `uAdaptiveMix=0` byte-
+identical. Manual — 128↔256 and default-res preset visual QA. Documented minor-bump
+changeset listing the 4 retuned presets. ADR at write time.
 
-**Validation scenes (obstruction lab; public presets are a later decision):**
-- Kelvin–Helmholtz: two opposing horizontal line-source streams with a dye
-  interface.
-- Dipole benchmark: paired splats launching self-propelled dipoles.
+### Phase 3 — Variational face apertures (DEFERRED; design preserved)
 
-**Acceptance (quantified):** scheme off → pixel-identical to Phase 1 output;
-scheme on → in the dipole scene at simResolution 128 with fixed seed, a dipole
-launched at x=0.1 retains a tracked vorticity peak ≥30% of its initial
-magnitude at x=0.9 (readback-based test harness measurement; with
-semi-Lagrangian it falls below 10%); 5-minute NaN/Inf soak at max
-`SPLAT_FORCE` with open boundaries passes; config plumbing + Material
-recompile tests; ADR 0039.
-
-### Phase 3 — Variational face apertures (experimental flag) + boundary normals
-
-**Decision settled in review (was D2):** the production solver path keeps
-**binary** classification everywhere it exists today — the `applyMaskShader`
-field clip stays strictly binary (`> 0.5`), the per-cell solid early-exits
-stay binary, and the display/solver threshold agreement from ADR-0037 is
-preserved. What changes: the divergence and pressure-gradient **stencil
-weights** may become fractional, behind an experimental flag. (Rev 1
-mischaracterized this as reversing the prior binary decision; the prior
-decision was about the field-multiply clip, which is untouched.)
-
-- `experimentalFractionalBoundaries: boolean` (default false; Bucket B-ish —
-  triggers aperture-texture re-bake + keyword).
-- **Aperture computation:** per-face fluid fractions sampled at **sim
-  resolution** during the existing CPU mask rebuild — supersample the
-  combined mask along each cell face (not the 512-raster alpha coverage,
-  which is cell-area coverage, not face aperture). Written into the Phase 1b
-  RGBA8 texture.
-- **Discretization (per review — the math that makes it sound):**
-  - Divergence: `div = Σ_faces aperture_f · u_f · s_f` (face-weighted).
-  - Pressure Jacobi: denominator becomes the **per-cell sum of fluid face
-    apertures** (the matrix diagonal), not the constant 4; cells with
-    aperture sum < floor are treated fully solid (thin-wall floor).
-  - Gradient subtract uses the **same face weights** (the discrete gradient
-    must be the adjoint of the discrete divergence, or projection does not
-    remove divergence).
-  - Anisotropy: face weights incorporate dx/dy spacing factors, fixing the
-    pre-existing uniform-spacing assumption on non-square grids as part of
-    the same rediscretization.
-- **Boundary normals:** Sobel of the fractional mask → normal texture (rebuilt
-  with the mask). Used only for the slip/friction force: free-slip
-  **preserves the tangential component and removes the normal component**
-  near boundaries, replacing part of the wall-friction damping hack.
-- Mask the vorticity-confinement force by fluid fraction (fixes
-  confinement-vs-projection fighting at obstacle edges) — this part ships
-  regardless of the flag (it is a pure bugfix).
-
-**Acceptance (quantified, per review — visual QA alone is insufficient):**
-- Thin-wall leakage test: dye flux through a 1-cell TeslaValve wall over a
-  60 s fixed-seed run, measured by readback, ≤ the binary baseline.
-- Post-projection divergence L2 (readback harness) with apertures ≤ binary
-  baseline on Airfoil/Venturi at simResolution 128–192.
-- Visual QA: no diagonal stair artifacts on Airfoil at 128; no seam noise
-  regression on any preset with the flag off (flag-off must be pixel-identical
-  to Phase 2 output).
-- If leakage or seam criteria fail, the flag ships dark/undocumented and
-  Phase 6 is re-scoped (see Phase 6 dependency note); ADR 0040.
-
-### Phase 4 — Turbulence seasoning (cheap liveliness)
-
-- `turbulence: { strength, scale }` (Bucket A): curl-of-noise force as **its
-  own small pass** called from `step()` alongside vorticity confinement, gated
-  on `strength > 0` — *not* folded into `applyFlowForces`, which early-returns
-  when no `flow` config exists and must keep working for plain `<Fluid />`.
-  Noise via in-shader hash (no new dependencies); randomness seeded from the
-  engine `Rng` (determinism invariant).
-- **Honesty note (per review):** curl-of-noise is solenoidal analytically, but
-  (a) the discrete curl/divergence stencils are not exact adjoints here, and
-  (b) scaling it by dye density breaks solenoidality wherever the weight has a
-  gradient. The force is *approximately* divergence-free; the projection
-  removes the residual. Keep the density weight smooth, and document that
-  this term mildly loads the pressure solve.
-- Adaptive confinement: modulate ε by `smoothstep` of |ω| so confinement
-  amplifies existing structures instead of uniform donuts. Internal change;
-  presets needing legacy behavior get `curlAdaptive: false`.
-- **Validation scene:** Rayleigh–Bénard (hot bottom line source, top cooling
-  drain, buoyancy) in the obstruction lab.
-
-**Acceptance (quantified):** Bénard at fixed seed/config forms ≥3 distinct
-counter-rotating cells (vorticity sign changes along the midline, readback)
-within 30 s and maintains bounded max |v| over a 5-minute soak with no
-NaN/Inf; turbulence off → pixel-identical to Phase 3; ADR 0041.
-
-### Phase 5 — Resolution-normalized solver fields
-
-(Was Phase 1e; pulled out per unanimous review — bundling a behavior change
-into the "zero visual change" phase contradicted Phase 1's own acceptance bar,
-and silently reinterpreting published fields burns trust.)
-
-- New fields `kinematicViscosity` and `vorticityConfinement` defined with
-  grid-spacing-aware coefficients (`α = ν·dt/h²` per axis with the actual
-  texel sizes; ε·h with h = geometric mean of dx,dy — pick once, document in
-  the ADR). Existing `viscosity`/`curl` are untouched legacy tuning knobs
-  (documented as resolution-coupled); using both is a config error resolved
-  in favor of the normalized field.
-- Migrate the 5 flow presets to the normalized fields (expect ~2 orders of
-  magnitude numeric change: current `viscosity 0.014` at N=192 ≈ normalized
-  α scale ×192 — the retune table goes in the ADR with before/after
-  screenshots).
-- Plan of record: legacy fields deprecated at 1.0.
-- This phase is a **hard precondition for the Phase 7 governor** (runtime
-  `simResolution` changes must not change solver feel).
-
-**Acceptance:** presets on normalized fields are visually indistinguishable
-from their legacy-field tuning (side-by-side QA); changing `simResolution`
-128↔256 with normalized fields preserves qualitative behavior (dipole
-benchmark decay rate within 2× across resolutions vs ~192× coupling today);
-changeset documents the addition; ADR 0042.
-
-### Phase 6 — Multigrid pressure (quality tier) — **hard-depends on Phase 3**
-
-V-cycle Poisson solver as `pressureSolver: 'jacobi' | 'multigrid'`
-(default `'jacobi'`).
-
-- **Dependency (explicit):** the coarse-grid machinery requires Phase 3's
-  variational apertures — coarsening restricts the **fluid fractions** and
-  **rebuilds the variational stencil per level from the restricted
-  fractions** (Galerkin-flavored rediscretization), *not* a fixed 5-point
-  Laplacian with a binary-ish mask, which adds low-frequency error and leaks
-  through thin walls. If Phase 3's flag fails its leakage acceptance, this
-  phase is re-scoped (binary wall-preserving coarsening is a research task,
-  not a plan of record).
-- Pyramid of R/RG float FBOs from sim res down to ~8×8 (≈1.33× one pressure
-  texture extra memory). Smooth (2–3 Jacobi) → restrict residual → recurse →
-  prolongate+correct → smooth. ~25 small draw calls/cycle ≈ cost of ~10
-  Jacobi iterations; draw-call overhead is the mobile risk — measure
-  on-device early; tier stays opt-in.
-- Must specify and test: warm-start interaction (the `PRESSURE` memory
-  coefficient), sticky-pressure term, open-boundary edges at coarse levels.
-- Lifecycle: `multigridFBOs: FBO[]` freed in `dispose()` and rebuilt on
-  Bucket C triggers (`simResolution`, mask change) — CLAUDE.md invariant 6.
-
-**Acceptance (quantified):** post-projection divergence L2 (readback) with
-1 V-cycle ≤ Jacobi-200-iteration level, at measured cost ≤ Jacobi-15; no
-leakage regression on TeslaValve; tier off → pixel-identical to Phase 5;
-ADR 0043.
-
-### Phase 7 — Tracer render mode + frame-time governor
-
-- **Tracers (WebGL2-only, per review):** Lagrangian tracer points in a small
-  RGBA position texture, advected by one fragment pass, rendered as point
-  sprites (vertex `texelFetch` + `gl_VertexID`) into the dye buffer.
-  `tracers: { count, color, fade }` config group. **Silently no-ops on WebGL1
-  contexts** (`ext.isWebGL2` check) — the mobile-floor rule is satisfied by
-  graceful degrade, not parity. Seeded from the engine `Rng`.
-- **Governor:** opt-in `autoPerformance` — EMA frame time; shed
-  `pressureIterations` first, then `dyeResolution`, then `simResolution`,
-  with ≥3 s hysteresis (mobile drivers stall on FBO rebuilds). State exposed
-  via a **pull-based `getPerformanceState()` getter** (mirrors the `isPaused`
-  pattern); no event-emitter/callback surface — that design belongs to the
-  framework epic. Requires Phase 5 (normalized fields) so resolution shifts
-  don't change solver feel.
-
-**Acceptance (quantified):** tracer advection+render adds ≤1 ms/frame at
-10k points on the reference desktop GPU (§4); governor under a synthetic
-4× CPU-throttle load converges to a stable tier within 15 s and does not
-oscillate (no more than one resolution rebuild per 10 s window); ADR 0044.
+Not committed work. Revive only with the harness present and a reproduced
+staircasing/leakage complaint the cheaper phases don't fix. If revived: **program-swap**
+mechanism (self-contained variational variant shaders, lazily compiled — *not* a
+hot-loop uniform branch, *not* Material-keyword infra across 4 programs); a new
+**face-supersampled fractional** bake (inverted fluid-fraction polarity — the Phase-1b
+texture is format-compatible only); face-weighted divergence + aperture-sum pressure
+diagonal + adjoint gradient applied identically across all **three** pressure-stencil
+sites; thin-wall aperture-sum floor. **Boundary normals / free-slip is cut** (orthogonal
+physics, muddies the leakage gate). The confinement-boundary bugfix it used to carry
+ships in Phase 5 instead.
 
 ---
 
 ## 4. Cross-cutting engineering rules
 
-- **One phase per PR/commit-series**; each ends with the full verification
-  suite: `bun run test && bun run check && bun run prepack && bun run build`,
-  plus browser visual QA of all 14 presets + obstruction lab.
-- **Measurement protocol (before Phase 1, then per phase):** a dev-only
-  benchmark page in the obstruction lab records (a) per-pass GPU timings via
-  `EXT_disjoint_timer_query_webgl2` where available, else (b) frame-time EMA
-  over 600 frames, for Karman/TeslaValve/Venturi at a fixed canvas size.
-  Reference hardware: this dev machine (note GPU in the ADR) + one real
-  mobile device when available, else Chrome 4× CPU throttle as a stated
-  proxy. Every performance claim in an ADR cites these numbers. Test-count
-  claims are never baked into acceptance criteria ("full suite green");
-  CLAUDE.md's stale "276 tests" is fixed alongside this epic.
-- **Shader program hygiene:** runtime-switchable compile-time variants go
-  through the `Material` keyword system (display today, advection from
-  Phase 2); capability-derived variants (e.g. `MANUAL_FILTERING`) stay
-  compile-once. Never runtime-uniform branches for per-frame-constant
-  decisions in hot loops; audit combined keyword count.
-- **Mobile floor:** the WebGL1 / no-linear-filtering path must keep compiling
-  and running in every phase, with explicit per-phase capability gates
-  (MacCormack: forced off; tracers: no-op; multigrid: requires WebGL2 float
-  color buffers). Degrade, don't break.
-- **Determinism:** seeded-RNG reproducibility must survive: tracers and
-  turbulence noise take randomness from the engine `Rng`.
+- **One phase per PR/commit-series**, ending with `bun run test && bun run check &&
+  bun run prepack && bun run build` and the harness's deterministic readback checks.
+- **Measurement = Phase 0**, not prose. Deterministic physics metrics gate CI as
+  tolerance *bands*; all timing numbers are ADR-recorded against a pinned Chromium +
+  recorded `WEBGL_debug_renderer_info`, never a red/green check. Liveness guard before
+  any number is trusted (ADR-0038: a blank canvas benchmarks as a fake 120 fps win).
+- **Acceptance is within-commit:** "flag-off is byte-identical to the same build with
+  the flag off," not "pixel-identical to Phase N-1 output."
+- **Shader hygiene:** runtime-switchable variants go through `Material`;
+  capability/quality variants (MANUAL_FILTERING, MacCormack) compile once. No runtime
+  uniform branch for a per-frame-constant decision in a hot loop.
+- **Mobile floor:** the WebGL1 / no-linear-filtering path keeps compiling and running
+  every phase, with explicit per-phase capability gates. Degrade, don't break.
+- **Determinism:** seeded-RNG reproducibility survives; the new `advance(steps, dt)`
+  makes scenes reproducible by decoupling stepping from rAF.
 
-## 5. Decisions settled by the review panel
+## 5. Decisions (see ADR-0042 for full rationale)
 
-- **D1 (resolution normalization)** → new normalized fields in their own
-  phase (Phase 5), legacy fields untouched until 1.0; pulled out of Phase 1
-  entirely. (Unanimous direction across reviewers; formula corrected to
-  per-axis `ν·dt/h²`.)
-- **D2 (fractional vs binary masks)** → not a reversal of the prior binary
-  decision: the binary field clip and cell classification stay; fractional
-  values enter only as variational stencil weights behind an experimental
-  flag with quantitative leakage acceptance. (Unanimous.)
-- **D3 (MacCormack default)** → opt-in now, stays opt-in for at least one
-  release cycle; plan of record is to make it the unconditional baseline at
-  1.0 and *remove* the config knob rather than flip a default. (Unanimous.)
-
-No open strategic decisions remain that block Phase 1. The one item flagged
-for human awareness: Phase 5 adds two public config fields and a documented
-"legacy" label on `viscosity`/`curl` — surfaced in that phase's changeset.
+- **Restructure** into Epic A {0,2,5(+deferred 3)} / Epic B {multigrid, governor} /
+  Render Modes {tracers}.
+- **Phase 5 reverses Rev 2's D1:** reinterpret `viscosity`/`curl` in place with a
+  reference-anchored gauge — no new fields, no deprecation debt (pre-1.0).
+- **Phase 2 reverses Rev 2's D3 surface:** no public scheme knob; bake on for capable
+  devices.
+- **Process:** ADR numbers assigned at write time; counts never hardcoded; no-deps
+  invariant is runtime-only.
 
 ## 6. Risks
 
 | Risk | Phase | Mitigation |
 |------|-------|-----------|
-| Inlined mask differs subtly from `applyMask` (AA seam shift) | 1a | Shared GLSL helper, pixel-diff QA, old path behind debug flag |
-| Aperture texture mis-encodes at sim-res/mask-res boundary | 1b | Unit tests on encode/decode; TeslaValve canary |
-| MacCormack ringing at splat fronts / open edges | 2 | Stencil min/max limiter; first-order fallback near solids AND open edges; NaN soak test |
-| Dye-res MacCormack memory (+~15 MB) surprises mobile | 2 | Allocated only when enabled; freed on switch-off; documented |
-| Fractional apertures leak through thin walls | 3/6 | Aperture-sum floor; quantitative TeslaValve flux test gates the flag |
-| Variational stencil breaks projection (gradient not adjoint of divergence) | 3 | Same face weights in both operators; divergence-L2 readback test |
-| Multigrid draw-call overhead erodes win on mobile | 6 | Measure on-device early; tier stays opt-in |
-| Governor oscillation / FBO rebuild stalls | 7 | ≥3 s hysteresis, shed iterations before resolutions |
-| Preset feel drift from normalization | 5 | Retune table + before/after screenshots in ADR; own phase, never bundled |
+| Browser test tier can't run in a restricted/headless env | 0 | Node tier carries the green-gate; browser tier is separate + CI/dev-run only |
+| MacCormack ringing at splat fronts / open edges | 2 | Forward-stencil limiter; first-order fallback near solids AND open edges; NaN soak |
+| Velocity `velocitySource` reuse clobbered by a future step reorder | 2 | Assert advection-before-viscosity ordering in a comment |
+| Reference-anchored gauge drifts a res-override preset's feel | 5 | Identity at N_ref; before/after QA on the 4 res-override presets only |
+| Pressure-stencil change diverges single vs paired path | 3 (deferred) | Triple-copy contract; A/B test at sub- and super-150 k grids |
+| Reviving deferred work without demonstrated need | 3/B | Hard gate: harness + reproduced user-visible defect/demand |
 
-## 7. Out-of-scope follow-ups (next session / framework epic)
+## 7. Deferred / out-of-scope (Epic B, Render Modes, backlog)
 
-- Public docs-site pages for new fields (beyond minimal canonical-route
-  updates that CLAUDE.md mandates per API change).
-- KelvinHelmholtz / RayleighBenard as polished public preset components with
-  homepage cards (validation versions live in the obstruction lab first).
-- Governor state display / event surface for hosts.
-- WebGPU backend evaluation checkpoint (target: 2027 H1).
+- **Multigrid pressure** — gated on Phase 3 enabled + measured residual complaint;
+  prefer the cheap convergence ladder first; if ever built, a single two-grid level,
+  not a recursive pyramid; re-derive cost against ADR-0038's pass-bound model.
+- **Frame-time governor** — Bucket-A-first ladder (pressureIterations + SUBSTEPS →
+  dyeResolution → simResolution), config floors, EMA reset on any Bucket-C rebuild,
+  pull-based `getPerformanceState()`. simResolution tier (Phase-5-dep) deferred from v1.
+- **Curl-noise turbulence force** — redundant with MacCormack + adaptive confinement,
+  taxes the pressure solve; revisit only on real demand, time-evolving, own flag.
+- **Lagrangian tracers** — standalone render-modes feature; owns the ES 3.00 decision.
+- **CI golden-image visual-regression** over all presets at fixed seed (Phase 0 follow-on).
 
-## 8. Review log (rev 1 → rev 2)
+## 8. Review log
 
-Panel: Claude Sonnet (PASS WITH REVISIONS), Claude Opus (PASS WITH
-REVISIONS), Gemini 3.1 Pro (FAIL), GPT-5.5 via Codex (FAIL). Antigravity was
-quota-blocked; Codex substituted. All blocking findings addressed:
-
-- Dropped invalid gradient-subtract fusion and the curl+vorticity fusion
-  (fetch-count math was wrong; fused stencil needs ~13 unique fetches).
-  Replaced with divergence/warm-start merge via RG pressure packing.
-- 1b redesigned from 5-bit binary packing (dead end vs Phase 3) to RGBA8
-  face apertures, binary-valued initially; wall-friction excluded from the
-  fetch claim (it uses 9 probes at width 2).
-- Phase 2: advection becomes a runtime `Material`; third-FBO requirement and
-  memory cost stated; limiter correctly framed as overshoot suppression (not
-  unconditional stability) and pinned to the forward-trace stencil; guards
-  extended to both traces and open edges; capability gate added.
-- Phase 3 reframed: binary clip/classification retained (not a reversal of
-  the prior ADR decision); fractional only as variational stencil weights
-  behind a flag; Jacobi diagonal = aperture sum; gradient adjoint to
-  divergence; anisotropic spacing fixed in the same rediscretization;
-  free-slip terminology corrected; quantitative leakage/divergence
-  acceptance replaces visual-only QA.
-- Normalization pulled out of Phase 1 into Phase 5 with new fields (no
-  silent reinterpretation); ~192× retune magnitude quantified.
-- Phase 6→3 hard dependency declared; per-level variational rediscretization
-  specified; pyramid dispose() lifecycle named.
-- Turbulence decoupled from FLOW machinery; "divergence-free by construction"
-  weakened to "approximately; projection removes the residual".
-- Tracers declared WebGL2-only with silent degrade; governor state exposed
-  via pull-based getter only.
-- Karman pass arithmetic replaced with an exact table; all performance
-  targets tied to the §4 measured-baseline protocol; vague acceptance
-  criteria ("visibly lively", "dipoles survive") replaced with readback-based
-  quantitative tests.
+- **Rev 1 → Rev 2** (2026-06-09): 4-model panel (Sonnet, Opus, Gemini 3.1 Pro,
+  GPT-5.5). Caught wrong fetch-count math, an invalid gradient-subtract fusion, a
+  non-adjoint stencil, the ~192× retune magnitude. (Full log retained in git history.)
+- **Rev 2 → Rev 3** (2026-06-25): a 10-agent readiness audit + a 9-agent
+  first-principles interrogation. Findings: every Phase 2–7 acceptance bar was
+  readback/timer-based with **no harness** (the named bench page was deleted in
+  `5d1377d`); ADR numbers 0039–0041 collided with shipped work; Phase 1's paired-Jacobi
+  triple-copy tax was unmodelled; Phase 1b's texture is format- not semantics-
+  compatible with Phase 3. Outcome: harness promoted to a blocking Phase 0; multigrid
+  and tracers deferred out of the epic; Phase 3 deferred; Phase 4 dissolved into Phase 5;
+  Phase 2 cut to velocity-only with no public knob; Phase 5 switched to an in-place
+  reference-anchored gauge; ADR-number pre-reservation and hardcoded counts removed.
+  Recorded in ADR-0042.

@@ -11,7 +11,7 @@ Repo: github.com/tommyyzhao/svelte-fluid
 ```sh
 bun install              # install deps
 bun run dev              # dev server at localhost:5173
-bun run test             # vitest (full suite; ~386 tests)
+bun run test             # vitest (full node suite)
 bun run check            # svelte-check (0 errors expected)
 bun run prepack          # svelte-package + publint (must pass before publish)
 bun run build            # full demo site build
@@ -63,8 +63,8 @@ See [ADR 0024](dev-docs/decisions/0024-svg-path-container-shape.md) for the mask
 - Bun only (no npm/yarn for dev). `.npmrc` has `engine-strict=true`.
 - Svelte 5 runes only (no Svelte 4 syntax).
 - `.js` extensions in all TypeScript imports.
-- Engine changes require an ADR in `dev-docs/decisions/`.
-- No new runtime dependencies.
+- Engine *decisions* (new algorithm, changed field semantics, stencil/scheme change, lifecycle change) require an ADR in `dev-docs/decisions/`. Mechanical edits (renames, count fixes, one-line guards) are exempt. ADR numbers are claimed at write time (next free = `ls dev-docs/decisions`), never pre-reserved in a plan.
+- No new *runtime* dependencies — the `dependencies` map (currently empty; only `dist` ships). devDependencies for test/dev/build infra are unrestricted (`publint`/`prepack` guard `dist`).
 - Tabs, Prettier formatting.
 - Comments explain "why", not "what".
 
@@ -95,7 +95,7 @@ route as part of the same change — not as a follow-up.
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Hard rules, local setup, workflows, verification checklist, code style |
 | [`dev-docs/architecture.md`](dev-docs/architecture.md) | System design, module boundaries, ownership diagram, public API surface |
 | [`dev-docs/porting-notes.md`](dev-docs/porting-notes.md) | Upstream `script.js` symbol map — read before modifying the engine |
-| [`dev-docs/decisions/`](dev-docs/decisions/) | 31 ADRs documenting every major design choice |
+| [`dev-docs/decisions/`](dev-docs/decisions/) | ADRs documenting every major design choice |
 | [`dev-docs/learnings/`](dev-docs/learnings/) | Gotchas with symptom/cause/fix — check before debugging |
 
 ## Session workflow
