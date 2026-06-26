@@ -871,7 +871,11 @@ export class FluidEngine implements FluidHandle {
 
 		const width = spec.fbo.width;
 		const height = spec.fbo.height;
-		const sourceComponents = this.ext.isWebGL2 ? (components === 1 ? 1 : components === 2 ? 2 : 4) : 4;
+		// Always read RGBA. WebGL2 readPixels only reliably accepts RGBA (or the
+		// driver's queried IMPLEMENTATION_COLOR_READ_FORMAT); RG/RED + FLOAT raises
+		// INVALID_OPERATION on common drivers (ANGLE) and silently leaves the
+		// staging buffer zero-filled. We slice the wanted channels below.
+		const sourceComponents = 4;
 		const pixelCount = width * height;
 		const sourceCount = pixelCount * sourceComponents;
 		this.ensureReadFieldBuffers(sourceCount);

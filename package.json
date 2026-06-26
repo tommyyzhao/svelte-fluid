@@ -61,6 +61,7 @@
 		"@sveltejs/package": "^2.5.7",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"@vitest/browser": "^4",
+		"@vitest/browser-playwright": "^4.1.9",
 		"playwright": "^1.61.1",
 		"publint": "^0.3.17",
 		"puppeteer-core": "^24.42.0",

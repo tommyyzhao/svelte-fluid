@@ -1,5 +1,6 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, defineProject } from 'vitest/config';
+import { playwright } from '@vitest/browser-playwright';
 
 const browserProject = defineProject({
 	extends: true,
@@ -9,9 +10,11 @@ const browserProject = defineProject({
 		exclude: ['dist/**', '.svelte-kit/**'],
 		browser: {
 			enabled: true,
-			name: 'chromium',
 			headless: true,
-			provider: 'playwright'
+			// vitest 4 takes a provider factory (not the string 'playwright')
+			// and per-browser `instances` instead of a top-level `name`.
+			provider: playwright(),
+			instances: [{ browser: 'chromium' }]
 		}
 	}
 });
