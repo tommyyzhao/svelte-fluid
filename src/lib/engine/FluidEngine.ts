@@ -127,6 +127,52 @@ export interface ReadFieldResult {
 	readonly components: number;
 }
 
+type BenchPass = 'curl' | 'vorticity' | 'advect' | 'viscosity' | 'divergence' | 'pressure' | 'gradient';
+
+type BenchPassSamples = {
+	[K in BenchPass]: number[];
+};
+
+interface BenchFrameProfile {
+	totalMs: number;
+	passMs: Partial<BenchPassSamples>;
+	pendingQueries: number;
+	ended: boolean;
+	finalized: boolean;
+}
+
+interface PendingBenchQuery {
+	pass: BenchPass;
+	query: WebGLQuery;
+	frame: number;
+}
+
+interface TimerQueryExtension {
+	TIME_ELAPSED_EXT: number;
+	QUERY_RESULT_AVAILABLE_EXT: number;
+	QUERY_RESULT_EXT: number;
+	GPU_DISJOINT_EXT: number;
+	createQueryEXT(): WebGLQuery | null;
+	deleteQueryEXT(query: WebGLQuery): void;
+	beginQueryEXT(target: number, query: WebGLQuery): void;
+	endQueryEXT(target: number): void;
+	getQueryObjectEXT(query: WebGLQuery, pname: number): boolean | number | null;
+}
+
+interface BenchProfileState {
+	ext: TimerQueryExtension;
+	currentFrame: number;
+	pending: PendingBenchQuery[];
+	frames: Map<number, BenchFrameProfile>;
+	frameSamples: number[];
+	passSamples: BenchPassSamples;
+}
+
+interface BenchTimings {
+	readonly frameMs: number[];
+	readonly passMs: BenchPassSamples;
+}
+
 /* -------------------------------------------------------------------------- */
 /*                                  Defaults                                  */
 /* -------------------------------------------------------------------------- */
@@ -483,6 +529,11 @@ export interface FluidEngineOptions {
 	config?: FluidConfig;
 	/** @internal Construct without auto-starting the requestAnimationFrame loop. */
 	autoStart?: boolean;
+	/**
+	 * Internal benchmark instrumentation switch. When enabled, selected solver
+	 * passes are wrapped in EXT_disjoint_timer_query_webgl2 queries.
+	 */
+	instrument?: boolean;
 }
 
 export class FluidEngine implements FluidHandle {
@@ -612,8 +663,12 @@ export class FluidEngine implements FluidHandle {
 	private flowOutletBatchTo = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
 	private flowOutletBatchWidth = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
 	private autoStart = true;
+	private benchmarkInstrument = false;
 	private readbackUint8Buffer = new Uint8Array(0);
 	private readbackFloatBuffer = new Float32Array(0);
+	private benchProfileState: BenchProfileState | null = null;
+	private benchProfileActiveFrame = -1;
+	private benchProfileSampleLimit = 240;
 	private flowOutletBatchKeep = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
 
 	// --- Bound listeners ---
@@ -632,6 +687,7 @@ export class FluidEngine implements FluidHandle {
 		this.canvas = opts.canvas;
 		const seed = opts.config?.seed ?? randomSeed();
 		this.config = resolveConfig({ ...opts.config, seed }, DEFAULTS);
+		this.benchmarkInstrument = opts.instrument ?? false;
 		this.autoStart = opts.autoStart ?? true;
 		this.deterministicMode = !this.autoStart;
 		this.normalizedBackColor = normalizeColor(this.config.BACK_COLOR);
@@ -643,6 +699,7 @@ export class FluidEngine implements FluidHandle {
 		// if it does, release the context slot we already hold so a failed
 		// construction doesn't orphan a GL context, then re-throw.
 		this.initContext();
+		this.initBenchmarkProfiler();
 		try {
 			this.compileShaders();
 			this.initBuffersAndPrograms();
@@ -978,8 +1035,10 @@ export class FluidEngine implements FluidHandle {
 
 	private handleContextRestored(): void {
 		this.contextLost = false;
+		this.disposeBenchmarkProfiler();
 		// Full reinit — the GL state is wiped on context loss.
 		this.initContext();
+		this.initBenchmarkProfiler();
 		this.compileShaders();
 		this.initBuffersAndPrograms();
 		this.ditheringTexture.dispose(); // prevent stale image.onload from touching the new context
@@ -1016,6 +1075,7 @@ export class FluidEngine implements FluidHandle {
 
 		cancelAnimationFrame(this.rafId);
 		this.rafRunning = false;
+		this.disposeBenchmarkProfiler();
 
 		this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
 		this.canvas.removeEventListener('webglcontextrestored', this.onContextRestored);
@@ -1165,6 +1225,211 @@ export class FluidEngine implements FluidHandle {
 			this.config.GLASS = false;
 			this.config.DYE_RESOLUTION = Math.min(this.config.DYE_RESOLUTION, 512);
 		}
+	}
+
+	private initBenchmarkProfiler(): void {
+		if (!this.benchmarkInstrument) {
+			this.benchProfileState = null;
+			return;
+		}
+
+		const gl = this.gl;
+		const ext = gl.getExtension('EXT_disjoint_timer_query_webgl2') as TimerQueryExtension | null;
+		if (!ext) {
+			this.benchProfileState = null;
+			return;
+		}
+
+		this.benchProfileState = {
+			ext,
+			currentFrame: 0,
+			pending: [],
+			frames: new Map<number, BenchFrameProfile>(),
+			frameSamples: [],
+			passSamples: {
+				curl: [],
+				vorticity: [],
+				advect: [],
+				viscosity: [],
+				divergence: [],
+				pressure: [],
+				gradient: []
+			}
+		};
+		this.benchProfileActiveFrame = -1;
+	}
+
+	private disposeBenchmarkProfiler(): void {
+		const state = this.benchProfileState;
+		if (!state) return;
+
+		const gl = this.gl;
+		for (const pending of state.pending) {
+			state.ext.deleteQueryEXT(pending.query);
+		}
+		state.pending = [];
+		state.frames.clear();
+		this.benchProfileState = null;
+		this.benchProfileActiveFrame = -1;
+	}
+
+	private beginBenchFrame(): void {
+		const state = this.benchProfileState;
+		if (!state || this.benchProfileActiveFrame >= 0) return;
+
+		const frame = state.currentFrame++;
+		state.frames.set(frame, {
+			totalMs: 0,
+			passMs: {},
+			pendingQueries: 0,
+			ended: false,
+			finalized: false
+		});
+		this.benchProfileActiveFrame = frame;
+	}
+
+	private endBenchFrame(): void {
+		const state = this.benchProfileState;
+		if (!state || this.benchProfileActiveFrame < 0) return;
+
+		const frameProfile = state.frames.get(this.benchProfileActiveFrame);
+		if (frameProfile) {
+			frameProfile.ended = true;
+		}
+		this.benchProfileActiveFrame = -1;
+		this.finalizeReadyBenchFrames();
+	}
+
+	private beginBenchPass(pass: BenchPass): void {
+		const state = this.benchProfileState;
+		if (!state || this.benchProfileActiveFrame < 0) return;
+		const frameProfile = state.frames.get(this.benchProfileActiveFrame);
+		if (!frameProfile) return;
+
+		const query = state.ext.createQueryEXT();
+		if (!query) return;
+
+		state.ext.beginQueryEXT(state.ext.TIME_ELAPSED_EXT, query);
+		frameProfile.pendingQueries += 1;
+		state.pending.push({ pass, query, frame: this.benchProfileActiveFrame });
+	}
+
+	private endBenchPass(): void {
+		const state = this.benchProfileState;
+		if (!state || this.benchProfileActiveFrame < 0) return;
+		state.ext.endQueryEXT(state.ext.TIME_ELAPSED_EXT);
+	}
+
+	private trimBenchSamples(samples: number[]): void {
+		while (samples.length > this.benchProfileSampleLimit) samples.shift();
+	}
+
+	private pushBenchPassSample(frame: number, pass: BenchPass, ms: number): void {
+		const state = this.benchProfileState;
+		if (!state) return;
+
+		const frameProfile = state.frames.get(frame);
+		if (!frameProfile) return;
+
+		const frameSamples = frameProfile.passMs[pass] ?? [];
+		frameSamples.push(ms);
+		frameProfile.passMs[pass] = frameSamples;
+		this.trimBenchSamples(frameSamples);
+
+		const aggregateSamples = state.passSamples[pass];
+		aggregateSamples.push(ms);
+		this.trimBenchSamples(aggregateSamples);
+		frameProfile.pendingQueries = Math.max(0, frameProfile.pendingQueries - 1);
+	}
+
+	private finalizeBenchFrame(frame: number, frameProfile: BenchFrameProfile, state: BenchProfileState): void {
+		let total = 0;
+		for (const values of Object.values(frameProfile.passMs)) {
+			if (!values) continue;
+			for (const sample of values) {
+				total += sample;
+			}
+		}
+
+		frameProfile.totalMs = total;
+		state.frameSamples.push(total);
+		this.trimBenchSamples(state.frameSamples);
+		frameProfile.finalized = true;
+		state.frames.delete(frame);
+	}
+
+	private finalizeReadyBenchFrames(): void {
+		const state = this.benchProfileState;
+		if (!state) return;
+		for (const [frame, frameProfile] of state.frames) {
+			if (!frameProfile.ended || frameProfile.finalized) continue;
+			if (frameProfile.pendingQueries > 0) continue;
+			this.finalizeBenchFrame(frame, frameProfile, state);
+		}
+	}
+
+	private pollBenchQueries(): void {
+		const state = this.benchProfileState;
+		if (!state) return;
+
+		const gl = this.gl;
+		const pending = state.pending;
+		const keep: PendingBenchQuery[] = [];
+
+		for (const item of pending) {
+			const available = state.ext.getQueryObjectEXT(item.query, state.ext.QUERY_RESULT_AVAILABLE_EXT);
+			if (!available) {
+				keep.push(item);
+				continue;
+			}
+
+			const frameProfile = state.frames.get(item.frame);
+			if (frameProfile) {
+				const disjoint = !!gl.getParameter(state.ext.GPU_DISJOINT_EXT);
+				if (!disjoint) {
+					const nanos = state.ext.getQueryObjectEXT(item.query, state.ext.QUERY_RESULT_EXT);
+					if (typeof nanos === 'number' && Number.isFinite(nanos)) {
+						this.pushBenchPassSample(item.frame, item.pass, nanos / 1_000_000);
+					} else {
+						frameProfile.pendingQueries = Math.max(0, frameProfile.pendingQueries - 1);
+					}
+				} else {
+					frameProfile.pendingQueries = Math.max(0, frameProfile.pendingQueries - 1);
+				}
+			} else {
+				// no frame to attach this sample to; avoid leaking counters
+			}
+
+			state.ext.deleteQueryEXT(item.query);
+		}
+
+		state.pending = keep;
+		this.finalizeReadyBenchFrames();
+	}
+
+	getBenchTimings(): BenchTimings | null {
+		this.pollBenchQueries();
+		const state = this.benchProfileState;
+		if (!state) return null;
+
+		const passMs: BenchPassSamples = {
+			curl: [...state.passSamples.curl],
+			vorticity: [...state.passSamples.vorticity],
+			advect: [...state.passSamples.advect],
+			viscosity: [...state.passSamples.viscosity],
+			divergence: [...state.passSamples.divergence],
+			pressure: [...state.passSamples.pressure],
+			gradient: [...state.passSamples.gradient]
+		};
+
+		return {
+			frameMs: [...state.frameSamples],
+			passMs
+		};
+	}
+
+	isBenchmarkTimed(): boolean {
+		return !!this.benchProfileState;
 	}
 
 	private compileShaders(): void {
@@ -2608,6 +2873,7 @@ export class FluidEngine implements FluidHandle {
 	}
 
 	private advectVelocity(dt: number): void {
+		this.beginBenchPass('advect');
 		const gl = this.gl;
 		this.advectionProgram.bind();
 		this.bindInlineMaskUniforms(this.advectionProgram.uniforms, 2, 3);
@@ -2638,9 +2904,11 @@ export class FluidEngine implements FluidHandle {
 		);
 		this.blit(this.velocity.write);
 		this.velocity.swap();
+		this.endBenchPass();
 	}
 
 	private advectDye(dt: number): void {
+		this.beginBenchPass('advect');
 		const gl = this.gl;
 		this.advectionProgram.bind();
 		this.bindInlineMaskUniforms(this.advectionProgram.uniforms, 2, 3);
@@ -2663,10 +2931,12 @@ export class FluidEngine implements FluidHandle {
 		gl.uniform1f(this.advectionProgram.uniforms.dissipation, this.currentDensityDissipation());
 		this.blit(this.dye.write);
 		this.dye.swap();
+		this.endBenchPass();
 	}
 
 	private advectScalar(dt: number): void {
 		if (!this.scalar) return;
+		this.beginBenchPass('advect');
 		const gl = this.gl;
 		this.advectionProgram.bind();
 		this.bindInlineMaskUniforms(this.advectionProgram.uniforms, 2, 3);
@@ -2693,6 +2963,7 @@ export class FluidEngine implements FluidHandle {
 		gl.uniform1f(this.advectionProgram.uniforms.dissipation, this.currentDensityDissipation());
 		this.blit(this.scalar.write);
 		this.scalar.swap();
+		this.endBenchPass();
 	}
 
 	private flowOpenEdges(): [number, number, number, number] {
@@ -2837,6 +3108,7 @@ export class FluidEngine implements FluidHandle {
 	private applyViscosity(dt: number): void {
 		const iterations = this.config.VISCOSITY_ITERATIONS;
 		if (this.config.VISCOSITY <= 0 || iterations <= 0) return;
+		this.beginBenchPass('viscosity');
 		const gl = this.gl;
 
 		this.copyProgram.bind();
@@ -2864,6 +3136,7 @@ export class FluidEngine implements FluidHandle {
 			this.blit(this.velocity.write);
 			this.velocity.swap();
 		}
+		this.endBenchPass();
 	}
 
 	private applyWallFriction(): void {
@@ -2881,6 +3154,7 @@ export class FluidEngine implements FluidHandle {
 
 	private projectVelocity(): void {
 		const gl = this.gl;
+		this.beginBenchPass('divergence');
 		this.divergenceProgram.bind();
 		gl.uniform2f(this.divergenceProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
 		gl.uniform1i(this.divergenceProgram.uniforms.uVelocity, this.velocity.read.attach(0));
@@ -2888,6 +3162,7 @@ export class FluidEngine implements FluidHandle {
 		gl.uniform4f(this.divergenceProgram.uniforms.uOpenEdges, edges[0], edges[1], edges[2], edges[3]);
 		this.bindSolidMaskUniforms(this.divergenceProgram.uniforms, 2, 3);
 		this.blit(this.divergence);
+		this.endBenchPass();
 
 		const iterations = this.config.PRESSURE_ITERATIONS;
 		if (iterations <= 0) {
@@ -2916,6 +3191,9 @@ export class FluidEngine implements FluidHandle {
 		const usePairs = this.velocity.width * this.velocity.height <= PAIRED_JACOBI_MAX_TEXELS;
 		const pairs = usePairs ? Math.floor(iterations / 2) : 0;
 		const singles = iterations - pairs * 2;
+		if (pairs > 0 || singles > 0) {
+			this.beginBenchPass('pressure');
+		}
 		if (pairs > 0) {
 			this.pressureJacobi2Program.bind();
 			gl.uniform2f(this.pressureJacobi2Program.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
@@ -2949,7 +3227,11 @@ export class FluidEngine implements FluidHandle {
 				this.pressure.swap();
 			}
 		}
+		if (pairs > 0 || singles > 0) {
+			this.endBenchPass();
+		}
 
+		this.beginBenchPass('gradient');
 		this.gradientSubtractProgram.bind();
 		gl.uniform2f(this.gradientSubtractProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
 		gl.uniform1i(this.gradientSubtractProgram.uniforms.uPressure, this.pressure.read.attach(0));
@@ -2958,12 +3240,15 @@ export class FluidEngine implements FluidHandle {
 		this.bindInlineMaskUniforms(this.gradientSubtractProgram.uniforms, 4, 5);
 		this.blit(this.velocity.write);
 		this.velocity.swap();
+		this.endBenchPass();
 	}
 
 	private step(dt: number): void {
 		if (this.deterministicMode) {
 			this.simTime += dt;
 		}
+		this.pollBenchQueries();
+		this.beginBenchFrame();
 
 		const gl = this.gl;
 		gl.disable(gl.BLEND);
@@ -2987,15 +3272,19 @@ export class FluidEngine implements FluidHandle {
 			}
 			this.advectScalar(dt);
 			this.applyFlowOutlets(simulateDye ? ['dye', 'scalar'] : ['scalar']);
+			this.endBenchFrame();
 			return;
 		}
 
 		if (this.config.CURL > 0) {
+			this.beginBenchPass('curl');
 			this.curlProgram.bind();
 			gl.uniform2f(this.curlProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
 			gl.uniform1i(this.curlProgram.uniforms.uVelocity, this.velocity.read.attach(0));
 			this.blit(this.curlFBO);
+			this.endBenchPass();
 
+			this.beginBenchPass('vorticity');
 			this.vorticityProgram.bind();
 			gl.uniform2f(this.vorticityProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
 			gl.uniform1i(this.vorticityProgram.uniforms.uVelocity, this.velocity.read.attach(0));
@@ -3009,6 +3298,7 @@ export class FluidEngine implements FluidHandle {
 			this.bindSolidMaskUniforms(this.vorticityProgram.uniforms, 2, 3);
 			this.blit(this.velocity.write);
 			this.velocity.swap();
+			this.endBenchPass();
 		}
 
 		// Container/obstruction masking is folded into the advection,
@@ -3025,6 +3315,7 @@ export class FluidEngine implements FluidHandle {
 		}
 		this.advectScalar(dt);
 		this.applyFlowOutlets(simulateDye ? ['dye', 'scalar'] : ['scalar']);
+		this.endBenchFrame();
 	}
 
 	private render(target: FBO | null): void {

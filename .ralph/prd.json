@@ -152,11 +152,11 @@
     "note": "Implemented deterministic no-autostart constructor path, explicit readField + advance internals, stripInternal-configured release visibility, pure reducers, and authored scene/readback harness."
     },
     {
-      "id": "P0-bench",
-      "phase": "Phase 0",
-      "title": "Restore /examples/bench interactive profiler + liveness guard",
-      "status": "todo",
-      "depends_on": ["P0-readback"],
+		"id": "P0-bench",
+		"phase": "Phase 0",
+		"title": "Restore /examples/bench interactive profiler + liveness guard",
+		"status": "done",
+		"depends_on": ["P0-readback"],
       "risk": "medium",
       "spec": "Restore an interactive dev profiler `src/routes/examples/bench/+page.svelte` importing its scene(s) from `__benches__/scenes.ts` (so it can never be orphaned by deleting the page). It runs a selected scene and exposes `window.__benchResult = { meanMs, p50, p95, fps, energy, done }`. Per-pass GPU timing via EXT_disjoint_timer_query_webgl2 (async poll + GPU_DISJOINT check) behind a default-off `instrument` constructor option, with a requestAnimationFrame-EMA fallback. LIVENESS GUARD (mandatory): after warmup, compute fieldEnergy via readField and refuse to set `__benchResult.done` / report numbers unless energy > floor AND !hasNonFinite (a blank canvas from a constructor throw benchmarks as a fake 120fps win). The `instrument?:boolean` ctor flag, only when true, wraps named solver passes (curl/vorticity/advect/viscosity/divergence/pressure/gradient) in begin/endQuery; OFF by default = zero hot-loop cost. This task does NOT need its own ADR — it is covered by the Phase 0 harness ADR written in P0-readback (extend that ADR if needed).",
       "files": [
@@ -175,8 +175,8 @@
         "instrument off by default; no production hot-path cost.",
         "Scenes imported from __benches__/scenes.ts — do NOT inline scene defs."
       ],
-      "note": ""
-    },
+		"note": "Implemented /examples/bench page with shared scenes, default-off instrumentation, benchmark timing fallback, and liveness-gated __benchResult export."
+	},
     {
       "id": "P2-maccormack-shader",
       "phase": "Phase 2",
