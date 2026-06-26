@@ -124,7 +124,7 @@
       "id": "P0-readback",
       "phase": "Phase 0",
       "title": "readField() (@internal, stripped) + deterministic advance() + CPU reducers + scenes",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["P0-workspace"],
       "risk": "medium",
       "spec": "Build the deterministic-readback substrate (ADR-0042 §2). (1) On FluidEngine add `@internal readField(field, opts?)` returning {data,width,height,components}. Map the field NAME to its FBO via an EXPLICIT allowlist object — NOT this[field] — because the curl FBO is `curlFBO` while `this.curl`/config.CURL is a number (e.g. {velocity:this.velocity.read, dye:this.dye.read, pressure:this.pressure.read, divergence:this.divergence, curl:this.curlFBO}; verify exact field names by grepping). gl.readPixels into an instance-owned staging buffer; RGBA8 encode/decode path (works half-float/WebGL1) PLUS a direct gl.FLOAT path guarded by `gl.getExtension('EXT_color_buffer_float')` queried inside readField (the ctx requests it but discards the handle, gl-utils.ts ~169 — re-query, do not assume a capability bit exists). (2) Add `@internal` deterministic stepping: a constructor option to NOT auto-start rAF, plus `advance(steps, dt)` calling the private step(dt) exactly `steps` times. CRITICAL determinism fix (all three reviewers): time-dependent terms use performance.now() today (currentDensityDissipation burn-in, FluidEngine.ts ~616). Add an internal accumulated sim-time (advanced by dt per step) and have the burn-in/time terms read sim-time when in the no-autostart/deterministic mode, so advance() is reproducible; the normal rAF path keeps current behavior (scope the change to deterministic mode to avoid altering live burn-in). (3) ENABLE @internal stripping: add `\"stripInternal\": true` to tsconfig.json compilerOptions and mark readField/advance/the ctor option @internal, so they are excluded from dist .d.ts. (4) `src/lib/engine/__benches__/reducers.ts` — pure-TS GL-free: l2Norm, divergenceL2, trackPeakAlongPath, signChangeCount, fluxAcrossLine, fieldEnergy, hasNonFinite. (5) `src/lib/engine/__benches__/scenes.ts` — importable registry keyed dipole/kelvinHelmholtz/rayleighBenard/thinWallTeslaValve, each {config:FluidConfig, schedule (deterministic splats/forces via the mulberry32 Rng seed), thresholdBand}. Reducers get FULL node coverage; readField/advance/scenes get an AUTHORED browser test.",
@@ -149,7 +149,7 @@
         "Re-query EXT_color_buffer_float inside readField; do not assume an ExtInfo bit.",
         "stripInternal:true must actually remove readField/advance from dist .d.ts (verify by grep)."
       ],
-      "note": ""
+    "note": "Implemented deterministic no-autostart constructor path, explicit readField + advance internals, stripInternal-configured release visibility, pure reducers, and authored scene/readback harness."
     },
     {
       "id": "P0-bench",
