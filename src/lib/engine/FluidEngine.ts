@@ -540,6 +540,14 @@ export interface FluidEngineOptions {
 	 * passes are wrapped in EXT_disjoint_timer_query_webgl2 queries.
 	 */
 	instrument?: boolean;
+	/**
+	 * @internal Velocity advection scheme (epic 0001 Phase 2). 'maccormack' opts
+	 * into second-order MacCormack advection for the velocity field only — dye and
+	 * scalars always stay semi-Lagrangian. Forced to 'semilagrangian' when the
+	 * device lacks linear filtering. Construct-only; exposed for benches/tests and
+	 * stripped from dist types via stripInternal. Defaults to 'semilagrangian'.
+	 */
+	advectionScheme?: 'semilagrangian' | 'maccormack';
 }
 
 export class FluidEngine implements FluidHandle {
@@ -572,6 +580,7 @@ export class FluidEngine implements FluidHandle {
 	private sunraysProgram!: ProgramWrap;
 	private splatProgram!: ProgramWrap;
 	private advectionProgram!: ProgramWrap;
+	private advectionMacCormackProgram!: ProgramWrap;
 	private divergenceProgram!: ProgramWrap;
 	private curlProgram!: ProgramWrap;
 	private vorticityProgram!: ProgramWrap;
@@ -670,6 +679,12 @@ export class FluidEngine implements FluidHandle {
 	private flowOutletBatchWidth = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
 	private autoStart = true;
 	private benchmarkInstrument = false;
+	// Velocity advection scheme (epic 0001 Phase 2). The requested scheme is
+	// construct-only; useMacCormack is the capability-gated effective decision,
+	// recomputed alongside MANUAL_FILTERING in compileShaders so a context restore
+	// re-derives it from the (possibly new) GL feature set.
+	private advectionScheme: 'semilagrangian' | 'maccormack' = 'semilagrangian';
+	private useMacCormack = false;
 	private readbackUint8Buffer = new Uint8Array(0);
 	private readbackFloatBuffer = new Float32Array(0);
 	private benchProfileState: BenchProfileState | null = null;
@@ -698,6 +713,7 @@ export class FluidEngine implements FluidHandle {
 		const seed = opts.config?.seed ?? randomSeed();
 		this.config = resolveConfig({ ...opts.config, seed }, DEFAULTS);
 		this.benchmarkInstrument = opts.instrument ?? false;
+		this.advectionScheme = opts.advectionScheme ?? 'semilagrangian';
 		this.autoStart = opts.autoStart ?? true;
 		this.deterministicMode = !this.autoStart;
 		this.normalizedBackColor = normalizeColor(this.config.BACK_COLOR);
@@ -1198,6 +1214,7 @@ export class FluidEngine implements FluidHandle {
 			this.sunraysProgram,
 			this.splatProgram,
 			this.advectionProgram,
+			this.advectionMacCormackProgram,
 			this.divergenceProgram,
 			this.curlProgram,
 			this.vorticityProgram,
@@ -1474,6 +1491,11 @@ export class FluidEngine implements FluidHandle {
 
 		const advectionKeywords = this.ext.supportLinearFiltering ? null : ['MANUAL_FILTERING'];
 
+		// MacCormack velocity advection is gated on hardware linear filtering: the
+		// manual-bilerp fallback would make the two-pass scheme too expensive on
+		// that path, so it is forced off (decided once here, like MANUAL_FILTERING).
+		this.useMacCormack = this.advectionScheme === 'maccormack' && this.ext.supportLinearFiltering;
+
 		const fragments: Record<string, WebGLShader> = {
 			blur: compileShader(gl, gl.FRAGMENT_SHADER, S.blurShader),
 			copy: compileShader(gl, gl.FRAGMENT_SHADER, S.copyShader),
@@ -1486,6 +1508,9 @@ export class FluidEngine implements FluidHandle {
 			sunrays: compileShader(gl, gl.FRAGMENT_SHADER, S.sunraysShader),
 			splat: compileShader(gl, gl.FRAGMENT_SHADER, S.splatShader),
 			advection: compileShader(gl, gl.FRAGMENT_SHADER, S.advectionShader, advectionKeywords),
+			// No MANUAL_FILTERING variant: MacCormack only runs with hardware linear
+			// filtering (see useMacCormack), so it assumes hardware bilinear.
+			advectionMacCormack: compileShader(gl, gl.FRAGMENT_SHADER, S.advectionMacCormackShader),
 			divergence: compileShader(gl, gl.FRAGMENT_SHADER, S.divergenceShader),
 			curl: compileShader(gl, gl.FRAGMENT_SHADER, S.curlShader),
 			vorticity: compileShader(gl, gl.FRAGMENT_SHADER, S.vorticityShader),
@@ -1529,6 +1554,7 @@ export class FluidEngine implements FluidHandle {
 		this.sunraysProgram = makeProgram(gl, this.baseVertexShader, f.sunrays);
 		this.splatProgram = makeProgram(gl, this.baseVertexShader, f.splat);
 		this.advectionProgram = makeProgram(gl, this.baseVertexShader, f.advection);
+		this.advectionMacCormackProgram = makeProgram(gl, this.baseVertexShader, f.advectionMacCormack);
 		this.divergenceProgram = makeProgram(gl, this.baseVertexShader, f.divergence);
 		this.curlProgram = makeProgram(gl, this.baseVertexShader, f.curl);
 		this.vorticityProgram = makeProgram(gl, this.baseVertexShader, f.vorticity);
@@ -2903,6 +2929,10 @@ export class FluidEngine implements FluidHandle {
 	}
 
 	private advectVelocity(dt: number): void {
+		if (this.useMacCormack) {
+			this.advectVelocityMacCormack(dt);
+			return;
+		}
 		this.beginBenchPass('advect');
 		const gl = this.gl;
 		this.advectionProgram.bind();
@@ -2932,6 +2962,80 @@ export class FluidEngine implements FluidHandle {
 					: 0.98
 				: this.config.VELOCITY_DISSIPATION
 		);
+		this.blit(this.velocity.write);
+		this.velocity.swap();
+		this.endBenchPass();
+	}
+
+	/**
+	 * Opt-in second-order MacCormack advection for the velocity field (epic 0001
+	 * Phase 2). Two passes: forward semi-Lagrangian advect into the velocitySource
+	 * scratch FBO (phi_hat), then the MacCormack correction into velocity.write.
+	 * Only reached when {@link useMacCormack} is set (requires linear filtering).
+	 */
+	private advectVelocityMacCormack(dt: number): void {
+		this.beginBenchPass('advect');
+		const gl = this.gl;
+		// Mirrors the SL velocity-dissipation expression below so the two schemes
+		// dissipate identically (apples-to-apples comparison).
+		const velocityDissipation =
+			this.config.REVEAL || this.config.STICKY
+				? this.config.VELOCITY_DISSIPATION > 0.5
+					? this.config.VELOCITY_DISSIPATION
+					: 0.98
+				: this.config.VELOCITY_DISSIPATION;
+
+		// Pass A — forward semi-Lagrangian advect of velocity into velocitySource
+		// with NO dissipation / sticky / mask, so phi_hat is the raw advected
+		// field; the compositing is applied once in pass B. velocitySource is
+		// borrowed transiently here: applyViscosity repopulates it AFTER advection
+		// (advect runs before viscosity in step()), so this reuse is safe.
+		this.advectionProgram.bind();
+		this.bindInlineMaskUniforms(this.advectionProgram.uniforms, 2, 3);
+		gl.uniform1f(this.advectionProgram.uniforms.uApplyInlineMask, 0.0);
+		gl.uniform1f(this.advectionProgram.uniforms.uMultiplicative, 0.0);
+		this.bindStickyMask();
+		gl.uniform1i(this.advectionProgram.uniforms.uStickyMask, 7);
+		gl.uniform1f(this.advectionProgram.uniforms.uStickyStrength, 0.0);
+		gl.uniform2f(this.advectionProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
+		const fwdVelocityId = this.velocity.read.attach(0);
+		gl.uniform1i(this.advectionProgram.uniforms.uVelocity, fwdVelocityId);
+		gl.uniform1i(this.advectionProgram.uniforms.uSource, fwdVelocityId);
+		gl.uniform1f(this.advectionProgram.uniforms.dt, dt);
+		gl.uniform1f(this.advectionProgram.uniforms.uUseDissipationVector, 0.0);
+		gl.uniform4f(this.advectionProgram.uniforms.dissipationVector, 0, 0, 0, 0);
+		gl.uniform1f(this.advectionProgram.uniforms.dissipation, 0.0);
+		this.blit(this.velocitySource);
+
+		// Pass B — MacCormack correction. Reads phi^n (velocity.read, unit 0) and
+		// phi_hat (velocitySource, unit 1); mask samplers go on units 2/3 and the
+		// sticky mask on unit 7. Every sampler this pass owns is bound to a
+		// dedicated unit (ADR-0038) so none aliases velocity.write.
+		this.advectionMacCormackProgram.bind();
+		this.bindInlineMaskUniforms(this.advectionMacCormackProgram.uniforms, 2, 3);
+		gl.uniform1f(
+			this.advectionMacCormackProgram.uniforms.uMultiplicative,
+			this.config.REVEAL || this.config.STICKY ? 1.0 : 0.0
+		);
+		this.bindStickyMask();
+		gl.uniform1i(this.advectionMacCormackProgram.uniforms.uStickyMask, 7);
+		gl.uniform1f(
+			this.advectionMacCormackProgram.uniforms.uStickyStrength,
+			this.config.STICKY ? -(this.config.STICKY_STRENGTH * 0.8) : 0.0
+		);
+		gl.uniform2f(
+			this.advectionMacCormackProgram.uniforms.texelSize,
+			this.velocity.texelSizeX,
+			this.velocity.texelSizeY
+		);
+		const edges = this.flowOpenEdges();
+		gl.uniform4f(this.advectionMacCormackProgram.uniforms.uOpenEdges, edges[0], edges[1], edges[2], edges[3]);
+		gl.uniform1i(this.advectionMacCormackProgram.uniforms.uVelocity, this.velocity.read.attach(0));
+		gl.uniform1i(this.advectionMacCormackProgram.uniforms.uPhiHat, this.velocitySource.attach(1));
+		gl.uniform1f(this.advectionMacCormackProgram.uniforms.dt, dt);
+		gl.uniform1f(this.advectionMacCormackProgram.uniforms.uUseDissipationVector, 0.0);
+		gl.uniform4f(this.advectionMacCormackProgram.uniforms.dissipationVector, 0, 0, 0, 0);
+		gl.uniform1f(this.advectionMacCormackProgram.uniforms.dissipation, velocityDissipation);
 		this.blit(this.velocity.write);
 		this.velocity.swap();
 		this.endBenchPass();
