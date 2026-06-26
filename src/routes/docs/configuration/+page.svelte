@@ -117,6 +117,17 @@
 			<td><code>30</code></td>
 			<td>Vorticity confinement strength.</td>
 		</tr>
+		<tr>
+			<td><code>vorticityAdaptive</code></td>
+			<td><code>number</code></td>
+			<td><code>0</code></td>
+			<td>
+				Adaptive vorticity confinement blend. <code>0</code> disables adaptive gating (legacy
+				magnitude); <code>1</code> enables full local adaptive scaling by vorticity magnitude.
+				Confinement is separately attenuated next to solid boundaries (a bugfix), so output
+				near obstructions differs from prior versions regardless of this value.
+			</td>
+		</tr>
 	</tbody>
 </table>
 
@@ -761,6 +772,7 @@
 		<code>velocityDissipation</code>, <code>maxTimeStep</code>, <code>substeps</code>,
 		<code>viscosity</code>, <code>viscosityIterations</code>, <code>wallFriction</code>,
 		<code>wallFrictionWidth</code>, <code>pressure</code>, <code>curl</code>,
+		<code>vorticityAdaptive</code>,
 	<code>splatRadius</code>, <code>splatForce</code>, <code>colorUpdateSpeed</code>,
 	<code>bloomIntensity</code>, <code>sunraysWeight</code>, all <code>autoSplat*</code> props,
 	all <code>glass*</code> scalars, all <code>reveal*</code> scalars, all <code>distortion*</code>

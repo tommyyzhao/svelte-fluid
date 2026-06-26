@@ -34,3 +34,7 @@ vite.config.ts.timestamp-*
 
 # Release dogfood harnesses (local-only)
 /examples/dogfood-v010/
+
+# vitest browser-mode artifacts
+.vitest-attachments/
+**/__screenshots__/

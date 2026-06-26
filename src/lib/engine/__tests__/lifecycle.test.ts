@@ -126,6 +126,7 @@ describe('setConfig bucket classification', () => {
 	describe('Bucket A — hot scalars (no expensive ops)', () => {
 		const bucketAFields: FluidConfig = {
 			curl: 50,
+			vorticityAdaptive: 0.5,
 			splatRadius: 0.5,
 			densityDissipation: 0.5,
 			velocityDissipation: 0.3,

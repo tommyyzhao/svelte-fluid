@@ -23,6 +23,7 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"test": "vitest run",
+		"test:browser": "VITEST_BROWSER=1 vitest run --project browser",
 		"test:watch": "vitest",
 		"changeset": "changeset",
 		"version": "changeset version",
@@ -31,7 +32,8 @@
 	"files": [
 		"dist",
 		"!dist/**/*.test.*",
-		"!dist/**/*.spec.*"
+		"!dist/**/*.spec.*",
+		"!dist/**/__benches__/**"
 	],
 	"sideEffects": false,
 	"svelte": "./dist/index.js",
@@ -59,13 +61,16 @@
 		"@sveltejs/kit": "^2.50.2",
 		"@sveltejs/package": "^2.5.7",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
+		"@vitest/browser": "^4",
+		"@vitest/browser-playwright": "^4.1.9",
+		"playwright": "^1.61.1",
 		"publint": "^0.3.17",
 		"puppeteer-core": "^24.42.0",
 		"svelte": "^5.54.0",
 		"svelte-check": "^4.4.2",
 		"typescript": "^5.9.3",
 		"vite": "^7.3.1",
-		"vitest": "^4.1.4"
+		"vitest": "^4.1.9"
 	},
 	"keywords": [
 		"svelte",
