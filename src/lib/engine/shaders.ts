@@ -1244,6 +1244,14 @@ export const curlShader = `
     }
 `;
 
+/**
+ * Local vorticity-magnitude thresholds for adaptive confinement. Single-sourced
+ * here (GL-free) and interpolated into the vorticityShader below; FluidEngine.ts
+ * re-exports them so the TypeScript mirror and tests cannot drift from the GLSL.
+ */
+export const VORTICITY_ADAPTIVE_LO = 0.02;
+export const VORTICITY_ADAPTIVE_HI = 0.08;
+
 export const vorticityShader = `
     precision highp float;
     precision highp sampler2D;
@@ -1276,7 +1284,7 @@ export const vorticityShader = `
         vec2 force = 0.5 * vec2(abs(T) - abs(B), abs(R) - abs(L));
         force /= length(force) + 0.0001;
         float omega = abs(C) * 2.0;
-        float adaptiveWeight = smoothstep(0.02, 0.08, omega);
+        float adaptiveWeight = smoothstep(${VORTICITY_ADAPTIVE_LO}, ${VORTICITY_ADAPTIVE_HI}, omega);
         float confinement = mix(curl * C, curl * C * adaptiveWeight, clamp(uAdaptiveMix, 0.0, 1.0));
         force *= confinement * attenuation;
         force.y *= -1.0;

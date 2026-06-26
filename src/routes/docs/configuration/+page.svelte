@@ -122,8 +122,10 @@
 			<td><code>number</code></td>
 			<td><code>0</code></td>
 			<td>
-				Adaptive vorticity confinement blend. <code>0</code> is legacy byte-identical.
-				<code>1</code> enables full local adaptive scaling by vorticity magnitude.
+				Adaptive vorticity confinement blend. <code>0</code> disables adaptive gating (legacy
+				magnitude); <code>1</code> enables full local adaptive scaling by vorticity magnitude.
+				Confinement is separately attenuated next to solid boundaries (a bugfix), so output
+				near obstructions differs from prior versions regardless of this value.
 			</td>
 		</tr>
 	</tbody>
