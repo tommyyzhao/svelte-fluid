@@ -1,0 +1,230 @@
+{
+  "epic": "Epic 0001 — Engine Quality (Epic A)",
+  "branch": "epic-0001-phases",
+  "sentinel": "ALL_PHASES_COMPLETE",
+  "generated_by": "Claude Opus 4.8 planning session 2026-06-25 (rev 2 after a 3-model NO-GO review: codex/GPT-5.5, grok/xAI, agy/Gemini 3.1 Pro)",
+  "references": {
+    "decisions": "dev-docs/decisions/0042-epic-0001-restructure-and-measurement-harness.md",
+    "epic": "dev-docs/epics/0001-engine-first-principles-upgrade.md",
+    "phase1_shipped": "dev-docs/decisions/0038-solver-pass-restructuring.md",
+    "rules": "CLAUDE.md"
+  },
+  "status_legend": "todo = do it; in_progress = started; done = finished+verified+committed; blocked = needs a human; deferred = intentionally NOT run by this loop (specced for a later human-reviewed session). The loop works only todo/in_progress tasks and treats done+deferred as terminal.",
+  "notes": "Execution order = array order; the loop picks the first todo/in_progress task whose depends_on are all done, SKIPPING deferred/blocked. The verification GATE is `bun run test && bun run check && bun run prepack` (NODE tier). Browser-tier *.browser.test.ts files are AUTHORED (genuinely, exercising the feature) but NOT part of the gate. Line numbers are HINTS — verify against real code by grepping. This rev fixes the specific spec errors all three reviewers flagged.",
+  "tasks": [
+    {
+      "id": "P5-gauge",
+      "phase": "Phase 5",
+      "title": "Reference-anchored resolution normalization of viscosity + curl (in place)",
+      "status": "done",
+      "depends_on": [],
+      "risk": "low",
+      "spec": "Make `viscosity` and `curl` resolution-invariant by reinterpreting them INTERNALLY — NO new public fields, NO dual-field arbitration. Let N_ref = DEFAULTS.SIM_RESOLUTION (confirm = 128). Let w,h be the sim FBO dims; N_actual = min(w,h) = simResolution; the screen-isotropic cell size is h_cell = 1/min(w,h). VISCOSITY coefficient: today applyViscosity uses `uAlpha = VISCOSITY * dt * Math.max(w,h)` (~FluidEngine.ts:2644). Replace with the BYTE-IDENTITY-PRESERVING, O(N^2)-invariant gauge: `uAlpha = VISCOSITY * dt * Math.max(w,h) * (Math.min(w,h) / N_ref)`. This is EXACTLY today's value whenever min(w,h)==N_ref (any aspect ratio), and scales as O(N^2) with resolution (physically-consistent nu*dt/h^2). CURL/confinement: today curl is uploaded raw. Scale it by `(N_ref / Math.min(w,h))` so it is byte-identical at N_ref and resolution-normalized beyond. FACTOR both coefficient computations into PURE functions (no GL — e.g. `viscosityAlpha(viscosity, dt, w, h, nRef)` and `curlScale(curl, w, h, nRef)`) so they are node-testable. Keep the viscosity GLSL ((L+R+T+B)/(1+4*uAlpha)) and the vorticity GLSL UNCHANGED — coefficient/uniform math only. Retune ONLY the 4 simResolution-overriding flow presets (GasFlare/Venturi 160, Karman/TeslaValve 192 in registry.ts) so their feel matches their pre-change tuning; default-resolution presets need NO change by construction. Document the gauge + the 4 retuned values in the ADR.",
+      "files": [
+        "src/lib/engine/FluidEngine.ts (pure coeff helpers; applyViscosity uAlpha ~2644; vorticity curl uniform ~2791)",
+        "src/lib/presets/registry.ts (retune the 4 simResolution-overriding flow presets only)",
+        "src/lib/engine/__tests__/resolution-gauge.test.ts (new node unit tests on the pure helpers)",
+        "dev-docs/decisions/ (new ADR at next free number)"
+      ],
+      "acceptance": [
+        "NODE GATE green.",
+        "Node test: viscosityAlpha(...) equals the OLD formula VISCOSITY*dt*max(w,h) for several aspect ratios WHENEVER min(w,h)==N_ref (byte-identity at default resolution, any aspect).",
+        "Node test: at a FIXED aspect ratio, viscosityAlpha scales as O(N^2): alpha(2N)/alpha(N) == 4 (within float tolerance); curlScale == 1 at N_ref and == (N_ref/N) at resolution N.",
+        "ADR documents the gauge, N_ref, the screen-isotropic h convention (pinned epic-wide), and the 4 retuned preset values."
+      ],
+      "constraints": [
+        "Do NOT add new public config fields. Reinterpret viscosity/curl in place (pre-1.0, minor bump).",
+        "Do NOT edit viscosity/vorticity GLSL — coefficient/uniform math only.",
+        "Use the EXACT formula `max(w,h)*(min(w,h)/N_ref)` for alpha so byte-identity at N_ref holds on non-square canvases (all three reviewers flagged a naive min-only formula as wrong)."
+      ],
+      "note": "Implemented gauge helpers and preset retune values for GasFlare/Venturi/Karman/TeslaValve."
+    },
+	{
+		"id": "P5-adaptive",
+		"phase": "Phase 5",
+		"title": "Adaptive confinement via uAdaptiveMix uniform (byte-identical at 0)",
+		"status": "done",
+		"depends_on": ["P5-gauge"],
+		"risk": "low",
+      "spec": "Add adaptive vorticity confinement as a single uniform lerp in vorticityShader (~shaders.ts:1247-1278) and a new Bucket-A hot scalar config field `vorticityAdaptive` (0..1, DEFAULT 0). The confinement magnitude becomes `mix(eps_legacy, eps_legacy * smoothstep(LO, HI, abs(omega)), uAdaptiveMix)` where eps_legacy is the current curl-scaled magnitude and omega is the local vorticity. NOTE uCurl stores 0.5*vorticity (shaders.ts ~1242) — account for that when computing abs(omega); pick LO/HI as documented constants (normalized vorticity-magnitude thresholds) and justify them in the ADR. At uAdaptiveMix=0 the output MUST be byte-identical (pure lerp, no branch). Wire `vorticityAdaptive` as a Bucket-A hot scalar: add to FluidConfig + ResolvedConfig + DEFAULTS(=0) + resolveConfig pass-through; it must NOT trigger any FBO rebuild or shader recompile. Update the docs/configuration route and (if preset-facing) agent-docs. Factor the magnitude lerp math into a pure TS function for node testing.",
+      "files": [
+        "src/lib/engine/shaders.ts (vorticityShader: uAdaptiveMix lerp + uniform decl)",
+        "src/lib/engine/FluidEngine.ts (bind uAdaptiveMix in the vorticity pass; resolveConfig + DEFAULTS)",
+        "src/lib/engine/types.ts (vorticityAdaptive Bucket-A field + JSDoc)",
+        "src/lib/engine/__tests__/ (node: lerp math mirror + Bucket-A classification)",
+        "src/routes/docs/configuration/+page.svelte (document the field)"
+      ],
+      "acceptance": [
+        "NODE GATE green.",
+        "Node test: with adaptive mix 0, the magnitude lerp reduces EXACTLY to eps_legacy (byte-identity), via the factored pure function.",
+        "Node test: vorticityAdaptive is Bucket A (hot scalar — no FBO rebuild / no recompile), consistent with the existing setConfig test pattern; default is 0.",
+        "ADR documents adaptive confinement + the LO/HI thresholds.",
+        "docs/configuration updated."
+      ],
+      "constraints": [
+        "uAdaptiveMix=0 MUST be byte-identical. Single uniform lerp; NO keyword/Material, NO branch.",
+        "Do NOT add the boundary bugfix here (that is P5-boundary-fix) — keep this task purely the adaptive lerp so byte-identity-at-0 is clean."
+      ],
+      "note": "Implemented adaptive vorticity confinement with bucket-A uniform vorticityAdaptive, byte-identity-at-0 tests, docs update, and ADR."
+    },
+    {
+      "id": "P5-boundary-fix",
+      "phase": "Phase 5",
+      "title": "Confinement boundary bugfix — attenuate confinement near solids (intentional change)",
+      "status": "done",
+      "depends_on": ["P5-adaptive"],
+      "risk": "low-medium",
+      "spec": "Fix the bug that vorticity confinement injects momentum into boundary-adjacent cells, fighting projection where staircasing hurts (vorticityShader samples NO solid texture today). Bind the EXISTING binary neighbor-solidity texture (uSolidNeighbors / bakeSolidNeighborData, RGBA = per-face neighbor-solid flags L,R,T,B in container-shapes.ts ~341-364) into the vorticity pass — this is the same texture divergence/pressure already use; bind it via the existing bindSolidMaskUniforms helper pattern and ALWAYS bind every sampler the pass owns to a dedicated unit (ADR-0038 stale-unit gotcha; note the existing vorticity bind site has no texelSize uniform — do not introduce stale binds). Multiply the confinement force by the fluid-fraction attenuation `clamp(1.0 - max(L,R,T,B), 0.0, 1.0)` (full confinement in open cells, zero in cells touching any solid neighbor). This is an INTENTIONAL behavior change (a bugfix), NOT byte-identical — validate by 128 visual QA on an obstruction preset (Karman/Venturi) and document. Use the BINARY texture only; do NOT introduce fractional apertures (deferred Phase 3). Factor the attenuation math into a pure TS function for node testing.",
+      "files": [
+        "src/lib/engine/shaders.ts (vorticityShader: uSolidNeighbors sampler + attenuation multiply)",
+        "src/lib/engine/FluidEngine.ts (bind uSolidNeighbors in the vorticity pass via the existing solid-mask bind helper)",
+        "src/lib/engine/__tests__/ (node: attenuation math mirror)"
+      ],
+      "acceptance": [
+        "NODE GATE green.",
+        "Node test: the attenuation factor equals 1.0 when no neighbor is solid and 0.0 when any of L/R/T/B is solid (factored pure function).",
+        "The new sampler is always bound to a dedicated unit (real texture or 1x1 fallback) even when no obstruction is present (no GL_INVALID_OPERATION / feedback-loop risk).",
+        "ADR notes this is an intentional bugfix (not byte-identical) using the binary solid texture; fractional apertures explicitly deferred."
+      ],
+      "constraints": [
+        "This task is an INTENTIONAL behavior change — do NOT claim/require byte-identity.",
+        "Use the EXISTING binary uSolidNeighbors texture; NO fractional apertures, NO boundary normals.",
+        "Always bind every sampler to its dedicated unit, active or not."
+      ],
+      "note": "Implemented binary-neighbor confinement attenuation with vorticity-pass binding + node-attentuation test; ADR 0045 added."
+    },
+    {
+      "id": "P0-workspace",
+      "phase": "Phase 0",
+      "title": "Two-project vitest workspace (node default + env-gated browser tier)",
+		"status": "done",
+      "depends_on": [],
+      "risk": "medium",
+      "spec": "Split vitest into two projects WITHOUT changing what `bun run test` runs. devDeps `@vitest/browser` + `playwright` are ALREADY installed (do not install / no network). CRITICAL (all three reviewers): a vitest workspace runs ALL projects by default, so `vitest run` (= `bun run test`) would try to launch Chromium and FAIL the gate in this sandbox. Prevent it: create `vitest.workspace.ts` defining a `node` project (env jsdom/node; include `src/**/*.test.ts`; EXCLUDE `src/**/*.browser.test.ts`) and CONDITIONALLY include the `browser` project ONLY when `process.env.VITEST_BROWSER` is set (e.g. `...(process.env.VITEST_BROWSER ? [browserProject] : [])`). The browser project uses @vitest/browser with the playwright provider + headless Chromium (WebGL2), include `src/**/*.browser.test.ts`. Add a package.json script `test:browser` that runs `VITEST_BROWSER=1 vitest run --project browser` (or equivalent). LEAVE the `test` script unchanged so `bun run test` runs node-only and never launches a browser. Author one trivial `src/lib/engine/__benches__/smoke.browser.test.ts` (create a canvas, instantiate FluidEngine, assert a WebGL2 context exists) — AUTHORED, not gated, must be a genuine test.",
+      "files": [
+        "vitest.workspace.ts (new; node project + env-gated browser project)",
+        "vite.config.ts (keep test config compatible; the workspace governs projects)",
+        "package.json (add `test:browser`; do NOT change `test`)",
+        "src/lib/engine/__benches__/smoke.browser.test.ts (authored)"
+      ],
+      "acceptance": [
+        "NODE GATE green: `bun run test` runs the existing node suite ONLY, passes, and does NOT launch a browser (no Chromium/Playwright process; verify the browser project is env-gated off by default).",
+        "`bun run check` and `bun run prepack` pass.",
+        "`test:browser` script exists and targets only the browser project.",
+        "smoke.browser.test.ts is authored (genuine; not required to pass in this sandbox)."
+      ],
+      "constraints": [
+        "`bun run test` MUST stay node-only and browser-launch-free (env-gate the browser project).",
+        "Do NOT migrate existing tests to the browser tier.",
+        "No runtime deps; no `bun install`/network."
+      ],
+      "note": "Implemented explicit vitest v4 workspace via vitest.workspace.ts (node/browsed by env) and added vitest.config.ts bridge; browser suite now gated behind VITEST_BROWSER."
+    },
+    {
+      "id": "P0-readback",
+      "phase": "Phase 0",
+      "title": "readField() (@internal, stripped) + deterministic advance() + CPU reducers + scenes",
+      "status": "done",
+      "depends_on": ["P0-workspace"],
+      "risk": "medium",
+      "spec": "Build the deterministic-readback substrate (ADR-0042 §2). (1) On FluidEngine add `@internal readField(field, opts?)` returning {data,width,height,components}. Map the field NAME to its FBO via an EXPLICIT allowlist object — NOT this[field] — because the curl FBO is `curlFBO` while `this.curl`/config.CURL is a number (e.g. {velocity:this.velocity.read, dye:this.dye.read, pressure:this.pressure.read, divergence:this.divergence, curl:this.curlFBO}; verify exact field names by grepping). gl.readPixels into an instance-owned staging buffer; RGBA8 encode/decode path (works half-float/WebGL1) PLUS a direct gl.FLOAT path guarded by `gl.getExtension('EXT_color_buffer_float')` queried inside readField (the ctx requests it but discards the handle, gl-utils.ts ~169 — re-query, do not assume a capability bit exists). (2) Add `@internal` deterministic stepping: a constructor option to NOT auto-start rAF, plus `advance(steps, dt)` calling the private step(dt) exactly `steps` times. CRITICAL determinism fix (all three reviewers): time-dependent terms use performance.now() today (currentDensityDissipation burn-in, FluidEngine.ts ~616). Add an internal accumulated sim-time (advanced by dt per step) and have the burn-in/time terms read sim-time when in the no-autostart/deterministic mode, so advance() is reproducible; the normal rAF path keeps current behavior (scope the change to deterministic mode to avoid altering live burn-in). (3) ENABLE @internal stripping: add `\"stripInternal\": true` to tsconfig.json compilerOptions and mark readField/advance/the ctor option @internal, so they are excluded from dist .d.ts. (4) `src/lib/engine/__benches__/reducers.ts` — pure-TS GL-free: l2Norm, divergenceL2, trackPeakAlongPath, signChangeCount, fluxAcrossLine, fieldEnergy, hasNonFinite. (5) `src/lib/engine/__benches__/scenes.ts` — importable registry keyed dipole/kelvinHelmholtz/rayleighBenard/thinWallTeslaValve, each {config:FluidConfig, schedule (deterministic splats/forces via the mulberry32 Rng seed), thresholdBand}. Reducers get FULL node coverage; readField/advance/scenes get an AUTHORED browser test.",
+      "files": [
+        "src/lib/engine/FluidEngine.ts (@internal readField with explicit FBO allowlist; no-autostart ctor option; advance(steps,dt) + sim-time accumulator for deterministic mode)",
+        "tsconfig.json (add stripInternal:true)",
+        "src/lib/engine/__benches__/reducers.ts",
+        "src/lib/engine/__benches__/scenes.ts",
+        "src/lib/engine/__tests__/reducers.test.ts (node, synthetic arrays)",
+        "src/lib/engine/__benches__/readback.browser.test.ts (authored: advance dipole, readField velocity, assert fieldEnergy>floor)"
+      ],
+      "acceptance": [
+        "NODE GATE green.",
+        "reducers.test.ts covers EVERY reducer with synthetic typed-array known-answer fixtures (divergenceL2 of a divergence-free field ~0; signChangeCount on a crafted row; fluxAcrossLine on a constant field; hasNonFinite catches NaN/Inf; fieldEnergy on a known field).",
+        "After `bun run prepack`, grep `dist/**/*.d.ts` — it must NOT contain `readField` or `advance` (stripInternal working). publint/prepack stay clean. This is a NODE-GATEABLE check of the @internal claim.",
+        "readField uses an explicit field-name allowlist (not this[field]); advance() is deterministic in no-autostart mode (sim-time accumulator).",
+        "scenes.ts exports the 4 named scenes; an authored browser test wires dipole through advance+readField+fieldEnergy (genuine; not gated)."
+      ],
+      "constraints": [
+        "readField/advance must not import Svelte and add zero cost to the normal rAF path.",
+        "Map field name → FBO via an explicit object; the curl FBO is curlFBO, not this.curl.",
+        "Re-query EXT_color_buffer_float inside readField; do not assume an ExtInfo bit.",
+        "stripInternal:true must actually remove readField/advance from dist .d.ts (verify by grep)."
+      ],
+    "note": "Implemented deterministic no-autostart constructor path, explicit readField + advance internals, stripInternal-configured release visibility, pure reducers, and authored scene/readback harness."
+    },
+    {
+		"id": "P0-bench",
+		"phase": "Phase 0",
+		"title": "Restore /examples/bench interactive profiler + liveness guard",
+		"status": "done",
+		"depends_on": ["P0-readback"],
+      "risk": "medium",
+      "spec": "Restore an interactive dev profiler `src/routes/examples/bench/+page.svelte` importing its scene(s) from `__benches__/scenes.ts` (so it can never be orphaned by deleting the page). It runs a selected scene and exposes `window.__benchResult = { meanMs, p50, p95, fps, energy, done }`. Per-pass GPU timing via EXT_disjoint_timer_query_webgl2 (async poll + GPU_DISJOINT check) behind a default-off `instrument` constructor option, with a requestAnimationFrame-EMA fallback. LIVENESS GUARD (mandatory): after warmup, compute fieldEnergy via readField and refuse to set `__benchResult.done` / report numbers unless energy > floor AND !hasNonFinite (a blank canvas from a constructor throw benchmarks as a fake 120fps win). The `instrument?:boolean` ctor flag, only when true, wraps named solver passes (curl/vorticity/advect/viscosity/divergence/pressure/gradient) in begin/endQuery; OFF by default = zero hot-loop cost. This task does NOT need its own ADR — it is covered by the Phase 0 harness ADR written in P0-readback (extend that ADR if needed).",
+      "files": [
+        "src/routes/examples/bench/+page.svelte",
+        "src/lib/engine/FluidEngine.ts (instrument?:boolean ctor flag + default-off per-pass timer hooks)",
+        "src/routes/examples/+page.svelte (link the bench route if an examples index exists)"
+      ],
+      "acceptance": [
+        "NODE GATE green (svelte-check type-checks the new route).",
+        "The bench route imports scenes from __benches__/scenes.ts (shared, not inlined).",
+        "instrument defaults to false; with it false there is zero timer-query work in the frame loop.",
+        "The liveness guard is present (numbers not trusted below the energy floor or with non-finite values)."
+      ],
+      "constraints": [
+        "Timer-query numbers are interactive/dev only — never a CI assertion.",
+        "instrument off by default; no production hot-path cost.",
+        "Scenes imported from __benches__/scenes.ts — do NOT inline scene defs."
+      ],
+		"note": "Implemented /examples/bench page with shared scenes, default-off instrumentation, benchmark timing fallback, and liveness-gated __benchResult export."
+	},
+    {
+      "id": "P2-maccormack-shader",
+      "phase": "Phase 2",
+      "title": "[DEFERRED] MacCormack velocity advection — dedicated program, 2-pass, limiter+guards",
+      "status": "deferred",
+      "depends_on": ["P0-readback"],
+      "risk": "high",
+      "deferred_reason": "All three plan reviewers (codex/grok/agy) flagged MacCormack as too underspecified and UNVERIFIABLE by the node gate for an unattended loop (its acceptance — dipole vortex retention, NaN soak — is GPU-readback-only). Implement in a focused, human-reviewed session AFTER the Phase 0 harness exists to validate it. The corrected design is recorded below so that session can execute it directly.",
+      "spec": "DESIGN OF RECORD (for the future human-reviewed session, not this loop): The single `advectionProgram` is SHARED by advectVelocity/advectDye/advectScalar — composing a MACCORMACK keyword onto it would corrupt dye(1024^2)/scalar. Therefore compile a DEDICATED velocity-MacCormack program (separate compile, MACCORMACK keyword + MANUAL_FILTERING as applicable) used ONLY in advectVelocity; advectDye/advectScalar keep the plain program. TWO-PASS choreography: pass A = forward semi-Lagrangian advect velocity into the existing `velocitySource` sim-res scratch FBO (phi_hat); pass B reads velocity.read (phi^n) + velocitySource (phi_hat), does an INLINE backward trace + the Selle-2008 limiter (clamp the corrected value to the min/max of phi^n's bilinear fetch stencil at the forward-backtrace position) + first-order fallback guards, writing velocity.write. velocitySource is reused transiently (viscosity repopulates it afterward — advection runs before viscosity; assert the ordering in a comment). SOLID guard: use the inline-mask VALUE already computed in the advection shader (container/obstruction solidity via inlineMaskGLSL) — NOT uSolidNeighbors (which is not bound in advection). OPEN-EDGE guard: plumb uOpenEdges into advectVelocity via flowOpenEdges() (currently divergence-only) and fall back to first-order within 2 cells of an open edge. Keep the ±1000 velocity clamp backstop. Velocity-only; NO dye MacCormack; NO runtime Material; NO public advectionScheme field. The #else (semi-Lagrangian) source must stay byte-identical.",
+      "files": [
+        "src/lib/engine/shaders.ts (dedicated velocity-MacCormack shader / MACCORMACK branch)",
+        "src/lib/engine/FluidEngine.ts (dedicated velocity-advection program; 2-pass advectVelocity; uOpenEdges plumbing; velocitySource ordering comment)",
+        "src/lib/engine/__tests__/ + src/lib/engine/__benches__/dipole.browser.test.ts"
+      ],
+      "acceptance": [
+        "NODE: SL path byte-identical (shader-string assertion); TS limiter-math mirror; dye/scalar advection UNCHANGED (still use the plain program).",
+        "HARNESS (browser, human-validated): dipole vorticity retention >=30% at x=0.9 @ simRes 128 with MacCormack (SL <10%); NaN/Inf soak at max SPLAT_FORCE with open boundaries passes."
+      ],
+      "constraints": [
+        "DEFERRED — do NOT run in this loop.",
+        "Dedicated velocity program (do NOT keyword the shared advectionProgram — it corrupts dye/scalar).",
+        "Velocity-only; no public knob; no runtime Material; #else SL path byte-identical."
+      ],
+      "note": "Deferred by 3-model review consensus 2026-06-25."
+    },
+    {
+      "id": "P2-maccormack-wire",
+      "phase": "Phase 2",
+      "title": "[DEFERRED] Enable MacCormack via internal capability gate; preset retune",
+      "status": "deferred",
+      "depends_on": ["P2-maccormack-shader"],
+      "risk": "high",
+      "deferred_reason": "Depends on P2-maccormack-shader (deferred) and its visual/perf acceptance is GPU-only. Human-reviewed session with the harness.",
+      "spec": "DESIGN OF RECORD: enable the dedicated velocity-MacCormack program when the device supports linear filtering (force OFF on the MANUAL_FILTERING / no-linear-filtering path), decided ONCE at construction like MANUAL_FILTERING (there is no pre-existing 'quality tier' flag — the capability check IS the gate; do not invent one). Provide an internal/construct-only kill-switch for soak/A-B; NO public advectionScheme. Retune presets with MacCormack on, but note (agy): MacCormack is forced off on mobile/no-linear-filtering, so confinement reductions tuned for desktop must not make mobile (semi-Lagrangian) presets look dull — keep confinement values that read well in BOTH regimes or document the trade-off. Avoid double-retuning the 4 presets P5-gauge already adjusted (coordinate the numbers).",
+      "files": [
+        "src/lib/engine/FluidEngine.ts (capability gate + kill-switch)",
+        "src/lib/presets/registry.ts (retune)",
+        "src/lib/engine/__benches__/maccormack-soak.browser.test.ts"
+      ],
+      "acceptance": [
+        "NODE: MacCormack forced OFF when supportLinearFiltering is false; no public advectionScheme added to the type surface.",
+        "HARNESS (human-validated): authored dipole retention + NaN soak browser tests; mobile (SL) presets still look intentional."
+      ],
+      "constraints": [
+        "DEFERRED — do NOT run in this loop.",
+        "No public knob; internal capability gate only; mind the mobile-dullness trade-off."
+      ],
+      "note": "Deferred by 3-model review consensus 2026-06-25."
+    }
+  ]
+}

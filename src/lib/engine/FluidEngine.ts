@@ -87,6 +87,7 @@ import {
 	type MaskContext
 } from './container-shapes.js';
 import * as S from './shaders.js';
+import { VORTICITY_ADAPTIVE_LO, VORTICITY_ADAPTIVE_HI } from './shaders.js';
 
 const FLOW_SOURCE_BATCH_SIZE = 4;
 const FLOW_OUTLET_BATCH_SIZE = 4;
@@ -114,6 +115,66 @@ interface FlowOutletBatchEntry {
 	keep: number;
 }
 
+type ReadField = 'velocity' | 'dye' | 'pressure' | 'divergence' | 'curl' | 'scalar';
+
+interface ReadFieldOptions {
+	components?: 1 | 2 | 3 | 4;
+}
+
+/** @internal */
+export interface ReadFieldResult {
+	readonly data: Float32Array;
+	readonly width: number;
+	readonly height: number;
+	readonly components: number;
+}
+
+type BenchPass = 'curl' | 'vorticity' | 'advect' | 'viscosity' | 'divergence' | 'pressure' | 'gradient';
+
+/** @internal */
+type BenchPassSamples = {
+	[K in BenchPass]: number[];
+};
+
+interface BenchFrameProfile {
+	passMs: Partial<BenchPassSamples>;
+	pendingQueries: number;
+	ended: boolean;
+}
+
+interface PendingBenchQuery {
+	pass: BenchPass;
+	query: WebGLQuery;
+	frame: number;
+}
+
+interface TimerQueryExtension {
+	TIME_ELAPSED_EXT: number;
+	QUERY_RESULT_AVAILABLE_EXT: number;
+	QUERY_RESULT_EXT: number;
+	GPU_DISJOINT_EXT: number;
+	createQueryEXT(): WebGLQuery | null;
+	deleteQueryEXT(query: WebGLQuery): void;
+	beginQueryEXT(target: number, query: WebGLQuery): void;
+	endQueryEXT(target: number): void;
+	getQueryObjectEXT(query: WebGLQuery, pname: number): boolean | number | null;
+}
+
+interface BenchProfileState {
+	ext: TimerQueryExtension;
+	currentFrame: number;
+	pending: PendingBenchQuery[];
+	frames: Map<number, BenchFrameProfile>;
+	frameSamples: number[];
+	passSamples: BenchPassSamples;
+}
+
+/** @internal */
+interface BenchTimings {
+	readonly frameMs: number[];
+	readonly passMs: BenchPassSamples;
+}
+
 /* -------------------------------------------------------------------------- */
 /*                                  Defaults                                  */
 /* -------------------------------------------------------------------------- */
@@ -135,6 +196,7 @@ export const DEFAULTS: ResolvedConfig = {
 	PRESSURE: 0.8,
 	PRESSURE_ITERATIONS: 20,
 	CURL: 30,
+	VORTICITY_ADAPTIVE: 0,
 	SPLAT_RADIUS: 0.25,
 	SPLAT_FORCE: 6000,
 	SHADING: true,
@@ -228,6 +290,9 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 	if (input.pressure !== undefined) out.PRESSURE = input.pressure;
 	if (input.pressureIterations !== undefined) out.PRESSURE_ITERATIONS = input.pressureIterations;
 	if (input.curl !== undefined) out.CURL = input.curl;
+	if (input.vorticityAdaptive !== undefined) {
+		out.VORTICITY_ADAPTIVE = clamp01(input.vorticityAdaptive);
+	}
 	if (input.splatRadius !== undefined) out.SPLAT_RADIUS = input.splatRadius;
 	if (input.splatForce !== undefined) out.SPLAT_FORCE = input.splatForce;
 	if (input.shading !== undefined) out.SHADING = input.shading;
@@ -391,6 +456,76 @@ function clamp01(value: number): number {
 	return Math.max(0, Math.min(1, value));
 }
 
+// Single-sourced in shaders.ts (alongside the GLSL that consumes them) to keep
+// the GLSL band, this TypeScript mirror, and the tests from drifting apart.
+// Imported above for local default-parameter use; re-exported so existing
+// importers (and tests) that read these from FluidEngine keep working.
+export { VORTICITY_ADAPTIVE_LO, VORTICITY_ADAPTIVE_HI };
+
+/**
+ * Resolution-aware viscosity coefficient used at the CPU-facing uniform site.
+ *
+ * We keep the old formula at N_actual = N_ref (screen-isotropic default resolution)
+ * so existing default-presets stay byte-identical while preserving O(N^2)-invariant
+ * diffusion behavior as sim resolution changes.
+ */
+export function viscosityAlpha(viscosity: number, dt: number, width: number, height: number, nRef = DEFAULTS.SIM_RESOLUTION): number {
+	const nActual = Math.min(width, height);
+	return viscosity * dt * Math.max(width, height) * (nActual / nRef);
+}
+
+/**
+ * Resolution-aware vorticity confinement gain multiplier.
+ *
+ * This keeps the default-resolution gain unchanged and scales confinement strength
+ * with 1/N when sim resolution increases, matching the same screen-space cell
+ * size convention as viscosity scaling.
+ */
+export function curlScale(curl: number, width: number, height: number, nRef = DEFAULTS.SIM_RESOLUTION): number {
+	const nActual = Math.min(width, height);
+	return curl * (nRef / nActual);
+}
+
+/**
+ * Keep vorticity confinement byte-identical when adaptive mix is 0, and
+ * progressively gate the legacy magnitude only where local rotation is strong.
+ *
+ * `curlSample` is the legacy vorticity field value from `curlShader`, where
+ * the actual vorticity magnitude is `2 * curlSample`.
+ */
+export function adaptiveConfinementMagnitude(
+	curl: number,
+	curlSample: number,
+	adaptiveMix: number,
+	lo = VORTICITY_ADAPTIVE_LO,
+	hi = VORTICITY_ADAPTIVE_HI
+): number {
+	const epsLegacy = curl * curlSample;
+	if (adaptiveMix <= 0 || lo >= hi) {
+		return epsLegacy;
+	}
+
+	const omega = Math.abs(curlSample * 2);
+	// Match the GLSL `smoothstep(lo, hi, omega)` (cubic Hermite) exactly, not a
+	// linear ramp — otherwise this mirror disagrees with the shader mid-band.
+	const t = clamp01((omega - lo) / (hi - lo));
+	const scale = t * t * (3 - 2 * t);
+	const epsAdaptive = epsLegacy * scale;
+	const mix = clamp01(adaptiveMix);
+	return epsLegacy + (epsAdaptive - epsLegacy) * mix;
+}
+
+/**
+ * Compute the boundary confinement attenuation from pre-baked face-solidity flags.
+ *
+ * Neighbors are stored in rgba order L/R/T/B with binary values; any solid
+ * adjacent face suppresses confinement for that cell by attenuating the force
+ * all the way to zero.
+ */
+export function solidNeighborConfinementAttenuation(left: number, right: number, top: number, bottom: number): number {
+	return clamp01(1.0 - Math.max(Math.max(left, right), Math.max(top, bottom)));
+}
+
 /* -------------------------------------------------------------------------- */
 /*                                FluidEngine                                 */
 /* -------------------------------------------------------------------------- */
@@ -398,6 +533,13 @@ function clamp01(value: number): number {
 export interface FluidEngineOptions {
 	canvas: HTMLCanvasElement;
 	config?: FluidConfig;
+	/** @internal Construct without auto-starting the requestAnimationFrame loop. */
+	autoStart?: boolean;
+	/**
+	 * @internal Benchmark instrumentation switch. When enabled, selected solver
+	 * passes are wrapped in EXT_disjoint_timer_query_webgl2 queries.
+	 */
+	instrument?: boolean;
 }
 
 export class FluidEngine implements FluidHandle {
@@ -504,6 +646,8 @@ export class FluidEngine implements FluidHandle {
 	private splatStack: number[] = [];
 	private lastUpdateTime = 0;
 	private engineStartTime = 0;
+	private simTime = 0;
+	private deterministicMode = false;
 	private colorUpdateTimer = 0;
 	private autoSplatTimer = 0;
 	private rafId = 0;
@@ -524,6 +668,17 @@ export class FluidEngine implements FluidHandle {
 	private flowOutletBatchFrom = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
 	private flowOutletBatchTo = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
 	private flowOutletBatchWidth = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
+	private autoStart = true;
+	private benchmarkInstrument = false;
+	private readbackUint8Buffer = new Uint8Array(0);
+	private readbackFloatBuffer = new Float32Array(0);
+	private benchProfileState: BenchProfileState | null = null;
+	private benchProfileActiveFrame = -1;
+	private benchProfileSampleLimit = 240;
+	// Whether the current pass actually began a timer query. When the query pool
+	// is exhausted createQueryEXT() returns null and we never call beginQueryEXT,
+	// so endBenchPass must not blindly call endQueryEXT (GL_INVALID_OPERATION).
+	private benchPassQueryActive = false;
 	private flowOutletBatchKeep = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
 
 	// --- Bound listeners ---
@@ -542,6 +697,9 @@ export class FluidEngine implements FluidHandle {
 		this.canvas = opts.canvas;
 		const seed = opts.config?.seed ?? randomSeed();
 		this.config = resolveConfig({ ...opts.config, seed }, DEFAULTS);
+		this.benchmarkInstrument = opts.instrument ?? false;
+		this.autoStart = opts.autoStart ?? true;
+		this.deterministicMode = !this.autoStart;
 		this.normalizedBackColor = normalizeColor(this.config.BACK_COLOR);
 		this.rng = mulberry32(this.config.SEED);
 
@@ -551,6 +709,7 @@ export class FluidEngine implements FluidHandle {
 		// if it does, release the context slot we already hold so a failed
 		// construction doesn't orphan a GL context, then re-throw.
 		this.initContext();
+		this.initBenchmarkProfiler();
 		try {
 			this.compileShaders();
 			this.initBuffersAndPrograms();
@@ -592,7 +751,10 @@ export class FluidEngine implements FluidHandle {
 
 			this.lastUpdateTime = performance.now();
 			this.engineStartTime = this.lastUpdateTime;
-			this.startRaf();
+			this.simTime = 0;
+			if (this.autoStart) {
+				this.startRaf();
+			}
 		} catch (err) {
 			// Unlike dispose() (which deliberately keeps the context for lazy
 			// rebuild — invariant #6), a construction failure has no instance to
@@ -616,7 +778,9 @@ export class FluidEngine implements FluidHandle {
 	private currentDensityDissipation(): number {
 		const duration = this.config.INITIAL_DENSITY_DISSIPATION_DURATION;
 		if (duration <= 0) return this.config.DENSITY_DISSIPATION;
-		const elapsed = (performance.now() - this.engineStartTime) / 1000;
+		const elapsed = this.deterministicMode
+			? this.simTime
+			: (performance.now() - this.engineStartTime) / 1000;
 		if (elapsed >= duration) return this.config.DENSITY_DISSIPATION;
 		const t = elapsed / duration;
 		return this.config.INITIAL_DENSITY_DISSIPATION * (1 - t) + this.config.DENSITY_DISSIPATION * t;
@@ -665,6 +829,127 @@ export class FluidEngine implements FluidHandle {
 		if (this.rafRunning || this.disposed || this.contextLost) return;
 		this.lastUpdateTime = performance.now();
 		this.startRaf();
+	}
+
+	/**
+	 * @internal Advance the simulator by a fixed number of identical steps.
+	 *
+	 * Deterministic harnesses call this with fixed `dt` instead of relying on
+	 * wall-clock timing. This uses the same private step path as the live RAF
+	 * loop while keeping the timebase deterministic.
+	 */
+	advance(steps: number, dt: number): void {
+		if (this.disposed || this.contextLost) return;
+		if (!Number.isFinite(steps) || steps <= 0 || dt <= 0) return;
+		const count = Math.max(0, Math.floor(steps));
+		for (let i = 0; i < count; i++) {
+			this.step(dt);
+		}
+	}
+
+	/**
+	 * @internal Read a field into a new float array.
+	 *
+	 * Useful for deterministic regression tests that need CPU-side reductions.
+	 * `readField` intentionally avoids touching Svelte state and uses an
+	 * instance-owned staging buffer so repeated calls do not allocate.
+	 */
+	readField(field: ReadField, options: ReadFieldOptions = {}): ReadFieldResult {
+		if (this.disposed || this.contextLost) {
+			throw new Error('svelte-fluid: cannot readField while context is unavailable');
+		}
+
+		let spec: { fbo: FBO; components: 1 | 2 | 3 | 4 };
+		if (field === 'velocity') spec = { fbo: this.velocity.read, components: 2 };
+		else if (field === 'dye') spec = { fbo: this.dye.read, components: 4 };
+		else if (field === 'pressure') spec = { fbo: this.pressure.read, components: 1 };
+		else if (field === 'divergence') spec = { fbo: this.divergence, components: 1 };
+		else if (field === 'curl') spec = { fbo: this.curlFBO, components: 1 };
+		else if (field === 'scalar') {
+			if (!this.scalar) {
+				throw new Error('svelte-fluid: scalar field is not allocated for this engine');
+			}
+			spec = { fbo: this.scalar.read, components: 4 };
+		} else {
+			throw new Error(`svelte-fluid: unknown readField target "${field}"`);
+		}
+
+		let components = options.components ?? spec.components;
+		if (components > spec.components) {
+			components = spec.components;
+		}
+
+		const width = spec.fbo.width;
+		const height = spec.fbo.height;
+		// Always read RGBA. WebGL2 readPixels only reliably accepts RGBA (or the
+		// driver's queried IMPLEMENTATION_COLOR_READ_FORMAT); RG/RED + FLOAT raises
+		// INVALID_OPERATION on common drivers (ANGLE) and silently leaves the
+		// staging buffer zero-filled. We slice the wanted channels below.
+		const sourceComponents = 4;
+		const pixelCount = width * height;
+		const sourceCount = pixelCount * sourceComponents;
+		this.ensureReadFieldBuffers(sourceCount);
+
+		const gl = this.gl;
+		gl.bindFramebuffer(gl.FRAMEBUFFER, spec.fbo.fbo);
+		// Re-query instead of caching extension objects in {@link ExtInfo}; the
+		// extension can become unavailable on context restores or browser-variant
+		// drivers, and this path is strictly read-only.
+		const floatPath = this.ext.isWebGL2 && gl.getExtension('EXT_color_buffer_float') !== null;
+		if (floatPath) {
+			const gl2 = gl as WebGL2RenderingContext;
+			const format = sourceComponents === 4 ? gl2.RGBA : sourceComponents === 2 ? gl2.RG : gl2.RED;
+			gl2.readPixels(0, 0, width, height, format, gl.FLOAT, this.readbackFloatBuffer);
+		} else {
+			// The byte path normalizes by /255, which only makes sense for the
+			// 0..1 dye field. velocity/pressure/divergence/curl carry signed and
+			// large-magnitude values, so /255 would silently return garbage.
+			if (field !== 'dye') {
+				throw new Error(
+					`svelte-fluid: readField('${field}') requires EXT_color_buffer_float; only dye is byte-readable`
+				);
+			}
+			const gl2 = gl as WebGL2RenderingContext;
+			const format = this.ext.isWebGL2
+				? sourceComponents === 4
+					? gl2.RGBA
+					: sourceComponents === 2
+						? gl2.RG
+						: gl2.RED
+				: gl.RGBA;
+			gl.readPixels(0, 0, width, height, format, gl.UNSIGNED_BYTE, this.readbackUint8Buffer);
+		}
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+		const data = new Float32Array(width * height * components);
+		if (floatPath) {
+			for (let i = 0; i < pixelCount; i++) {
+				const sourceOffset = i * sourceComponents;
+				const outOffset = i * components;
+				for (let c = 0; c < components; c++) {
+					data[outOffset + c] = this.readbackFloatBuffer[sourceOffset + c];
+				}
+			}
+		} else {
+			for (let i = 0; i < pixelCount; i++) {
+				const sourceOffset = i * sourceComponents;
+				const outOffset = i * components;
+				for (let c = 0; c < components; c++) {
+					data[outOffset + c] = this.readbackUint8Buffer[sourceOffset + c] / 255;
+				}
+			}
+		}
+
+		return { data, width, height, components };
+	}
+
+	private ensureReadFieldBuffers(sourceCount: number): void {
+		if (this.readbackFloatBuffer.length < sourceCount) {
+			this.readbackFloatBuffer = new Float32Array(sourceCount);
+		}
+		if (this.readbackUint8Buffer.length < sourceCount) {
+			this.readbackUint8Buffer = new Uint8Array(sourceCount);
+		}
 	}
 
 	get isPaused(): boolean {
@@ -772,8 +1057,10 @@ export class FluidEngine implements FluidHandle {
 
 	private handleContextRestored(): void {
 		this.contextLost = false;
+		this.disposeBenchmarkProfiler();
 		// Full reinit — the GL state is wiped on context loss.
 		this.initContext();
+		this.initBenchmarkProfiler();
 		this.compileShaders();
 		this.initBuffersAndPrograms();
 		this.ditheringTexture.dispose(); // prevent stale image.onload from touching the new context
@@ -799,7 +1086,9 @@ export class FluidEngine implements FluidHandle {
 			this.installPointerListeners();
 		}
 		this.lastUpdateTime = performance.now();
-		this.startRaf();
+		if (this.autoStart) {
+			this.startRaf();
+		}
 	}
 
 	dispose(): void {
@@ -808,6 +1097,7 @@ export class FluidEngine implements FluidHandle {
 
 		cancelAnimationFrame(this.rafId);
 		this.rafRunning = false;
+		this.disposeBenchmarkProfiler();
 
 		this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
 		this.canvas.removeEventListener('webglcontextrestored', this.onContextRestored);
@@ -957,6 +1247,219 @@ export class FluidEngine implements FluidHandle {
 			this.config.GLASS = false;
 			this.config.DYE_RESOLUTION = Math.min(this.config.DYE_RESOLUTION, 512);
 		}
+	}
+
+	private initBenchmarkProfiler(): void {
+		if (!this.benchmarkInstrument) {
+			this.benchProfileState = null;
+			return;
+		}
+
+		const gl = this.gl;
+		const ext = gl.getExtension('EXT_disjoint_timer_query_webgl2') as TimerQueryExtension | null;
+		if (!ext) {
+			this.benchProfileState = null;
+			return;
+		}
+
+		this.benchProfileState = {
+			ext,
+			currentFrame: 0,
+			pending: [],
+			frames: new Map<number, BenchFrameProfile>(),
+			frameSamples: [],
+			passSamples: {
+				curl: [],
+				vorticity: [],
+				advect: [],
+				viscosity: [],
+				divergence: [],
+				pressure: [],
+				gradient: []
+			}
+		};
+		this.benchProfileActiveFrame = -1;
+	}
+
+	private disposeBenchmarkProfiler(): void {
+		const state = this.benchProfileState;
+		if (!state) return;
+
+		const gl = this.gl;
+		for (const pending of state.pending) {
+			state.ext.deleteQueryEXT(pending.query);
+		}
+		state.pending = [];
+		state.frames.clear();
+		this.benchProfileState = null;
+		this.benchProfileActiveFrame = -1;
+	}
+
+	private beginBenchFrame(): void {
+		const state = this.benchProfileState;
+		if (!state || this.benchProfileActiveFrame >= 0) return;
+
+		const frame = state.currentFrame++;
+		state.frames.set(frame, {
+			passMs: {},
+			pendingQueries: 0,
+			ended: false
+		});
+		this.benchProfileActiveFrame = frame;
+	}
+
+	private endBenchFrame(): void {
+		const state = this.benchProfileState;
+		if (!state || this.benchProfileActiveFrame < 0) return;
+
+		const frameProfile = state.frames.get(this.benchProfileActiveFrame);
+		if (frameProfile) {
+			frameProfile.ended = true;
+		}
+		this.benchProfileActiveFrame = -1;
+		this.finalizeReadyBenchFrames();
+	}
+
+	private beginBenchPass(pass: BenchPass): void {
+		this.benchPassQueryActive = false;
+		const state = this.benchProfileState;
+		if (!state || this.benchProfileActiveFrame < 0) return;
+		const frameProfile = state.frames.get(this.benchProfileActiveFrame);
+		if (!frameProfile) return;
+
+		const query = state.ext.createQueryEXT();
+		if (!query) return;
+
+		state.ext.beginQueryEXT(state.ext.TIME_ELAPSED_EXT, query);
+		this.benchPassQueryActive = true;
+		frameProfile.pendingQueries += 1;
+		state.pending.push({ pass, query, frame: this.benchProfileActiveFrame });
+	}
+
+	private endBenchPass(): void {
+		const state = this.benchProfileState;
+		// Only close the query if begin actually opened one; otherwise endQueryEXT
+		// raises GL_INVALID_OPERATION (no active TIME_ELAPSED_EXT query).
+		if (!state || !this.benchPassQueryActive) return;
+		this.benchPassQueryActive = false;
+		state.ext.endQueryEXT(state.ext.TIME_ELAPSED_EXT);
+	}
+
+	private trimBenchSamples(samples: number[]): void {
+		while (samples.length > this.benchProfileSampleLimit) samples.shift();
+	}
+
+	private pushBenchPassSample(frame: number, pass: BenchPass, ms: number): void {
+		const state = this.benchProfileState;
+		if (!state) return;
+
+		const frameProfile = state.frames.get(frame);
+		if (!frameProfile) return;
+
+		const frameSamples = frameProfile.passMs[pass] ?? [];
+		frameSamples.push(ms);
+		frameProfile.passMs[pass] = frameSamples;
+		this.trimBenchSamples(frameSamples);
+
+		const aggregateSamples = state.passSamples[pass];
+		aggregateSamples.push(ms);
+		this.trimBenchSamples(aggregateSamples);
+		frameProfile.pendingQueries = Math.max(0, frameProfile.pendingQueries - 1);
+	}
+
+	private finalizeBenchFrame(frame: number, frameProfile: BenchFrameProfile, state: BenchProfileState): void {
+		let total = 0;
+		for (const values of Object.values(frameProfile.passMs)) {
+			if (!values) continue;
+			for (const sample of values) {
+				total += sample;
+			}
+		}
+
+		state.frameSamples.push(total);
+		this.trimBenchSamples(state.frameSamples);
+		state.frames.delete(frame);
+	}
+
+	private finalizeReadyBenchFrames(): void {
+		const state = this.benchProfileState;
+		if (!state) return;
+		for (const [frame, frameProfile] of state.frames) {
+			if (!frameProfile.ended) continue;
+			if (frameProfile.pendingQueries > 0) continue;
+			this.finalizeBenchFrame(frame, frameProfile, state);
+		}
+	}
+
+	private pollBenchQueries(): void {
+		const state = this.benchProfileState;
+		if (!state) return;
+
+		const gl = this.gl;
+		const pending = state.pending;
+		const keep: PendingBenchQuery[] = [];
+
+		// Reading GPU_DISJOINT_EXT RESETS it to false, so a per-query read would
+		// let only the first query in this poll observe a disjoint event and the
+		// rest would accept timings spanning it. Read it exactly once and apply
+		// that single result to every query finalized in this poll.
+		const disjoint = !!gl.getParameter(state.ext.GPU_DISJOINT_EXT);
+
+		for (const item of pending) {
+			const available = state.ext.getQueryObjectEXT(item.query, state.ext.QUERY_RESULT_AVAILABLE_EXT);
+			if (!available) {
+				keep.push(item);
+				continue;
+			}
+
+			const frameProfile = state.frames.get(item.frame);
+			if (frameProfile) {
+				if (!disjoint) {
+					const nanos = state.ext.getQueryObjectEXT(item.query, state.ext.QUERY_RESULT_EXT);
+					if (typeof nanos === 'number' && Number.isFinite(nanos)) {
+						this.pushBenchPassSample(item.frame, item.pass, nanos / 1_000_000);
+					} else {
+						frameProfile.pendingQueries = Math.max(0, frameProfile.pendingQueries - 1);
+					}
+				} else {
+					frameProfile.pendingQueries = Math.max(0, frameProfile.pendingQueries - 1);
+				}
+			} else {
+				// no frame to attach this sample to; avoid leaking counters
+			}
+
+			state.ext.deleteQueryEXT(item.query);
+		}
+
+		state.pending = keep;
+		this.finalizeReadyBenchFrames();
+	}
+
+	/** @internal */
+	getBenchTimings(): BenchTimings | null {
+		this.pollBenchQueries();
+		const state = this.benchProfileState;
+		if (!state) return null;
+
+		const passMs: BenchPassSamples = {
+			curl: [...state.passSamples.curl],
+			vorticity: [...state.passSamples.vorticity],
+			advect: [...state.passSamples.advect],
+			viscosity: [...state.passSamples.viscosity],
+			divergence: [...state.passSamples.divergence],
+			pressure: [...state.passSamples.pressure],
+			gradient: [...state.passSamples.gradient]
+		};
+
+		return {
+			frameMs: [...state.frameSamples],
+			passMs
+		};
+	}
+
+	/** @internal */
+	isBenchmarkTimed(): boolean {
+		return !!this.benchProfileState;
 	}
 
 	private compileShaders(): void {
@@ -2400,6 +2903,7 @@ export class FluidEngine implements FluidHandle {
 	}
 
 	private advectVelocity(dt: number): void {
+		this.beginBenchPass('advect');
 		const gl = this.gl;
 		this.advectionProgram.bind();
 		this.bindInlineMaskUniforms(this.advectionProgram.uniforms, 2, 3);
@@ -2430,9 +2934,11 @@ export class FluidEngine implements FluidHandle {
 		);
 		this.blit(this.velocity.write);
 		this.velocity.swap();
+		this.endBenchPass();
 	}
 
 	private advectDye(dt: number): void {
+		this.beginBenchPass('advect');
 		const gl = this.gl;
 		this.advectionProgram.bind();
 		this.bindInlineMaskUniforms(this.advectionProgram.uniforms, 2, 3);
@@ -2455,10 +2961,12 @@ export class FluidEngine implements FluidHandle {
 		gl.uniform1f(this.advectionProgram.uniforms.dissipation, this.currentDensityDissipation());
 		this.blit(this.dye.write);
 		this.dye.swap();
+		this.endBenchPass();
 	}
 
 	private advectScalar(dt: number): void {
 		if (!this.scalar) return;
+		this.beginBenchPass('advect');
 		const gl = this.gl;
 		this.advectionProgram.bind();
 		this.bindInlineMaskUniforms(this.advectionProgram.uniforms, 2, 3);
@@ -2485,6 +2993,7 @@ export class FluidEngine implements FluidHandle {
 		gl.uniform1f(this.advectionProgram.uniforms.dissipation, this.currentDensityDissipation());
 		this.blit(this.scalar.write);
 		this.scalar.swap();
+		this.endBenchPass();
 	}
 
 	private flowOpenEdges(): [number, number, number, number] {
@@ -2629,6 +3138,7 @@ export class FluidEngine implements FluidHandle {
 	private applyViscosity(dt: number): void {
 		const iterations = this.config.VISCOSITY_ITERATIONS;
 		if (this.config.VISCOSITY <= 0 || iterations <= 0) return;
+		this.beginBenchPass('viscosity');
 		const gl = this.gl;
 
 		this.copyProgram.bind();
@@ -2641,7 +3151,7 @@ export class FluidEngine implements FluidHandle {
 		this.bindSolidMaskUniforms(this.viscosityProgram.uniforms, 2, 3);
 		gl.uniform1f(
 			this.viscosityProgram.uniforms.uAlpha,
-			this.config.VISCOSITY * dt * Math.max(this.velocity.width, this.velocity.height)
+			viscosityAlpha(this.config.VISCOSITY, dt, this.velocity.width, this.velocity.height)
 		);
 		// Mask samplers bind up front so their units never alias the velocity
 		// FBO mid-loop; the crop itself applies only on the final iteration —
@@ -2656,6 +3166,7 @@ export class FluidEngine implements FluidHandle {
 			this.blit(this.velocity.write);
 			this.velocity.swap();
 		}
+		this.endBenchPass();
 	}
 
 	private applyWallFriction(): void {
@@ -2673,6 +3184,7 @@ export class FluidEngine implements FluidHandle {
 
 	private projectVelocity(): void {
 		const gl = this.gl;
+		this.beginBenchPass('divergence');
 		this.divergenceProgram.bind();
 		gl.uniform2f(this.divergenceProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
 		gl.uniform1i(this.divergenceProgram.uniforms.uVelocity, this.velocity.read.attach(0));
@@ -2680,6 +3192,7 @@ export class FluidEngine implements FluidHandle {
 		gl.uniform4f(this.divergenceProgram.uniforms.uOpenEdges, edges[0], edges[1], edges[2], edges[3]);
 		this.bindSolidMaskUniforms(this.divergenceProgram.uniforms, 2, 3);
 		this.blit(this.divergence);
+		this.endBenchPass();
 
 		const iterations = this.config.PRESSURE_ITERATIONS;
 		if (iterations <= 0) {
@@ -2708,6 +3221,9 @@ export class FluidEngine implements FluidHandle {
 		const usePairs = this.velocity.width * this.velocity.height <= PAIRED_JACOBI_MAX_TEXELS;
 		const pairs = usePairs ? Math.floor(iterations / 2) : 0;
 		const singles = iterations - pairs * 2;
+		if (pairs > 0 || singles > 0) {
+			this.beginBenchPass('pressure');
+		}
 		if (pairs > 0) {
 			this.pressureJacobi2Program.bind();
 			gl.uniform2f(this.pressureJacobi2Program.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
@@ -2741,7 +3257,11 @@ export class FluidEngine implements FluidHandle {
 				this.pressure.swap();
 			}
 		}
+		if (pairs > 0 || singles > 0) {
+			this.endBenchPass();
+		}
 
+		this.beginBenchPass('gradient');
 		this.gradientSubtractProgram.bind();
 		gl.uniform2f(this.gradientSubtractProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
 		gl.uniform1i(this.gradientSubtractProgram.uniforms.uPressure, this.pressure.read.attach(0));
@@ -2750,9 +3270,16 @@ export class FluidEngine implements FluidHandle {
 		this.bindInlineMaskUniforms(this.gradientSubtractProgram.uniforms, 4, 5);
 		this.blit(this.velocity.write);
 		this.velocity.swap();
+		this.endBenchPass();
 	}
 
 	private step(dt: number): void {
+		if (this.deterministicMode) {
+			this.simTime += dt;
+		}
+		this.pollBenchQueries();
+		this.beginBenchFrame();
+
 		const gl = this.gl;
 		gl.disable(gl.BLEND);
 		const prescribedOnly = this.flowMode() === 'prescribed';
@@ -2775,23 +3302,33 @@ export class FluidEngine implements FluidHandle {
 			}
 			this.advectScalar(dt);
 			this.applyFlowOutlets(simulateDye ? ['dye', 'scalar'] : ['scalar']);
+			this.endBenchFrame();
 			return;
 		}
 
 		if (this.config.CURL > 0) {
+			this.beginBenchPass('curl');
 			this.curlProgram.bind();
 			gl.uniform2f(this.curlProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
 			gl.uniform1i(this.curlProgram.uniforms.uVelocity, this.velocity.read.attach(0));
 			this.blit(this.curlFBO);
+			this.endBenchPass();
 
+			this.beginBenchPass('vorticity');
 			this.vorticityProgram.bind();
 			gl.uniform2f(this.vorticityProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
 			gl.uniform1i(this.vorticityProgram.uniforms.uVelocity, this.velocity.read.attach(0));
 			gl.uniform1i(this.vorticityProgram.uniforms.uCurl, this.curlFBO.attach(1));
-			gl.uniform1f(this.vorticityProgram.uniforms.curl, this.config.CURL);
+			gl.uniform1f(
+				this.vorticityProgram.uniforms.curl,
+				curlScale(this.config.CURL, this.velocity.width, this.velocity.height)
+			);
 			gl.uniform1f(this.vorticityProgram.uniforms.dt, dt);
+			gl.uniform1f(this.vorticityProgram.uniforms.uAdaptiveMix, this.config.VORTICITY_ADAPTIVE);
+			this.bindSolidMaskUniforms(this.vorticityProgram.uniforms, 2, 3);
 			this.blit(this.velocity.write);
 			this.velocity.swap();
+			this.endBenchPass();
 		}
 
 		// Container/obstruction masking is folded into the advection,
@@ -2808,6 +3345,7 @@ export class FluidEngine implements FluidHandle {
 		}
 		this.advectScalar(dt);
 		this.applyFlowOutlets(simulateDye ? ['dye', 'scalar'] : ['scalar']);
+		this.endBenchFrame();
 	}
 
 	private render(target: FBO | null): void {

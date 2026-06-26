@@ -98,7 +98,11 @@ claim below is tied to interleaved A/B numbers, not the fill-rate model.
 - Texture-unit map for solver passes: advection 0–3 + 7; viscosity 0–5;
   gradient subtract 0–5; divergence/pressure 0–3 + 7. All ≤ 8.
 - The dev-only benchmark page (`/obstruction-lab/bench`, URL-tunable via
-  `?pi=&sub=&vi=&sim=&dye=&vis=&curl=`) is the epic §4 measurement harness for
-  later phases.
+  `?pi=&sub=&vi=&sim=&dye=&vis=&curl=`) was the rAF-EMA measurement harness used
+  for the numbers above. **It was deleted in commit `5d1377d`** (the `/examples`
+  consolidation), so these numbers are no longer reproducible from the repo. The
+  epic §4 measurement protocol is superseded by the Phase 0 harness (ADR-0042):
+  a deterministic GPU-readback acceptance tier plus a restored interactive
+  `/examples/bench` timing profiler that reads shared `__benches__/scenes.ts`.
 - Phase 2 (MacCormack) inherits the lesson: assume pass-bound at production
   grids, fragment-bound at high grids; measure both regimes before committing.
