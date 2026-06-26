@@ -38,8 +38,11 @@ log() { printf '%s %s\n' "$(date -u +%H:%M:%S)" "$*" | tee -a "$MASTER_LOG"; }
 
 # ---------------- Portable timeout (no coreutils `timeout` on macOS) ----------------
 run_with_timeout() {
-  local secs="$1"; shift
-  "$@" &
+  # $1 = timeout secs, $2 = stdin file (backgrounded jobs default stdin to
+  # /dev/null unless explicitly redirected, so the prompt MUST be redirected
+  # here, not at the call site), $3.. = command.
+  local secs="$1"; local infile="$2"; shift 2
+  "$@" < "$infile" &
   local pid=$!
   ( sleep "$secs"; kill -TERM "$pid" 2>/dev/null; sleep 10; kill -KILL "$pid" 2>/dev/null ) &
   local wd=$!
@@ -105,12 +108,12 @@ for ((i=1; i<=MAX_ITERS; i++)); do
 
   log "--- iteration $i/$MAX_ITERS (done $(tasks_done)/$(tasks_total), elapsed ${elapsed}s) ---"
 
-  run_with_timeout "$ITER_TIMEOUT" \
+  run_with_timeout "$ITER_TIMEOUT" "$PROMPT_FILE" \
     codex exec --skip-git-repo-check --sandbox workspace-write \
       -m "$MODEL" -C "$REPO" \
       -c "model_reasoning_effort=\"$REASONING\"" \
       -o "$last_msg" \
-      < "$PROMPT_FILE" > "$iter_log" 2>&1
+      > "$iter_log" 2>&1
   rc=$?
 
   after_head="$(git rev-parse HEAD)"
