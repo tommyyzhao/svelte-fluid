@@ -1166,6 +1166,114 @@ ${inlineMaskGLSL}
     }
 `;
 
+/**
+ * Opt-in second-order MacCormack advection for the velocity field only (epic
+ * 0001 Phase 2). Compiled into its own program; the shared advectionShader keeps
+ * the dye/scalar/velocity semi-Lagrangian path byte-identical.
+ *
+ * Pass A (the engine forward-advects velocity into uPhiHat with no dissipation)
+ * supplies phi_hat. This pass reconstructs phi^n (uVelocity), computes the
+ * reverse-advected phi_bar, and forms the BFECC correction phi_hat + 0.5*(phi^n -
+ * phi_bar). The Selle 2008 limiter clamps the result to the local stencil range
+ * for monotonicity, and a first-order guard falls back to phi_hat next to solids
+ * and open boundaries where the symmetric stencil would sample invalid data.
+ *
+ * Only runs WITH hardware linear filtering (the engine forces semi-Lagrangian
+ * otherwise), so uVelocity sampling relies on hardware bilinear directly.
+ */
+export const advectionMacCormackShader = `
+    precision highp float;
+    precision highp sampler2D;
+
+    varying vec2 vUv;
+    uniform sampler2D uVelocity;
+    uniform sampler2D uPhiHat;
+    uniform vec2 texelSize;
+    uniform float dt;
+    uniform float dissipation;
+    uniform vec4 dissipationVector;
+    uniform float uUseDissipationVector;
+    uniform float uMultiplicative;
+    uniform sampler2D uStickyMask;
+    uniform float uStickyStrength;
+    uniform vec4 uOpenEdges;
+${inlineMaskGLSL}
+
+    // uPhiHat (velocitySource) is a NEAREST-filtered scratch FBO, so the reverse
+    // back-trace sample is bilinearly reconstructed by hand. uVelocity is LINEAR,
+    // so its off-grid samples use hardware bilinear directly.
+    vec2 bilerpPhiHat (vec2 uv) {
+        vec2 st = uv / texelSize - 0.5;
+        vec2 iuv = floor(st);
+        vec2 fuv = fract(st);
+        vec2 a = texture2D(uPhiHat, (iuv + vec2(0.5, 0.5)) * texelSize).xy;
+        vec2 b = texture2D(uPhiHat, (iuv + vec2(1.5, 0.5)) * texelSize).xy;
+        vec2 c = texture2D(uPhiHat, (iuv + vec2(0.5, 1.5)) * texelSize).xy;
+        vec2 d = texture2D(uPhiHat, (iuv + vec2(1.5, 1.5)) * texelSize).xy;
+        return mix(mix(a, b, fuv.x), mix(c, d, fuv.x), fuv.y);
+    }
+
+    void main () {
+        // phi^n at this cell and the symmetric forward/reverse departure offset.
+        vec2 phiN = texture2D(uVelocity, vUv).xy;
+        vec2 disp = dt * phiN * texelSize;
+        vec2 coordFwd = vUv - disp;
+
+        // phi_hat = forward SL advection (pass A); phi_bar = reverse advection of
+        // phi_hat. The correction cancels the leading SL diffusion error.
+        vec2 phiHat = texture2D(uPhiHat, vUv).xy;
+        vec2 phiBar = bilerpPhiHat(vUv + disp);
+        vec2 corrected = phiHat + 0.5 * (phiN - phiBar);
+
+        // Selle 2008 limiter: clamp the correction to the value range of the four
+        // phi^n texels of the bilinear stencil around the departure point. Sampling
+        // at texel centers returns exact texels even under LINEAR filtering.
+        vec2 st = coordFwd / texelSize - 0.5;
+        vec2 iuv = floor(st);
+        vec2 s00 = texture2D(uVelocity, (iuv + vec2(0.5, 0.5)) * texelSize).xy;
+        vec2 s10 = texture2D(uVelocity, (iuv + vec2(1.5, 0.5)) * texelSize).xy;
+        vec2 s01 = texture2D(uVelocity, (iuv + vec2(0.5, 1.5)) * texelSize).xy;
+        vec2 s11 = texture2D(uVelocity, (iuv + vec2(1.5, 1.5)) * texelSize).xy;
+        vec2 lo = min(min(s00, s10), min(s01, s11));
+        vec2 hi = max(max(s00, s10), max(s01, s11));
+        corrected = clamp(corrected, lo, hi);
+
+        // First-order guard: the MacCormack stencil reaches symmetrically on both
+        // sides of the cell, so near solids or an open boundary one arm samples
+        // invalid data. Fall back to the unconditionally-stable SL estimate there.
+        float im = inlineMaskValue(vUv);
+        bool nearSolid = im < 0.5;
+        bool nearOpenEdge =
+            (uOpenEdges.x > 0.5 && vUv.x < 2.0 * texelSize.x) ||
+            (uOpenEdges.y > 0.5 && vUv.x > 1.0 - 2.0 * texelSize.x) ||
+            (uOpenEdges.z > 0.5 && vUv.y > 1.0 - 2.0 * texelSize.y) ||
+            (uOpenEdges.w > 0.5 && vUv.y < 2.0 * texelSize.y);
+        if (nearSolid || nearOpenEdge) {
+            corrected = phiHat;
+        }
+
+        // Identical dissipation / sticky / inline-mask compositing to the velocity
+        // branch of advectionShader, so MacCormack-on vs SL stays apples-to-apples.
+        vec4 result = vec4(corrected, 0.0, 0.0);
+        float stickyVal = texture2D(uStickyMask, vec2(vUv.x, 1.0 - vUv.y)).r;
+        if (uMultiplicative > 0.5) {
+            float scalarDissipation = mix(dissipation, dissipationVector.r, uUseDissipationVector);
+            float adjDissipation;
+            if (uStickyStrength >= 0.0) {
+                adjDissipation = mix(scalarDissipation, 1.0, stickyVal * uStickyStrength);
+            } else {
+                adjDissipation = scalarDissipation * max(0.0, 1.0 + stickyVal * uStickyStrength);
+            }
+            gl_FragColor = clamp(adjDissipation * result, -1000.0, 1000.0) * im;
+        } else {
+            vec4 baseDissipation = mix(vec4(dissipation), dissipationVector, uUseDissipationVector);
+            vec4 adjDissipation = mix(baseDissipation, vec4(0.0), stickyVal * uStickyStrength);
+            vec4 decay = vec4(1.0) + adjDissipation * dt;
+            gl_FragColor = clamp(result / decay, -1000.0, 1000.0) * im;
+        }
+    }
+`;
+
 export const divergenceShader = `
     precision mediump float;
     precision mediump sampler2D;
