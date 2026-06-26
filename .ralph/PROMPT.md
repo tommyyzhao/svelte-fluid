@@ -39,17 +39,19 @@ history — read them, don't redo them.
    iteration retries with your partial work visible.
 6. Only when the gate is green: if the task adds an engine **decision**, write its ADR
    taking the next free number (`ls dev-docs/decisions` → highest + 1; never reuse).
-   Set the task `status` to `done` in `prd.json`. Then stage ONLY the files this task
-   changed (explicit paths) plus `.ralph/prd.json`, after confirming `git status` shows
-   nothing out-of-scope. **Never** `git add -A` blindly and **never** stage the frozen
-   planning files (the epic, ADR-0038, ADR-0042, CLAUDE.md) or unrelated changes. Commit:
-   `git commit -m "<type>(engine): <task id> — <summary>"`.
+   Set the task `status` to `done` in `prd.json`. Do **NOT** run any `git` command —
+   you cannot write `.git` in this sandbox, and the orchestrator (running OUTSIDE the
+   sandbox) re-runs the full gate and commits your work for you when it is green. Just
+   leave your changes in the working tree with the prd task marked `done`. Do not touch
+   the frozen planning files (the epic, ADR-0038, ADR-0042, CLAUDE.md) or other tasks.
 7. Stop. The loop re-invokes you for the next task.
 
 ## HARD RULES — never violate
-- **NEVER** `git push`, force-push, merge, rebase onto main, or touch any remote. All
-  work stays local on `epic-0001-phases`.
-- **NEVER** commit unless `bun run test && bun run check && bun run prepack` all pass.
+- **NEVER** run `git` at all — no commit, push, reset, checkout, stage. The orchestrator
+  owns all git operations. You only edit working-tree files.
+- **NEVER** mark a task `done` unless `bun run test && bun run check && bun run prepack`
+  all pass — the orchestrator re-runs the gate and will DISCARD your iteration (clean
+  reset) if it is red, so a false `done` just wastes a cycle.
 - **NEVER** fake completion. Mark a task `done` only when its acceptance is genuinely met
   and the gate is green. Output `ALL_PHASES_COMPLETE` only when every non-deferred task is
   truly done.
@@ -71,7 +73,8 @@ history — read them, don't redo them.
   satisfy), set its `status` to `blocked`, put a one-line reason in its `note`, and stop
   so a human can review — do not guess wildly or thrash.
 
-## Sanity checks before committing
-- `git status` shows only files relevant to this task (+ `prd.json`).
+## Sanity checks before marking a task done
+- Your changes are limited to files relevant to this task (+ `prd.json`); you did not
+  touch the frozen planning files or another task's code.
 - No `console.log`/debug left behind. No TODO that the task required you to finish.
-- The diff does what the task says and nothing more.
+- The gate is genuinely green and the change does what the task says and nothing more.

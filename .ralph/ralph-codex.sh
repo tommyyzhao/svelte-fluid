@@ -104,7 +104,9 @@ for ((i=1; i<=MAX_ITERS; i++)); do
   write_status "$i" "running"
   iter_log="$LOG_DIR/iter-$(printf '%03d' "$i").log"
   last_msg="$LOG_DIR/iter-$(printf '%03d' "$i").last.txt"
-  before_head="$(git rev-parse HEAD)"
+  # Snapshot the prd done-set BEFORE codex (codex marks tasks done but cannot
+  # write .git in its sandbox — the loop commits on its behalf).
+  before_done_ids="$(jq -r '.tasks[]|select(.status=="done")|.id' "$PRD_FILE" 2>/dev/null | sort)"
 
   log "--- iteration $i/$MAX_ITERS (done $(tasks_done)/$(tasks_total), elapsed ${elapsed}s) ---"
 
@@ -115,21 +117,37 @@ for ((i=1; i<=MAX_ITERS; i++)); do
       -o "$last_msg" \
       > "$iter_log" 2>&1
   rc=$?
-
-  after_head="$(git rev-parse HEAD)"
   if [ "$rc" -eq 124 ] || [ "$rc" -eq 143 ] || [ "$rc" -eq 137 ]; then
     log "iteration $i: codex TIMED OUT (rc=$rc)."
   elif [ "$rc" -ne 0 ]; then
     log "iteration $i: codex exited rc=$rc (see $iter_log)."
   fi
 
-  if [ "$before_head" != "$after_head" ]; then
-    consec_fail=0
-    log "iteration $i: new commit(s):"
-    git --no-pager log --oneline "$before_head..$after_head" | sed 's/^/    /' | tee -a "$MASTER_LOG"
+  # --- Loop-side commit (codex's sandbox blocks .git writes) ---
+  after_done_ids="$(jq -r '.tasks[]|select(.status=="done")|.id' "$PRD_FILE" 2>/dev/null | sort)"
+  newly="$(comm -13 <(printf '%s\n' "$before_done_ids") <(printf '%s\n' "$after_done_ids") | grep -v '^$' | paste -sd, -)"
+  changed="$(git status --porcelain | wc -l | tr -d ' ')"
+
+  if [ -n "$newly" ] && [ "$changed" -gt 0 ]; then
+    log "iteration $i: codex marked done: $newly — re-running gate before commit…"
+    if bun run test >>"$iter_log" 2>&1 && bun run check >>"$iter_log" 2>&1 && bun run prepack >>"$iter_log" 2>&1; then
+      git add -A
+      git commit -q -m "feat(engine): $newly (ralph iter $i)" \
+        -m "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
+      consec_fail=0
+      log "iteration $i: COMMITTED — $(git --no-pager log --oneline -1)"
+    else
+      consec_fail=$((consec_fail + 1))
+      log "iteration $i: GATE RED after codex claimed done '$newly' — discarding this iteration for a clean retry (consec_fail=$consec_fail; see $iter_log)."
+      git reset --hard HEAD >/dev/null 2>&1
+      git clean -fd >/dev/null 2>&1
+    fi
+  elif [ "$changed" -gt 0 ]; then
+    consec_fail=$((consec_fail + 1))
+    log "iteration $i: tree changed but no task newly marked done (consec_fail=$consec_fail) — leaving partial work for next iteration."
   else
     consec_fail=$((consec_fail + 1))
-    log "iteration $i: NO new commit (consec_fail=$consec_fail)."
+    log "iteration $i: no changes produced (consec_fail=$consec_fail)."
   fi
 
   if [ -f "$last_msg" ] && grep -q "$SENTINEL" "$last_msg" 2>/dev/null && all_done; then
