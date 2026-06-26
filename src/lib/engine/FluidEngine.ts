@@ -135,6 +135,7 @@ export const DEFAULTS: ResolvedConfig = {
 	PRESSURE: 0.8,
 	PRESSURE_ITERATIONS: 20,
 	CURL: 30,
+	VORTICITY_ADAPTIVE: 0,
 	SPLAT_RADIUS: 0.25,
 	SPLAT_FORCE: 6000,
 	SHADING: true,
@@ -228,6 +229,9 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 	if (input.pressure !== undefined) out.PRESSURE = input.pressure;
 	if (input.pressureIterations !== undefined) out.PRESSURE_ITERATIONS = input.pressureIterations;
 	if (input.curl !== undefined) out.CURL = input.curl;
+	if (input.vorticityAdaptive !== undefined) {
+		out.VORTICITY_ADAPTIVE = clamp01(input.vorticityAdaptive);
+	}
 	if (input.splatRadius !== undefined) out.SPLAT_RADIUS = input.splatRadius;
 	if (input.splatForce !== undefined) out.SPLAT_FORCE = input.splatForce;
 	if (input.shading !== undefined) out.SHADING = input.shading;
@@ -389,6 +393,72 @@ function scalarDissipationForField(field: FlowScalarField | undefined, fallback:
 
 function clamp01(value: number): number {
 	return Math.max(0, Math.min(1, value));
+}
+
+/** Local vorticity-magnitude thresholds used by adaptive confinement. */
+export const VORTICITY_ADAPTIVE_LO = 0.02;
+/** Local vorticity-magnitude thresholds used by adaptive confinement. */
+export const VORTICITY_ADAPTIVE_HI = 0.08;
+
+/**
+ * Resolution-aware viscosity coefficient used at the CPU-facing uniform site.
+ *
+ * We keep the old formula at N_actual = N_ref (screen-isotropic default resolution)
+ * so existing default-presets stay byte-identical while preserving O(N^2)-invariant
+ * diffusion behavior as sim resolution changes.
+ */
+export function viscosityAlpha(viscosity: number, dt: number, width: number, height: number, nRef = DEFAULTS.SIM_RESOLUTION): number {
+	const nActual = Math.min(width, height);
+	return viscosity * dt * Math.max(width, height) * (nActual / nRef);
+}
+
+/**
+ * Resolution-aware vorticity confinement gain multiplier.
+ *
+ * This keeps the default-resolution gain unchanged and scales confinement strength
+ * with 1/N when sim resolution increases, matching the same screen-space cell
+ * size convention as viscosity scaling.
+ */
+export function curlScale(curl: number, width: number, height: number, nRef = DEFAULTS.SIM_RESOLUTION): number {
+	const nActual = Math.min(width, height);
+	return curl * (nRef / nActual);
+}
+
+/**
+ * Keep vorticity confinement byte-identical when adaptive mix is 0, and
+ * progressively gate the legacy magnitude only where local rotation is strong.
+ *
+ * `curlSample` is the legacy vorticity field value from `curlShader`, where
+ * the actual vorticity magnitude is `2 * curlSample`.
+ */
+export function adaptiveConfinementMagnitude(
+	curl: number,
+	curlSample: number,
+	adaptiveMix: number,
+	lo = VORTICITY_ADAPTIVE_LO,
+	hi = VORTICITY_ADAPTIVE_HI
+): number {
+	const epsLegacy = curl * curlSample;
+	if (adaptiveMix <= 0 || lo >= hi) {
+		return epsLegacy;
+	}
+
+	const omega = Math.abs(curlSample * 2);
+	const scale = clamp01((omega - lo) / (hi - lo));
+	const epsAdaptive = epsLegacy * scale;
+	const mix = clamp01(adaptiveMix);
+	return epsLegacy + (epsAdaptive - epsLegacy) * mix;
+}
+
+/**
+ * Compute the boundary confinement attenuation from pre-baked face-solidity flags.
+ *
+ * Neighbors are stored in rgba order L/R/T/B with binary values; any solid
+ * adjacent face suppresses confinement for that cell by attenuating the force
+ * all the way to zero.
+ */
+export function solidNeighborConfinementAttenuation(left: number, right: number, top: number, bottom: number): number {
+	return clamp01(1.0 - Math.max(Math.max(left, right), Math.max(top, bottom)));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2641,7 +2711,7 @@ export class FluidEngine implements FluidHandle {
 		this.bindSolidMaskUniforms(this.viscosityProgram.uniforms, 2, 3);
 		gl.uniform1f(
 			this.viscosityProgram.uniforms.uAlpha,
-			this.config.VISCOSITY * dt * Math.max(this.velocity.width, this.velocity.height)
+			viscosityAlpha(this.config.VISCOSITY, dt, this.velocity.width, this.velocity.height)
 		);
 		// Mask samplers bind up front so their units never alias the velocity
 		// FBO mid-loop; the crop itself applies only on the final iteration —
@@ -2788,8 +2858,13 @@ export class FluidEngine implements FluidHandle {
 			gl.uniform2f(this.vorticityProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
 			gl.uniform1i(this.vorticityProgram.uniforms.uVelocity, this.velocity.read.attach(0));
 			gl.uniform1i(this.vorticityProgram.uniforms.uCurl, this.curlFBO.attach(1));
-			gl.uniform1f(this.vorticityProgram.uniforms.curl, this.config.CURL);
+			gl.uniform1f(
+				this.vorticityProgram.uniforms.curl,
+				curlScale(this.config.CURL, this.velocity.width, this.velocity.height)
+			);
 			gl.uniform1f(this.vorticityProgram.uniforms.dt, dt);
+			gl.uniform1f(this.vorticityProgram.uniforms.uAdaptiveMix, this.config.VORTICITY_ADAPTIVE);
+			this.bindSolidMaskUniforms(this.vorticityProgram.uniforms, 2, 3);
 			this.blit(this.velocity.write);
 			this.velocity.swap();
 		}

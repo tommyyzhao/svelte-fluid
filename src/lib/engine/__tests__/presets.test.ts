@@ -151,7 +151,7 @@ describe('flow-sensitive obstruction demos', () => {
 		expect(TESLA_VALVE_CONFIG.autoSplatBandWidth).toBe(0.024);
 		expect(TESLA_VALVE_CONFIG.autoSplatCenterY).toBe(0.49);
 		expect(TESLA_VALVE_CONFIG.autoSplatBandHeight).toBe(0.18);
-		expect(TESLA_VALVE_CONFIG.viscosity).toBe(0.04);
+		expect(TESLA_VALVE_CONFIG.viscosity).toBe(0.06);
 		expect(TESLA_VALVE_CONFIG.viscosityIterations).toBe(10);
 		// One physical container — no separate tongue obstructions, no per-source
 		// line tracers, no scalar fields, no speed visualization.
@@ -182,7 +182,7 @@ describe('flow-sensitive obstruction demos', () => {
 		expect(flow.forces).toEqual([{ kind: 'pressureGradient', vector: { x: 42, y: 0 } }]);
 		expect(VENTURI_CONFIG.maxTimeStep).toBe(1 / 60);
 		expect(VENTURI_CONFIG.substeps).toBe(1);
-		expect(VENTURI_CONFIG.viscosity).toBe(0.016);
+		expect(VENTURI_CONFIG.viscosity).toBe(0.02);
 		expect(VENTURI_CONFIG.viscosityIterations).toBe(5);
 		expect(VENTURI_CONFIG.wallFriction).toBe(0.16);
 		expect(VENTURI_CONFIG.pressureIterations).toBe(26);

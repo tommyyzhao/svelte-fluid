@@ -1255,8 +1255,11 @@ export const vorticityShader = `
     varying vec2 vB;
     uniform sampler2D uVelocity;
     uniform sampler2D uCurl;
+    uniform float uHasSolidMask;
     uniform float curl;
     uniform float dt;
+    uniform float uAdaptiveMix;
+    uniform sampler2D uSolidNeighbors;
 
     void main () {
         float L = texture2D(uCurl, vL).x;
@@ -1264,10 +1267,18 @@ export const vorticityShader = `
         float T = texture2D(uCurl, vT).x;
         float B = texture2D(uCurl, vB).x;
         float C = texture2D(uCurl, vUv).x;
+        float attenuation = 1.0;
+        if (uHasSolidMask >= 0.5) {
+            vec4 nb = texture2D(uSolidNeighbors, vUv);
+            attenuation = clamp(1.0 - max(max(nb.x, nb.y), max(nb.z, nb.w)), 0.0, 1.0);
+        }
 
         vec2 force = 0.5 * vec2(abs(T) - abs(B), abs(R) - abs(L));
         force /= length(force) + 0.0001;
-        force *= curl * C;
+        float omega = abs(C) * 2.0;
+        float adaptiveWeight = smoothstep(0.02, 0.08, omega);
+        float confinement = mix(curl * C, curl * C * adaptiveWeight, clamp(uAdaptiveMix, 0.0, 1.0));
+        force *= confinement * attenuation;
         force.y *= -1.0;
 
         vec2 velocity = texture2D(uVelocity, vUv).xy;

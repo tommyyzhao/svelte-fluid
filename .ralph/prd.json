@@ -16,7 +16,7 @@
       "id": "P5-gauge",
       "phase": "Phase 5",
       "title": "Reference-anchored resolution normalization of viscosity + curl (in place)",
-      "status": "todo",
+      "status": "done",
       "depends_on": [],
       "risk": "low",
       "spec": "Make `viscosity` and `curl` resolution-invariant by reinterpreting them INTERNALLY — NO new public fields, NO dual-field arbitration. Let N_ref = DEFAULTS.SIM_RESOLUTION (confirm = 128). Let w,h be the sim FBO dims; N_actual = min(w,h) = simResolution; the screen-isotropic cell size is h_cell = 1/min(w,h). VISCOSITY coefficient: today applyViscosity uses `uAlpha = VISCOSITY * dt * Math.max(w,h)` (~FluidEngine.ts:2644). Replace with the BYTE-IDENTITY-PRESERVING, O(N^2)-invariant gauge: `uAlpha = VISCOSITY * dt * Math.max(w,h) * (Math.min(w,h) / N_ref)`. This is EXACTLY today's value whenever min(w,h)==N_ref (any aspect ratio), and scales as O(N^2) with resolution (physically-consistent nu*dt/h^2). CURL/confinement: today curl is uploaded raw. Scale it by `(N_ref / Math.min(w,h))` so it is byte-identical at N_ref and resolution-normalized beyond. FACTOR both coefficient computations into PURE functions (no GL — e.g. `viscosityAlpha(viscosity, dt, w, h, nRef)` and `curlScale(curl, w, h, nRef)`) so they are node-testable. Keep the viscosity GLSL ((L+R+T+B)/(1+4*uAlpha)) and the vorticity GLSL UNCHANGED — coefficient/uniform math only. Retune ONLY the 4 simResolution-overriding flow presets (GasFlare/Venturi 160, Karman/TeslaValve 192 in registry.ts) so their feel matches their pre-change tuning; default-resolution presets need NO change by construction. Document the gauge + the 4 retuned values in the ADR.",
@@ -37,15 +37,15 @@
         "Do NOT edit viscosity/vorticity GLSL — coefficient/uniform math only.",
         "Use the EXACT formula `max(w,h)*(min(w,h)/N_ref)` for alpha so byte-identity at N_ref holds on non-square canvases (all three reviewers flagged a naive min-only formula as wrong)."
       ],
-      "note": ""
+      "note": "Implemented gauge helpers and preset retune values for GasFlare/Venturi/Karman/TeslaValve."
     },
-    {
-      "id": "P5-adaptive",
-      "phase": "Phase 5",
-      "title": "Adaptive confinement via uAdaptiveMix uniform (byte-identical at 0)",
-      "status": "todo",
-      "depends_on": ["P5-gauge"],
-      "risk": "low",
+	{
+		"id": "P5-adaptive",
+		"phase": "Phase 5",
+		"title": "Adaptive confinement via uAdaptiveMix uniform (byte-identical at 0)",
+		"status": "done",
+		"depends_on": ["P5-gauge"],
+		"risk": "low",
       "spec": "Add adaptive vorticity confinement as a single uniform lerp in vorticityShader (~shaders.ts:1247-1278) and a new Bucket-A hot scalar config field `vorticityAdaptive` (0..1, DEFAULT 0). The confinement magnitude becomes `mix(eps_legacy, eps_legacy * smoothstep(LO, HI, abs(omega)), uAdaptiveMix)` where eps_legacy is the current curl-scaled magnitude and omega is the local vorticity. NOTE uCurl stores 0.5*vorticity (shaders.ts ~1242) — account for that when computing abs(omega); pick LO/HI as documented constants (normalized vorticity-magnitude thresholds) and justify them in the ADR. At uAdaptiveMix=0 the output MUST be byte-identical (pure lerp, no branch). Wire `vorticityAdaptive` as a Bucket-A hot scalar: add to FluidConfig + ResolvedConfig + DEFAULTS(=0) + resolveConfig pass-through; it must NOT trigger any FBO rebuild or shader recompile. Update the docs/configuration route and (if preset-facing) agent-docs. Factor the magnitude lerp math into a pure TS function for node testing.",
       "files": [
         "src/lib/engine/shaders.ts (vorticityShader: uAdaptiveMix lerp + uniform decl)",
@@ -65,13 +65,13 @@
         "uAdaptiveMix=0 MUST be byte-identical. Single uniform lerp; NO keyword/Material, NO branch.",
         "Do NOT add the boundary bugfix here (that is P5-boundary-fix) — keep this task purely the adaptive lerp so byte-identity-at-0 is clean."
       ],
-      "note": ""
+      "note": "Implemented adaptive vorticity confinement with bucket-A uniform vorticityAdaptive, byte-identity-at-0 tests, docs update, and ADR."
     },
     {
       "id": "P5-boundary-fix",
       "phase": "Phase 5",
       "title": "Confinement boundary bugfix — attenuate confinement near solids (intentional change)",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["P5-adaptive"],
       "risk": "low-medium",
       "spec": "Fix the bug that vorticity confinement injects momentum into boundary-adjacent cells, fighting projection where staircasing hurts (vorticityShader samples NO solid texture today). Bind the EXISTING binary neighbor-solidity texture (uSolidNeighbors / bakeSolidNeighborData, RGBA = per-face neighbor-solid flags L,R,T,B in container-shapes.ts ~341-364) into the vorticity pass — this is the same texture divergence/pressure already use; bind it via the existing bindSolidMaskUniforms helper pattern and ALWAYS bind every sampler the pass owns to a dedicated unit (ADR-0038 stale-unit gotcha; note the existing vorticity bind site has no texelSize uniform — do not introduce stale binds). Multiply the confinement force by the fluid-fraction attenuation `clamp(1.0 - max(L,R,T,B), 0.0, 1.0)` (full confinement in open cells, zero in cells touching any solid neighbor). This is an INTENTIONAL behavior change (a bugfix), NOT byte-identical — validate by 128 visual QA on an obstruction preset (Karman/Venturi) and document. Use the BINARY texture only; do NOT introduce fractional apertures (deferred Phase 3). Factor the attenuation math into a pure TS function for node testing.",
@@ -91,13 +91,13 @@
         "Use the EXISTING binary uSolidNeighbors texture; NO fractional apertures, NO boundary normals.",
         "Always bind every sampler to its dedicated unit, active or not."
       ],
-      "note": ""
+      "note": "Implemented binary-neighbor confinement attenuation with vorticity-pass binding + node-attentuation test; ADR 0045 added."
     },
     {
       "id": "P0-workspace",
       "phase": "Phase 0",
       "title": "Two-project vitest workspace (node default + env-gated browser tier)",
-      "status": "todo",
+		"status": "done",
       "depends_on": [],
       "risk": "medium",
       "spec": "Split vitest into two projects WITHOUT changing what `bun run test` runs. devDeps `@vitest/browser` + `playwright` are ALREADY installed (do not install / no network). CRITICAL (all three reviewers): a vitest workspace runs ALL projects by default, so `vitest run` (= `bun run test`) would try to launch Chromium and FAIL the gate in this sandbox. Prevent it: create `vitest.workspace.ts` defining a `node` project (env jsdom/node; include `src/**/*.test.ts`; EXCLUDE `src/**/*.browser.test.ts`) and CONDITIONALLY include the `browser` project ONLY when `process.env.VITEST_BROWSER` is set (e.g. `...(process.env.VITEST_BROWSER ? [browserProject] : [])`). The browser project uses @vitest/browser with the playwright provider + headless Chromium (WebGL2), include `src/**/*.browser.test.ts`. Add a package.json script `test:browser` that runs `VITEST_BROWSER=1 vitest run --project browser` (or equivalent). LEAVE the `test` script unchanged so `bun run test` runs node-only and never launches a browser. Author one trivial `src/lib/engine/__benches__/smoke.browser.test.ts` (create a canvas, instantiate FluidEngine, assert a WebGL2 context exists) — AUTHORED, not gated, must be a genuine test.",
@@ -118,7 +118,7 @@
         "Do NOT migrate existing tests to the browser tier.",
         "No runtime deps; no `bun install`/network."
       ],
-      "note": ""
+      "note": "Implemented explicit vitest v4 workspace via vitest.workspace.ts (node/browsed by env) and added vitest.config.ts bridge; browser suite now gated behind VITEST_BROWSER."
     },
     {
       "id": "P0-readback",

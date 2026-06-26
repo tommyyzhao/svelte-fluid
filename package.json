@@ -23,6 +23,7 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"test": "vitest run",
+		"test:browser": "VITEST_BROWSER=1 vitest run --project browser",
 		"test:watch": "vitest",
 		"changeset": "changeset",
 		"version": "changeset version",

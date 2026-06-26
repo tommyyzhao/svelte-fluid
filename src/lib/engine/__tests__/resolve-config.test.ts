@@ -34,6 +34,7 @@ describe('resolveConfig', () => {
 			const r = resolveConfig(
 				{
 					curl: 50,
+					vorticityAdaptive: 0.6,
 					splatRadius: 0.5,
 					densityDissipation: 0.5,
 					velocityDissipation: 0.3,
@@ -61,7 +62,15 @@ describe('resolveConfig', () => {
 			expect(r.WALL_FRICTION_WIDTH).toBe(2);
 			expect(r.PRESSURE).toBe(0.6);
 			expect(r.PRESSURE_ITERATIONS).toBe(30);
+			expect(r.VORTICITY_ADAPTIVE).toBe(0.6);
 			expect(r.SPLAT_FORCE).toBe(8000);
+		});
+
+		it('clamps vorticityAdaptive to 0..1', () => {
+			const low = resolveConfig({ vorticityAdaptive: -0.4 }, DEFAULTS);
+			const high = resolveConfig({ vorticityAdaptive: 1.5 }, DEFAULTS);
+			expect(low.VORTICITY_ADAPTIVE).toBe(0);
+			expect(high.VORTICITY_ADAPTIVE).toBe(1);
 		});
 
 		it('maps pointer and hover flags', () => {
