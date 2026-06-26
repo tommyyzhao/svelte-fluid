@@ -114,6 +114,19 @@ interface FlowOutletBatchEntry {
 	keep: number;
 }
 
+type ReadField = 'velocity' | 'dye' | 'pressure' | 'divergence' | 'curl' | 'scalar';
+
+interface ReadFieldOptions {
+	components?: 1 | 2 | 3 | 4;
+}
+
+export interface ReadFieldResult {
+	readonly data: Float32Array;
+	readonly width: number;
+	readonly height: number;
+	readonly components: number;
+}
+
 /* -------------------------------------------------------------------------- */
 /*                                  Defaults                                  */
 /* -------------------------------------------------------------------------- */
@@ -468,6 +481,8 @@ export function solidNeighborConfinementAttenuation(left: number, right: number,
 export interface FluidEngineOptions {
 	canvas: HTMLCanvasElement;
 	config?: FluidConfig;
+	/** @internal Construct without auto-starting the requestAnimationFrame loop. */
+	autoStart?: boolean;
 }
 
 export class FluidEngine implements FluidHandle {
@@ -574,6 +589,8 @@ export class FluidEngine implements FluidHandle {
 	private splatStack: number[] = [];
 	private lastUpdateTime = 0;
 	private engineStartTime = 0;
+	private simTime = 0;
+	private deterministicMode = false;
 	private colorUpdateTimer = 0;
 	private autoSplatTimer = 0;
 	private rafId = 0;
@@ -594,6 +611,9 @@ export class FluidEngine implements FluidHandle {
 	private flowOutletBatchFrom = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
 	private flowOutletBatchTo = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
 	private flowOutletBatchWidth = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
+	private autoStart = true;
+	private readbackUint8Buffer = new Uint8Array(0);
+	private readbackFloatBuffer = new Float32Array(0);
 	private flowOutletBatchKeep = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
 
 	// --- Bound listeners ---
@@ -612,6 +632,8 @@ export class FluidEngine implements FluidHandle {
 		this.canvas = opts.canvas;
 		const seed = opts.config?.seed ?? randomSeed();
 		this.config = resolveConfig({ ...opts.config, seed }, DEFAULTS);
+		this.autoStart = opts.autoStart ?? true;
+		this.deterministicMode = !this.autoStart;
 		this.normalizedBackColor = normalizeColor(this.config.BACK_COLOR);
 		this.rng = mulberry32(this.config.SEED);
 
@@ -662,7 +684,10 @@ export class FluidEngine implements FluidHandle {
 
 			this.lastUpdateTime = performance.now();
 			this.engineStartTime = this.lastUpdateTime;
-			this.startRaf();
+			this.simTime = 0;
+			if (this.autoStart) {
+				this.startRaf();
+			}
 		} catch (err) {
 			// Unlike dispose() (which deliberately keeps the context for lazy
 			// rebuild — invariant #6), a construction failure has no instance to
@@ -686,7 +711,9 @@ export class FluidEngine implements FluidHandle {
 	private currentDensityDissipation(): number {
 		const duration = this.config.INITIAL_DENSITY_DISSIPATION_DURATION;
 		if (duration <= 0) return this.config.DENSITY_DISSIPATION;
-		const elapsed = (performance.now() - this.engineStartTime) / 1000;
+		const elapsed = this.deterministicMode
+			? this.simTime
+			: (performance.now() - this.engineStartTime) / 1000;
 		if (elapsed >= duration) return this.config.DENSITY_DISSIPATION;
 		const t = elapsed / duration;
 		return this.config.INITIAL_DENSITY_DISSIPATION * (1 - t) + this.config.DENSITY_DISSIPATION * t;
@@ -735,6 +762,115 @@ export class FluidEngine implements FluidHandle {
 		if (this.rafRunning || this.disposed || this.contextLost) return;
 		this.lastUpdateTime = performance.now();
 		this.startRaf();
+	}
+
+	/**
+	 * @internal Advance the simulator by a fixed number of identical steps.
+	 *
+	 * Deterministic harnesses call this with fixed `dt` instead of relying on
+	 * wall-clock timing. This uses the same private step path as the live RAF
+	 * loop while keeping the timebase deterministic.
+	 */
+	advance(steps: number, dt: number): void {
+		if (this.disposed || this.contextLost) return;
+		if (!Number.isFinite(steps) || steps <= 0 || dt <= 0) return;
+		const count = Math.max(0, Math.floor(steps));
+		for (let i = 0; i < count; i++) {
+			this.step(dt);
+		}
+	}
+
+	/**
+	 * @internal Read a field into a new float array.
+	 *
+	 * Useful for deterministic regression tests that need CPU-side reductions.
+	 * `readField` intentionally avoids touching Svelte state and uses an
+	 * instance-owned staging buffer so repeated calls do not allocate.
+	 */
+	readField(field: ReadField, options: ReadFieldOptions = {}): ReadFieldResult {
+		if (this.disposed || this.contextLost) {
+			throw new Error('svelte-fluid: cannot readField while context is unavailable');
+		}
+
+		let spec: { fbo: FBO; components: 1 | 2 | 3 | 4 };
+		if (field === 'velocity') spec = { fbo: this.velocity.read, components: 2 };
+		else if (field === 'dye') spec = { fbo: this.dye.read, components: 4 };
+		else if (field === 'pressure') spec = { fbo: this.pressure.read, components: 1 };
+		else if (field === 'divergence') spec = { fbo: this.divergence, components: 1 };
+		else if (field === 'curl') spec = { fbo: this.curlFBO, components: 1 };
+		else if (field === 'scalar') {
+			if (!this.scalar) {
+				throw new Error('svelte-fluid: scalar field is not allocated for this engine');
+			}
+			spec = { fbo: this.scalar.read, components: 4 };
+		} else {
+			throw new Error(`svelte-fluid: unknown readField target "${field}"`);
+		}
+
+		let components = options.components ?? spec.components;
+		if (components > spec.components) {
+			components = spec.components;
+		}
+
+		const width = spec.fbo.width;
+		const height = spec.fbo.height;
+		const sourceComponents = this.ext.isWebGL2 ? (components === 1 ? 1 : components === 2 ? 2 : 4) : 4;
+		const pixelCount = width * height;
+		const sourceCount = pixelCount * sourceComponents;
+		this.ensureReadFieldBuffers(sourceCount);
+
+		const gl = this.gl;
+		gl.bindFramebuffer(gl.FRAMEBUFFER, spec.fbo.fbo);
+		// Re-query instead of caching extension objects in {@link ExtInfo}; the
+		// extension can become unavailable on context restores or browser-variant
+		// drivers, and this path is strictly read-only.
+		const floatPath = this.ext.isWebGL2 && gl.getExtension('EXT_color_buffer_float') !== null;
+		if (floatPath) {
+			const gl2 = gl as WebGL2RenderingContext;
+			const format = sourceComponents === 4 ? gl2.RGBA : sourceComponents === 2 ? gl2.RG : gl2.RED;
+			gl2.readPixels(0, 0, width, height, format, gl.FLOAT, this.readbackFloatBuffer);
+		} else {
+			const gl2 = gl as WebGL2RenderingContext;
+			const format = this.ext.isWebGL2
+				? sourceComponents === 4
+					? gl2.RGBA
+					: sourceComponents === 2
+						? gl2.RG
+						: gl2.RED
+				: gl.RGBA;
+			gl.readPixels(0, 0, width, height, format, gl.UNSIGNED_BYTE, this.readbackUint8Buffer);
+		}
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+		const data = new Float32Array(width * height * components);
+		if (floatPath) {
+			for (let i = 0; i < pixelCount; i++) {
+				const sourceOffset = i * sourceComponents;
+				const outOffset = i * components;
+				for (let c = 0; c < components; c++) {
+					data[outOffset + c] = this.readbackFloatBuffer[sourceOffset + c];
+				}
+			}
+		} else {
+			for (let i = 0; i < pixelCount; i++) {
+				const sourceOffset = i * sourceComponents;
+				const outOffset = i * components;
+				for (let c = 0; c < components; c++) {
+					data[outOffset + c] = this.readbackUint8Buffer[sourceOffset + c] / 255;
+				}
+			}
+		}
+
+		return { data, width, height, components };
+	}
+
+	private ensureReadFieldBuffers(sourceCount: number): void {
+		if (this.readbackFloatBuffer.length < sourceCount) {
+			this.readbackFloatBuffer = new Float32Array(sourceCount);
+		}
+		if (this.readbackUint8Buffer.length < sourceCount) {
+			this.readbackUint8Buffer = new Uint8Array(sourceCount);
+		}
 	}
 
 	get isPaused(): boolean {
@@ -869,7 +1005,9 @@ export class FluidEngine implements FluidHandle {
 			this.installPointerListeners();
 		}
 		this.lastUpdateTime = performance.now();
-		this.startRaf();
+		if (this.autoStart) {
+			this.startRaf();
+		}
 	}
 
 	dispose(): void {
@@ -2823,6 +2961,10 @@ export class FluidEngine implements FluidHandle {
 	}
 
 	private step(dt: number): void {
+		if (this.deterministicMode) {
+			this.simTime += dt;
+		}
+
 		const gl = this.gl;
 		gl.disable(gl.BLEND);
 		const prescribedOnly = this.flowMode() === 'prescribed';
