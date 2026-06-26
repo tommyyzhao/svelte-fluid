@@ -24,6 +24,11 @@
 			slug: 'flow',
 			title: 'Flow & obstructions',
 			blurb: 'Solver-native flow scenes routing around obstructions — airfoils, mazes, and channels.'
+		},
+		{
+			slug: 'bench',
+			title: 'Benchmark profiler',
+			blurb: 'Interactive benchmark runbook with shared harness scenes, timer-query timing, and liveness guard.'
 		}
 	];
 </script>
