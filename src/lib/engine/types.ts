@@ -412,6 +412,12 @@ export interface FluidConfig {
 	pressureIterations?: number;
 	/** Vorticity confinement strength. Default 30. */
 	curl?: number;
+	/**
+	 * Adaptive confinement blend. 0 = legacy byte-identical behavior.
+	 * 1 = fully adaptive magnitude gating by local normalized vorticity.
+	 * Default 0. Bucket A.
+	 */
+	vorticityAdaptive?: number;
 	/** Splat radius (NDC units). Default 0.25. */
 	splatRadius?: number;
 	/** Splat impulse force. Default 6000. */
@@ -803,6 +809,7 @@ export interface ResolvedConfig {
 	PRESSURE: number;
 	PRESSURE_ITERATIONS: number;
 	CURL: number;
+	VORTICITY_ADAPTIVE: number;
 	SPLAT_RADIUS: number;
 	SPLAT_FORCE: number;
 	SHADING: boolean;
