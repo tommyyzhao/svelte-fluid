@@ -30,6 +30,10 @@
 	let warmup = $state(0);
 	let emaMs = $state(0);
 	let lastFrame = $state(0);
+	// Latched across frames: liveness is only re-checked on readback frames, so
+	// resetting it every frame would collapse `done` (and the published metrics)
+	// on the 5 of 6 frames that skip the readback.
+	let energyGood = $state(false);
 	let status = $state('Benchmark running.');
 	let rafHandle = $state(0);
 	let rng = $state<Rng>(mulberry32(scenes[sceneKeys[0]].seed));
@@ -118,7 +122,6 @@
 		activeScene.schedule(engine, rng, frameIdx, dt);
 
 		let energy = benchResult.energy;
-		let energyGood = false;
 		if (frameIdx % 6 === 0) {
 			try {
 				const velocity = engine.readField('velocity');
@@ -152,7 +155,7 @@
 			done: ready
 		});
 
-		if (!ready && sampleSource === 'timer-query' && engine.isBenchmarkTimed() && frameSamples?.length === 0) {
+		if (!ready && engine.isBenchmarkTimed() && !frameSamples?.length) {
 			status = 'Waiting for first finished timer query sample.';
 		} else if (ready) {
 			status = `Active scene: ${(activeScene.config.curl ?? 0) > 0 ? 'curl enabled' : 'curl disabled'}; ${
@@ -171,6 +174,7 @@
 		frame = 0;
 		warmup = 0;
 		lastFrame = 0;
+		energyGood = false;
 		rng = mulberry32(scenes[selected].seed);
 		publish({
 			meanMs: 0,

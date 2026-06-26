@@ -26,6 +26,13 @@ describe('bench reducers', () => {
 		expect(peak.value).toBe(4);
 	});
 
+	it('tracks the peak value along a descending path', () => {
+		const samples = new Float32Array([0, -1, 4, -2, 3]);
+		const peak = trackPeakAlongPath(samples, 4, 0);
+		expect(peak.index).toBe(2);
+		expect(peak.value).toBe(4);
+	});
+
 	it('counts sign changes in a crafted sequence', () => {
 		expect(signChangeCount(new Float32Array([0.2, -0.2, -0.1, 0.5, 0.5, -0.2, 0.1]))).toBe(4);
 	});

@@ -413,8 +413,11 @@ export interface FluidConfig {
 	/** Vorticity confinement strength. Default 30. */
 	curl?: number;
 	/**
-	 * Adaptive confinement blend. 0 = legacy byte-identical behavior.
-	 * 1 = fully adaptive magnitude gating by local normalized vorticity.
+	 * Adaptive confinement blend. `0` disables adaptive gating (legacy confinement
+	 * magnitude); `1` fully gates the magnitude by local normalized vorticity.
+	 * Note: confinement is independently attenuated next to solid boundaries (a fix
+	 * so it no longer injects momentum into walls / fights projection), so output
+	 * near obstructions differs from prior versions regardless of this value.
 	 * Default 0. Bucket A.
 	 */
 	vorticityAdaptive?: number;

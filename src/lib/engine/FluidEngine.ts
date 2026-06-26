@@ -87,6 +87,7 @@ import {
 	type MaskContext
 } from './container-shapes.js';
 import * as S from './shaders.js';
+import { VORTICITY_ADAPTIVE_LO, VORTICITY_ADAPTIVE_HI } from './shaders.js';
 
 const FLOW_SOURCE_BATCH_SIZE = 4;
 const FLOW_OUTLET_BATCH_SIZE = 4;
@@ -120,6 +121,7 @@ interface ReadFieldOptions {
 	components?: 1 | 2 | 3 | 4;
 }
 
+/** @internal */
 export interface ReadFieldResult {
 	readonly data: Float32Array;
 	readonly width: number;
@@ -129,16 +131,15 @@ export interface ReadFieldResult {
 
 type BenchPass = 'curl' | 'vorticity' | 'advect' | 'viscosity' | 'divergence' | 'pressure' | 'gradient';
 
+/** @internal */
 type BenchPassSamples = {
 	[K in BenchPass]: number[];
 };
 
 interface BenchFrameProfile {
-	totalMs: number;
 	passMs: Partial<BenchPassSamples>;
 	pendingQueries: number;
 	ended: boolean;
-	finalized: boolean;
 }
 
 interface PendingBenchQuery {
@@ -168,6 +169,7 @@ interface BenchProfileState {
 	passSamples: BenchPassSamples;
 }
 
+/** @internal */
 interface BenchTimings {
 	readonly frameMs: number[];
 	readonly passMs: BenchPassSamples;
@@ -454,10 +456,11 @@ function clamp01(value: number): number {
 	return Math.max(0, Math.min(1, value));
 }
 
-/** Local vorticity-magnitude thresholds used by adaptive confinement. */
-export const VORTICITY_ADAPTIVE_LO = 0.02;
-/** Local vorticity-magnitude thresholds used by adaptive confinement. */
-export const VORTICITY_ADAPTIVE_HI = 0.08;
+// Single-sourced in shaders.ts (alongside the GLSL that consumes them) to keep
+// the GLSL band, this TypeScript mirror, and the tests from drifting apart.
+// Imported above for local default-parameter use; re-exported so existing
+// importers (and tests) that read these from FluidEngine keep working.
+export { VORTICITY_ADAPTIVE_LO, VORTICITY_ADAPTIVE_HI };
 
 /**
  * Resolution-aware viscosity coefficient used at the CPU-facing uniform site.
@@ -503,7 +506,10 @@ export function adaptiveConfinementMagnitude(
 	}
 
 	const omega = Math.abs(curlSample * 2);
-	const scale = clamp01((omega - lo) / (hi - lo));
+	// Match the GLSL `smoothstep(lo, hi, omega)` (cubic Hermite) exactly, not a
+	// linear ramp — otherwise this mirror disagrees with the shader mid-band.
+	const t = clamp01((omega - lo) / (hi - lo));
+	const scale = t * t * (3 - 2 * t);
 	const epsAdaptive = epsLegacy * scale;
 	const mix = clamp01(adaptiveMix);
 	return epsLegacy + (epsAdaptive - epsLegacy) * mix;
@@ -530,7 +536,7 @@ export interface FluidEngineOptions {
 	/** @internal Construct without auto-starting the requestAnimationFrame loop. */
 	autoStart?: boolean;
 	/**
-	 * Internal benchmark instrumentation switch. When enabled, selected solver
+	 * @internal Benchmark instrumentation switch. When enabled, selected solver
 	 * passes are wrapped in EXT_disjoint_timer_query_webgl2 queries.
 	 */
 	instrument?: boolean;
@@ -669,6 +675,10 @@ export class FluidEngine implements FluidHandle {
 	private benchProfileState: BenchProfileState | null = null;
 	private benchProfileActiveFrame = -1;
 	private benchProfileSampleLimit = 240;
+	// Whether the current pass actually began a timer query. When the query pool
+	// is exhausted createQueryEXT() returns null and we never call beginQueryEXT,
+	// so endBenchPass must not blindly call endQueryEXT (GL_INVALID_OPERATION).
+	private benchPassQueryActive = false;
 	private flowOutletBatchKeep = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
 
 	// --- Bound listeners ---
@@ -891,6 +901,14 @@ export class FluidEngine implements FluidHandle {
 			const format = sourceComponents === 4 ? gl2.RGBA : sourceComponents === 2 ? gl2.RG : gl2.RED;
 			gl2.readPixels(0, 0, width, height, format, gl.FLOAT, this.readbackFloatBuffer);
 		} else {
+			// The byte path normalizes by /255, which only makes sense for the
+			// 0..1 dye field. velocity/pressure/divergence/curl carry signed and
+			// large-magnitude values, so /255 would silently return garbage.
+			if (field !== 'dye') {
+				throw new Error(
+					`svelte-fluid: readField('${field}') requires EXT_color_buffer_float; only dye is byte-readable`
+				);
+			}
 			const gl2 = gl as WebGL2RenderingContext;
 			const format = this.ext.isWebGL2
 				? sourceComponents === 4
@@ -1283,11 +1301,9 @@ export class FluidEngine implements FluidHandle {
 
 		const frame = state.currentFrame++;
 		state.frames.set(frame, {
-			totalMs: 0,
 			passMs: {},
 			pendingQueries: 0,
-			ended: false,
-			finalized: false
+			ended: false
 		});
 		this.benchProfileActiveFrame = frame;
 	}
@@ -1305,6 +1321,7 @@ export class FluidEngine implements FluidHandle {
 	}
 
 	private beginBenchPass(pass: BenchPass): void {
+		this.benchPassQueryActive = false;
 		const state = this.benchProfileState;
 		if (!state || this.benchProfileActiveFrame < 0) return;
 		const frameProfile = state.frames.get(this.benchProfileActiveFrame);
@@ -1314,13 +1331,17 @@ export class FluidEngine implements FluidHandle {
 		if (!query) return;
 
 		state.ext.beginQueryEXT(state.ext.TIME_ELAPSED_EXT, query);
+		this.benchPassQueryActive = true;
 		frameProfile.pendingQueries += 1;
 		state.pending.push({ pass, query, frame: this.benchProfileActiveFrame });
 	}
 
 	private endBenchPass(): void {
 		const state = this.benchProfileState;
-		if (!state || this.benchProfileActiveFrame < 0) return;
+		// Only close the query if begin actually opened one; otherwise endQueryEXT
+		// raises GL_INVALID_OPERATION (no active TIME_ELAPSED_EXT query).
+		if (!state || !this.benchPassQueryActive) return;
+		this.benchPassQueryActive = false;
 		state.ext.endQueryEXT(state.ext.TIME_ELAPSED_EXT);
 	}
 
@@ -1355,10 +1376,8 @@ export class FluidEngine implements FluidHandle {
 			}
 		}
 
-		frameProfile.totalMs = total;
 		state.frameSamples.push(total);
 		this.trimBenchSamples(state.frameSamples);
-		frameProfile.finalized = true;
 		state.frames.delete(frame);
 	}
 
@@ -1366,7 +1385,7 @@ export class FluidEngine implements FluidHandle {
 		const state = this.benchProfileState;
 		if (!state) return;
 		for (const [frame, frameProfile] of state.frames) {
-			if (!frameProfile.ended || frameProfile.finalized) continue;
+			if (!frameProfile.ended) continue;
 			if (frameProfile.pendingQueries > 0) continue;
 			this.finalizeBenchFrame(frame, frameProfile, state);
 		}
@@ -1380,6 +1399,12 @@ export class FluidEngine implements FluidHandle {
 		const pending = state.pending;
 		const keep: PendingBenchQuery[] = [];
 
+		// Reading GPU_DISJOINT_EXT RESETS it to false, so a per-query read would
+		// let only the first query in this poll observe a disjoint event and the
+		// rest would accept timings spanning it. Read it exactly once and apply
+		// that single result to every query finalized in this poll.
+		const disjoint = !!gl.getParameter(state.ext.GPU_DISJOINT_EXT);
+
 		for (const item of pending) {
 			const available = state.ext.getQueryObjectEXT(item.query, state.ext.QUERY_RESULT_AVAILABLE_EXT);
 			if (!available) {
@@ -1389,7 +1414,6 @@ export class FluidEngine implements FluidHandle {
 
 			const frameProfile = state.frames.get(item.frame);
 			if (frameProfile) {
-				const disjoint = !!gl.getParameter(state.ext.GPU_DISJOINT_EXT);
 				if (!disjoint) {
 					const nanos = state.ext.getQueryObjectEXT(item.query, state.ext.QUERY_RESULT_EXT);
 					if (typeof nanos === 'number' && Number.isFinite(nanos)) {
@@ -1411,6 +1435,7 @@ export class FluidEngine implements FluidHandle {
 		this.finalizeReadyBenchFrames();
 	}
 
+	/** @internal */
 	getBenchTimings(): BenchTimings | null {
 		this.pollBenchQueries();
 		const state = this.benchProfileState;
@@ -1432,6 +1457,7 @@ export class FluidEngine implements FluidHandle {
 		};
 	}
 
+	/** @internal */
 	isBenchmarkTimed(): boolean {
 		return !!this.benchProfileState;
 	}

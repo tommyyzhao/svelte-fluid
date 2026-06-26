@@ -80,10 +80,15 @@ export function trackPeakAlongPath(
 	const direction = stop >= start ? 1 : -1;
 	const stride = Math.max(1, Math.floor(Math.abs(step))) * direction;
 
-	let index = lo;
-	let peakIndex = index;
-	let peakValue = Math.abs(values[index]);
-	for (let i = lo + stride; direction > 0 ? i <= hi : i >= hi; i += stride) {
+	// Walk from the requested start toward the stop. A descending path must seed
+	// at `hi` and step down into [lo, hi]; seeding at `lo` with a negative stride
+	// stepped straight out of range, so the reverse scan never ran.
+	const from = direction > 0 ? lo : hi;
+	const to = direction > 0 ? hi : lo;
+
+	let peakIndex = from;
+	let peakValue = Math.abs(values[from]);
+	for (let i = from + stride; direction > 0 ? i <= to : i >= to; i += stride) {
 		const value = Math.abs(values[i]);
 		if (value > peakValue) {
 			peakIndex = i;
