@@ -3,6 +3,7 @@ import {
 	divergenceL2,
 	fieldEnergy,
 	fluxAcrossLine,
+	gridScaleEnergyFraction,
 	hasNonFinite,
 	l2Norm,
 	signChangeCount,
@@ -52,5 +53,35 @@ describe('bench reducers', () => {
 
 	it('computes field energy with a known field', () => {
 		expect(fieldEnergy(new Float32Array([3, 4]))).toBeCloseTo(Math.sqrt(12.5));
+	});
+
+	it('computes near-zero grid-scale energy fraction for smooth fields', () => {
+		const w = 16;
+		const h = 16;
+		const field = new Float32Array(w * h * 2);
+		for (let y = 0; y < h; y++) {
+			for (let x = 0; x < w; x++) {
+				const idx = (y * w + x) * 2;
+				const value = (x + y) / (w + h);
+				field[idx] = value;
+				field[idx + 1] = value;
+			}
+		}
+		expect(gridScaleEnergyFraction(field, w, h)).toBeLessThan(0.05);
+	});
+
+	it('computes a high grid-scale energy fraction for checkerboard noise', () => {
+		const size = 16;
+		const field = new Float32Array(size * size * 2);
+		for (let y = 0; y < size; y++) {
+			for (let x = 0; x < size; x++) {
+				const idx = (y * size + x) * 2;
+				const value = (x + y) % 2 === 0 ? 1 : -1;
+				field[idx] = value;
+				field[idx + 1] = -value;
+			}
+		}
+		expect(gridScaleEnergyFraction(field, size, size)).toBeGreaterThan(0.8);
+		expect(gridScaleEnergyFraction(field, size, size)).toBeLessThan(1.01);
 	});
 });

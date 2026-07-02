@@ -20,7 +20,7 @@
       "id": "spectral-band",
       "track": "A (regression nets)",
       "title": "Grid-scale-energy spectral band — machine-independent regression net for the MacCormack class",
-      "status": "todo",
+      "status": "done",
       "depends_on": [],
       "risk": "low",
       "spec": "Add a CHEAP, machine-independent automated net that catches the exact regression that burned us (anti-diffusive advection pumping grid-scale modes into a cubey/right-angle churn) — something the existing harness (which reads internal velocity/pressure/dye FBOs) does NOT do today. Add a pure-TS reducer gridScaleEnergyFraction(field, w, h, components) to src/lib/engine/__benches__/reducers.ts: energy of (field minus a 3x3 box-smoothed field) divided by total field energy — the fraction of energy living at grid scale. Then a browser test (e.g. src/lib/engine/__benches__/grid-scale.browser.test.ts) that, for each bench scene (dipole/kelvinHelmholtz/rayleighBenard/thinWallTeslaValve) and a couple representative decorative preset configs, runs advance() deterministically, readField('velocity'), and asserts gridScaleEnergyFraction stays within a per-scene band (well below a churn threshold). Reuses the merged Phase-0 harness; no PNGs, no cross-renderer determinism problem, no new runtime deps.",
