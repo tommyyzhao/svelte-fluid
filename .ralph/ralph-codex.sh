@@ -17,7 +17,9 @@ set -uo pipefail
 
 # ---------------- Config (env-overridable) ----------------
 REPO="${RALPH_REPO:?set RALPH_REPO}"
-BRANCH="${RALPH_BRANCH:-epic-0001-phases}"
+# Track whatever branch the live prd.json declares (REPO is set above), so this
+# never goes stale when a new prd supersedes the old one. Override with RALPH_BRANCH.
+BRANCH="${RALPH_BRANCH:-$(jq -r '.branch // "backlog-roadmap"' "$REPO/.ralph/prd.json" 2>/dev/null || echo backlog-roadmap)}"
 MODEL="${RALPH_MODEL:-gpt-5.3-codex-spark}"
 REASONING="${RALPH_REASONING:-xhigh}"
 PROMPT_FILE="${RALPH_PROMPT:-$REPO/.ralph/PROMPT.md}"

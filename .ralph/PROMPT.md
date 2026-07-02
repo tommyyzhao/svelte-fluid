@@ -1,7 +1,7 @@
 # Ralph-Codex loop — svelte-fluid Epic 0001 (Engine Quality)
 
 You are an autonomous implementation operator in the **svelte-fluid** repo on branch
-`epic-0001-phases`. You are invoked repeatedly; each invocation you advance the work by
+`backlog-roadmap`. You are invoked repeatedly; each invocation you advance the work by
 **exactly ONE task**, then stop. Your previous work is already in the files and git
 history — read them, don't redo them.
 
@@ -16,14 +16,15 @@ history — read them, don't redo them.
 - **Repo rules:** `CLAUDE.md`
 
 ## Your loop, each iteration
-0. Assert you are on branch `epic-0001-phases` (`git rev-parse --abbrev-ref HEAD`). If
+0. Assert you are on branch `backlog-roadmap` (`git rev-parse --abbrev-ref HEAD`). If
    not, STOP immediately and change nothing — do not switch branches.
 1. Read `.ralph/prd.json`. Select the **first** task whose `status` is `todo` or
-   `in_progress` AND whose `depends_on` are all `done`. **SKIP** tasks whose status is
-   `deferred` or `blocked`. If no such task remains (every task is `done`/`deferred`/
-   `blocked`), output exactly `ALL_PHASES_COMPLETE` and stop. Never invent work beyond
-   the task list, and **never run a `deferred` task** (deferred tasks are specced for a
-   later human-reviewed session — leave them untouched).
+   `in_progress` AND whose `depends_on` are all `done`. **SKIP** every task whose status
+   is `human`, `gated`, `cut`, `deferred`, or `blocked` — these are terminal-or-skip and
+   are NOT yours to start (a `human`/`gated` task needs human QA or an unfired gate; you
+   may never fake their visual/design sign-off). If no selectable `todo`/`in_progress`
+   task remains (every other task is `done`/`human`/`gated`/`cut`/`deferred`/`blocked`),
+   output exactly `ALL_PHASES_COMPLETE` and stop. Never invent work beyond the task list.
 2. Set that task's `status` to `in_progress` in `prd.json`.
 3. Implement **only** that task — its `spec`, `files`, `acceptance`, `constraints`, plus
    the relevant ADR-0042 decisions. Match surrounding code: tabs, Svelte 5 runes only,
@@ -53,8 +54,8 @@ history — read them, don't redo them.
   all pass — the orchestrator re-runs the gate and will DISCARD your iteration (clean
   reset) if it is red, so a false `done` just wastes a cycle.
 - **NEVER** fake completion. Mark a task `done` only when its acceptance is genuinely met
-  and the gate is green. Output `ALL_PHASES_COMPLETE` only when every non-deferred task is
-  truly done.
+  and the gate is green. Output `ALL_PHASES_COMPLETE` only when no selectable
+  `todo`/`in_progress` task remains (every other task being `done`/`human`/`gated`/`cut`).
 - Authored (non-gated) `*.browser.test.ts` and soak tests MUST be genuine — they must
   actually exercise the feature (real `advance`/`readField`/assertions against the scene
   thresholds), never `expect(true).toBe(true)` or empty stubs. They are outside the node
