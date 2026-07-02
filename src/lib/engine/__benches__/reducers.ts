@@ -182,3 +182,55 @@ export function fieldEnergy(field: ArrayLike<number>): number {
 	}
 	return Math.sqrt(sum / n);
 }
+
+/**
+ * Grid-scale energy fraction after a 3×3 box blur.
+ *
+ * High values indicate sharp, per-cell alternation (which is where the MacCormack
+ * churn mode appears); low values indicate smoother, cell-scale-coherent flow.
+ */
+export function gridScaleEnergyFraction(
+	field: ArrayLike<number>,
+	width: number,
+	height: number,
+	components: 2 | 4 = 2
+): number {
+	if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 2 || height <= 2) return 0;
+	if (components !== 2 && components !== 4) return 0;
+
+	const n = width * height;
+	const fieldCount = field.length;
+	if (n === 0 || fieldCount < n * components) return 0;
+
+	let totalEnergy = 0;
+	let gridScaleEnergy = 0;
+
+	const clampX = (x: number): number => Math.max(0, Math.min(width - 1, x));
+	const clampY = (y: number): number => Math.max(0, Math.min(height - 1, y));
+
+	for (let y = 0; y < height; y++) {
+		for (let x = 0; x < width; x++) {
+			const cell = (y * width + x) * components;
+			for (let c = 0; c < components; c++) {
+				const value = field[cell + c];
+				totalEnergy += value * value;
+
+				let neighborhoodSum = 0;
+				for (let dy = -1; dy <= 1; dy++) {
+					const sy = clampY(y + dy) * width;
+					for (let dx = -1; dx <= 1; dx++) {
+						const sx = clampX(x + dx);
+						neighborhoodSum += field[sy * components + sx * components + c] as number;
+					}
+				}
+				const smooth = neighborhoodSum / 9;
+				const delta = value - smooth;
+				gridScaleEnergy += delta * delta;
+			}
+		}
+	}
+
+	if (!Number.isFinite(totalEnergy) || totalEnergy <= 0) return 0;
+	const ratio = Math.sqrt(gridScaleEnergy / totalEnergy);
+	return Number.isFinite(ratio) ? ratio : 0;
+}
