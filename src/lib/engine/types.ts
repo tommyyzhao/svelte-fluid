@@ -410,6 +410,24 @@ export interface FluidConfig {
 	pressure?: number;
 	/** Pressure solver iterations. Default 20. */
 	pressureIterations?: number;
+	/**
+	 * Opt-in frame-time governor. When sustained live RAF frames exceed the
+	 * internal budget, the engine sheds Bucket-A quality only: pressure
+	 * iterations first, then solver substeps. It never auto-restores quality;
+	 * call `setConfig()` with explicit values to raise them again. Ignored by
+	 * deterministic `advance()` harness runs. Default false.
+	 */
+	autoPerformance?: boolean;
+	/**
+	 * Lower bound for autoPerformance pressure-iteration shedding.
+	 * Default 8. Bucket A.
+	 */
+	autoPerformanceMinPressureIterations?: number;
+	/**
+	 * Lower bound for autoPerformance substep shedding.
+	 * Default 1. Bucket A.
+	 */
+	autoPerformanceMinSubsteps?: number;
 	/** Vorticity confinement strength. Default 30. */
 	curl?: number;
 	/**
@@ -811,6 +829,9 @@ export interface ResolvedConfig {
 	WALL_FRICTION_WIDTH: number;
 	PRESSURE: number;
 	PRESSURE_ITERATIONS: number;
+	AUTO_PERFORMANCE: boolean;
+	AUTO_PERFORMANCE_MIN_PRESSURE_ITERATIONS: number;
+	AUTO_PERFORMANCE_MIN_SUBSTEPS: number;
 	CURL: number;
 	VORTICITY_ADAPTIVE: number;
 	SPLAT_RADIUS: number;
@@ -876,6 +897,21 @@ export interface ResolvedConfig {
 	OBSTRUCTIONS: ReadonlyArray<Obstruction> | null;
 	OBSTRUCTION_COLOR: RGB | null;
 	FLOW: FlowConfig | null;
+}
+
+export type PerformanceTier = 'none' | 'pressure' | 'substeps';
+export type PerformanceAction = 'none' | 'shed-pressure' | 'shed-substeps';
+
+export interface PerformanceState {
+	readonly enabled: boolean;
+	readonly tier: PerformanceTier;
+	readonly emaMs: number;
+	readonly msSinceLastChange: number;
+	readonly pressureIterations: number;
+	readonly substeps: number;
+	readonly minPressureIterations: number;
+	readonly minSubsteps: number;
+	readonly lastAction: PerformanceAction;
 }
 
 /** Pixel format pair returned by `getSupportedFormat`. */
@@ -946,4 +982,9 @@ export interface FluidHandle {
 	resume(): void;
 	/** Whether the engine's animation loop is currently paused. */
 	readonly isPaused: boolean;
+	/**
+	 * Current frame-time governor state. Pull-based by design: no events are
+	 * emitted, so applications can read this when rendering diagnostics.
+	 */
+	getPerformanceState(): PerformanceState;
 }

@@ -45,7 +45,7 @@
       "id": "governor-bucket-a",
       "track": "B (features)",
       "title": "Frame-time governor — Bucket-A-only slice (opt-in autoPerformance)",
-      "status": "todo",
+      "status": "done",
       "depends_on": [],
       "risk": "medium",
       "spec": "Opt-in runtime quality governor for the degrade-not-break mobile floor (complements ADR-0019 capability-gate + autoPause). SCOPE TO BUCKET-A ONLY (no FBO rebuild, no dye-res pop, no EMA-reset edge cases): an EMA of the frame dt already computed in calcDeltaTime() drives a hysteretic shed of pressureIterations then SUBSTEPS under sustained load, with config floors and >=3s hysteresis + asymmetric/never-auto-restore thresholds (avoid control-loop hunting). These two tiers are physically GRACEFUL (softer low-frequency divergence / coarser integration) and CANNOT produce anti-diffusive grid-scale churn, so the MacCormack lesson does not transfer. Put the decision logic in a NEW pure module src/lib/engine/performance-governor.ts (emaMs, currentTier, msSinceLastChange, thresholds, floors -> next action) so it is node-testable. Add pull-based getPerformanceState() (mirror isPaused; NO events) + a PerformanceState type + an autoPerformance config field (default off). HARD GUARD: never fire in deterministicMode/advance() so the readback harness + seeded determinism stay byte-identical. Fan getPerformanceState() across the wrappers that re-expose isPaused. New ADR.",

@@ -81,7 +81,7 @@ ${SCRIPT_CLOSE}
 	<strong>WebGL fallback (ADR-0041):</strong> when WebGL is <em>permanently</em> unavailable — no WebGL, or no half-float texture support — <code>&lt;Fluid&gt;</code> never crashes the page. It renders, in order of preference, your <code>fallback</code> snippet, then a <code>poster</code> image, else it fills the box with <code>backColor</code> and exposes a visually-hidden <code>fallbackText</code> message (default: <em>"This animation requires WebGL, which isn't available in your browser."</em>). <em>Transient</em> failures (hitting the browser's live-context cap on a dense <code>lazy</code> page) stay blank and retry on the next scroll. The fill is mode-aware: <code>transparent</code> stays see-through, and <code>reveal</code> uses the cover color and masks on <em>any</em> failure so hidden content is never exposed. For <code>distortion</code>, pass <code>poster=&#123;yourImageUrl&#125;</code> so the still image stands in for the warp. Set <a href="{base}/docs/configuration"><code>requireHardwareAcceleration</code></a> to also treat a software-only renderer as unavailable. The helper <code>isWebGLAvailable()</code> is exported if you want to gate rendering yourself.
 </div>
 
-<p>Exposes a <a href="{base}/docs/api"><code>FluidHandle</code></a> via <code>bind:this</code> for programmatic control (splats, pause, resume).</p>
+<p>Exposes a <a href="{base}/docs/api"><code>FluidHandle</code></a> via <code>bind:this</code> for programmatic control (splats, pause, resume, performance state).</p>
 
 <!-- ============================================================ -->
 <h2 id="fluidbackground">&lt;FluidBackground&gt;</h2>

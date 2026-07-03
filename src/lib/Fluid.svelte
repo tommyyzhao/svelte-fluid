@@ -98,6 +98,7 @@
 	import { onMount, untrack } from 'svelte';
 	import { FluidEngine } from './engine/FluidEngine.js';
 	import { WebGLUnavailableError } from './engine/gl-utils.js';
+	import { DISABLED_PERFORMANCE_STATE } from './engine/performance-governor.js';
 	import { randomSeed } from './engine/rng.js';
 	import type { FluidHandle } from './engine/types.js';
 
@@ -121,6 +122,9 @@
 		wallFrictionWidth,
 		pressure,
 		pressureIterations,
+		autoPerformance,
+		autoPerformanceMinPressureIterations,
+		autoPerformanceMinSubsteps,
 		curl,
 		vorticityAdaptive,
 		splatRadius,
@@ -291,6 +295,9 @@
 			wallFrictionWidth,
 			pressure,
 			pressureIterations,
+			autoPerformance,
+			autoPerformanceMinPressureIterations,
+			autoPerformanceMinSubsteps,
 			curl,
 			vorticityAdaptive,
 			splatRadius,
@@ -498,7 +505,8 @@
 		randomSplats: (count) => engine?.randomSplats(count),
 		pause: () => engine?.pause(),
 		resume: () => engine?.resume(),
-		get isPaused() { return engine?.isPaused ?? true; }
+		get isPaused() { return engine?.isPaused ?? true; },
+		getPerformanceState: () => engine?.getPerformanceState() ?? DISABLED_PERFORMANCE_STATE
 	};
 
 	onMount(() => {

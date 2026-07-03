@@ -160,6 +160,19 @@ fluidRef.handle.randomSplats(10);</code></pre>
   fluidRef.handle.resume();
 {RB}</code></pre>
 
+<h3>getPerformanceState()</h3>
+
+<p>
+	Return the current <code>autoPerformance</code> governor state. This is pull-based: no events are emitted,
+	so call it when rendering diagnostics or controls.
+</p>
+
+<pre><code>const perf = fluidRef.handle.getPerformanceState();
+
+if (perf.enabled && perf.tier !== 'none') {LB}
+  console.info(`Fluid quality shed: ${LB}perf.tier{RB}`);
+{RB}</code></pre>
+
 <hr />
 
 <h2>Types</h2>
@@ -204,6 +217,25 @@ fluidRef.handle.randomSplats(10);</code></pre>
   r: number;
   g: number;
   b: number;
+{RB}</code></pre>
+
+<h3>PerformanceState</h3>
+
+<p>Snapshot returned by <code>FluidHandle.getPerformanceState()</code>.</p>
+
+<pre><code>type PerformanceTier = 'none' | 'pressure' | 'substeps';
+type PerformanceAction = 'none' | 'shed-pressure' | 'shed-substeps';
+
+interface PerformanceState {LB}
+  readonly enabled: boolean;
+  readonly tier: PerformanceTier;
+  readonly emaMs: number;
+  readonly msSinceLastChange: number;
+  readonly pressureIterations: number;
+  readonly substeps: number;
+  readonly minPressureIterations: number;
+  readonly minSubsteps: number;
+  readonly lastAction: PerformanceAction;
 {RB}</code></pre>
 
 <h3>PresetSplat</h3>
@@ -419,8 +451,9 @@ interface FlowGridField {LB}
 <p>
 	The engine is constructed with a <code>canvas</code> element and a <code>config</code> object
 	matching the <code>FluidConfig</code> interface. It exposes the same <code>splat()</code>,
-	<code>randomSplats()</code>, <code>pause()</code>, <code>resume()</code>, and
-	<code>isPaused</code> API as <code>FluidHandle</code>, plus additional methods:
+	<code>randomSplats()</code>, <code>pause()</code>, <code>resume()</code>,
+	<code>isPaused</code>, and <code>getPerformanceState()</code> API as
+	<code>FluidHandle</code>, plus additional methods:
 </p>
 
 <ul>

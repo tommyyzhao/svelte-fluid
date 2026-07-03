@@ -46,6 +46,9 @@ describe('resolveConfig', () => {
 					wallFrictionWidth: 2,
 					pressure: 0.6,
 					pressureIterations: 30,
+					autoPerformance: true,
+					autoPerformanceMinPressureIterations: 6,
+					autoPerformanceMinSubsteps: 2,
 					splatForce: 8000
 				},
 				DEFAULTS
@@ -62,6 +65,9 @@ describe('resolveConfig', () => {
 			expect(r.WALL_FRICTION_WIDTH).toBe(2);
 			expect(r.PRESSURE).toBe(0.6);
 			expect(r.PRESSURE_ITERATIONS).toBe(30);
+			expect(r.AUTO_PERFORMANCE).toBe(true);
+			expect(r.AUTO_PERFORMANCE_MIN_PRESSURE_ITERATIONS).toBe(6);
+			expect(r.AUTO_PERFORMANCE_MIN_SUBSTEPS).toBe(2);
 			expect(r.VORTICITY_ADAPTIVE).toBe(0.6);
 			expect(r.SPLAT_FORCE).toBe(8000);
 		});
@@ -432,6 +438,9 @@ describe('DEFAULTS', () => {
 		expect(DEFAULTS.WALL_FRICTION).toBe(0);
 		expect(DEFAULTS.WALL_FRICTION_WIDTH).toBe(1);
 		expect(DEFAULTS.PRESSURE).toBe(0.8);
+		expect(DEFAULTS.AUTO_PERFORMANCE).toBe(false);
+		expect(DEFAULTS.AUTO_PERFORMANCE_MIN_PRESSURE_ITERATIONS).toBe(8);
+		expect(DEFAULTS.AUTO_PERFORMANCE_MIN_SUBSTEPS).toBe(1);
 		expect(DEFAULTS.CURL).toBe(30);
 		expect(DEFAULTS.SPLAT_RADIUS).toBe(0.25);
 		expect(DEFAULTS.SPLAT_FORCE).toBe(6000);
