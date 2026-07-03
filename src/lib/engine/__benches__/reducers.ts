@@ -184,10 +184,17 @@ export function fieldEnergy(field: ArrayLike<number>): number {
 }
 
 /**
- * Grid-scale energy fraction after a 3×3 box blur.
+ * Normalized grid-scale content of a field: the RMS amplitude of its high-pass
+ * component (field minus its 3×3 box blur) over the RMS amplitude of the field
+ * itself, i.e. √(gridScaleEnergy / totalEnergy).
  *
- * High values indicate sharp, per-cell alternation (which is where the MacCormack
- * churn mode appears); low values indicate smoother, cell-scale-coherent flow.
+ * Note this is an *amplitude* ratio (the √ of the energy fraction), deliberately
+ * so — it is bounded in ~[0, 1] and linear in per-cell contrast, which makes a
+ * stable regression band trivial to set. High values mean sharp per-cell
+ * alternation (the MacCormack grid-scale churn mode); low values mean smoother,
+ * cell-scale-coherent flow. The checkerboard known-answer test (>0.8) and the
+ * per-scene bench bands are tuned to this √ convention — drop the √ and every
+ * threshold shifts.
  */
 export function gridScaleEnergyFraction(
 	field: ArrayLike<number>,
