@@ -66,7 +66,7 @@
 
 <h2 id="inkinwater">InkInWater</h2>
 
-<p>Concentrated ink droplets sinking through dark water, blooming outward as they fall. Modeled after india ink in a deep tank with organic tendrils from gentle Rayleigh-Taylor instability.</p>
+<p>Concentrated ink droplets sinking through dark water, blooming outward as they fall. Modeled after india ink in a deep tank, with soft fingers forming as heavier ink sinks.</p>
 
 <p><strong>Container shape:</strong> none (full canvas).</p>
 
@@ -150,7 +150,7 @@
 
 <p><strong>Obstructions:</strong> two lower slabs form the left and right walls of a flare stack, leaving a center nozzle slot open. The top and side edges drain the plume so hot content can vent instead of saturating the canvas.</p>
 
-<p><strong>Honest physics note:</strong> this is an incompressible jet/plume simulation with advected heat scalar and buoyancy. It does not model combustion chemistry, compressibility, soot, radiation, or heat release.</p>
+<p><strong>Honest physics note:</strong> this is a low-speed jet/plume simulation with carried heat and buoyancy. It does not model combustion chemistry, gas compression, soot, radiation, or heat release.</p>
 
 <PresetReference id="GasFlare" />
 
@@ -158,11 +158,11 @@
 
 <h2 id="venturi">Venturi</h2>
 
-<p>Bernoulli's principle made visible. A gentle left-to-right body force acts like a pressure gradient, pushing fluid through a wide channel that is squeezed through a central throat formed by two concave obstruction islands. The visualization colors the velocity-magnitude field with a CFD-style blue→cyan→green→yellow→red ramp so the throat acceleration is readable instead of appearing as a uniform center jet.</p>
+<p>A Venturi tube effect made visible. A gentle left-to-right push drives fluid through a wide channel that narrows at a central throat formed by two concave obstruction islands. The visualization colors flow speed with an engineering-style blue→cyan→green→yellow→red ramp so the throat acceleration is readable instead of appearing as a uniform center jet.</p>
 
 <p><strong>Obstructions:</strong> two concave islands (top + bottom) pinching a horizontal channel from a wide inlet to a ~5.3:1 contraction at the throat. Open left/right boundaries let the inlet feed throughflow while the solid obstruction mask forms the throat; laminar (<code>curl</code> 0) so the streamlines stay ordered.</p>
 
-<p><strong>Honest physics note:</strong> the throat speed-up is an incompressible, low-speed effect and belongs in the live solver. Pressure/density changes from compressible gas flow are not modeled.</p>
+<p><strong>Honest physics note:</strong> the throat speed-up is a low-speed fluid effect and belongs in the live solver. Pressure and density changes from compressible gas flow are not modeled.</p>
 
 <PresetReference id="Venturi" />
 
@@ -174,7 +174,7 @@
 
 <p><strong>Obstruction:</strong> a single cylinder (circle authored as two SVG arcs, radius 10 in a [0,0,100,100] viewBox, <code>fit: 'fill'</code>) placed left of center and slightly below the inflow centerline — the deliberate vertical offset breaks symmetry so the wake sheds instead of forming a stable standing pair. All canvas edges are open with dye sponge drains; only the downstream outlet damps velocity.</p>
 
-<p><strong>Honest physics note:</strong> this is <em>evocative of</em> a vortex street, not a validated shedding simulation. The cylinder is a rasterized mask, shedding emerges from shear layers rolling up behind the disc, and its frequency is not a real Strouhal number.</p>
+<p><strong>Honest physics note:</strong> this is <em>evocative of</em> a vortex street, not a validated shedding simulation. The cylinder is a rasterized mask, vortices form as the wake rolls up behind the disc, and the shedding rate is not calibrated to real-world measurements.</p>
 
 <PresetReference id="Karman" />
 
@@ -186,7 +186,7 @@
 
 <p><strong>Geometry:</strong> a cropped reference SVG path defines the conduit, side-channel buckets, and internal slots as one even-odd container mask. The filled SVG region is the physical fluid domain, so the slots and walls are solved as part of the same boundary.</p>
 
-<p><strong>Honest physics note:</strong> this is a live incompressible throughflow visualization, not a hard-stop check valve. It gives plausible routing, separation, and recirculation cues, but it does not calculate a reverse/forward pressure-drop ratio or real valve rectification.</p>
+<p><strong>Honest physics note:</strong> this is a live low-speed throughflow visualization, not a hard-stop check valve. It gives plausible routing, separation, and recirculation cues, but it does not calculate a reverse/forward pressure-drop ratio or real valve rectification.</p>
 
 <PresetReference id="TeslaValve" />
 
