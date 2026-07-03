@@ -60,8 +60,10 @@ describe('Fluid.svelte forwards every FluidConfig field to the engine', () => {
 		// Sanity: we actually parsed the interface.
 		expect(fields.length).toBeGreaterThan(40);
 		expect(fields).toContain('obstructions');
+		expect(fields).toContain('advectionScheme');
 
 		const keys = buildConfigKeys();
+		expect(keys.has('advectionScheme')).toBe(true);
 		const missing = fields.filter((f) => !keys.has(f));
 		expect(missing).toEqual([]);
 	});

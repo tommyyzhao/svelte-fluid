@@ -383,6 +383,17 @@ export interface FluidConfig {
 	/** How fast velocity fades. Default 0.2. */
 	velocityDissipation?: number;
 	/**
+	 * Velocity advection scheme. Default `semilagrangian`.
+	 *
+	 * `maccormack` uses second-order velocity advection for crisper flow and
+	 * structured scenes, but it can look angular/cubey on diffuse decorative dye.
+	 * Dye and scalar advection remain semi-Lagrangian, and devices without linear
+	 * filtering are capability-gated back to `semilagrangian`.
+	 *
+	 * Construct-only (Bucket D): `setConfig()` ignores runtime changes.
+	 */
+	advectionScheme?: 'semilagrangian' | 'maccormack';
+	/**
 	 * Maximum simulated seconds per solver substep. Default 1/60.
 	 * Pair with `substeps` for steadier high-speed or narrow-channel flows.
 	 */
@@ -821,6 +832,7 @@ export interface ResolvedConfig {
 	INITIAL_DENSITY_DISSIPATION: number;
 	INITIAL_DENSITY_DISSIPATION_DURATION: number;
 	VELOCITY_DISSIPATION: number;
+	ADVECTION_SCHEME: 'semilagrangian' | 'maccormack';
 	MAX_TIME_STEP: number;
 	SUBSTEPS: number;
 	VISCOSITY: number;
