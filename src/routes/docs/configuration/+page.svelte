@@ -64,6 +64,17 @@
 				<td>How fast velocity fades.</td>
 			</tr>
 			<tr>
+				<td><code>advectionScheme</code></td>
+				<td><code>'semilagrangian' | 'maccormack'</code></td>
+				<td><code>'semilagrangian'</code></td>
+				<td>
+					Velocity advection scheme. <code>'maccormack'</code> can keep flow/structured
+					scenes crisper, but can look angular or cubey on diffuse decorative dye. Dye and
+					scalars stay semi-Lagrangian, and devices without linear filtering fall back to
+					<code>'semilagrangian'</code>. Construct-only.
+				</td>
+			</tr>
+			<tr>
 				<td><code>maxTimeStep</code></td>
 				<td><code>number</code></td>
 				<td><code>1 / 60</code></td>
@@ -822,5 +833,5 @@
 	Ignored by <code>setConfig()</code> after construction. These values are consumed once when the
 	engine is created: <code>seed</code>, <code>initialSplatCountMin</code>,
 	<code>initialSplatCountMax</code>, <code>initialSplatCount</code>, <code>presetSplats</code>, and
-	<code>requireHardwareAcceleration</code>.
+	<code>requireHardwareAcceleration</code>, and <code>advectionScheme</code>.
 </p>

@@ -76,7 +76,7 @@
       "id": "maccormack-public-api",
       "track": "B (features)",
       "title": "Promote advectionScheme to a public Bucket-D config field + forward through <Fluid> (NO preset changes)",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["spectral-band"],
       "risk": "low",
       "spec": "Make the (currently @internal, construct-only) MacCormack scheme REACHABLE without changing any preset. Promote advectionScheme to a PUBLIC FluidConfig field (Bucket-D construct-only): add advectionScheme?: 'semilagrangian' | 'maccormack' to FluidConfig in types.ts with a doc comment (default 'semilagrangian'; capability-gated to SL without linear filtering; warn it is for flow/structured scenes and can look angular/cubey on diffuse decorative dye). Add ADVECTION_SCHEME to DEFAULTS + resolveConfig; read this.config.ADVECTION_SCHEME in compileShaders' useMacCormack gate; classify Bucket-D in setConfig. Forward advectionScheme through Fluid.svelte buildConfig() + FluidProps. Keep the opts.advectionScheme path for benches/tests. CRITICAL: change NO preset configs — default stays 'semilagrangian' everywhere, so this is byte-identical / zero visual change (safe without visual QA). Document in docs/configuration + regenerate agent-docs. New ADR.",

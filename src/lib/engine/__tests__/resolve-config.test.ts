@@ -422,6 +422,14 @@ describe('resolveConfig', () => {
 			const patched = resolveConfig({}, base);
 			expect(patched).toEqual(base);
 		});
+
+		it('resolves the public advectionScheme field', () => {
+			expect(resolveConfig({}, DEFAULTS).ADVECTION_SCHEME).toBe('semilagrangian');
+			expect(resolveConfig({ advectionScheme: 'maccormack' }, DEFAULTS).ADVECTION_SCHEME).toBe('maccormack');
+			expect(resolveConfig({ advectionScheme: 'semilagrangian' }, DEFAULTS).ADVECTION_SCHEME).toBe(
+				'semilagrangian'
+			);
+		});
 	});
 });
 
@@ -431,6 +439,7 @@ describe('DEFAULTS', () => {
 		expect(DEFAULTS.DYE_RESOLUTION).toBe(1024);
 		expect(DEFAULTS.DENSITY_DISSIPATION).toBe(1);
 		expect(DEFAULTS.VELOCITY_DISSIPATION).toBe(0.2);
+		expect(DEFAULTS.ADVECTION_SCHEME).toBe('semilagrangian');
 		expect(DEFAULTS.MAX_TIME_STEP).toBe(1 / 60);
 		expect(DEFAULTS.SUBSTEPS).toBe(1);
 		expect(DEFAULTS.VISCOSITY).toBe(0);

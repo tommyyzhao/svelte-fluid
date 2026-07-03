@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import { PRESETS } from '../../presets/registry.js';
+import { DEFAULTS, resolveConfig } from '../FluidEngine.js';
 import engineSrc from '../FluidEngine.ts?raw';
 import shadersSrc from '../shaders.ts?raw';
+import typesSrc from '../types.ts?raw';
 
 // Epic 0001 Phase 2 — opt-in velocity-only MacCormack advection. These node-tier
 // assertions are source-level (GL construction needs a browser) and guard the two
@@ -42,14 +45,26 @@ describe('maccormack: dye/scalar advection untouched', () => {
 });
 
 describe('maccormack: default-off + capability gate', () => {
-	it('defaults the construct-only advectionScheme to semi-Lagrangian', () => {
-		expect(engineSrc).toContain("this.advectionScheme = opts.advectionScheme ?? 'semilagrangian';");
-		expect(engineSrc).toContain("advectionScheme?: 'semilagrangian' | 'maccormack';");
+	it('defaults the public advectionScheme to semi-Lagrangian', () => {
+		expect(DEFAULTS.ADVECTION_SCHEME).toBe('semilagrangian');
+		expect(resolveConfig(undefined, DEFAULTS).ADVECTION_SCHEME).toBe('semilagrangian');
+		expect(typesSrc).toContain("advectionScheme?: 'semilagrangian' | 'maccormack';");
+	});
+
+	it('resolves public maccormack config while keeping the bench/test constructor override', () => {
+		expect(resolveConfig({ advectionScheme: 'maccormack' }, DEFAULTS).ADVECTION_SCHEME).toBe('maccormack');
+		expect(engineSrc).toContain('if (opts.advectionScheme !== undefined)');
+		expect(engineSrc).toContain('this.config.ADVECTION_SCHEME = opts.advectionScheme;');
+	});
+
+	it('treats advectionScheme as Bucket D at runtime', () => {
+		expect(engineSrc).toContain('next.ADVECTION_SCHEME = this.config.ADVECTION_SCHEME;');
+		expect(engineSrc).toContain('`advectionScheme`');
 	});
 
 	it('forces semi-Lagrangian whenever linear filtering is unavailable', () => {
 		expect(engineSrc).toContain(
-			"this.useMacCormack = this.advectionScheme === 'maccormack' && this.ext.supportLinearFiltering;"
+			"this.useMacCormack = this.config.ADVECTION_SCHEME === 'maccormack' && this.ext.supportLinearFiltering;"
 		);
 	});
 
@@ -57,6 +72,15 @@ describe('maccormack: default-off + capability gate', () => {
 		expect(engineSrc).toMatch(
 			/private advectVelocity\(dt: number\): void \{\s*if \(this\.useMacCormack\) \{\s*this\.advectVelocityMacCormack\(dt\);\s*return;\s*\}/
 		);
+	});
+});
+
+describe('maccormack: presets stay default-off', () => {
+	it('resolves every preset to semi-Lagrangian', () => {
+		for (const preset of PRESETS) {
+			expect(Object.hasOwn(preset.config, 'advectionScheme'), preset.id).toBe(false);
+			expect(resolveConfig(preset.config, DEFAULTS).ADVECTION_SCHEME, preset.id).toBe('semilagrangian');
+		}
 	});
 });
 

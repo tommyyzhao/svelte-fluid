@@ -194,6 +194,7 @@ export const DEFAULTS: ResolvedConfig = {
 	INITIAL_DENSITY_DISSIPATION: 1,
 	INITIAL_DENSITY_DISSIPATION_DURATION: 0,
 	VELOCITY_DISSIPATION: 0.2,
+	ADVECTION_SCHEME: 'semilagrangian' as const,
 	MAX_TIME_STEP: 1 / 60,
 	SUBSTEPS: 1,
 	VISCOSITY: 0,
@@ -289,6 +290,8 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 	if (input.initialDensityDissipationDuration !== undefined)
 		out.INITIAL_DENSITY_DISSIPATION_DURATION = input.initialDensityDissipationDuration;
 	if (input.velocityDissipation !== undefined) out.VELOCITY_DISSIPATION = input.velocityDissipation;
+	if (input.advectionScheme !== undefined)
+		out.ADVECTION_SCHEME = input.advectionScheme === 'maccormack' ? 'maccormack' : 'semilagrangian';
 	if (input.maxTimeStep !== undefined) out.MAX_TIME_STEP = Math.max(0.001, input.maxTimeStep);
 	if (input.substeps !== undefined) out.SUBSTEPS = Math.max(1, Math.min(8, Math.floor(input.substeps)));
 	if (input.viscosity !== undefined) out.VISCOSITY = Math.max(0, input.viscosity);
@@ -559,11 +562,8 @@ export interface FluidEngineOptions {
 	 */
 	instrument?: boolean;
 	/**
-	 * @internal Velocity advection scheme (epic 0001 Phase 2). 'maccormack' opts
-	 * into second-order MacCormack advection for the velocity field only — dye and
-	 * scalars always stay semi-Lagrangian. Forced to 'semilagrangian' when the
-	 * device lacks linear filtering. Construct-only; exposed for benches/tests and
-	 * stripped from dist types via stripInternal. Defaults to 'semilagrangian'.
+	 * @internal Bench/test override for {@link FluidConfig.advectionScheme}. This
+	 * keeps the readback harness able to A/B schemes without mutating scene config.
 	 */
 	advectionScheme?: 'semilagrangian' | 'maccormack';
 }
@@ -701,11 +701,9 @@ export class FluidEngine implements FluidHandle {
 	private performanceTier: PerformanceTier = 'none';
 	private performanceMsSinceLastChange = 0;
 	private performanceLastAction: PerformanceAction = 'none';
-	// Velocity advection scheme (epic 0001 Phase 2). The requested scheme is
-	// construct-only; useMacCormack is the capability-gated effective decision,
-	// recomputed alongside MANUAL_FILTERING in compileShaders so a context restore
-	// re-derives it from the (possibly new) GL feature set.
-	private advectionScheme: 'semilagrangian' | 'maccormack' = 'semilagrangian';
+	// The requested advection scheme is construct-only; useMacCormack is the
+	// capability-gated effective decision, recomputed alongside MANUAL_FILTERING
+	// so a context restore re-derives it from the (possibly new) GL feature set.
 	private useMacCormack = false;
 	private readbackUint8Buffer = new Uint8Array(0);
 	private readbackFloatBuffer = new Float32Array(0);
@@ -735,7 +733,9 @@ export class FluidEngine implements FluidHandle {
 		const seed = opts.config?.seed ?? randomSeed();
 		this.config = resolveConfig({ ...opts.config, seed }, DEFAULTS);
 		this.benchmarkInstrument = opts.instrument ?? false;
-		this.advectionScheme = opts.advectionScheme ?? 'semilagrangian';
+		if (opts.advectionScheme !== undefined) {
+			this.config.ADVECTION_SCHEME = opts.advectionScheme;
+		}
 		this.autoStart = opts.autoStart ?? true;
 		this.deterministicMode = !this.autoStart;
 		this.normalizedBackColor = normalizeColor(this.config.BACK_COLOR);
@@ -1016,14 +1016,17 @@ export class FluidEngine implements FluidHandle {
 	 *       canvas + window event listeners on transition.
 	 *   B — display shader keyword recompile (shading, bloom, sunrays)
 	 *   C — FBO rebuild (sim/dye/bloom/sunrays resolutions)
-	 *   D — construct-only — `seed`, `initialSplatCount*`, `presetSplats`.
+	 *   D — construct-only — `seed`, `initialSplatCount*`, `presetSplats`,
+	 *       `advectionScheme`.
 	 *       These are silently ignored: `seed` and `initialSplatCount*`
 	 *       only affect the first frame, and `presetSplats` is absent
-	 *       from `ResolvedConfig` entirely.
+	 *       from `ResolvedConfig` entirely; `advectionScheme` picks a shader
+	 *       path at construction/context initialization.
 	 */
 	setConfig(patch: FluidConfig): void {
 		if (this.disposed || this.contextLost) return;
 		const next = resolveConfig(patch, this.config);
+		next.ADVECTION_SCHEME = this.config.ADVECTION_SCHEME;
 		const a = this.config;
 		const b = next;
 
@@ -1538,7 +1541,7 @@ export class FluidEngine implements FluidHandle {
 		// MacCormack velocity advection is gated on hardware linear filtering: the
 		// manual-bilerp fallback would make the two-pass scheme too expensive on
 		// that path, so it is forced off (decided once here, like MANUAL_FILTERING).
-		this.useMacCormack = this.advectionScheme === 'maccormack' && this.ext.supportLinearFiltering;
+		this.useMacCormack = this.config.ADVECTION_SCHEME === 'maccormack' && this.ext.supportLinearFiltering;
 
 		const fragments: Record<string, WebGLShader> = {
 			blur: compileShader(gl, gl.FRAGMENT_SHADER, S.blurShader),

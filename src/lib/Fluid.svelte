@@ -114,6 +114,7 @@
 		initialDensityDissipation,
 		initialDensityDissipationDuration,
 		velocityDissipation,
+		advectionScheme,
 		maxTimeStep,
 		substeps,
 		viscosity,
@@ -287,6 +288,7 @@
 			initialDensityDissipation,
 			initialDensityDissipationDuration,
 			velocityDissipation,
+			advectionScheme,
 			maxTimeStep,
 			substeps,
 			viscosity,
@@ -597,7 +599,8 @@
 
 	/**
 	 * Hot prop updates. Buckets A/B/C are handled inside `engine.setConfig`.
-	 * Bucket D fields (seed / pointerInput / initialSplatCount*) are
+	 * Bucket D fields (seed / initialSplatCount* / presetSplats /
+	 * requireHardwareAcceleration / advectionScheme) are
 	 * applied only at construction time and ignored here.
 	 */
 	$effect(() => {
