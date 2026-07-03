@@ -169,7 +169,7 @@
       "id": "chore-vitest-consolidate",
       "track": "chores",
       "title": "Consolidate the redundant vitest.config.ts / vitest.workspace.ts",
-      "status": "todo",
+      "status": "done",
       "depends_on": [],
       "risk": "low",
       "spec": "Replace the 3-line re-export shim vitest.config.ts with the actual two-project config currently in vitest.workspace.ts (node default + env-gated browser project via process.env.VITEST_BROWSER), then delete vitest.workspace.ts. Keep vite.config.ts build-only. Keep 'test' and 'test:browser' behaving byte-identically. CRITICAL: default `vitest run` (= bun run test) must stay node-only and must NOT launch Chromium — the env-gate must survive.",
