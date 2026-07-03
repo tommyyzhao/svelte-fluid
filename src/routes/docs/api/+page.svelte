@@ -15,17 +15,16 @@
 <p class="subtitle">Imperative control via <code>FluidHandle</code>.</p>
 
 <p>
-	While the <code>&lt;Fluid&gt;</code> component is primarily declarative (props in, simulation out),
-	sometimes you need imperative control: injecting splats from application logic, pausing the
-	simulation in response to an event, or querying the engine state. The <code>FluidHandle</code>
-	interface provides this.
+	Most of the time, you control <code>&lt;Fluid&gt;</code> with props. When application logic needs
+	to inject splats, pause the simulation, or read engine state, use the <code>FluidHandle</code>
+	interface.
 </p>
 
 <h2>Getting the Handle</h2>
 
 <p>
 	Use Svelte's <code>bind:this</code> to capture a reference to the component instance. The
-	<code>handle</code> property exposes the imperative API.
+	<code>handle</code> property exposes the methods and state below.
 </p>
 
 <pre><code>{SCRIPT_OPEN}
@@ -241,8 +240,8 @@ interface PerformanceState {LB}
 <h3>PresetSplat</h3>
 
 <p>
-	Declarative initial splat consumed once at engine construction. Used by preset wrappers
-	to paint a deterministic opening scene.
+	Initial splat object consumed once when the engine is created. Preset wrappers use these
+	to paint a repeatable opening scene.
 </p>
 
 <table>
@@ -337,7 +336,7 @@ interface PerformanceState {LB}
 		<tr>
 			<td><code>offset</code></td>
 			<td><code>{LB} x: number; y: number {RB}?</code></td>
-			<td>UV-space translation after the fit transform. Default <code>{LB} x: 0, y: 0 {RB}</code>.</td>
+			<td>0-1 canvas-space translation after the fit transform. Default <code>{LB} x: 0, y: 0 {RB}</code>.</td>
 		</tr>
 		<tr>
 			<td><code>scale</code></td>
@@ -433,7 +432,7 @@ interface FlowGridField {LB}
 	<code>version</code> when values change so WebGL textures are re-uploaded.
 	For velocity and pressure plots, <code>FlowVisualization.range</code> maps raw field
 	values onto the selected transfer function; <code>transfer: 'cfd'</code> provides a
-	blue→cyan→green→yellow→red CFD-style magnitude ramp.
+	blue→cyan→green→yellow→red engineering-style magnitude ramp.
 </p>
 
 <hr />
