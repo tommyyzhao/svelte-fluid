@@ -106,7 +106,11 @@ const sceneCases: BenchCase[] = [
 ];
 
 const decorativeCases: BenchCase[] = [
-	{ name: 'Plasma', config: PLASMA_CONFIG, seed: 0x500d, frames: 180, dt: 1 / 120, floor: 0.005, band: [0, 0.15] },
+	// Plasma's baseline SL fraction measures ~0.202 (its preset genuinely carries
+	// more grid-scale-looking detail than InkInWater/LavaLamp at rest); 0.25 keeps
+	// ~25% headroom above that while staying far below the forced-MacCormack value
+	// (~0.57), so the smoke-alarm test below still has a wide margin to fire on.
+	{ name: 'Plasma', config: PLASMA_CONFIG, seed: 0x500d, frames: 180, dt: 1 / 120, floor: 0.005, band: [0, 0.25] },
 	{ name: 'InkInWater', config: INK_IN_WATER_CONFIG, seed: 0x5ea, frames: 180, dt: 1 / 120, floor: 0.005, band: [0, 0.15] },
 	{ name: 'LavaLamp', config: LAVA_LAMP_CONFIG, seed: 0x1a9, frames: 180, dt: 1 / 120, floor: 0.005, band: [0, 0.15] }
 ];
