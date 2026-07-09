@@ -13,7 +13,7 @@
   },
   "status_legend": "todo = a ralph-codex loop can implement+verify it; in_progress = started; done = finished+verified+committed; human = the substantive part needs HUMAN visual QA or a design judgment (a loop may do prep but MUST stop at the QA/decision and flag, never fake a visual sign-off); gated = deferred until its `gate` condition fires (loop skips); cut = decided NOT to build (recorded with rationale). The loop works only todo/in_progress and treats done/human/gated/cut as terminal-or-skip.",
   "product_thesis": "DECORATIVE WebGL fluid component library. The two value axes: (1) the COMPOSITED look IS the product; (2) degrade-not-break on weak devices. CFD-accuracy-only wins and second-shader-dialect features must clear a high bar. The MacCormack regression (anti-diffusion + SL-tuned confinement -> grid-scale cubey churn, caught only by a human eye) is the cautionary tale that drives this ordering.",
-  "sequencing": "Two parallel tracks. Track A (regression nets): spectral-band -> golden-image-adr (design early) -> golden-image-impl. Track B (features): governor-bucket-a (|| spectral-band) -> maccormack-public-api -> maccormack-flow-retune[human] -> governor-dye-tier[gated]. Critical path: spectral-band -> maccormack-flow-retune -> golden-image-impl -> governor-dye-tier. Chores float. The gated tail (phase3/tracers/curl-noise) is unscheduled until its gate fires. Multigrid is CUT.",
+  "sequencing": "Two parallel tracks, both concluded. Track A (regression nets): spectral-band shipped; golden-image-adr/golden-image-impl declined (ADR-0050). Track B (features): governor-bucket-a + maccormack-public-api shipped; maccormack-flow-retune declined after human visual QA (ADR-0049); governor-dye-tier remains gated but its gate condition (golden-image-impl live) can no longer fire — see its own note. The gated tail (phase3/tracers/curl-noise) is unscheduled until its gate fires. Multigrid is CUT.",
   "notes": "Verification GATE for loop tasks: `bun run test && bun run check && bun run prepack` (node tier). Browser-tier *.browser.test.ts are AUTHORED (genuinely) and run via `bun run test:browser`, NOT in the default gate. ADR numbers are claimed at write time (next free in dev-docs/decisions/), never pre-assigned. Every task that needs visual judgment names exactly what a human must certify.",
   "tasks": [
     {
@@ -199,7 +199,7 @@
       "constraints": [
         "Gated; do not build before golden-image-impl exists."
       ],
-      "note": "The riskier governor tier, held behind its net."
+      "note": "STALE GATE 2026-07-09: this task's gate names golden-image-impl, which is now permanently cut (ADR-0050) and will never go live as written. Whether to still build the dye-res shed tier without that display-pipeline net is an open risk call for a human, not resolved here — do not silently loosen the gate."
     },
     {
       "id": "chore-vitest-consolidate",
