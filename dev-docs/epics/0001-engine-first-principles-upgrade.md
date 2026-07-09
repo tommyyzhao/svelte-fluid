@@ -204,7 +204,10 @@ ships in Phase 5 instead.
 - **Curl-noise turbulence force** — redundant with MacCormack + adaptive confinement,
   taxes the pressure solve; revisit only on real demand, time-evolving, own flag.
 - **Lagrangian tracers** — standalone render-modes feature; owns the ES 3.00 decision.
-- **CI golden-image visual-regression** over all presets at fixed seed (Phase 0 follow-on).
+- ~~CI golden-image visual-regression over all presets at fixed seed~~ — declined,
+  not deferred; see ADR-0050 (cross-renderer jitter risk + maintenance cost not
+  worth it for a decorative, degrade-not-break product; manual visual QA covers
+  compositing-pipeline changes instead).
 
 ## 8. Review log
 
