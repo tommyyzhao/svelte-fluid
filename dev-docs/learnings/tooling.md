@@ -79,3 +79,24 @@ capture the PID and kill the whole process group.
 
 **Why this matters:** Long-running background commands need explicit
 cleanup. Never assume `kill %1` will reap a Vite tree.
+
+## `bun run test:browser` times out by default on heavier benches
+
+**Symptom:** `maccormack-dipole.browser.test.ts` and
+`performance-governor.browser.test.ts` failed with `Test timed out in
+15000ms` — deterministically, not flakily — while every other browser
+test passed.
+
+**Cause:** `vitest.config.ts`'s browser project had no `testTimeout`,
+so it fell back to vitest's default. Several benches run two or more
+full deterministic `advance()` passes (100-220 real WebGL frames each)
+inside a single `it`, which routinely takes longer than the default.
+
+**Fix:** Set `testTimeout: 60000` on the browser project in
+`vitest.config.ts`. Confirmed `bun run test:browser` — the script as
+written, no ad hoc `--testTimeout` flag — passes 7/7 files green.
+
+**Why this matters:** A missing timeout config reads as "the tests are
+flaky" when it's actually "the tests are honest about how long real
+WebGL simulation takes." Check `testTimeout` before assuming a browser
+test regression is real.
