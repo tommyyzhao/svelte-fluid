@@ -8,6 +8,10 @@ const browserProject = defineProject({
 		name: 'browser',
 		include: ['src/**/*.browser.test.ts'],
 		exclude: ['dist/**', '.svelte-kit/**'],
+		// Several benches run 2+ full deterministic advance() passes (100-220
+		// frames of real WebGL sim each) inside one `it`; the 5s/15s vitest
+		// defaults time out those tests even though nothing is hung.
+		testTimeout: 60000,
 		browser: {
 			enabled: true,
 			headless: true,
