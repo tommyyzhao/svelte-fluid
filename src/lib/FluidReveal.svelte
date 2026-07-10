@@ -101,6 +101,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import Fluid from './Fluid.svelte';
+	import { DISABLED_PERFORMANCE_STATE } from './engine/performance-governor.js';
 
 	let {
 		sensitivity = 0.1,
@@ -267,7 +268,8 @@
 		resume: () => inner?.handle.resume(),
 		get isPaused() {
 			return inner?.handle.isPaused ?? true;
-		}
+		},
+		getPerformanceState: () => inner?.handle.getPerformanceState() ?? DISABLED_PERFORMANCE_STATE
 	};
 </script>
 

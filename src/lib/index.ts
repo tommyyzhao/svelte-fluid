@@ -31,6 +31,9 @@ export {
 export type {
 	FluidConfig,
 	FluidHandle,
+	PerformanceAction,
+	PerformanceState,
+	PerformanceTier,
 	PresetSplat,
 	ResolvedConfig,
 	RGB,

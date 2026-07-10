@@ -24,6 +24,7 @@
 
 <script lang="ts">
 	import Fluid from '../Fluid.svelte';
+	import { DISABLED_PERFORMANCE_STATE } from '../engine/performance-governor.js';
 	import type { ContainerShape, FluidHandle } from '../engine/types.js';
 	import { FRAME_FLUID_CONFIG } from './registry.js';
 
@@ -53,7 +54,8 @@
 		randomSplats: (count) => inner?.handle.randomSplats(count),
 		pause: () => inner?.handle.pause(),
 		resume: () => inner?.handle.resume(),
-		get isPaused() { return inner?.handle.isPaused ?? true; }
+		get isPaused() { return inner?.handle.isPaused ?? true; },
+		getPerformanceState: () => inner?.handle.getPerformanceState() ?? DISABLED_PERFORMANCE_STATE
 	};
 </script>
 

@@ -64,6 +64,17 @@
 				<td>How fast velocity fades.</td>
 			</tr>
 			<tr>
+				<td><code>advectionScheme</code></td>
+				<td><code>'semilagrangian' | 'maccormack'</code></td>
+				<td><code>'semilagrangian'</code></td>
+				<td>
+					Velocity advection scheme. <code>'maccormack'</code> can keep flow/structured
+					scenes crisper, but can look angular or cubey on diffuse decorative dye. Dye and
+					scalars stay semi-Lagrangian, and devices without linear filtering fall back to
+					<code>'semilagrangian'</code>. Construct-only.
+				</td>
+			</tr>
+			<tr>
 				<td><code>maxTimeStep</code></td>
 				<td><code>number</code></td>
 				<td><code>1 / 60</code></td>
@@ -110,6 +121,24 @@
 			<td><code>number</code></td>
 			<td><code>20</code></td>
 			<td>Pressure solver iterations per frame.</td>
+		</tr>
+		<tr>
+			<td><code>autoPerformance</code></td>
+			<td><code>boolean</code></td>
+			<td><code>false</code></td>
+			<td>Opt-in frame-time governor. Under sustained load it lowers Bucket-A quality only: pressure iterations first, then substeps. It never auto-restores quality, and deterministic <code>advance()</code> runs ignore it.</td>
+		</tr>
+		<tr>
+			<td><code>autoPerformanceMinPressureIterations</code></td>
+			<td><code>number</code></td>
+			<td><code>8</code></td>
+			<td>Lower bound for <code>autoPerformance</code> pressure-iteration shedding.</td>
+		</tr>
+		<tr>
+			<td><code>autoPerformanceMinSubsteps</code></td>
+			<td><code>number</code></td>
+			<td><code>1</code></td>
+			<td>Lower bound for <code>autoPerformance</code> substep shedding.</td>
 		</tr>
 		<tr>
 			<td><code>curl</code></td>
@@ -772,7 +801,8 @@
 		<code>velocityDissipation</code>, <code>maxTimeStep</code>, <code>substeps</code>,
 		<code>viscosity</code>, <code>viscosityIterations</code>, <code>wallFriction</code>,
 		<code>wallFrictionWidth</code>, <code>pressure</code>, <code>curl</code>,
-		<code>vorticityAdaptive</code>,
+		<code>vorticityAdaptive</code>, <code>autoPerformance</code>,
+		<code>autoPerformanceMinPressureIterations</code>, <code>autoPerformanceMinSubsteps</code>,
 	<code>splatRadius</code>, <code>splatForce</code>, <code>colorUpdateSpeed</code>,
 	<code>bloomIntensity</code>, <code>sunraysWeight</code>, all <code>autoSplat*</code> props,
 	all <code>glass*</code> scalars, all <code>reveal*</code> scalars, all <code>distortion*</code>
@@ -803,5 +833,5 @@
 	Ignored by <code>setConfig()</code> after construction. These values are consumed once when the
 	engine is created: <code>seed</code>, <code>initialSplatCountMin</code>,
 	<code>initialSplatCountMax</code>, <code>initialSplatCount</code>, <code>presetSplats</code>, and
-	<code>requireHardwareAcceleration</code>.
+	<code>requireHardwareAcceleration</code>, and <code>advectionScheme</code>.
 </p>

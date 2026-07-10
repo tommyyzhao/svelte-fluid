@@ -78,15 +78,15 @@ ${SCRIPT_CLOSE}
 </table>
 
 <div class="callout">
-	<strong>WebGL fallback (ADR-0041):</strong> when WebGL is <em>permanently</em> unavailable — no WebGL, or no half-float texture support — <code>&lt;Fluid&gt;</code> never crashes the page. It renders, in order of preference, your <code>fallback</code> snippet, then a <code>poster</code> image, else it fills the box with <code>backColor</code> and exposes a visually-hidden <code>fallbackText</code> message (default: <em>"This animation requires WebGL, which isn't available in your browser."</em>). <em>Transient</em> failures (hitting the browser's live-context cap on a dense <code>lazy</code> page) stay blank and retry on the next scroll. The fill is mode-aware: <code>transparent</code> stays see-through, and <code>reveal</code> uses the cover color and masks on <em>any</em> failure so hidden content is never exposed. For <code>distortion</code>, pass <code>poster=&#123;yourImageUrl&#125;</code> so the still image stands in for the warp. Set <a href="{base}/docs/configuration"><code>requireHardwareAcceleration</code></a> to also treat a software-only renderer as unavailable. The helper <code>isWebGLAvailable()</code> is exported if you want to gate rendering yourself.
+	<strong>WebGL fallback (ADR-0041):</strong> when WebGL is <em>permanently</em> unavailable — no WebGL, or no half-float texture support — <code>&lt;Fluid&gt;</code> keeps the page intact. It renders, in order of preference, your <code>fallback</code> snippet, then a <code>poster</code> image, else it fills the box with <code>backColor</code> and exposes a visually-hidden <code>fallbackText</code> message (default: <em>"This animation requires WebGL, which isn't available in your browser."</em>). Short-lived failures, such as hitting the browser's live-context cap on a dense <code>lazy</code> page, stay blank and retry on the next scroll. The fill matches the mode: <code>transparent</code> stays see-through, and <code>reveal</code> uses the cover color and masks on <em>any</em> failure so hidden content is never exposed. For <code>distortion</code>, pass <code>poster=&#123;yourImageUrl&#125;</code> so the still image stands in for the warp. Set <a href="{base}/docs/configuration"><code>requireHardwareAcceleration</code></a> to also treat a software-only renderer as unavailable. The helper <code>isWebGLAvailable()</code> is exported if you want to gate rendering yourself.
 </div>
 
-<p>Exposes a <a href="{base}/docs/api"><code>FluidHandle</code></a> via <code>bind:this</code> for programmatic control (splats, pause, resume).</p>
+<p>Exposes a <a href="{base}/docs/api"><code>FluidHandle</code></a> via <code>bind:this</code> for programmatic control (splats, pause, resume, performance state).</p>
 
 <!-- ============================================================ -->
 <h2 id="fluidbackground">&lt;FluidBackground&gt;</h2>
 
-<p>Full-viewport fluid behind page content. Use this as a page or screen wrapper; the canvas is fixed to the viewport and the slotted content layer is stacked above it.</p>
+<p>Full-viewport fluid behind page content. Use this as a page or screen wrapper; the canvas stays fixed to the viewport and your content is stacked above it.</p>
 
 <pre><code>{SCRIPT_OPEN}
   import {'{'} FluidBackground {'}'} from 'svelte-fluid';
@@ -120,7 +120,7 @@ ${SCRIPT_CLOSE}
 <!-- ============================================================ -->
 <h2 id="fluidreveal">&lt;FluidReveal&gt;</h2>
 
-<p>The fluid acts as an opacity mask — cursor movement reveals content behind a solid cover. Great for scratch-to-reveal effects and interactive hero sections.</p>
+<p>The fluid acts as a reveal mask — cursor movement uncovers content behind a solid cover. Great for scratch-to-reveal effects and interactive hero sections.</p>
 
 <pre><code>{SCRIPT_OPEN}
   import {'{'} FluidReveal {'}'} from 'svelte-fluid';
@@ -145,7 +145,7 @@ ${SCRIPT_CLOSE}
 		<tr><td><code>fringeColor</code></td><td><code>RGB</code></td><td><code>{'{'} r: 0.6, g: 0.7, b: 0.85 {'}'}</code></td><td>Outer fringe color between cover and accent (0–1 linear).</td></tr>
 		<tr><td><code>fadeBack</code></td><td><code>boolean</code></td><td><code>true</code></td><td>Whether revealed areas gradually fade back to covered.</td></tr>
 		<tr><td><code>fadeSpeed</code></td><td><code>number</code></td><td>—</td><td>Explicit dissipation value. 1.0 = permanent, 0.99 = slow fade. Overrides <code>fadeBack</code>.</td></tr>
-		<tr><td><code>autoReveal</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Auto-animate a Lissajous curve to reveal content before user interaction.</td></tr>
+		<tr><td><code>autoReveal</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Auto-animate a smooth looping path to reveal content before user interaction.</td></tr>
 		<tr><td><code>autoRevealSpeed</code></td><td><code>number</code></td><td><code>1.0</code></td><td>Speed of the auto-reveal animation.</td></tr>
 	</tbody>
 </table>
@@ -175,7 +175,7 @@ ${SCRIPT_CLOSE}
 		<tr><td><code>intensity</code></td><td><code>number</code></td><td><code>24</code></td><td>How much dye each interaction injects.</td></tr>
 		<tr><td><code>fit</code></td><td><code>'cover' | 'contain'</code></td><td><code>'cover'</code></td><td>How the image fits the canvas.</td></tr>
 		<tr><td><code>scale</code></td><td><code>number</code></td><td><code>1.0</code></td><td>Image scale. &gt;1 zooms out, &lt;1 zooms in.</td></tr>
-		<tr><td><code>autoDistort</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Auto-animate distortion via Lissajous curve before user interacts.</td></tr>
+		<tr><td><code>autoDistort</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Auto-animate distortion along a smooth looping path before user interaction.</td></tr>
 		<tr><td><code>autoDistortSpeed</code></td><td><code>number</code></td><td><code>1.0</code></td><td>Speed of auto-distort animation.</td></tr>
 		<tr><td><code>initialSplats</code></td><td><code>number</code></td><td><code>20</code></td><td>Random splats at startup. Creates a chaotic distortion that settles. 0 to start clean.</td></tr>
 		<tr><td><code>bleed</code></td><td><code>number</code></td><td><code>60</code></td><td>Extra canvas pixels beyond visible edges. Prevents velocity bounce at boundaries.</td></tr>
@@ -187,7 +187,7 @@ ${SCRIPT_CLOSE}
 <!-- ============================================================ -->
 <h2 id="fluidstick">&lt;FluidStick&gt;</h2>
 
-<p>Dye clings to text or SVG paths via physics-level modulation. Reduced dissipation on the mask makes dye persist, while artificial pressure pushes fluid around the shape.</p>
+<p>Dye clings to text or SVG paths. The mask makes dye last longer on the shape, while a small pressure push moves fluid around it.</p>
 
 <pre><code>{SCRIPT_OPEN}
   import {'{'} FluidStick {'}'} from 'svelte-fluid';
@@ -213,7 +213,7 @@ ${SCRIPT_CLOSE}
 		<tr><td><code>strength</code></td><td><code>number</code></td><td><code>0.95</code></td><td>How strongly dissipation is reduced on the mask. 1 = dye never fades.</td></tr>
 		<tr><td><code>stickyPressureAmount</code></td><td><code>number</code></td><td><code>0.15</code></td><td>Artificial pressure on the mask to push fluid around it.</td></tr>
 		<tr><td><code>amplify</code></td><td><code>number</code></td><td><code>2.0</code></td><td>Splat intensity multiplier on the mask.</td></tr>
-		<tr><td><code>autoAnimate</code></td><td><code>boolean</code></td><td><code>true</code></td><td>Auto-animate a Lissajous path to deposit dye before user interaction.</td></tr>
+		<tr><td><code>autoAnimate</code></td><td><code>boolean</code></td><td><code>true</code></td><td>Auto-animate a smooth looping path to deposit dye before user interaction.</td></tr>
 		<tr><td><code>autoAnimateSpeed</code></td><td><code>number</code></td><td><code>2.0</code></td><td>Speed of auto-animation.</td></tr>
 		<tr><td><code>autoAnimateDuration</code></td><td><code>number</code></td><td><code>5.0</code></td><td>Seconds before auto-animation stops. 0 = indefinite.</td></tr>
 	</tbody>
@@ -224,7 +224,7 @@ ${SCRIPT_CLOSE}
 <!-- ============================================================ -->
 <h2 id="fluidtext">&lt;FluidText&gt;</h2>
 
-<p>Fluid confined inside text letterforms. Wraps <code>&lt;Fluid&gt;</code> with an <code>svgPath</code> container shape in text mode. Automatically computes the correct aspect ratio via <code>measureText()</code> so the font appears at a consistent visual height regardless of text length.</p>
+<p>Fluid confined inside text. Wraps <code>&lt;Fluid&gt;</code> with an <code>svgPath</code> container shape in text mode. Automatically measures the text so the font keeps a consistent visual height regardless of length.</p>
 
 <pre><code>{SCRIPT_OPEN}
   import {'{'} FluidText {'}'} from 'svelte-fluid';

@@ -82,6 +82,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import Fluid from './Fluid.svelte';
+	import { DISABLED_PERFORMANCE_STATE } from './engine/performance-governor.js';
 
 	let {
 		text,
@@ -207,7 +208,8 @@
 		randomSplats: (count) => inner?.handle.randomSplats(count),
 		pause: () => inner?.handle.pause(),
 		resume: () => inner?.handle.resume(),
-		get isPaused() { return inner?.handle.isPaused ?? true; }
+		get isPaused() { return inner?.handle.isPaused ?? true; },
+		getPerformanceState: () => inner?.handle.getPerformanceState() ?? DISABLED_PERFORMANCE_STATE
 	};
 </script>
 

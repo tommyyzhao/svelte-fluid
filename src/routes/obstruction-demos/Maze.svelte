@@ -47,6 +47,7 @@
 
 <script lang="ts">
 	import Fluid from '$lib/Fluid.svelte';
+	import { DISABLED_PERFORMANCE_STATE } from '$lib/engine/performance-governor.js';
 	import type { FlowConfig, FluidHandle, PresetSplat } from '$lib/engine/types.js';
 
 	let {
@@ -131,7 +132,8 @@
 		resume: () => inner?.handle.resume(),
 		get isPaused() {
 			return inner?.handle.isPaused ?? true;
-		}
+		},
+		getPerformanceState: () => inner?.handle.getPerformanceState() ?? DISABLED_PERFORMANCE_STATE
 	};
 
 </script>
