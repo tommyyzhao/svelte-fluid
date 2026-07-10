@@ -16,6 +16,7 @@
  * to ensure backwards compatibility.
  */
 import { describe, it, expect } from 'vitest';
+import { DISABLED_PERFORMANCE_STATE } from '../performance-governor.js';
 import type { FluidHandle, RGB } from '../types.js';
 
 describe('FluidHandle interface shape', () => {
@@ -36,7 +37,8 @@ describe('FluidHandle interface shape', () => {
 				if (rafRunning || disposed) return;
 				rafRunning = true;
 			},
-			get isPaused() { return !rafRunning; }
+			get isPaused() { return !rafRunning; },
+			getPerformanceState: () => DISABLED_PERFORMANCE_STATE
 		};
 	}
 
@@ -86,16 +88,18 @@ describe('FluidHandle interface shape', () => {
 describe('FluidHandle optional chaining (no engine)', () => {
 	it('handle methods are safe when engine is undefined', () => {
 		// This mirrors Fluid.svelte's handle when engine is not yet created
-		let engine: { pause(): void; resume(): void; isPaused: boolean } | undefined;
+		let engine: Pick<FluidHandle, 'pause' | 'resume' | 'isPaused' | 'getPerformanceState'> | undefined;
 
-		const handle: Pick<FluidHandle, 'pause' | 'resume' | 'isPaused'> = {
+		const handle: Pick<FluidHandle, 'pause' | 'resume' | 'isPaused' | 'getPerformanceState'> = {
 			pause: () => engine?.pause(),
 			resume: () => engine?.resume(),
-			get isPaused() { return engine?.isPaused ?? true; }
+			get isPaused() { return engine?.isPaused ?? true; },
+			getPerformanceState: () => engine?.getPerformanceState() ?? DISABLED_PERFORMANCE_STATE
 		};
 
 		// Before engine exists: isPaused is true (safe default)
 		expect(handle.isPaused).toBe(true);
+		expect(handle.getPerformanceState()).toBe(DISABLED_PERFORMANCE_STATE);
 		// pause/resume don't throw
 		expect(() => handle.pause()).not.toThrow();
 		expect(() => handle.resume()).not.toThrow();

@@ -17,14 +17,18 @@ set -uo pipefail
 
 # ---------------- Config (env-overridable) ----------------
 REPO="${RALPH_REPO:?set RALPH_REPO}"
-BRANCH="${RALPH_BRANCH:-epic-0001-phases}"
-MODEL="${RALPH_MODEL:-gpt-5.3-codex-spark}"
+# Track whatever branch the live prd.json declares (REPO is set above), so this
+# never goes stale when a new prd supersedes the old one. Override with RALPH_BRANCH.
+BRANCH="${RALPH_BRANCH:-$(jq -r '.branch // "backlog-roadmap"' "$REPO/.ralph/prd.json" 2>/dev/null || echo backlog-roadmap)}"
+# gpt-5.5 @ xhigh ONLY. gpt-5.3-codex-spark is banned for this repo: it is too
+# weak for the engine tasks and burned a whole run producing near-nothing.
+MODEL="${RALPH_MODEL:-gpt-5.5}"
 REASONING="${RALPH_REASONING:-xhigh}"
 PROMPT_FILE="${RALPH_PROMPT:-$REPO/.ralph/PROMPT.md}"
 PRD_FILE="${RALPH_PRD:-$REPO/.ralph/prd.json}"
 LOG_DIR="${RALPH_LOG_DIR:-$REPO/.ralph/logs}"
 MAX_ITERS="${RALPH_MAX_ITERS:-60}"
-ITER_TIMEOUT="${RALPH_ITER_TIMEOUT:-3000}"   # 50 min hard cap per codex iteration
+ITER_TIMEOUT="${RALPH_ITER_TIMEOUT:-4500}"   # 75 min hard cap (governor-bucket-a is 15+ files + repeated gate runs)
 MAX_WALL="${RALPH_MAX_WALL:-30600}"          # ~8.5h total wall-clock cap
 SENTINEL="ALL_PHASES_COMPLETE"
 CONSEC_FAIL_ABORT="${RALPH_CONSEC_FAIL_ABORT:-4}"  # stop if codex dies N times in a row

@@ -383,6 +383,17 @@ export interface FluidConfig {
 	/** How fast velocity fades. Default 0.2. */
 	velocityDissipation?: number;
 	/**
+	 * Velocity advection scheme. Default `semilagrangian`.
+	 *
+	 * `maccormack` uses second-order velocity advection for crisper flow and
+	 * structured scenes, but it can look angular/cubey on diffuse decorative dye.
+	 * Dye and scalar advection remain semi-Lagrangian, and devices without linear
+	 * filtering are capability-gated back to `semilagrangian`.
+	 *
+	 * Construct-only (Bucket D): `setConfig()` ignores runtime changes.
+	 */
+	advectionScheme?: 'semilagrangian' | 'maccormack';
+	/**
 	 * Maximum simulated seconds per solver substep. Default 1/60.
 	 * Pair with `substeps` for steadier high-speed or narrow-channel flows.
 	 */
@@ -410,6 +421,24 @@ export interface FluidConfig {
 	pressure?: number;
 	/** Pressure solver iterations. Default 20. */
 	pressureIterations?: number;
+	/**
+	 * Opt-in frame-time governor. When sustained live RAF frames exceed the
+	 * internal budget, the engine sheds Bucket-A quality only: pressure
+	 * iterations first, then solver substeps. It never auto-restores quality;
+	 * call `setConfig()` with explicit values to raise them again. Ignored by
+	 * deterministic `advance()` harness runs. Default false.
+	 */
+	autoPerformance?: boolean;
+	/**
+	 * Lower bound for autoPerformance pressure-iteration shedding.
+	 * Default 8. Bucket A.
+	 */
+	autoPerformanceMinPressureIterations?: number;
+	/**
+	 * Lower bound for autoPerformance substep shedding.
+	 * Default 1. Bucket A.
+	 */
+	autoPerformanceMinSubsteps?: number;
 	/** Vorticity confinement strength. Default 30. */
 	curl?: number;
 	/**
@@ -803,6 +832,7 @@ export interface ResolvedConfig {
 	INITIAL_DENSITY_DISSIPATION: number;
 	INITIAL_DENSITY_DISSIPATION_DURATION: number;
 	VELOCITY_DISSIPATION: number;
+	ADVECTION_SCHEME: 'semilagrangian' | 'maccormack';
 	MAX_TIME_STEP: number;
 	SUBSTEPS: number;
 	VISCOSITY: number;
@@ -811,6 +841,9 @@ export interface ResolvedConfig {
 	WALL_FRICTION_WIDTH: number;
 	PRESSURE: number;
 	PRESSURE_ITERATIONS: number;
+	AUTO_PERFORMANCE: boolean;
+	AUTO_PERFORMANCE_MIN_PRESSURE_ITERATIONS: number;
+	AUTO_PERFORMANCE_MIN_SUBSTEPS: number;
 	CURL: number;
 	VORTICITY_ADAPTIVE: number;
 	SPLAT_RADIUS: number;
@@ -876,6 +909,21 @@ export interface ResolvedConfig {
 	OBSTRUCTIONS: ReadonlyArray<Obstruction> | null;
 	OBSTRUCTION_COLOR: RGB | null;
 	FLOW: FlowConfig | null;
+}
+
+export type PerformanceTier = 'none' | 'pressure' | 'substeps';
+export type PerformanceAction = 'none' | 'shed-pressure' | 'shed-substeps';
+
+export interface PerformanceState {
+	readonly enabled: boolean;
+	readonly tier: PerformanceTier;
+	readonly emaMs: number;
+	readonly msSinceLastChange: number;
+	readonly pressureIterations: number;
+	readonly substeps: number;
+	readonly minPressureIterations: number;
+	readonly minSubsteps: number;
+	readonly lastAction: PerformanceAction;
 }
 
 /** Pixel format pair returned by `getSupportedFormat`. */
@@ -946,4 +994,9 @@ export interface FluidHandle {
 	resume(): void;
 	/** Whether the engine's animation loop is currently paused. */
 	readonly isPaused: boolean;
+	/**
+	 * Current frame-time governor state. Pull-based by design: no events are
+	 * emitted, so applications can read this when rendering diagnostics.
+	 */
+	getPerformanceState(): PerformanceState;
 }

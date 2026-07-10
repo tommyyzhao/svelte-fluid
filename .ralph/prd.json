@@ -1,230 +1,313 @@
 {
-  "epic": "Epic 0001 — Engine Quality (Epic A)",
-  "branch": "epic-0001-phases",
+  "epic": "Epic 0001 backlog — staff-planned roadmap (post Phase 0/2/5)",
+  "branch": "backlog-roadmap",
   "sentinel": "ALL_PHASES_COMPLETE",
-  "generated_by": "Claude Opus 4.8 planning session 2026-06-25 (rev 2 after a 3-model NO-GO review: codex/GPT-5.5, grok/xAI, agy/Gemini 3.1 Pro)",
+  "generated_by": "Claude Opus 4.8 — staff-planning workflow (8 per-item analyses + 3 sequencing lenses, unanimous), 2026-06-26",
+  "supersedes": "the prior .ralph/prd.json (Phase 0/2/5 — all merged to main; preserved in git history)",
   "references": {
     "decisions": "dev-docs/decisions/0042-epic-0001-restructure-and-measurement-harness.md",
     "epic": "dev-docs/epics/0001-engine-first-principles-upgrade.md",
     "phase1_shipped": "dev-docs/decisions/0038-solver-pass-restructuring.md",
+    "maccormack": "dev-docs/decisions/0046-phase-2-maccormack-velocity-advection.md",
     "rules": "CLAUDE.md"
   },
-  "status_legend": "todo = do it; in_progress = started; done = finished+verified+committed; blocked = needs a human; deferred = intentionally NOT run by this loop (specced for a later human-reviewed session). The loop works only todo/in_progress tasks and treats done+deferred as terminal.",
-  "notes": "Execution order = array order; the loop picks the first todo/in_progress task whose depends_on are all done, SKIPPING deferred/blocked. The verification GATE is `bun run test && bun run check && bun run prepack` (NODE tier). Browser-tier *.browser.test.ts files are AUTHORED (genuinely, exercising the feature) but NOT part of the gate. Line numbers are HINTS — verify against real code by grepping. This rev fixes the specific spec errors all three reviewers flagged.",
+  "status_legend": "todo = a ralph-codex loop can implement+verify it; in_progress = started; done = finished+verified+committed; human = the substantive part needs HUMAN visual QA or a design judgment (a loop may do prep but MUST stop at the QA/decision and flag, never fake a visual sign-off); gated = deferred until its `gate` condition fires (loop skips); cut = decided NOT to build (recorded with rationale). The loop works only todo/in_progress and treats done/human/gated/cut as terminal-or-skip.",
+  "product_thesis": "DECORATIVE WebGL fluid component library. The two value axes: (1) the COMPOSITED look IS the product; (2) degrade-not-break on weak devices. CFD-accuracy-only wins and second-shader-dialect features must clear a high bar. The MacCormack regression (anti-diffusion + SL-tuned confinement -> grid-scale cubey churn, caught only by a human eye) is the cautionary tale that drives this ordering.",
+  "sequencing": "Two parallel tracks, both concluded. Track A (regression nets): spectral-band shipped; golden-image-adr/golden-image-impl declined (ADR-0050). Track B (features): governor-bucket-a + maccormack-public-api shipped; maccormack-flow-retune declined after human visual QA (ADR-0049); governor-dye-tier remains gated but its gate condition (golden-image-impl live) can no longer fire — see its own note. The gated tail (phase3/tracers/curl-noise) is unscheduled until its gate fires. Multigrid is CUT.",
+  "notes": "Verification GATE for loop tasks: `bun run test && bun run check && bun run prepack` (node tier). Browser-tier *.browser.test.ts are AUTHORED (genuinely) and run via `bun run test:browser`, NOT in the default gate. ADR numbers are claimed at write time (next free in dev-docs/decisions/), never pre-assigned. Every task that needs visual judgment names exactly what a human must certify.",
   "tasks": [
     {
-      "id": "P5-gauge",
-      "phase": "Phase 5",
-      "title": "Reference-anchored resolution normalization of viscosity + curl (in place)",
+      "id": "spectral-band",
+      "track": "A (regression nets)",
+      "title": "Grid-scale-energy spectral band — machine-independent regression net for the MacCormack class",
       "status": "done",
       "depends_on": [],
       "risk": "low",
-      "spec": "Make `viscosity` and `curl` resolution-invariant by reinterpreting them INTERNALLY — NO new public fields, NO dual-field arbitration. Let N_ref = DEFAULTS.SIM_RESOLUTION (confirm = 128). Let w,h be the sim FBO dims; N_actual = min(w,h) = simResolution; the screen-isotropic cell size is h_cell = 1/min(w,h). VISCOSITY coefficient: today applyViscosity uses `uAlpha = VISCOSITY * dt * Math.max(w,h)` (~FluidEngine.ts:2644). Replace with the BYTE-IDENTITY-PRESERVING, O(N^2)-invariant gauge: `uAlpha = VISCOSITY * dt * Math.max(w,h) * (Math.min(w,h) / N_ref)`. This is EXACTLY today's value whenever min(w,h)==N_ref (any aspect ratio), and scales as O(N^2) with resolution (physically-consistent nu*dt/h^2). CURL/confinement: today curl is uploaded raw. Scale it by `(N_ref / Math.min(w,h))` so it is byte-identical at N_ref and resolution-normalized beyond. FACTOR both coefficient computations into PURE functions (no GL — e.g. `viscosityAlpha(viscosity, dt, w, h, nRef)` and `curlScale(curl, w, h, nRef)`) so they are node-testable. Keep the viscosity GLSL ((L+R+T+B)/(1+4*uAlpha)) and the vorticity GLSL UNCHANGED — coefficient/uniform math only. Retune ONLY the 4 simResolution-overriding flow presets (GasFlare/Venturi 160, Karman/TeslaValve 192 in registry.ts) so their feel matches their pre-change tuning; default-resolution presets need NO change by construction. Document the gauge + the 4 retuned values in the ADR.",
+      "spec": "Add a CHEAP, machine-independent automated net that catches the exact regression that burned us (anti-diffusive advection pumping grid-scale modes into a cubey/right-angle churn) — something the existing harness (which reads internal velocity/pressure/dye FBOs) does NOT do today. Add a pure-TS reducer gridScaleEnergyFraction(field, w, h, components) to src/lib/engine/__benches__/reducers.ts: energy of (field minus a 3x3 box-smoothed field) divided by total field energy — the fraction of energy living at grid scale. Then a browser test (e.g. src/lib/engine/__benches__/grid-scale.browser.test.ts) that, for each bench scene (dipole/kelvinHelmholtz/rayleighBenard/thinWallTeslaValve) and a couple representative decorative preset configs, runs advance() deterministically, readField('velocity'), and asserts gridScaleEnergyFraction stays within a per-scene band (well below a churn threshold). Reuses the merged Phase-0 harness; no PNGs, no cross-renderer determinism problem, no new runtime deps.",
       "files": [
-        "src/lib/engine/FluidEngine.ts (pure coeff helpers; applyViscosity uAlpha ~2644; vorticity curl uniform ~2791)",
-        "src/lib/presets/registry.ts (retune the 4 simResolution-overriding flow presets only)",
-        "src/lib/engine/__tests__/resolution-gauge.test.ts (new node unit tests on the pure helpers)",
-        "dev-docs/decisions/ (new ADR at next free number)"
+        "src/lib/engine/__benches__/reducers.ts (gridScaleEnergyFraction)",
+        "src/lib/engine/__tests__/reducers.test.ts (node: smooth array -> low fraction; checkerboard -> high)",
+        "src/lib/engine/__benches__/grid-scale.browser.test.ts (authored: per-scene band assertions)"
       ],
       "acceptance": [
         "NODE GATE green.",
-        "Node test: viscosityAlpha(...) equals the OLD formula VISCOSITY*dt*max(w,h) for several aspect ratios WHENEVER min(w,h)==N_ref (byte-identity at default resolution, any aspect).",
-        "Node test: at a FIXED aspect ratio, viscosityAlpha scales as O(N^2): alpha(2N)/alpha(N) == 4 (within float tolerance); curlScale == 1 at N_ref and == (N_ref/N) at resolution N.",
-        "ADR documents the gauge, N_ref, the screen-isotropic h convention (pinned epic-wide), and the 4 retuned preset values."
+        "Node test: gridScaleEnergyFraction ~0 on a smooth gradient array and near-max on a synthetic checkerboard (known-answer).",
+        "SMOKE-ALARM browser test: with the internal MacCormack flag forced ON for a NON-flow/decorative preset config, the grid-scale fraction EXCEEDS the band; with default SL it stays within band (proves the net would have caught the regression).",
+        "Liveness guard (fieldEnergy>floor && !hasNonFinite) before trusting any band value."
       ],
       "constraints": [
-        "Do NOT add new public config fields. Reinterpret viscosity/curl in place (pre-1.0, minor bump).",
-        "Do NOT edit viscosity/vorticity GLSL — coefficient/uniform math only.",
-        "Use the EXACT formula `max(w,h)*(min(w,h)/N_ref)` for alpha so byte-identity at N_ref holds on non-square canvases (all three reviewers flagged a naive min-only formula as wrong)."
+        "Pure-TS reducer, GL-free, node-tested. No runtime deps.",
+        "MUST land before maccormack-flow-retune touches any preset (it is that task's safety net)."
       ],
-      "note": "Implemented gauge helpers and preset retune values for GasFlare/Venturi/Karman/TeslaValve."
-    },
-	{
-		"id": "P5-adaptive",
-		"phase": "Phase 5",
-		"title": "Adaptive confinement via uAdaptiveMix uniform (byte-identical at 0)",
-		"status": "done",
-		"depends_on": ["P5-gauge"],
-		"risk": "low",
-      "spec": "Add adaptive vorticity confinement as a single uniform lerp in vorticityShader (~shaders.ts:1247-1278) and a new Bucket-A hot scalar config field `vorticityAdaptive` (0..1, DEFAULT 0). The confinement magnitude becomes `mix(eps_legacy, eps_legacy * smoothstep(LO, HI, abs(omega)), uAdaptiveMix)` where eps_legacy is the current curl-scaled magnitude and omega is the local vorticity. NOTE uCurl stores 0.5*vorticity (shaders.ts ~1242) — account for that when computing abs(omega); pick LO/HI as documented constants (normalized vorticity-magnitude thresholds) and justify them in the ADR. At uAdaptiveMix=0 the output MUST be byte-identical (pure lerp, no branch). Wire `vorticityAdaptive` as a Bucket-A hot scalar: add to FluidConfig + ResolvedConfig + DEFAULTS(=0) + resolveConfig pass-through; it must NOT trigger any FBO rebuild or shader recompile. Update the docs/configuration route and (if preset-facing) agent-docs. Factor the magnitude lerp math into a pure TS function for node testing.",
-      "files": [
-        "src/lib/engine/shaders.ts (vorticityShader: uAdaptiveMix lerp + uniform decl)",
-        "src/lib/engine/FluidEngine.ts (bind uAdaptiveMix in the vorticity pass; resolveConfig + DEFAULTS)",
-        "src/lib/engine/types.ts (vorticityAdaptive Bucket-A field + JSDoc)",
-        "src/lib/engine/__tests__/ (node: lerp math mirror + Bucket-A classification)",
-        "src/routes/docs/configuration/+page.svelte (document the field)"
-      ],
-      "acceptance": [
-        "NODE GATE green.",
-        "Node test: with adaptive mix 0, the magnitude lerp reduces EXACTLY to eps_legacy (byte-identity), via the factored pure function.",
-        "Node test: vorticityAdaptive is Bucket A (hot scalar — no FBO rebuild / no recompile), consistent with the existing setConfig test pattern; default is 0.",
-        "ADR documents adaptive confinement + the LO/HI thresholds.",
-        "docs/configuration updated."
-      ],
-      "constraints": [
-        "uAdaptiveMix=0 MUST be byte-identical. Single uniform lerp; NO keyword/Material, NO branch.",
-        "Do NOT add the boundary bugfix here (that is P5-boundary-fix) — keep this task purely the adaptive lerp so byte-identity-at-0 is clean."
-      ],
-      "note": "Implemented adaptive vorticity confinement with bucket-A uniform vorticityAdaptive, byte-identity-at-0 tests, docs update, and ADR."
+      "note": "All three lenses put this FIRST: cheapest move that retires the most uncertainty; the always-on net that survives later golden regen."
     },
     {
-      "id": "P5-boundary-fix",
-      "phase": "Phase 5",
-      "title": "Confinement boundary bugfix — attenuate confinement near solids (intentional change)",
+      "id": "governor-bucket-a",
+      "track": "B (features)",
+      "title": "Frame-time governor — Bucket-A-only slice (opt-in autoPerformance)",
       "status": "done",
-      "depends_on": ["P5-adaptive"],
-      "risk": "low-medium",
-      "spec": "Fix the bug that vorticity confinement injects momentum into boundary-adjacent cells, fighting projection where staircasing hurts (vorticityShader samples NO solid texture today). Bind the EXISTING binary neighbor-solidity texture (uSolidNeighbors / bakeSolidNeighborData, RGBA = per-face neighbor-solid flags L,R,T,B in container-shapes.ts ~341-364) into the vorticity pass — this is the same texture divergence/pressure already use; bind it via the existing bindSolidMaskUniforms helper pattern and ALWAYS bind every sampler the pass owns to a dedicated unit (ADR-0038 stale-unit gotcha; note the existing vorticity bind site has no texelSize uniform — do not introduce stale binds). Multiply the confinement force by the fluid-fraction attenuation `clamp(1.0 - max(L,R,T,B), 0.0, 1.0)` (full confinement in open cells, zero in cells touching any solid neighbor). This is an INTENTIONAL behavior change (a bugfix), NOT byte-identical — validate by 128 visual QA on an obstruction preset (Karman/Venturi) and document. Use the BINARY texture only; do NOT introduce fractional apertures (deferred Phase 3). Factor the attenuation math into a pure TS function for node testing.",
-      "files": [
-        "src/lib/engine/shaders.ts (vorticityShader: uSolidNeighbors sampler + attenuation multiply)",
-        "src/lib/engine/FluidEngine.ts (bind uSolidNeighbors in the vorticity pass via the existing solid-mask bind helper)",
-        "src/lib/engine/__tests__/ (node: attenuation math mirror)"
-      ],
-      "acceptance": [
-        "NODE GATE green.",
-        "Node test: the attenuation factor equals 1.0 when no neighbor is solid and 0.0 when any of L/R/T/B is solid (factored pure function).",
-        "The new sampler is always bound to a dedicated unit (real texture or 1x1 fallback) even when no obstruction is present (no GL_INVALID_OPERATION / feedback-loop risk).",
-        "ADR notes this is an intentional bugfix (not byte-identical) using the binary solid texture; fractional apertures explicitly deferred."
-      ],
-      "constraints": [
-        "This task is an INTENTIONAL behavior change — do NOT claim/require byte-identity.",
-        "Use the EXISTING binary uSolidNeighbors texture; NO fractional apertures, NO boundary normals.",
-        "Always bind every sampler to its dedicated unit, active or not."
-      ],
-      "note": "Implemented binary-neighbor confinement attenuation with vorticity-pass binding + node-attentuation test; ADR 0045 added."
-    },
-    {
-      "id": "P0-workspace",
-      "phase": "Phase 0",
-      "title": "Two-project vitest workspace (node default + env-gated browser tier)",
-		"status": "done",
       "depends_on": [],
       "risk": "medium",
-      "spec": "Split vitest into two projects WITHOUT changing what `bun run test` runs. devDeps `@vitest/browser` + `playwright` are ALREADY installed (do not install / no network). CRITICAL (all three reviewers): a vitest workspace runs ALL projects by default, so `vitest run` (= `bun run test`) would try to launch Chromium and FAIL the gate in this sandbox. Prevent it: create `vitest.workspace.ts` defining a `node` project (env jsdom/node; include `src/**/*.test.ts`; EXCLUDE `src/**/*.browser.test.ts`) and CONDITIONALLY include the `browser` project ONLY when `process.env.VITEST_BROWSER` is set (e.g. `...(process.env.VITEST_BROWSER ? [browserProject] : [])`). The browser project uses @vitest/browser with the playwright provider + headless Chromium (WebGL2), include `src/**/*.browser.test.ts`. Add a package.json script `test:browser` that runs `VITEST_BROWSER=1 vitest run --project browser` (or equivalent). LEAVE the `test` script unchanged so `bun run test` runs node-only and never launches a browser. Author one trivial `src/lib/engine/__benches__/smoke.browser.test.ts` (create a canvas, instantiate FluidEngine, assert a WebGL2 context exists) — AUTHORED, not gated, must be a genuine test.",
+      "spec": "Opt-in runtime quality governor for the degrade-not-break mobile floor (complements ADR-0019 capability-gate + autoPause). SCOPE TO BUCKET-A ONLY (no FBO rebuild, no dye-res pop, no EMA-reset edge cases): an EMA of the frame dt already computed in calcDeltaTime() drives a hysteretic shed of pressureIterations then SUBSTEPS under sustained load, with config floors and >=3s hysteresis + asymmetric/never-auto-restore thresholds (avoid control-loop hunting). These two tiers are physically GRACEFUL (softer low-frequency divergence / coarser integration) and CANNOT produce anti-diffusive grid-scale churn, so the MacCormack lesson does not transfer. Put the decision logic in a NEW pure module src/lib/engine/performance-governor.ts (emaMs, currentTier, msSinceLastChange, thresholds, floors -> next action) so it is node-testable. Add pull-based getPerformanceState() (mirror isPaused; NO events) + a PerformanceState type + an autoPerformance config field (default off). HARD GUARD: never fire in deterministicMode/advance() so the readback harness + seeded determinism stay byte-identical. Fan getPerformanceState() across the wrappers that re-expose isPaused. New ADR.",
       "files": [
-        "vitest.workspace.ts (new; node project + env-gated browser project)",
-        "vite.config.ts (keep test config compatible; the workspace governs projects)",
-        "package.json (add `test:browser`; do NOT change `test`)",
-        "src/lib/engine/__benches__/smoke.browser.test.ts (authored)"
-      ],
-      "acceptance": [
-        "NODE GATE green: `bun run test` runs the existing node suite ONLY, passes, and does NOT launch a browser (no Chromium/Playwright process; verify the browser project is env-gated off by default).",
-        "`bun run check` and `bun run prepack` pass.",
-        "`test:browser` script exists and targets only the browser project.",
-        "smoke.browser.test.ts is authored (genuine; not required to pass in this sandbox)."
-      ],
-      "constraints": [
-        "`bun run test` MUST stay node-only and browser-launch-free (env-gate the browser project).",
-        "Do NOT migrate existing tests to the browser tier.",
-        "No runtime deps; no `bun install`/network."
-      ],
-      "note": "Implemented explicit vitest v4 workspace via vitest.workspace.ts (node/browsed by env) and added vitest.config.ts bridge; browser suite now gated behind VITEST_BROWSER."
-    },
-    {
-      "id": "P0-readback",
-      "phase": "Phase 0",
-      "title": "readField() (@internal, stripped) + deterministic advance() + CPU reducers + scenes",
-      "status": "done",
-      "depends_on": ["P0-workspace"],
-      "risk": "medium",
-      "spec": "Build the deterministic-readback substrate (ADR-0042 §2). (1) On FluidEngine add `@internal readField(field, opts?)` returning {data,width,height,components}. Map the field NAME to its FBO via an EXPLICIT allowlist object — NOT this[field] — because the curl FBO is `curlFBO` while `this.curl`/config.CURL is a number (e.g. {velocity:this.velocity.read, dye:this.dye.read, pressure:this.pressure.read, divergence:this.divergence, curl:this.curlFBO}; verify exact field names by grepping). gl.readPixels into an instance-owned staging buffer; RGBA8 encode/decode path (works half-float/WebGL1) PLUS a direct gl.FLOAT path guarded by `gl.getExtension('EXT_color_buffer_float')` queried inside readField (the ctx requests it but discards the handle, gl-utils.ts ~169 — re-query, do not assume a capability bit exists). (2) Add `@internal` deterministic stepping: a constructor option to NOT auto-start rAF, plus `advance(steps, dt)` calling the private step(dt) exactly `steps` times. CRITICAL determinism fix (all three reviewers): time-dependent terms use performance.now() today (currentDensityDissipation burn-in, FluidEngine.ts ~616). Add an internal accumulated sim-time (advanced by dt per step) and have the burn-in/time terms read sim-time when in the no-autostart/deterministic mode, so advance() is reproducible; the normal rAF path keeps current behavior (scope the change to deterministic mode to avoid altering live burn-in). (3) ENABLE @internal stripping: add `\"stripInternal\": true` to tsconfig.json compilerOptions and mark readField/advance/the ctor option @internal, so they are excluded from dist .d.ts. (4) `src/lib/engine/__benches__/reducers.ts` — pure-TS GL-free: l2Norm, divergenceL2, trackPeakAlongPath, signChangeCount, fluxAcrossLine, fieldEnergy, hasNonFinite. (5) `src/lib/engine/__benches__/scenes.ts` — importable registry keyed dipole/kelvinHelmholtz/rayleighBenard/thinWallTeslaValve, each {config:FluidConfig, schedule (deterministic splats/forces via the mulberry32 Rng seed), thresholdBand}. Reducers get FULL node coverage; readField/advance/scenes get an AUTHORED browser test.",
-      "files": [
-        "src/lib/engine/FluidEngine.ts (@internal readField with explicit FBO allowlist; no-autostart ctor option; advance(steps,dt) + sim-time accumulator for deterministic mode)",
-        "tsconfig.json (add stripInternal:true)",
-        "src/lib/engine/__benches__/reducers.ts",
-        "src/lib/engine/__benches__/scenes.ts",
-        "src/lib/engine/__tests__/reducers.test.ts (node, synthetic arrays)",
-        "src/lib/engine/__benches__/readback.browser.test.ts (authored: advance dipole, readField velocity, assert fieldEnergy>floor)"
+        "src/lib/engine/performance-governor.ts (pure decision fn)",
+        "src/lib/engine/FluidEngine.ts (EMA from calcDeltaTime; governorStep in update(); autoPerformance in DEFAULTS+resolveConfig; getPerformanceState(); deterministicMode guard; reset hooks)",
+        "src/lib/engine/types.ts (PerformanceState, autoPerformance field, getPerformanceState on FluidHandle)",
+        "src/lib/Fluid.svelte + the wrappers/presets that re-expose isPaused",
+        "src/lib/engine/__tests__/performance-governor.test.ts (node)",
+        "docs/configuration + docs/api + docs/components + src/routes/agent-docs.ts",
+        "dev-docs/decisions/ (new ADR)"
       ],
       "acceptance": [
         "NODE GATE green.",
-        "reducers.test.ts covers EVERY reducer with synthetic typed-array known-answer fixtures (divergenceL2 of a divergence-free field ~0; signChangeCount on a crafted row; fluxAcrossLine on a constant field; hasNonFinite catches NaN/Inf; fieldEnergy on a known field).",
-        "After `bun run prepack`, grep `dist/**/*.d.ts` — it must NOT contain `readField` or `advance` (stripInternal working). publint/prepack stay clean. This is a NODE-GATEABLE check of the @internal claim.",
-        "readField uses an explicit field-name allowlist (not this[field]); advance() is deterministic in no-autostart mode (sim-time accumulator).",
-        "scenes.ts exports the 4 named scenes; an authored browser test wires dipole through advance+readField+fieldEnergy (genuine; not gated)."
+        "Node tests on the pure governor fn: ladder ordering, floors, hysteresis window, monotonic shed under sustained overload, asymmetric/never-auto-restore.",
+        "Node: getPerformanceState() surfaces state, safe default before the engine exists, pull-based (no events) — mirror pause-resume.test.ts.",
+        "Node DETERMINISM guard: autoPerformance on vs off -> byte-identical readField() under advance()/deterministicMode.",
+        "Browser (authored): inject a high synthetic frame time -> PRESSURE_ITERATIONS drops while liveness holds through every transition."
       ],
       "constraints": [
-        "readField/advance must not import Svelte and add zero cost to the normal rAF path.",
-        "Map field name → FBO via an explicit object; the curl FBO is curlFBO, not this.curl.",
-        "Re-query EXT_color_buffer_float inside readField; do not assume an ExtInfo bit.",
-        "stripInternal:true must actually remove readField/advance from dist .d.ts (verify by grep)."
+        "Bucket-A ONLY here. dyeResolution tier = separate gated task; simResolution tier stays deferred.",
+        "Threshold/floor NUMBERS are empirical: sensible defaults, flagged for human tuning on a pinned Chromium (timing never gates CI). Hunting/oscillation is human-QA-only.",
+        "Default off (opt-in). No new shaders/GL resources/runtime deps."
       ],
-    "note": "Implemented deterministic no-autostart constructor path, explicit readField + advance internals, stripInternal-configured release visibility, pure reducers, and authored scene/readback harness."
+      "note": "Parallelizable with spectral-band (disjoint files). The single item most on the product thesis; cheap (dt already computed)."
     },
     {
-		"id": "P0-bench",
-		"phase": "Phase 0",
-		"title": "Restore /examples/bench interactive profiler + liveness guard",
-		"status": "done",
-		"depends_on": ["P0-readback"],
+      "id": "maccormack-public-api",
+      "track": "B (features)",
+      "title": "Promote advectionScheme to a public Bucket-D config field + forward through <Fluid> (NO preset changes)",
+      "status": "done",
+      "depends_on": [
+        "spectral-band"
+      ],
+      "risk": "low",
+      "spec": "Make the (currently @internal, construct-only) MacCormack scheme REACHABLE without changing any preset. Promote advectionScheme to a PUBLIC FluidConfig field (Bucket-D construct-only): add advectionScheme?: 'semilagrangian' | 'maccormack' to FluidConfig in types.ts with a doc comment (default 'semilagrangian'; capability-gated to SL without linear filtering; warn it is for flow/structured scenes and can look angular/cubey on diffuse decorative dye). Add ADVECTION_SCHEME to DEFAULTS + resolveConfig; read this.config.ADVECTION_SCHEME in compileShaders' useMacCormack gate; classify Bucket-D in setConfig. Forward advectionScheme through Fluid.svelte buildConfig() + FluidProps. Keep the opts.advectionScheme path for benches/tests. CRITICAL: change NO preset configs — default stays 'semilagrangian' everywhere, so this is byte-identical / zero visual change (safe without visual QA). Document in docs/configuration + regenerate agent-docs. New ADR.",
+      "files": [
+        "src/lib/engine/types.ts (public advectionScheme + FluidProps)",
+        "src/lib/engine/FluidEngine.ts (DEFAULTS, resolveConfig, useMacCormack reads config, setConfig Bucket-D)",
+        "src/lib/Fluid.svelte (forward via buildConfig)",
+        "src/lib/engine/__tests__/ (node tests)",
+        "src/routes/docs/configuration/+page.svelte + src/routes/agent-docs.ts",
+        "dev-docs/decisions/ (new ADR)"
+      ],
+      "acceptance": [
+        "NODE GATE green.",
+        "advectionScheme present in the published dist .d.ts (FluidConfig + FluidProps) — no longer stripped.",
+        "resolveConfig defaults to 'semilagrangian'; setConfig ignores runtime changes (Bucket-D).",
+        "Registry invariant test: EVERY preset still resolves to 'semilagrangian' (no preset opts in here) — guards against default-on creep.",
+        "Component test: <Fluid advectionScheme='maccormack'> reaches the engine config. Non-flow byte-identity + capability-gate tests stay green."
+      ],
+      "constraints": [
+        "Do NOT enable maccormack on any preset and do NOT retune in this task — it must be a zero-visual-change API addition.",
+        "@internal -> public is a permanent commitment; word the doc comment to steer it toward flow/structured scenes."
+      ],
+      "note": "Gated behind spectral-band so the FOLLOW-ON retune lands with a net in place. This task itself is safe (no visual change)."
+    },
+    {
+      "id": "maccormack-flow-retune",
+      "track": "B (features)",
+      "title": "[HUMAN] Enable MacCormack on the flow presets that benefit + retune + visual QA",
+      "status": "cut",
+      "depends_on": [
+        "maccormack-public-api",
+        "spectral-band"
+      ],
       "risk": "medium",
-      "spec": "Restore an interactive dev profiler `src/routes/examples/bench/+page.svelte` importing its scene(s) from `__benches__/scenes.ts` (so it can never be orphaned by deleting the page). It runs a selected scene and exposes `window.__benchResult = { meanMs, p50, p95, fps, energy, done }`. Per-pass GPU timing via EXT_disjoint_timer_query_webgl2 (async poll + GPU_DISJOINT check) behind a default-off `instrument` constructor option, with a requestAnimationFrame-EMA fallback. LIVENESS GUARD (mandatory): after warmup, compute fieldEnergy via readField and refuse to set `__benchResult.done` / report numbers unless energy > floor AND !hasNonFinite (a blank canvas from a constructor throw benchmarks as a fake 120fps win). The `instrument?:boolean` ctor flag, only when true, wraps named solver passes (curl/vorticity/advect/viscosity/divergence/pressure/gradient) in begin/endQuery; OFF by default = zero hot-loop cost. This task does NOT need its own ADR — it is covered by the Phase 0 harness ADR written in P0-readback (extend that ADR if needed).",
+      "spec": "Turn the capability ON where it helps and tune the look. For each flow preset (GasFlare/Venturi/Karman/TeslaValve) decide — by real-WebGL VISUAL QA — whether MacCormack improves it (Karman/Venturi likely; GasFlare/TeslaValve unproven). For the ones that benefit, add advectionScheme:'maccormack' to the preset config and RETUNE curl/vorticityAdaptive/velocityDissipation so it sheds crisp, distinct vortices WITHOUT cubey/right-angle/pixel grid-scale churn — at the preset's overridden simResolution (Venturi 160, Karman 192; Phase 5 resolution-invariance makes the retune hold). This is the exact failure mode that regressed once and was caught only by a human eye, so the retune VALUES and the look sign-off are NOT loop-automatable.",
       "files": [
-        "src/routes/examples/bench/+page.svelte",
-        "src/lib/engine/FluidEngine.ts (instrument?:boolean ctor flag + default-off per-pass timer hooks)",
-        "src/routes/examples/+page.svelte (link the bench route if an examples index exists)"
+        "src/lib/presets/registry.ts (per-preset enable + retune)",
+        "src/lib/engine/__tests__/presets.test.ts (assert opted-in values)",
+        "browser retention/soak tests per opted-in preset"
       ],
       "acceptance": [
-        "NODE GATE green (svelte-check type-checks the new route).",
-        "The bench route imports scenes from __benches__/scenes.ts (shared, not inlined).",
-        "instrument defaults to false; with it false there is zero timer-query work in the frame loop.",
-        "The liveness guard is present (numbers not trusted below the energy floor or with non-finite values)."
+        "AUTOMATED (loop can prep): registry test asserts exactly the chosen flow presets carry advectionScheme:'maccormack' and every non-flow omits it; spectral-band stays within band for the retuned presets; browser retention shows MacCormack beats SL; NaN soak finite; capability-gate (no linear filtering -> SL).",
+        "HUMAN (irreducible): a person confirms each opted-in flow preset reads as crisp/organic (no cubey churn) AND that GasFlare/TeslaValve, if opted in, still look right — certifies the INTENDED look."
       ],
       "constraints": [
-        "Timer-query numbers are interactive/dev only — never a CI assertion.",
-        "instrument off by default; no production hot-path cost.",
-        "Scenes imported from __benches__/scenes.ts — do NOT inline scene defs."
+        "Loop may NOT pick retune values or sign off the look. At most propose candidate values behind the spectral-band + retention gates for a human to approve, then STOP.",
+        "Non-flow presets stay 'semilagrangian' (byte-identical)."
       ],
-		"note": "Implemented /examples/bench page with shared scenes, default-off instrumentation, benchmark timing fallback, and liveness-gated __benchResult export."
-	},
-    {
-      "id": "P2-maccormack-shader",
-      "phase": "Phase 2",
-      "title": "[DEFERRED] MacCormack velocity advection — dedicated program, 2-pass, limiter+guards",
-      "status": "deferred",
-      "depends_on": ["P0-readback"],
-      "risk": "high",
-      "deferred_reason": "All three plan reviewers (codex/grok/agy) flagged MacCormack as too underspecified and UNVERIFIABLE by the node gate for an unattended loop (its acceptance — dipole vortex retention, NaN soak — is GPU-readback-only). Implement in a focused, human-reviewed session AFTER the Phase 0 harness exists to validate it. The corrected design is recorded below so that session can execute it directly.",
-      "spec": "DESIGN OF RECORD (for the future human-reviewed session, not this loop): The single `advectionProgram` is SHARED by advectVelocity/advectDye/advectScalar — composing a MACCORMACK keyword onto it would corrupt dye(1024^2)/scalar. Therefore compile a DEDICATED velocity-MacCormack program (separate compile, MACCORMACK keyword + MANUAL_FILTERING as applicable) used ONLY in advectVelocity; advectDye/advectScalar keep the plain program. TWO-PASS choreography: pass A = forward semi-Lagrangian advect velocity into the existing `velocitySource` sim-res scratch FBO (phi_hat); pass B reads velocity.read (phi^n) + velocitySource (phi_hat), does an INLINE backward trace + the Selle-2008 limiter (clamp the corrected value to the min/max of phi^n's bilinear fetch stencil at the forward-backtrace position) + first-order fallback guards, writing velocity.write. velocitySource is reused transiently (viscosity repopulates it afterward — advection runs before viscosity; assert the ordering in a comment). SOLID guard: use the inline-mask VALUE already computed in the advection shader (container/obstruction solidity via inlineMaskGLSL) — NOT uSolidNeighbors (which is not bound in advection). OPEN-EDGE guard: plumb uOpenEdges into advectVelocity via flowOpenEdges() (currently divergence-only) and fall back to first-order within 2 cells of an open edge. Keep the ±1000 velocity clamp backstop. Velocity-only; NO dye MacCormack; NO runtime Material; NO public advectionScheme field. The #else (semi-Lagrangian) source must stay byte-identical.",
-      "files": [
-        "src/lib/engine/shaders.ts (dedicated velocity-MacCormack shader / MACCORMACK branch)",
-        "src/lib/engine/FluidEngine.ts (dedicated velocity-advection program; 2-pass advectVelocity; uOpenEdges plumbing; velocitySource ordering comment)",
-        "src/lib/engine/__tests__/ + src/lib/engine/__benches__/dipole.browser.test.ts"
-      ],
-      "acceptance": [
-        "NODE: SL path byte-identical (shader-string assertion); TS limiter-math mirror; dye/scalar advection UNCHANGED (still use the plain program).",
-        "HARNESS (browser, human-validated): dipole vorticity retention >=30% at x=0.9 @ simRes 128 with MacCormack (SL <10%); NaN/Inf soak at max SPLAT_FORCE with open boundaries passes."
-      ],
-      "constraints": [
-        "DEFERRED — do NOT run in this loop.",
-        "Dedicated velocity program (do NOT keyword the shared advectionProgram — it corrupts dye/scalar).",
-        "Velocity-only; no public knob; no runtime Material; #else SL path byte-identical."
-      ],
-      "note": "Deferred by 3-model review consensus 2026-06-25."
+      "note": "DECLINED 2026-07-09 after real-browser human visual QA (/examples/qa-maccormack scratch harness): un-retuned MacCormack showed jagged/serrated edges on GasFlare + Karman streaklines, no improvement on Venturi/TeslaValve. See ADR-0049. advectionScheme stays public API (ADR-0048); no preset opts in."
     },
     {
-      "id": "P2-maccormack-wire",
-      "phase": "Phase 2",
-      "title": "[DEFERRED] Enable MacCormack via internal capability gate; preset retune",
-      "status": "deferred",
-      "depends_on": ["P2-maccormack-shader"],
-      "risk": "high",
-      "deferred_reason": "Depends on P2-maccormack-shader (deferred) and its visual/perf acceptance is GPU-only. Human-reviewed session with the harness.",
-      "spec": "DESIGN OF RECORD: enable the dedicated velocity-MacCormack program when the device supports linear filtering (force OFF on the MANUAL_FILTERING / no-linear-filtering path), decided ONCE at construction like MANUAL_FILTERING (there is no pre-existing 'quality tier' flag — the capability check IS the gate; do not invent one). Provide an internal/construct-only kill-switch for soak/A-B; NO public advectionScheme. Retune presets with MacCormack on, but note (agy): MacCormack is forced off on mobile/no-linear-filtering, so confinement reductions tuned for desktop must not make mobile (semi-Lagrangian) presets look dull — keep confinement values that read well in BOTH regimes or document the trade-off. Avoid double-retuning the 4 presets P5-gauge already adjusted (coordinate the numbers).",
+      "id": "golden-image-adr",
+      "track": "A (regression nets)",
+      "title": "[HUMAN/DESIGN] ADR: cross-renderer determinism + diff metric + update-goldens workflow",
+      "status": "cut",
+      "depends_on": [],
+      "risk": "medium",
+      "spec": "Write the ADR that makes the full golden-image gate buildable WITHOUT shipping flaky. Decide on paper: (1) cross-renderer determinism — goldens generated by the EXACT CI renderer (headless-Chromium SwiftShader), since the chaotic float pipeline differs across renderers (local Apple Metal vs CI); contributors cannot regen locally. (2) A CI update-goldens workflow_dispatch job that regenerates+commits PNGs, plus a SEPARATE Playwright visual CI job (not the default green-gate, per ADR-0042). (3) A tolerant/structural diff metric (downsample + in-repo SSIM for zero deps, OR pixelmatch as a devDep) tuned to absorb SwiftShader jitter yet still catch grid-scale churn. (4) An intra-run determinism self-check (render a preset twice in one process, byte-identical) as the precondition for trusting any golden.",
       "files": [
-        "src/lib/engine/FluidEngine.ts (capability gate + kill-switch)",
-        "src/lib/presets/registry.ts (retune)",
-        "src/lib/engine/__benches__/maccormack-soak.browser.test.ts"
+        "dev-docs/decisions/ (new ADR)"
       ],
       "acceptance": [
-        "NODE: MacCormack forced OFF when supportLinearFiltering is false; no public advectionScheme added to the type surface.",
-        "HARNESS (human-validated): authored dipole retention + NaN soak browser tests; mobile (SL) presets still look intentional."
+        "A committed ADR answering (1)-(4); flags renderer jitter as the top operational risk; requires run-to-run stability over ~5 CI runs before the gate becomes required."
       ],
       "constraints": [
-        "DEFERRED — do NOT run in this loop.",
-        "No public knob; internal capability gate only; mind the mobile-dullness trade-off."
+        "Design only — do this EARLY/in parallel so only the golden CAPTURE waits on retunes. The make-or-break of the whole golden-image item; do not write golden code before it exists."
       ],
-      "note": "Deferred by 3-model review consensus 2026-06-25."
+      "note": "DECLINED 2026-07-09: cut entirely, not just redesigned. See ADR-0050 — the compositing pipeline is real uncovered surface, but a CI job needing ~5 runs of stabilization + ongoing jitter tuning is not worth it for a decorative, degrade-not-break product. Manual visual QA covers compositing changes instead."
+    },
+    {
+      "id": "golden-image-impl",
+      "track": "A (regression nets)",
+      "title": "Full golden-image CI — composited-canvas readback diffed against committed goldens (display-pipeline coverage)",
+      "status": "cut",
+      "gate": "golden-image-adr written AND maccormack-flow-retune + Phase-5 retunes settled (so goldens don't self-invalidate). Code is loop-doable once the ADR exists; golden CAPTURE + per-preset certification is HUMAN.",
+      "depends_on": [
+        "golden-image-adr",
+        "maccormack-flow-retune"
+      ],
+      "risk": "medium",
+      "spec": "The ONLY check covering the full display pipeline (shading/bloom/sunrays/glass/reveal/distortion Bucket-B recompile paths) — invisible to every field readback. Per the ADR: add @internal FluidEngine.readCanvas() (composited RGBA8 from the default framebuffer, excluded from dist .d.ts); a pure-TS diff module (in-repo SSIM or pixelmatch devDep) node-tested; a golden.browser.test.ts iterating PRESETS — construct autoStart:false + fixed seed, advance(N,fixedDt), liveness-guard, readCanvas, compare to committed golden within tolerance; committed goldens dir; the CI visual job + update-goldens workflow_dispatch.",
+      "files": [
+        "src/lib/engine/FluidEngine.ts (@internal readCanvas)",
+        "src/lib/presets/golden-diff.ts (pure-TS SSIM/diff) + node test",
+        "src/lib/presets/golden.browser.test.ts",
+        "src/lib/presets/__goldens__/*.png",
+        ".github/workflows/ (visual job + update-goldens)"
+      ],
+      "acceptance": [
+        "NODE: diff module unit-tested (identical -> 0 drift; noised/shifted -> > threshold); coverage test asserts every PRESETS id has a golden file.",
+        "BROWSER (separate CI job): intra-run determinism self-check BEFORE trusting goldens; liveness guard; composited canvas matches golden within tolerance; smoke-alarm meta-test flipping MacCormack on a non-flow preset EXCEEDS threshold.",
+        "HUMAN (irreducible): INITIAL golden capture eyeballed + certified per preset; every intentional retune's regen re-certified."
+      ],
+      "constraints": [
+        "Separate gated CI job, never the default green-gate. devDep (pixelmatch) fine if the ADR chose it; else zero-dep in-repo SSIM."
+      ],
+      "note": "DECLINED 2026-07-09: both prerequisites (golden-image-adr, maccormack-flow-retune) are cut. See ADR-0050."
+    },
+    {
+      "id": "governor-dye-tier",
+      "track": "B (features)",
+      "title": "Frame-time governor — dyeResolution (Bucket-C) shed tier",
+      "status": "gated",
+      "gate": "golden-image-impl live (steady-state net for the FBO-rebuild dye-res pop) AND human visual QA of the pop on a throttled device.",
+      "depends_on": [
+        "governor-bucket-a",
+        "golden-image-impl"
+      ],
+      "risk": "medium",
+      "spec": "Extend the governor with the dyeResolution shed step (a Bucket-C FBO rebuild via initFramebuffers) plus EMA reset on any Bucket-C rebuild. This tier changes visuals (a dye-resolution pop) so it waits for the display-pipeline net + human QA. simResolution tier stays deferred per the epic.",
+      "files": [
+        "src/lib/engine/FluidEngine.ts (dye-res tier + EMA reset on Bucket-C)",
+        "src/lib/engine/__tests__/performance-governor.test.ts (extend)"
+      ],
+      "acceptance": [
+        "NODE: governor fn includes the dye-res tier after Bucket-A with EMA-reset semantics tested; BROWSER: shed triggers an FBO rebuild while liveness holds; HUMAN: the dye-res pop is acceptable on a throttled device."
+      ],
+      "constraints": [
+        "Gated; do not build before golden-image-impl exists."
+      ],
+      "note": "STALE GATE 2026-07-09: this task's gate names golden-image-impl, which is now permanently cut (ADR-0050) and will never go live as written. Whether to still build the dye-res shed tier without that display-pipeline net is an open risk call for a human, not resolved here — do not silently loosen the gate."
+    },
+    {
+      "id": "chore-vitest-consolidate",
+      "track": "chores",
+      "title": "Consolidate the redundant vitest.config.ts / vitest.workspace.ts",
+      "status": "done",
+      "depends_on": [],
+      "risk": "low",
+      "spec": "Replace the 3-line re-export shim vitest.config.ts with the actual two-project config currently in vitest.workspace.ts (node default + env-gated browser project via process.env.VITEST_BROWSER), then delete vitest.workspace.ts. Keep vite.config.ts build-only. Keep 'test' and 'test:browser' behaving byte-identically. CRITICAL: default `vitest run` (= bun run test) must stay node-only and must NOT launch Chromium — the env-gate must survive.",
+      "files": [
+        "vitest.config.ts",
+        "vitest.workspace.ts (delete)",
+        "package.json (scripts unchanged in behavior)"
+      ],
+      "acceptance": [
+        "NODE GATE green; `bun run test` runs node-only WITHOUT launching a browser; `bun run test:browser` still runs the browser project; vitest.workspace.ts gone and unreferenced (grep)."
+      ],
+      "constraints": [
+        "Pure contributor hygiene; no behavior change. Can ride inside the spectral-band PR."
+      ],
+      "note": "Zero user value but ready now."
+    },
+    {
+      "id": "chore-docs-copyedit",
+      "track": "chores",
+      "title": "Plain-English copyedit of the components/shapes/presets/api docs routes",
+      "status": "done",
+      "depends_on": [
+        "governor-bucket-a",
+        "maccormack-public-api"
+      ],
+      "risk": "low",
+      "spec": "Light jargon-softening pass over src/routes/docs/{components,shapes,presets,api}/+page.svelte (e.g. 'Dimensionless implicit velocity diffusion', 'Jacobi iterations', 'Rayleigh-Taylor instability'). The routes are already largely clear — a copyedit, not a rewrite. PRESERVE every id= anchor (cross-links + agent-docs depend on them), preserve fenced code examples, do NOT break the template-literal escaping, do NOT hand-edit the preset tables (generated by PresetReference.svelte). The configuration/api/components edits for the new APIs (getPerformanceState, advectionScheme) ride inside their feature PRs; this is the residual non-API copyedit.",
+      "files": [
+        "src/routes/docs/{components,shapes,presets,api}/+page.svelte"
+      ],
+      "acceptance": [
+        "NODE GATE green (svelte-check catches broken markup); authored node test asserts every id= anchor cross-links reference still exists; HUMAN/LLM-judge: prose is plainer (not node-scoreable)."
+      ],
+      "constraints": [
+        "No ADR (not an engine change). Prose quality is human/judge — a loop verifies build + anchors + examples intact."
+      ],
+      "note": "After the API-adding tasks so it documents the final surface."
+    },
+    {
+      "id": "multigrid-pressure",
+      "track": "CUT",
+      "title": "[CUT] Multigrid / V-cycle pressure tier",
+      "status": "cut",
+      "depends_on": [],
+      "risk": "high",
+      "spec": "NOT building this. Unanimous across all 3 lenses: (1) Wrong direction vs the one measurement we have — ADR-0038 proved the pressure loop is pass/encoder-overhead bound at shipping grids (sim 128-192); a V-cycle is strictly MORE passes, predicted to LOSE frame-time at the only grids the library ships (its win lives in the fragment-bound 768-class regime mobile never reaches). (2) Zero decorative value — under-convergence reads as faint low-frequency divergence near obstacles, invisible/acceptable in the smooth dye look; only 4 desktop-only flow presets could even theoretically benefit, on CFD grounds the aesthetic ignores. (3) Doubly gated — hard-depends on the deferred Phase 3. (4) High regression risk, human-QA-only detection.",
+      "acceptance": [],
+      "constraints": [
+        "If a REAL reproduced pressure under-convergence complaint on a shipping preset ever lands, the answer is the CHEAP convergence ladder (more iterations -> Chebyshev / red-black Jacobi -> ONE two-grid smoother) as a small demand-gated item — NOT a multigrid tier."
+      ],
+      "note": "Recorded as cut; the cheap-ladder is the demand-gated fallback."
+    },
+    {
+      "id": "phase3-variational-apertures",
+      "track": "GATED",
+      "title": "[GATED] Phase 3 — variational fractional face apertures (de-staircase curved obstructions + thin-wall leakage)",
+      "status": "gated",
+      "gate": "A reproduced, documented staircasing or thin-wall-leakage complaint on a SHIPPING preset that Phase-5 adaptive confinement + wall friction + paired-Jacobi provably do NOT fix (the epic's explicit revival trigger). Has NOT fired.",
+      "depends_on": [],
+      "risk": "high",
+      "spec": "DESIGN PRESERVED, not scheduled. XL effort, low decorative value (sharpens pressure projection only around CURVED obstructions in 3-4 flow presets a drop-in user never sees). If revived: a NEW face-supersampled fractional bake (inverted polarity vs today's binary neighbor-solidity); program-swap VARIANT shaders (lazily compiled, capability-gated — NOT a hot-loop uniform branch, NOT Material-keyword infra) implementing face-weighted divergence + aperture-sum pressure diagonal + adjoint gradient identically across all THREE pressure-stencil sites (bit-identical across the 150k paired-Jacobi gate) + thin-wall aperture-sum floor; experimental construct-only flag default OFF (ship-dark); new ADR. Boundary-normals/free-slip is CUT.",
+      "acceptance": [
+        "When/if built: flag-OFF byte-identity (shader-string + bake-byte parity); pure-TS fractional-bake unit tests vs analytical circle/slab; browser divergenceL2 not-worse + thinWall flux DROP via the harness; NaN soak; HUMAN visual QA that the throat/cylinder de-staircase with no new grid-scale churn."
+      ],
+      "constraints": [
+        "Do NOT build speculatively. Claim an ADR number only if revived."
+      ],
+      "note": "Preserved option value; near-zero cost-to-keep."
+    },
+    {
+      "id": "tracers",
+      "track": "GATED",
+      "title": "[GATED] Lagrangian tracer / streakline render mode (GLSL ES 3.00)",
+      "status": "gated",
+      "gate": "A concrete flow-scene-showcase demand for TRUE streaklines beyond the existing dye-rake, an ADR for the dual ES-3.00-dialect decision, and a defined WebGL2 capability-gate + degrade-to-dye-rake fallback.",
+      "depends_on": [],
+      "risk": "medium",
+      "spec": "DESIGN PRESERVED, not scheduled. Low value for the DEFAULT look (untouched); the one place streaklines matter — the Karman/flow showcase — already fakes the wind-tunnel smoke-rake convincingly with a six-source Eulerian dye-rake. Permanent structural cost: a SECOND shader dialect (#version 300 es, gl_VertexID/texelFetch/point sprites) in an all-ES-1.00 engine that still ships a load-bearing WebGL1 fallback. Purely additive / off-by-default so near-zero regression risk — hence gated, not cut.",
+      "acceptance": [
+        "When/if built: dispose() leak test (every gl.create* has a matching delete*); WebGL1-degrade no-throw; browser particle-advection + seeded-RNG reproducibility + NaN soak; timer-query budget; HUMAN visual QA of the streakline aesthetic + WebGL1 fallback."
+      ],
+      "constraints": [
+        "Do NOT build speculatively."
+      ],
+      "note": "Legit flow-showcase differentiator IF demand appears."
+    },
+    {
+      "id": "curl-noise-turbulence",
+      "track": "GATED",
+      "title": "[GATED] Curl-noise turbulence force",
+      "status": "gated",
+      "gate": "(a) A reproduced demand/defect showing a look the existing levers (vorticity confinement + adaptive confinement + continuous random splats + MacCormack) cannot produce, AND (b) golden-image-impl existing so the organic-vs-pixely-churn call is automatable.",
+      "depends_on": [],
+      "risk": "medium",
+      "spec": "DESIGN PRESERVED, not scheduled. Textbook speculative seasoning, fully redundant with four existing levers; injects energy near grid scale — the EXACT mechanism behind the cubey MacCormack regression. If ungated: a GL-free curlNoiseShader (band-limited noise potential animated by a time uniform, finite-difference curl, band-limited to >= a few cells), an additive pass BEFORE projectVelocity, Bucket-A scalar fields (pass skipped when strength==0 so default is byte-identical), component forwarding, a showcase preset, new ADR.",
+      "acceptance": [
+        "When/if built: node config-classification (Bucket A; strength==0 -> byte-identical) + determinism; browser NaN soak + divergenceL2 not-overwhelmed + bounded fieldEnergy; HUMAN visual QA of organic-vs-grid-churn (needs golden-image)."
+      ],
+      "constraints": [
+        "Do NOT build speculatively."
+      ],
+      "note": "Lowest-leverage; default-OFF contains blast radius, hence gated not cut."
     }
   ]
 }

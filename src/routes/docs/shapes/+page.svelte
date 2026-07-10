@@ -14,15 +14,15 @@
 <p class="subtitle">Confine the fluid to a geometric boundary. The simulation physically enforces the wall — velocity bounces and dye cannot escape.</p>
 
 <p>
-	The <code>containerShape</code> prop defines the boundary geometry. When set, the engine zeroes
-	velocity outside the shape after every physics pass and masks dye after advection. The fluid
-	is physically contained, not merely clipped visually.
+	The <code>containerShape</code> prop defines the boundary geometry. When set, the engine removes
+	velocity outside the shape after every physics pass and masks dye after it moves. The fluid is
+	contained by the simulation, not just clipped at display time.
 </p>
 
 <p>
-	Coordinates follow a normalized convention: <code>cx</code>/<code>cy</code> are in the range [0, 1]
-	(left-to-right, bottom-to-top). Radius values are normalized by canvas height, so
-	<code>radius: 0.45</code> gives a physical radius of 45% of the canvas height.
+	Coordinates use a 0-1 range: <code>cx</code>/<code>cy</code> run left-to-right and
+	bottom-to-top. Radius values are based on canvas height, so <code>radius: 0.45</code>
+	gives a physical radius of 45% of the canvas height.
 </p>
 
 <p>Five shape types are available:</p>
@@ -37,7 +37,7 @@
 
 <p>
 	Separately, the <a href="#obstructions"><code>obstructions</code></a> prop adds interior obstacles
-	the fluid flows <em>around</em> — the inverse of a container, and orthogonal to
+	the fluid flows <em>around</em> — the inverse of a container, and independent from
 	<code>containerShape</code>.
 </p>
 
@@ -59,7 +59,7 @@
 		<tr>
 			<td><code>type</code></td>
 			<td><code>'circle'</code></td>
-			<td>Discriminant</td>
+			<td>Shape tag</td>
 		</tr>
 		<tr>
 			<td><code>cx</code></td>
@@ -101,7 +101,7 @@
 		<tr>
 			<td><code>type</code></td>
 			<td><code>'frame'</code></td>
-			<td>Discriminant</td>
+			<td>Shape tag</td>
 		</tr>
 		<tr>
 			<td><code>cx</code></td>
@@ -116,12 +116,12 @@
 		<tr>
 			<td><code>halfW</code></td>
 			<td><code>number</code></td>
-			<td>Half-width of the inner rectangle in UV space (0–1)</td>
+			<td>Half-width of the inner rectangle in 0-1 canvas space</td>
 		</tr>
 		<tr>
 			<td><code>halfH</code></td>
 			<td><code>number</code></td>
-			<td>Half-height of the inner rectangle in UV space (0–1)</td>
+			<td>Half-height of the inner rectangle in 0-1 canvas space</td>
 		</tr>
 		<tr>
 			<td><code>innerCornerRadius</code></td>
@@ -179,7 +179,7 @@
 		<tr>
 			<td><code>type</code></td>
 			<td><code>'roundedRect'</code></td>
-			<td>Discriminant</td>
+			<td>Shape tag</td>
 		</tr>
 		<tr>
 			<td><code>cx</code></td>
@@ -194,17 +194,17 @@
 		<tr>
 			<td><code>halfW</code></td>
 			<td><code>number</code></td>
-			<td>Half-width in UV space</td>
+			<td>Half-width in 0-1 canvas space</td>
 		</tr>
 		<tr>
 			<td><code>halfH</code></td>
 			<td><code>number</code></td>
-			<td>Half-height in UV space</td>
+			<td>Half-height in 0-1 canvas space</td>
 		</tr>
 		<tr>
 			<td><code>cornerRadius</code></td>
 			<td><code>number</code></td>
-			<td>Corner rounding radius in UV space</td>
+			<td>Corner rounding radius in 0-1 canvas space</td>
 		</tr>
 	</tbody>
 </table>
@@ -217,8 +217,8 @@
 {RB}{RB} /&gt;</code></pre>
 
 <p>
-	Uses the Inigo Quilez rounded-box SDF internally. Corner radius is aspect-corrected so corners
-	appear circular in physical space. The LavaLamp preset uses this shape with
+	Uses a rounded-box distance formula internally. Corner radius is aspect-corrected so corners
+	appear circular on screen. The LavaLamp preset uses this shape with
 	<code>cornerRadius: 0.15</code> for a pill-like vessel.
 </p>
 
@@ -240,7 +240,7 @@
 		<tr>
 			<td><code>type</code></td>
 			<td><code>'annulus'</code></td>
-			<td>Discriminant</td>
+			<td>Shape tag</td>
 		</tr>
 		<tr>
 			<td><code>cx</code></td>
@@ -295,7 +295,7 @@
 		<tr>
 			<td><code>type</code></td>
 			<td><code>'svgPath'</code></td>
-			<td>Discriminant</td>
+			<td>Shape tag</td>
 		</tr>
 		<tr>
 			<td><code>d</code></td>
@@ -407,7 +407,7 @@
 		<tr>
 			<td><code>offset</code></td>
 			<td><code>{LB} x: number; y: number {RB}?</code></td>
-			<td>UV-space translation applied after the base fit transform (0–1, bottom-to-top). Default <code>{LB} x: 0, y: 0 {RB}</code>.</td>
+			<td>0-1 canvas-space translation applied after the base fit transform (bottom-to-top). Default <code>{LB} x: 0, y: 0 {RB}</code>.</td>
 		</tr>
 		<tr>
 			<td><code>scale</code></td>
@@ -419,7 +419,7 @@
 			<td><code>'contain' | 'fill'?</code></td>
 			<td>
 				How the <code>viewBox</code> maps onto a non-square canvas. <code>'contain'</code>
-				(default) uniform-fits and centers — shape-accurate but letterboxes, leaving open
+				(default) keeps the shape's proportions and centers it, leaving open
 				margins; best for discrete obstacles placed with <code>offset</code>/<code>scale</code>.
 				<code>'fill'</code> stretches each axis to fill the canvas at any aspect (no margins);
 				best for canvas-spanning geometry like a maze or nozzle channel where the fluid must
@@ -452,7 +452,7 @@
 <h3>Orthogonality to containerShape</h3>
 
 <p>
-	Obstructions are fully <strong>orthogonal</strong> to <code>containerShape</code>. They compose
+	Obstructions are fully <strong>independent</strong> from <code>containerShape</code>. They compose
 	with any container — or with no container at all (a full-rectangle maze). The allowed fluid
 	region is <code>container × (1 − obstruction)</code>: where a container says "fluid here" and an
 	obstruction says "blocked here", blocked wins.
@@ -466,12 +466,12 @@
 <h3>Minimum feature size</h3>
 
 <p>
-	Like container shapes, obstructions use post-hoc mask penalisation: the boundary is roughly one
-	texel wide at the simulation resolution. The smallest reliably-resolved obstacle is about
-	<code>2 / simResolution</code> in UV units (~0.016 at the default <code>simResolution: 128</code>).
-	Walls thinner than that may leak — raise <code>simResolution</code> for finer mazes. The wall is
-	free-slip (it stops flow crossing it but applies no drag along it), and the pressure solver
-	produces emergent flow-around and venturi acceleration through gaps. See ADR-0034.
+	Like container shapes, obstructions are applied as a mask after each simulation pass. The
+	boundary is roughly one texel wide at the simulation resolution. The smallest reliably-resolved
+	obstacle is about <code>2 / simResolution</code> in 0-1 canvas units (~0.016 at the default
+	<code>simResolution: 128</code>). Walls thinner than that may leak — raise
+	<code>simResolution</code> for finer mazes. The wall stops flow crossing it but applies no drag
+	along it, so the solver produces flow-around and speed-up through gaps. See ADR-0034.
 </p>
 
 <p>
@@ -495,9 +495,9 @@
 
 <p>
 	When <code>openBoundary</code> is <code>true</code>, fluid flows freely instead of bouncing. The
-	divergence solver skips no-penetration enforcement at the canvas edges, and the container shape
-	becomes a visual crop rather than a physical wall — dye and velocity are not zeroed outside the
-	shape. The <code>FluidReveal</code> component defaults to <code>openBoundary: true</code> for
+	pressure solve no longer blocks flow at the canvas edges, and the container shape becomes a
+	visual crop rather than a physical wall — dye and velocity are not zeroed outside the shape.
+	The <code>FluidReveal</code> component defaults to <code>openBoundary: true</code> for
 	natural scratch behavior.
 </p>
 
@@ -516,8 +516,7 @@
 
 <p>
 	The <code>circle</code>, <code>frame</code>, <code>roundedRect</code>, and <code>annulus</code> types use
-	<strong>analytical SDFs</strong> (signed distance functions) evaluated directly in the GLSL shader.
-	These are cheap to compute and produce perfectly smooth edges.
+	direct distance formulas in the GLSL shader. They are cheap to compute and produce smooth edges.
 </p>
 
 <p>

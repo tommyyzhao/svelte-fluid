@@ -43,10 +43,17 @@ import type {
 	FlowSource,
 	FluidConfig,
 	FluidHandle,
+	PerformanceAction,
+	PerformanceState,
+	PerformanceTier,
 	PrescribedFlowField,
 	ResolvedConfig,
 	RGB
 } from './types.js';
+import {
+	nextFrameTimeEmaMs,
+	performanceGovernorStep
+} from './performance-governor.js';
 import {
 	type BlitFn,
 	type GL,
@@ -187,6 +194,7 @@ export const DEFAULTS: ResolvedConfig = {
 	INITIAL_DENSITY_DISSIPATION: 1,
 	INITIAL_DENSITY_DISSIPATION_DURATION: 0,
 	VELOCITY_DISSIPATION: 0.2,
+	ADVECTION_SCHEME: 'semilagrangian' as const,
 	MAX_TIME_STEP: 1 / 60,
 	SUBSTEPS: 1,
 	VISCOSITY: 0,
@@ -195,6 +203,9 @@ export const DEFAULTS: ResolvedConfig = {
 	WALL_FRICTION_WIDTH: 1,
 	PRESSURE: 0.8,
 	PRESSURE_ITERATIONS: 20,
+	AUTO_PERFORMANCE: false,
+	AUTO_PERFORMANCE_MIN_PRESSURE_ITERATIONS: 8,
+	AUTO_PERFORMANCE_MIN_SUBSTEPS: 1,
 	CURL: 30,
 	VORTICITY_ADAPTIVE: 0,
 	SPLAT_RADIUS: 0.25,
@@ -279,6 +290,8 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 	if (input.initialDensityDissipationDuration !== undefined)
 		out.INITIAL_DENSITY_DISSIPATION_DURATION = input.initialDensityDissipationDuration;
 	if (input.velocityDissipation !== undefined) out.VELOCITY_DISSIPATION = input.velocityDissipation;
+	if (input.advectionScheme !== undefined)
+		out.ADVECTION_SCHEME = input.advectionScheme === 'maccormack' ? 'maccormack' : 'semilagrangian';
 	if (input.maxTimeStep !== undefined) out.MAX_TIME_STEP = Math.max(0.001, input.maxTimeStep);
 	if (input.substeps !== undefined) out.SUBSTEPS = Math.max(1, Math.min(8, Math.floor(input.substeps)));
 	if (input.viscosity !== undefined) out.VISCOSITY = Math.max(0, input.viscosity);
@@ -289,6 +302,14 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 		out.WALL_FRICTION_WIDTH = Math.max(0, Math.min(4, input.wallFrictionWidth));
 	if (input.pressure !== undefined) out.PRESSURE = input.pressure;
 	if (input.pressureIterations !== undefined) out.PRESSURE_ITERATIONS = input.pressureIterations;
+	if (input.autoPerformance !== undefined) out.AUTO_PERFORMANCE = input.autoPerformance;
+	if (input.autoPerformanceMinPressureIterations !== undefined)
+		out.AUTO_PERFORMANCE_MIN_PRESSURE_ITERATIONS = Math.max(
+			0,
+			Math.floor(input.autoPerformanceMinPressureIterations)
+		);
+	if (input.autoPerformanceMinSubsteps !== undefined)
+		out.AUTO_PERFORMANCE_MIN_SUBSTEPS = Math.max(1, Math.min(8, Math.floor(input.autoPerformanceMinSubsteps)));
 	if (input.curl !== undefined) out.CURL = input.curl;
 	if (input.vorticityAdaptive !== undefined) {
 		out.VORTICITY_ADAPTIVE = clamp01(input.vorticityAdaptive);
@@ -541,11 +562,8 @@ export interface FluidEngineOptions {
 	 */
 	instrument?: boolean;
 	/**
-	 * @internal Velocity advection scheme (epic 0001 Phase 2). 'maccormack' opts
-	 * into second-order MacCormack advection for the velocity field only — dye and
-	 * scalars always stay semi-Lagrangian. Forced to 'semilagrangian' when the
-	 * device lacks linear filtering. Construct-only; exposed for benches/tests and
-	 * stripped from dist types via stripInternal. Defaults to 'semilagrangian'.
+	 * @internal Bench/test override for {@link FluidConfig.advectionScheme}. This
+	 * keeps the readback harness able to A/B schemes without mutating scene config.
 	 */
 	advectionScheme?: 'semilagrangian' | 'maccormack';
 }
@@ -679,11 +697,13 @@ export class FluidEngine implements FluidHandle {
 	private flowOutletBatchWidth = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
 	private autoStart = true;
 	private benchmarkInstrument = false;
-	// Velocity advection scheme (epic 0001 Phase 2). The requested scheme is
-	// construct-only; useMacCormack is the capability-gated effective decision,
-	// recomputed alongside MANUAL_FILTERING in compileShaders so a context restore
-	// re-derives it from the (possibly new) GL feature set.
-	private advectionScheme: 'semilagrangian' | 'maccormack' = 'semilagrangian';
+	private performanceEmaMs = 0;
+	private performanceTier: PerformanceTier = 'none';
+	private performanceMsSinceLastChange = 0;
+	private performanceLastAction: PerformanceAction = 'none';
+	// The requested advection scheme is construct-only; useMacCormack is the
+	// capability-gated effective decision, recomputed alongside MANUAL_FILTERING
+	// so a context restore re-derives it from the (possibly new) GL feature set.
 	private useMacCormack = false;
 	private readbackUint8Buffer = new Uint8Array(0);
 	private readbackFloatBuffer = new Float32Array(0);
@@ -713,7 +733,9 @@ export class FluidEngine implements FluidHandle {
 		const seed = opts.config?.seed ?? randomSeed();
 		this.config = resolveConfig({ ...opts.config, seed }, DEFAULTS);
 		this.benchmarkInstrument = opts.instrument ?? false;
-		this.advectionScheme = opts.advectionScheme ?? 'semilagrangian';
+		if (opts.advectionScheme !== undefined) {
+			this.config.ADVECTION_SCHEME = opts.advectionScheme;
+		}
 		this.autoStart = opts.autoStart ?? true;
 		this.deterministicMode = !this.autoStart;
 		this.normalizedBackColor = normalizeColor(this.config.BACK_COLOR);
@@ -972,6 +994,21 @@ export class FluidEngine implements FluidHandle {
 		return !this.rafRunning;
 	}
 
+	getPerformanceState(): PerformanceState {
+		const enabled = this.config.AUTO_PERFORMANCE;
+		return {
+			enabled,
+			tier: enabled ? this.performanceTier : 'none',
+			emaMs: enabled ? this.performanceEmaMs : 0,
+			msSinceLastChange: enabled ? this.performanceMsSinceLastChange : 0,
+			pressureIterations: this.config.PRESSURE_ITERATIONS,
+			substeps: this.config.SUBSTEPS,
+			minPressureIterations: this.config.AUTO_PERFORMANCE_MIN_PRESSURE_ITERATIONS,
+			minSubsteps: this.config.AUTO_PERFORMANCE_MIN_SUBSTEPS,
+			lastAction: enabled ? this.performanceLastAction : 'none'
+		};
+	}
+
 	/**
 	 * Hot-update a subset of config fields. Uses a 4-bucket strategy:
 	 *   A — scalar/boolean assignment, picked up next frame.
@@ -979,14 +1016,17 @@ export class FluidEngine implements FluidHandle {
 	 *       canvas + window event listeners on transition.
 	 *   B — display shader keyword recompile (shading, bloom, sunrays)
 	 *   C — FBO rebuild (sim/dye/bloom/sunrays resolutions)
-	 *   D — construct-only — `seed`, `initialSplatCount*`, `presetSplats`.
+	 *   D — construct-only — `seed`, `initialSplatCount*`, `presetSplats`,
+	 *       `advectionScheme`.
 	 *       These are silently ignored: `seed` and `initialSplatCount*`
 	 *       only affect the first frame, and `presetSplats` is absent
-	 *       from `ResolvedConfig` entirely.
+	 *       from `ResolvedConfig` entirely; `advectionScheme` picks a shader
+	 *       path at construction/context initialization.
 	 */
 	setConfig(patch: FluidConfig): void {
 		if (this.disposed || this.contextLost) return;
 		const next = resolveConfig(patch, this.config);
+		next.ADVECTION_SCHEME = this.config.ADVECTION_SCHEME;
 		const a = this.config;
 		const b = next;
 
@@ -1012,8 +1052,15 @@ export class FluidEngine implements FluidHandle {
 		const scalarNeedChanged = needsScalarFBOForFlow(a.FLOW) !== needsScalarFBOForFlow(b.FLOW);
 		const pointerInputChanged = a.POINTER_INPUT !== b.POINTER_INPUT;
 		const pointerTargetChanged = a.POINTER_TARGET !== b.POINTER_TARGET;
+		const performanceResetChanged =
+			a.AUTO_PERFORMANCE !== b.AUTO_PERFORMANCE ||
+			a.AUTO_PERFORMANCE_MIN_PRESSURE_ITERATIONS !== b.AUTO_PERFORMANCE_MIN_PRESSURE_ITERATIONS ||
+			a.AUTO_PERFORMANCE_MIN_SUBSTEPS !== b.AUTO_PERFORMANCE_MIN_SUBSTEPS ||
+			a.PRESSURE_ITERATIONS !== b.PRESSURE_ITERATIONS ||
+			a.SUBSTEPS !== b.SUBSTEPS;
 
 		this.config = b;
+		if (performanceResetChanged) this.resetPerformanceGovernor();
 		if (a.BACK_COLOR !== b.BACK_COLOR) {
 			this.normalizedBackColor = normalizeColor(b.BACK_COLOR);
 		}
@@ -1494,7 +1541,7 @@ export class FluidEngine implements FluidHandle {
 		// MacCormack velocity advection is gated on hardware linear filtering: the
 		// manual-bilerp fallback would make the two-pass scheme too expensive on
 		// that path, so it is forced off (decided once here, like MANUAL_FILTERING).
-		this.useMacCormack = this.advectionScheme === 'maccormack' && this.ext.supportLinearFiltering;
+		this.useMacCormack = this.config.ADVECTION_SCHEME === 'maccormack' && this.ext.supportLinearFiltering;
 
 		const fragments: Record<string, WebGLShader> = {
 			blur: compileShader(gl, gl.FRAGMENT_SHADER, S.blurShader),
@@ -2480,10 +2527,51 @@ export class FluidEngine implements FluidHandle {
 
 	private calcDeltaTime(): number {
 		const now = performance.now();
-		let dt = (now - this.lastUpdateTime) / 1000;
+		const frameMs = Math.max(0, now - this.lastUpdateTime);
+		this.recordPerformanceFrameTime(frameMs);
+		let dt = frameMs / 1000;
 		dt = Math.min(dt, this.config.MAX_TIME_STEP * this.config.SUBSTEPS);
 		this.lastUpdateTime = now;
 		return dt;
+	}
+
+	private resetPerformanceGovernor(): void {
+		this.performanceEmaMs = 0;
+		this.performanceTier = 'none';
+		this.performanceMsSinceLastChange = 0;
+		this.performanceLastAction = 'none';
+	}
+
+	private recordPerformanceFrameTime(frameMs: number): PerformanceAction {
+		this.performanceLastAction = 'none';
+		if (!this.config.AUTO_PERFORMANCE || this.deterministicMode || this.config.PAUSED) {
+			return 'none';
+		}
+
+		this.performanceEmaMs = nextFrameTimeEmaMs(this.performanceEmaMs, frameMs);
+		this.performanceMsSinceLastChange += Math.max(0, frameMs);
+		const decision = performanceGovernorStep({
+			emaMs: this.performanceEmaMs,
+			currentTier: this.performanceTier,
+			msSinceLastChange: this.performanceMsSinceLastChange,
+			pressureIterations: this.config.PRESSURE_ITERATIONS,
+			substeps: this.config.SUBSTEPS,
+			floors: {
+				pressureIterations: this.config.AUTO_PERFORMANCE_MIN_PRESSURE_ITERATIONS,
+				substeps: this.config.AUTO_PERFORMANCE_MIN_SUBSTEPS
+			}
+		});
+
+		if (!decision.changed) {
+			return 'none';
+		}
+
+		this.config.PRESSURE_ITERATIONS = decision.pressureIterations;
+		this.config.SUBSTEPS = decision.substeps;
+		this.performanceTier = decision.tier;
+		this.performanceMsSinceLastChange = 0;
+		this.performanceLastAction = decision.action;
+		return decision.action;
 	}
 
 	private simulationSubsteps(dt: number): number {

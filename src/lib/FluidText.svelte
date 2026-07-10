@@ -35,6 +35,7 @@
 
 <script lang="ts">
 	import Fluid from './Fluid.svelte';
+	import { DISABLED_PERFORMANCE_STATE } from './engine/performance-governor.js';
 	import type { ContainerShape } from './engine/types.js';
 
 	let {
@@ -85,7 +86,8 @@
 		resume: () => inner?.handle.resume(),
 		get isPaused() {
 			return inner?.handle.isPaused ?? true;
-		}
+		},
+		getPerformanceState: () => inner?.handle.getPerformanceState() ?? DISABLED_PERFORMANCE_STATE
 	};
 </script>
 
