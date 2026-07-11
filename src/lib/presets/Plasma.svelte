@@ -17,7 +17,7 @@
 	/** Props consumed by `<Plasma />`. Sizing/seed/styling are forwarded, and `backColor` may be overridden so the preset adapts to its host page; all other physics props are hard-coded. */
 	export type PlasmaProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+		'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 	>;
 </script>
 
@@ -30,6 +30,7 @@
 	let {
 		width,
 		height,
+		maxPixelRatio,
 		class: className,
 		style,
 		seed,
@@ -56,6 +57,7 @@
 	{...PLASMA_CONFIG}
 	{width}
 	{height}
+	{maxPixelRatio}
 	class={className}
 	{style}
 	{seed}

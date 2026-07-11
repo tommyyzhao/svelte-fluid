@@ -49,6 +49,7 @@ describe('buildSkillMd', () => {
 		expect(out).toContain('FluidHandle');
 		expect(out).toContain('containerShape');
 		expect(out).toContain('autoPerformanceTargetFrameMs');
+		expect(out).toContain('maxPixelRatio');
 		// All six public components must be listed (count must match the prose).
 		for (const c of ['Fluid', 'FluidBackground', 'FluidReveal', 'FluidDistortion', 'FluidStick', 'FluidText'])
 			expect(out, c).toContain(`<${c}>`);

@@ -17,6 +17,8 @@
 	import type { FluidConfig, FluidHandle, PresetSplat, RGB } from './engine/types.js';
 
 	export interface FluidDistortionProps extends FluidConfig {
+		/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
+		maxPixelRatio?: number | null;
 		/**
 		 * URL of the image to distort. Required.
 		 * The image is loaded asynchronously and uploaded as a WebGL texture.

@@ -20,6 +20,8 @@
 	import type { FluidConfig, FluidHandle } from './engine/types.js';
 
 	export interface FluidBackgroundProps extends FluidConfig {
+		/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
+		maxPixelRatio?: number | null;
 		/**
 		 * CSS selector for elements within the content slot to exclude
 		 * from the fluid. Matched elements become "holes" — the fluid

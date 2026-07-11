@@ -16,6 +16,8 @@
 	import type { FluidConfig, FluidHandle, RGB } from './engine/types.js';
 
 	export interface FluidRevealProps extends FluidConfig {
+		/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
+		maxPixelRatio?: number | null;
 		/**
 		 * How easily areas reveal. Multiplier on dye intensity before
 		 * the power curve. Higher = less dye needed. Default 0.1.

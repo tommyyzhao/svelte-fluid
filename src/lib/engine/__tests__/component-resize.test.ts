@@ -29,7 +29,7 @@ describe('Fluid component resize ownership', () => {
 	it('uses in-place resize and retains a one-shot constructor fallback', () => {
 		const apply = braceBody(fluidSrc, 'const applyResize');
 		expect(apply).toContain('engine.resize(physicalWidth, physicalHeight)');
-		expect(apply).toContain('engine.setConfig(buildCanvasConfig');
+		expect(apply).toContain('engine.setConfig(buildCanvasConfig(cssW, cssH');
 		expect(apply).toContain('if (rebuildingAfterResizeFailure) return');
 		expect(apply).toContain('teardown()');
 		expect(apply).toContain('instantiate()');

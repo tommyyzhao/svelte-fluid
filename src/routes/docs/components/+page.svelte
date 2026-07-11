@@ -66,6 +66,7 @@ ${SCRIPT_CLOSE}
 	<tbody>
 		<tr><td><code>width</code></td><td><code>number</code></td><td>—</td><td>Fixed width in CSS px. Omit to fill parent.</td></tr>
 		<tr><td><code>height</code></td><td><code>number</code></td><td>—</td><td>Fixed height in CSS px. Omit to fill parent.</td></tr>
+		<tr><td><code>maxPixelRatio</code></td><td><code>number | null</code></td><td><code>2</code></td><td>Cap physical pixels per CSS pixel on high-DPR displays. Pass <code>null</code> for native device DPR. CSS quality tiers are unchanged.</td></tr>
 		<tr><td><code>class</code></td><td><code>string</code></td><td>—</td><td>Class on wrapper div.</td></tr>
 		<tr><td><code>style</code></td><td><code>string</code></td><td>—</td><td>Inline style on wrapper div.</td></tr>
 		<tr><td><code>lazy</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Defer engine until the element enters the viewport. Frees the WebGL context slot. Recommended when you have 6+ instances on one page.</td></tr>

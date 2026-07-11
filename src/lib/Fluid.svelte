@@ -29,6 +29,12 @@
 		/** Inline style applied to the wrapper container. */
 		style?: string;
 		/**
+		 * Maximum physical pixels per CSS pixel. Default `2`, limiting GPU
+		 * allocation on DPR 3+ displays without changing CSS-based quality tiers.
+		 * Pass `null` to use the device's native DPR. Construct-only.
+		 */
+		maxPixelRatio?: number | null;
+		/**
 		 * Defer engine creation until the container enters the viewport,
 		 * and tear it down when it leaves. Frees the WebGL context for
 		 * other instances on dense pages, at the cost of a shader-recompile
@@ -96,6 +102,7 @@
 
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
+	import { canvasPixelSize, cssQualityPolicy } from './engine/resolution.js';
 	import { FluidEngine } from './engine/FluidEngine.js';
 	import { WebGLUnavailableError } from './engine/gl-utils.js';
 	import { DISABLED_PERFORMANCE_STATE } from './engine/performance-governor.js';
@@ -105,6 +112,7 @@
 	let {
 		width,
 		height,
+		maxPixelRatio = 2,
 		class: className,
 		style,
 		seed: seedProp,
@@ -213,6 +221,7 @@
 	// Like `seed`, captured once — re-acquiring a context mid-life isn't
 	// supported, so this is construct-only (Bucket D).
 	const stableRequireHW = untrack(() => requireHardwareAcceleration);
+	const stableMaxPixelRatio = untrack(() => maxPixelRatio);
 	let isVisible = !stableLazy;
 
 	/**
@@ -374,11 +383,20 @@
 
 	/** Resolve canvas-size policy without making CSS dimensions a Svelte effect dependency. */
 	function buildCanvasConfig(
+		cssWidth: number,
+		cssHeight: number,
 		physicalWidth: number,
 		physicalHeight: number,
 		cfg = buildConfig()
 	) {
 		const maxPx = Math.max(physicalWidth, physicalHeight);
+		const policy = cssQualityPolicy(
+			cssWidth,
+			cssHeight,
+			cfg.simResolution ?? 128,
+			bloomIterations !== undefined,
+			pressureIterations !== undefined
+		);
 
 		// Adaptive resolution: cap texture sizes to actual canvas pixels.
 		cfg.dyeResolution = Math.min(cfg.dyeResolution ?? 1024, maxPx);
@@ -386,21 +404,13 @@
 		cfg.sunraysResolution = Math.min(cfg.sunraysResolution ?? 196, maxPx);
 
 		// Auto-suppress expensive post-processing on small canvases.
-		if (maxPx < 600) {
+		if (policy.suppressPost) {
 			cfg.bloom = false;
 			cfg.sunrays = false;
 		}
 
-		if (bloomIterations === undefined) {
-			if (maxPx < 512) cfg.bloomIterations = 4;
-			else if (maxPx < 768) cfg.bloomIterations = 5;
-		}
-
-		if (pressureIterations === undefined) {
-			const sim = cfg.simResolution ?? 128;
-			if (sim <= 64) cfg.pressureIterations = 6;
-			else if (sim <= 96 || maxPx < 600) cfg.pressureIterations = 10;
-		}
+		if (policy.bloomIterations !== undefined) cfg.bloomIterations = policy.bloomIterations;
+		if (policy.pressureIterations !== undefined) cfg.pressureIterations = policy.pressureIterations;
 		return cfg;
 	}
 
@@ -464,11 +474,11 @@
 			return;
 		}
 
-		const dpr = window.devicePixelRatio || 1;
-		canvasEl.width = Math.max(1, Math.floor(cssW * dpr));
-		canvasEl.height = Math.max(1, Math.floor(cssH * dpr));
+		const size = canvasPixelSize(cssW, cssH, window.devicePixelRatio || 1, stableMaxPixelRatio);
+		canvasEl.width = size.width;
+		canvasEl.height = size.height;
 
-		const cfg = buildCanvasConfig(canvasEl.width, canvasEl.height);
+		const cfg = buildCanvasConfig(cssW, cssH, canvasEl.width, canvasEl.height);
 
 		try {
 			engine = new FluidEngine({ canvas: canvasEl, config: cfg });
@@ -524,12 +534,12 @@
 				reconcile();
 				return;
 			}
-			const dpr = window.devicePixelRatio || 1;
-			const physicalWidth = Math.max(1, Math.floor(cssW * dpr));
-			const physicalHeight = Math.max(1, Math.floor(cssH * dpr));
+			const size = canvasPixelSize(cssW, cssH, window.devicePixelRatio || 1, stableMaxPixelRatio);
+			const physicalWidth = size.width;
+			const physicalHeight = size.height;
 			try {
 				engine.resize(physicalWidth, physicalHeight);
-				engine.setConfig(buildCanvasConfig(physicalWidth, physicalHeight));
+				engine.setConfig(buildCanvasConfig(cssW, cssH, canvasEl.width, canvasEl.height));
 				rebuildingAfterResizeFailure = false;
 			} catch (err) {
 				// A resize failure can leave an uncertain GL resource set. Rebuild
@@ -630,13 +640,17 @@
 	/**
 	 * Hot prop updates. Buckets A/B/C are handled inside `engine.setConfig`.
 	 * Bucket D fields (seed / initialSplatCount* / presetSplats /
-	 * requireHardwareAcceleration / advectionScheme) are
+	 * requireHardwareAcceleration / maxPixelRatio / advectionScheme) are
 	 * applied only at construction time and ignored here.
 	 */
 	$effect(() => {
 		// Touch every tracked field so the effect re-runs on any change.
 		const cfg = buildConfig();
-		if (engine && canvasEl) engine.setConfig(buildCanvasConfig(canvasEl.width, canvasEl.height, cfg));
+		if (engine && canvasEl) {
+			engine.setConfig(
+				buildCanvasConfig(untrack(() => cssW), untrack(() => cssH), canvasEl.width, canvasEl.height, cfg)
+			);
+		}
 	});
 </script>
 

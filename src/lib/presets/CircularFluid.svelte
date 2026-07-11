@@ -20,7 +20,7 @@
 	/** Props consumed by `<CircularFluid />`. */
 	export type CircularFluidProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+		'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 	>;
 </script>
 
@@ -33,6 +33,7 @@
 	let {
 		width,
 		height,
+		maxPixelRatio,
 		class: className,
 		style,
 		seed,
@@ -59,6 +60,7 @@
 	{...CIRCULAR_FLUID_CONFIG}
 	{width}
 	{height}
+	{maxPixelRatio}
 	class={className}
 	{style}
 	{seed}
