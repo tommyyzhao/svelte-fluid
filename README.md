@@ -192,7 +192,7 @@ container shapes, and solver-native flow scenes. Useful as starting points for b
 | Component | Look |
 | --- | --- |
 | `<LavaLamp />` | Warm blobs in a glass vessel with rim refraction |
-| `<Plasma />` | Full-spectrum jets converging into a bright plasma core |
+| `<Plasma />` | Plasma-inspired visual fluid with full-spectrum jets converging into a bright core |
 | `<InkInWater />` | India ink sinking through dark water with volumetric bloom |
 | `<FrozenSwirl />` | An icy whirlpool frozen inside a circular vessel |
 | `<Aurora />` | Green, magenta, and pale-blue ribbons glowing like northern lights |

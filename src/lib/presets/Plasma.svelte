@@ -1,10 +1,10 @@
 <!--
   svelte-fluid — Plasma preset
 
-  Visual intent: a vivid plasma ball confined at the center of the canvas,
-  like a magnetic or gravitational field preventing the energy from escaping.
-  Full-spectrum colors converge from all compass directions and churn in place;
-  dark edges keep the bright core distinct against a near-black backdrop.
+  Visual intent: a plasma-inspired fluid effect concentrated at the center of
+  the canvas. Full-spectrum colors converge from all compass directions and
+  churn in place; dark edges keep the bright core distinct against a near-black
+  backdrop. This is a stylized fluid preset, not a plasma-physics simulation.
 
   The pinned configuration lives in `registry.ts` (PLASMA_CONFIG); see that
   file and ADR-0040. The eight inward compass jets, high curl, and burn-in

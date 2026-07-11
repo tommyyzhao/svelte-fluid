@@ -56,7 +56,12 @@
 
 <h2 id="plasma">Plasma</h2>
 
-<p>A vivid plasma ball with full-spectrum colors converging from all compass directions and churning at the center. Eight inward jets establish a magnetic-pinch convergence zone with intense bloom glow on a near-black backdrop.</p>
+<p>
+	A plasma-inspired visual fluid preset with full-spectrum colors converging from all compass
+	directions and churning at the center. Eight inward dye jets create a concentrated core with
+	intense bloom on a near-black backdrop; this is a stylized fluid effect, not a plasma-physics
+	simulation.
+</p>
 
 <p><strong>Container shape:</strong> none (full canvas).</p>
 
