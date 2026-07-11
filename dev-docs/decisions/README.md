@@ -9,7 +9,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0001](./0001-bun-and-uv-only-tooling.md)                       | Bun and uv only — no npm, no node, no python                            | Accepted |
 | [0002](./0002-engine-vs-component-split.md)                     | Framework-agnostic engine class + thin Svelte component                 | Accepted |
 | [0003](./0003-seedable-prng-determinism.md)                     | Seedable mulberry32 PRNG for deterministic resize                       | Accepted |
-| [0004](./0004-resize-via-component-resize-observer.md)          | Resize handled by component ResizeObserver, not engine                  | Accepted |
+| [0004](./0004-resize-via-component-resize-observer.md)          | Resize handled by component ResizeObserver, not engine                  | Superseded in part by 0059 |
 | [0005](./0005-hot-update-buckets.md)                            | 4-bucket hot-update strategy in `setConfig`                             | Accepted |
 | [0006](./0006-imperative-api-via-bind-this.md)                  | Imperative API via `export const handle` + `bind:this`                  | Accepted |
 | [0007](./0007-dithering-inline-base64.md)                       | Inline LDR_LLL1_0.png as base64                                         | Accepted |
@@ -55,6 +55,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0056](./0056-projection-resolution-sweep.md)                   | Projection resolution sweep keeps the pressure ladder gated           | Accepted |
 | [0057](./0057-whole-frame-profiler.md)                          | Whole-frame profiler with inert opt-in instrumentation                 | Accepted |
 | [0058](./0058-state-preserving-engine-resize.md)                | State-preserving in-place engine resize                                | Accepted |
+| [0059](./0059-component-coalesces-in-place-resize.md)           | Component coalesces in-place resize transitions                        | Accepted |
 
 ## How to add a new ADR
 

@@ -4,7 +4,7 @@
 
   Thin Svelte 5 wrapper around `FluidEngine`. Owns:
   - the canvas element + its parent container
-  - the ResizeObserver that triggers teardown+rebuild
+  - the ResizeObserver that coalesces state-preserving engine resizes
   - the stable seed that survives across resizes
   - the imperative `handle` exposed to parents via bind:this
   - the $effect that propagates prop changes via engine.setConfig()
@@ -372,6 +372,38 @@
 		};
 	}
 
+	/** Resolve canvas-size policy without making CSS dimensions a Svelte effect dependency. */
+	function buildCanvasConfig(
+		physicalWidth: number,
+		physicalHeight: number,
+		cfg = buildConfig()
+	) {
+		const maxPx = Math.max(physicalWidth, physicalHeight);
+
+		// Adaptive resolution: cap texture sizes to actual canvas pixels.
+		cfg.dyeResolution = Math.min(cfg.dyeResolution ?? 1024, maxPx);
+		cfg.bloomResolution = Math.min(cfg.bloomResolution ?? 256, maxPx);
+		cfg.sunraysResolution = Math.min(cfg.sunraysResolution ?? 196, maxPx);
+
+		// Auto-suppress expensive post-processing on small canvases.
+		if (maxPx < 600) {
+			cfg.bloom = false;
+			cfg.sunrays = false;
+		}
+
+		if (bloomIterations === undefined) {
+			if (maxPx < 512) cfg.bloomIterations = 4;
+			else if (maxPx < 768) cfg.bloomIterations = 5;
+		}
+
+		if (pressureIterations === undefined) {
+			const sim = cfg.simResolution ?? 128;
+			if (sim <= 64) cfg.pressureIterations = 6;
+			else if (sim <= 96 || maxPx < 600) cfg.pressureIterations = 10;
+		}
+		return cfg;
+	}
+
 	function teardown() {
 		// For lazy instances, grab the lose-context extension while the
 		// context is still alive so we can release the slot afterward.
@@ -436,39 +468,7 @@
 		canvasEl.width = Math.max(1, Math.floor(cssW * dpr));
 		canvasEl.height = Math.max(1, Math.floor(cssH * dpr));
 
-		const cfg = buildConfig();
-		const maxPx = Math.max(canvasEl.width, canvasEl.height);
-
-		// Adaptive resolution: cap texture sizes to actual canvas pixels.
-		// A 520×480 card doesn't need a 1024² dye texture.
-		cfg.dyeResolution = Math.min(cfg.dyeResolution ?? 1024, maxPx);
-		cfg.bloomResolution = Math.min(cfg.bloomResolution ?? 256, maxPx);
-		cfg.sunraysResolution = Math.min(cfg.sunraysResolution ?? 196, maxPx);
-
-		// Auto-suppress expensive post-processing on small canvases.
-		// Applies unconditionally — even presets that explicitly pass
-		// bloom={true} should not bloom on a tiny card.
-		if (maxPx < 600) {
-			cfg.bloom = false;
-			cfg.sunrays = false;
-		}
-
-		// Cap bloom mip-chain depth for small canvases. 8 iterations on
-		// a 480px canvas creates 15 bloom draw calls; 4 iterations creates 9
-		// with no visible quality loss at that size.
-		if (bloomIterations === undefined) {
-			if (maxPx < 512) cfg.bloomIterations = 4;
-			else if (maxPx < 768) cfg.bloomIterations = 5;
-		}
-
-		// Fewer pressure iterations when the canvas is small or the sim grid
-		// is coarse — the Jacobi solver converges fast at low resolution and
-		// the visual difference is imperceptible on small cards.
-		if (pressureIterations === undefined) {
-			const sim = cfg.simResolution ?? 128;
-			if (sim <= 64) cfg.pressureIterations = 6;
-			else if (sim <= 96 || maxPx < 600) cfg.pressureIterations = 10;
-		}
+		const cfg = buildCanvasConfig(canvasEl.width, canvasEl.height);
 
 		try {
 			engine = new FluidEngine({ canvas: canvasEl, config: cfg });
@@ -515,7 +515,38 @@
 
 	onMount(() => {
 		if (!container) return;
-		let resizeDebounce: ReturnType<typeof setTimeout> | undefined;
+		let resizeFrame = 0;
+		let rebuildingAfterResizeFailure = false;
+
+		const applyResize = () => {
+			resizeFrame = 0;
+			if (!canvasEl || !engine || !isVisible || cssW <= 0 || cssH <= 0) {
+				reconcile();
+				return;
+			}
+			const dpr = window.devicePixelRatio || 1;
+			const physicalWidth = Math.max(1, Math.floor(cssW * dpr));
+			const physicalHeight = Math.max(1, Math.floor(cssH * dpr));
+			try {
+				engine.resize(physicalWidth, physicalHeight);
+				engine.setConfig(buildCanvasConfig(physicalWidth, physicalHeight));
+				rebuildingAfterResizeFailure = false;
+			} catch (err) {
+				// A resize failure can leave an uncertain GL resource set. Rebuild
+				// once through the established constructor fallback, never in a loop.
+				console.error('svelte-fluid: in-place resize failed; rebuilding once', err);
+				if (rebuildingAfterResizeFailure) return;
+				rebuildingAfterResizeFailure = true;
+				teardown();
+				instantiate();
+			}
+		};
+
+		const scheduleResize = () => {
+			if (resizeFrame) return;
+			resizeFrame = requestAnimationFrame(applyResize);
+		};
+
 		const ro = new ResizeObserver((entries) => {
 			for (const entry of entries) {
 				const box = entry.contentBoxSize?.[0];
@@ -524,18 +555,15 @@
 				if (w === cssW && h === cssH) continue;
 				cssW = w;
 				cssH = h;
-				// Tear down immediately so the stale-sized engine stops
-				// rendering. The canvas is blank during the drag — acceptable
-				// vs. GPU spikes from repeated rebuilds on every pixel.
-				teardown();
-				// Debounce the rebuild: only reconcile 150 ms after the last
-				// resize event so that continuous window-drag doesn't trigger
-				// shader recompilation and FBO allocation on every pixel.
-				clearTimeout(resizeDebounce);
-				resizeDebounce = setTimeout(() => {
-					resizeDebounce = undefined;
+				if (w <= 0 || h <= 0) {
+					if (resizeFrame) cancelAnimationFrame(resizeFrame);
+					resizeFrame = 0;
 					reconcile();
-				}, 150);
+				} else if (engine) {
+					scheduleResize();
+				} else {
+					reconcile();
+				}
 			}
 		});
 		ro.observe(container);
@@ -592,8 +620,8 @@
 			if (onVisibilityChange) {
 				document.removeEventListener('visibilitychange', onVisibilityChange);
 			}
-			clearTimeout(resizeDebounce);
-			resizeDebounce = undefined;
+			if (resizeFrame) cancelAnimationFrame(resizeFrame);
+			resizeFrame = 0;
 			pendingRestore = false;
 			teardown();
 		};
@@ -608,7 +636,7 @@
 	$effect(() => {
 		// Touch every tracked field so the effect re-runs on any change.
 		const cfg = buildConfig();
-		if (engine) engine.setConfig(cfg);
+		if (engine && canvasEl) engine.setConfig(buildCanvasConfig(canvasEl.width, canvasEl.height, cfg));
 	});
 </script>
 

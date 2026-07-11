@@ -161,11 +161,12 @@
       "wave": 1,
       "priority": "P1",
       "title": "Use in-place resize from Fluid.svelte",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["LIF-002"],
       "spec": "Replace resize teardown/rebuild with coalesced engine.resize while preserving deliberate lazy teardown and one-shot rebuild fallback.",
       "acceptance": ["Continuous resize stays nonblank/state-stable", "No repeated compilation", "Lazy scroll-out still disposes", "Zero-size/race cases pass", "Failure rebuilds once"],
-      "files": ["src/lib/Fluid.svelte", "component/lifecycle/browser tests", "architecture docs"]
+      "files": ["src/lib/Fluid.svelte", "component/lifecycle/browser tests", "architecture docs"],
+      "notes": "Fluid.svelte now coalesces nonzero ResizeObserver bursts to one requestAnimationFrame transition, calls engine.resize in place, and reapplies one shared canvas-size policy. Successful resize never tears down; failures rebuild once through the existing constructor path. Zero-size and deliberate lazy scroll-out still dispose. Raw component contracts plus the LIF-002 real-browser resize suite cover sequencing and state continuity; ADR-0059 supersedes ADR-0004's destructive policy while retaining component layout ownership."
     },
     {
       "id": "LIF-004",
