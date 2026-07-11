@@ -172,10 +172,16 @@ Before opening a PR, run:
 
 ```sh
 bun run test        # vitest, expect all passing
+bun run test:browser # real WebGL tests in headless Playwright Chromium
 bun run check       # svelte-check, expect 0 errors 0 warnings
 bun run prepack     # svelte-package + publint
 bun run build       # builds the demo
 ```
+
+CI runs the browser suite in an independent Chromium job on pull requests and
+pushes to `main`. The job installs the Playwright-managed Chromium revision from
+the lockfile, caches its browser binary, and uploads the Vitest log plus any
+Playwright result directories when it fails. It requires no repository secrets.
 
 If you touched anything in `src/lib/engine/`, also do these manual
 checks in a real browser:
