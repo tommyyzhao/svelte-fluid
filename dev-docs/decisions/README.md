@@ -62,6 +62,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0063](./0063-conservative-empty-solver-skip.md)                | Skip solver work only while emptiness is provable                      | Accepted |
 | [0064](./0064-dirty-rendering-while-paused.md)                  | Render paused scenes only after invalidation                           | Accepted |
 | [0065](./0065-fractional-aperture-gate-stays-closed.md)         | Keep fractional face apertures gated                                  | Accepted |
+| [0066](./0066-resolution-normalized-adaptive-vorticity.md)      | Normalize adaptive vorticity before gating                            | Accepted |
 
 ## How to add a new ADR
 

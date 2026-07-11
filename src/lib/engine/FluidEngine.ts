@@ -111,6 +111,7 @@ import {
 	type ProfileLifecyclePhase,
 	type ProfileResources
 } from './engine-profiler.js';
+import { adaptiveVorticityWeight, vorticityNormalizationScale } from './vorticity-normalization.js';
 
 const FLOW_SOURCE_BATCH_SIZE = 4;
 const FLOW_OUTLET_BATCH_SIZE = 4;
@@ -545,18 +546,16 @@ export function adaptiveConfinementMagnitude(
 	curlSample: number,
 	adaptiveMix: number,
 	lo = VORTICITY_ADAPTIVE_LO,
-	hi = VORTICITY_ADAPTIVE_HI
+	hi = VORTICITY_ADAPTIVE_HI,
+	width = DEFAULTS.SIM_RESOLUTION,
+	height = DEFAULTS.SIM_RESOLUTION
 ): number {
 	const epsLegacy = curl * curlSample;
 	if (adaptiveMix <= 0 || lo >= hi) {
 		return epsLegacy;
 	}
 
-	const omega = Math.abs(curlSample * 2);
-	// Match the GLSL `smoothstep(lo, hi, omega)` (cubic Hermite) exactly, not a
-	// linear ramp — otherwise this mirror disagrees with the shader mid-band.
-	const t = clamp01((omega - lo) / (hi - lo));
-	const scale = t * t * (3 - 2 * t);
+	const scale = adaptiveVorticityWeight(curlSample, width, height, lo, hi);
 	const epsAdaptive = epsLegacy * scale;
 	const mix = clamp01(adaptiveMix);
 	return epsLegacy + (epsAdaptive - epsLegacy) * mix;
@@ -3891,6 +3890,10 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			);
 			gl.uniform1f(this.vorticityProgram.uniforms.dt, dt);
 			gl.uniform1f(this.vorticityProgram.uniforms.uAdaptiveMix, this.config.VORTICITY_ADAPTIVE);
+			gl.uniform1f(
+				this.vorticityProgram.uniforms.uVorticityScale,
+				vorticityNormalizationScale(this.velocity.width, this.velocity.height)
+			);
 			this.bindSolidMaskUniforms(this.vorticityProgram.uniforms, 2, 3);
 			this.blit(this.velocity.write);
 			this.velocity.swap();
