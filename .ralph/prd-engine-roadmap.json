@@ -30,12 +30,12 @@
       "wave": 0,
       "priority": "P0",
       "title": "Harden Ralph execution isolation and human-gate semantics",
-      "status": "todo",
+      "status": "done",
       "depends_on": [],
       "spec": "Require a disposable-worktree marker, reject main and the primary checkout, constrain failure cleanup to loop-owned changes, and distinguish complete, human-gated, and blocked stops.",
       "acceptance": ["Refuses main/unmarked worktrees", "Failed-task fixture preserves a pre-existing untracked sentinel", "Human-gated dependency stops once with HUMAN_GATE_REACHED", "Shell syntax and helper tests pass"],
       "files": [".ralph/ralph-codex.sh", ".ralph/PROMPT.md", ".ralph runner tests/docs"],
-      "notes": "Bootstrap only inside a manually created disposable worktree."
+      "notes": "Completed on the roadmap branch. The runner now resolves the selected PRD, rejects primary/unmarked worktrees, preserves baseline untracked files during recovery, and stops distinctly at human/blocked gates."
     },
     {
       "id": "RLS-001",
