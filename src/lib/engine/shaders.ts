@@ -1197,6 +1197,8 @@ export const advectionMacCormackShader = `
     uniform sampler2D uStickyMask;
     uniform float uStickyStrength;
     uniform vec4 uOpenEdges;
+    uniform sampler2D uSolidClearance;
+    uniform float uHasSolidClearance;
 ${inlineMaskGLSL}
 
     // uPhiHat (velocitySource) is a NEAREST-filtered scratch FBO, so the reverse
@@ -1238,16 +1240,22 @@ ${inlineMaskGLSL}
         vec2 hi = max(max(s00, s10), max(s01, s11));
         corrected = clamp(corrected, lo, hi);
 
-        // First-order guard: the MacCormack stencil reaches symmetrically on both
-        // sides of the cell, so near solids or an open boundary one arm samples
-        // invalid data. Fall back to the unconditionally-stable SL estimate there.
+        // One conservative clearance lookup proves that the Chebyshev ball
+        // containing both departure segments and both 2x2 stencils is fluid.
+        // The +1 covers the limiter's otherwise-unused neighbor at zero or an
+        // exact-integer displacement. Long traces simply request more clearance.
         float im = inlineMaskValue(vUv);
+        float traceRadius = ceil(max(abs(dt * phiN.x), abs(dt * phiN.y))) + 1.0;
         bool nearSolid = im < 0.5;
+        if (uHasSolidClearance > 0.5) {
+            float solidClearance = floor(texture2D(uSolidClearance, vUv).r * 255.0 + 0.5);
+            nearSolid = nearSolid || solidClearance <= traceRadius;
+        }
         bool nearOpenEdge =
-            (uOpenEdges.x > 0.5 && vUv.x < 2.0 * texelSize.x) ||
-            (uOpenEdges.y > 0.5 && vUv.x > 1.0 - 2.0 * texelSize.x) ||
-            (uOpenEdges.z > 0.5 && vUv.y > 1.0 - 2.0 * texelSize.y) ||
-            (uOpenEdges.w > 0.5 && vUv.y < 2.0 * texelSize.y);
+            (uOpenEdges.x > 0.5 && vUv.x <= traceRadius * texelSize.x) ||
+            (uOpenEdges.y > 0.5 && vUv.x >= 1.0 - traceRadius * texelSize.x) ||
+            (uOpenEdges.z > 0.5 && vUv.y >= 1.0 - traceRadius * texelSize.y) ||
+            (uOpenEdges.w > 0.5 && vUv.y <= traceRadius * texelSize.y);
         if (nearSolid || nearOpenEdge) {
             corrected = phiHat;
         }

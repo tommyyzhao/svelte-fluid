@@ -93,6 +93,7 @@ import {
 	obstructionsEqual,
 	obstructionMask,
 	bakeSolidNeighborData,
+	bakeSolidClearanceData,
 	type MaskContext
 } from './container-shapes.js';
 import * as S from './shaders.js';
@@ -654,6 +655,8 @@ export class FluidEngine implements FluidHandle {
 	// --- Precomputed neighbor-solidity (face apertures) at sim resolution ---
 	// One RGBA fetch replaces four per-fragment solidAt probes (epic 0001 1b).
 	private solidNeighborTexture: WebGLTexture | null = null;
+	// Conservative MacCormack trace/stencil clearance at sim resolution.
+	private solidClearanceTexture: WebGLTexture | null = null;
 
 	// --- Framebuffers ---
 	private dye!: DoubleFBO;
@@ -1244,6 +1247,11 @@ export class FluidEngine implements FluidHandle {
 			this.solidNeighborTexture = null;
 		}
 
+		if (this.solidClearanceTexture) {
+			gl.deleteTexture(this.solidClearanceTexture);
+			this.solidClearanceTexture = null;
+		}
+
 		if (this.prescribedVelocityTexture) {
 			gl.deleteTexture(this.prescribedVelocityTexture);
 			this.prescribedVelocityTexture = null;
@@ -1741,6 +1749,7 @@ export class FluidEngine implements FluidHandle {
 		this.pressure = createDoubleFBO(gl, simRes.width, simRes.height, r.internalFormat, r.format, texType, gl.NEAREST);
 
 		this.initSolidNeighborTexture();
+		this.initSolidClearanceTexture();
 		this.initBloomFramebuffers();
 		this.initSunraysFramebuffers();
 		this.initGlassFramebuffer();
@@ -2114,6 +2123,7 @@ export class FluidEngine implements FluidHandle {
 			this.solidMaskH = 0;
 			// solidMaskData is null here, so this just disposes the stale texture.
 			this.initSolidNeighborTexture();
+			this.initSolidClearanceTexture();
 			return;
 		}
 
@@ -2156,6 +2166,7 @@ export class FluidEngine implements FluidHandle {
 		gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
 		this.solidMaskTexture = tex;
 		this.initSolidNeighborTexture();
+		this.initSolidClearanceTexture();
 	}
 
 	/**
@@ -2187,6 +2198,42 @@ export class FluidEngine implements FluidHandle {
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, simW, simH, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
 		this.solidNeighborTexture = tex;
+	}
+
+	/**
+	 * Bake a distance-to-solid field for the MacCormack validity guard. One
+	 * clearance lookup conservatively covers both traces and both 2x2 stencils,
+	 * avoiding a variable-length mask walk in WebGL1 fragment shaders.
+	 */
+	private initSolidClearanceTexture(): void {
+		const gl = this.gl;
+		if (this.solidClearanceTexture) {
+			gl.deleteTexture(this.solidClearanceTexture);
+			this.solidClearanceTexture = null;
+		}
+		if (!this.useMacCormack || !this.solidMaskData || !this.velocity) return;
+		const simW = this.velocity.width;
+		const simH = this.velocity.height;
+		const data = bakeSolidClearanceData(
+			{ data: this.solidMaskData, width: this.solidMaskW, height: this.solidMaskH },
+			simW,
+			simH
+		);
+		const tex = gl.createTexture()!;
+		gl.bindTexture(gl.TEXTURE_2D, tex);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+		if (this.ext.isWebGL2) {
+			const gl2 = gl as WebGL2RenderingContext;
+			gl2.texImage2D(gl2.TEXTURE_2D, 0, gl2.R8, simW, simH, 0, gl2.RED, gl2.UNSIGNED_BYTE, data);
+		} else {
+			gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, simW, simH, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, data);
+		}
+		gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+		this.solidClearanceTexture = tex;
 	}
 
 	private initPrescribedGridTextures(): void {
@@ -3109,11 +3156,12 @@ export class FluidEngine implements FluidHandle {
 		this.blit(this.velocitySource);
 
 		// Pass B — MacCormack correction. Reads phi^n (velocity.read, unit 0) and
-		// phi_hat (velocitySource, unit 1); mask samplers go on units 2/3 and the
-		// sticky mask on unit 7. Every sampler this pass owns is bound to a
+		// phi_hat (velocitySource, unit 1); mask samplers go on units 2/3, solid
+		// clearance on unit 4, and sticky on unit 7. Every sampler is bound to a
 		// dedicated unit (ADR-0038) so none aliases velocity.write.
 		this.advectionMacCormackProgram.bind();
 		this.bindInlineMaskUniforms(this.advectionMacCormackProgram.uniforms, 2, 3);
+		this.bindMacCormackClearanceUniforms(this.advectionMacCormackProgram.uniforms, 4);
 		gl.uniform1f(
 			this.advectionMacCormackProgram.uniforms.uMultiplicative,
 			this.config.REVEAL || this.config.STICKY ? 1.0 : 0.0
@@ -3261,6 +3309,19 @@ export class FluidEngine implements FluidHandle {
 		gl.activeTexture(gl.TEXTURE0 + neighborUnit);
 		gl.bindTexture(gl.TEXTURE_2D, has ? this.solidNeighborTexture : this.stickyFallbackTexture);
 		gl.uniform1i(uniforms.uSolidNeighbors, neighborUnit);
+	}
+
+	/** Bind the optional MacCormack clearance field without aliasing a target. */
+	private bindMacCormackClearanceUniforms(
+		uniforms: Record<string, WebGLUniformLocation | null>,
+		unit: number
+	): void {
+		const gl = this.gl;
+		const has = !!this.solidClearanceTexture;
+		gl.uniform1f(uniforms.uHasSolidClearance, has ? 1.0 : 0.0);
+		gl.activeTexture(gl.TEXTURE0 + unit);
+		gl.bindTexture(gl.TEXTURE_2D, this.solidClearanceTexture ?? this.stickyFallbackTexture);
+		gl.uniform1i(uniforms.uSolidClearance, unit);
 	}
 
 	/**

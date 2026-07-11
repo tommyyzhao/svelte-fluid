@@ -88,8 +88,14 @@ describe('maccormack: correction math is single-sourced in GLSL', () => {
 	it('forms the BFECC correction and the Selle limiter in the shader', () => {
 		expect(shadersSrc).toContain('vec2 corrected = phiHat + 0.5 * (phiN - phiBar);');
 		expect(shadersSrc).toContain('corrected = clamp(corrected, lo, hi);');
-		// First-order fallback near solids and open boundaries.
+		// First-order fallback covers complete departure paths/stencils near solids
+		// and scales its open-edge band with the actual trace length.
+		expect(shadersSrc).toContain('uniform sampler2D uSolidClearance;');
+		expect(shadersSrc).toContain('float traceRadius = ceil(max(abs(dt * phiN.x), abs(dt * phiN.y))) + 1.0;');
+		expect(shadersSrc).toContain('solidClearance <= traceRadius');
+		expect(shadersSrc).toContain('traceRadius * texelSize.x');
 		expect(shadersSrc).toContain('if (nearSolid || nearOpenEdge) {');
 		expect(shadersSrc).toContain('uniform vec4 uOpenEdges;');
+		expect(engineSrc).toContain('this.bindMacCormackClearanceUniforms(this.advectionMacCormackProgram.uniforms, 4);');
 	});
 });
