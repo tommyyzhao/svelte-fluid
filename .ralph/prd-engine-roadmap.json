@@ -76,11 +76,12 @@
       "wave": 0,
       "priority": "P0",
       "title": "Correct context restore and duplicate glass allocation",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["OPS-001"],
       "spec": "Preserve the configured opening-state policy across restore and remove duplicate scene-FBO allocation on construction/restore.",
       "acceptance": ["Configured/random splats are neither lost nor doubled", "Glass allocates once per required transition", "Allocation/delete spies balance", "Restore/dispose tests pass"],
-      "files": ["src/lib/engine/FluidEngine.ts", "lifecycle/context tests", "ADR if semantics change"]
+      "files": ["src/lib/engine/FluidEngine.ts", "lifecycle/context tests", "ADR if semantics change"],
+      "notes": "Context restore now abandons invalid GL handles, freshly allocates all FBO groups, resets the seeded opening lifecycle, and replays value-snapshotted random/preset splats once. Glass scene-FBO allocation is explicit and single-owner. ADR-0051 plus real WEBGL_lose_context readback and allocation-balance coverage added; 499 node and 21 browser tests pass."
     },
     {
       "id": "RLS-005",

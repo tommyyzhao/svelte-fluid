@@ -49,6 +49,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0041](./0041-webgl-unavailable-fallback.md)                    | Graceful, accessible WebGL-unavailable fallback                        | Accepted |
 | [0051](./0051-sustained-performance-governor-overload.md)       | Sustained performance-governor overload                                | Accepted |
 | [0052](./0052-maccormack-solid-clearance-guard.md)               | Guard MacCormack traces with solid clearance                           | Accepted |
+| [0053](./0053-context-restore-recreates-resources.md)            | Context restore recreates resources and opening state                  | Accepted |
 
 ## How to add a new ADR
 
