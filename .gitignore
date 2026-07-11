@@ -32,6 +32,9 @@ vite.config.ts.timestamp-*
 # Agent session memories (local-only, append-only)
 .agents/memories/
 
+# Ralph runs only from an explicitly marked disposable linked worktree.
+.ralph-disposable-worktree
+
 # Release dogfood harnesses (local-only)
 /examples/dogfood-v010/
 
