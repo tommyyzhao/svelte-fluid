@@ -89,7 +89,7 @@ describe('flow visualization precedence', () => {
 			"return !!colorBy && colorBy !== 'dye' && !this.config.REVEAL && !this.config.DISTORTION;"
 		);
 		expect(engineSrc).toMatch(
-			/if \(this\.flowVisualizationActive\(\)\) keywords\.push\('FLOW_VISUALIZATION'\);[\s\S]*if \(this\.config\.DISTORTION\) keywords\.push\('DISTORTION'\);[\s\S]*else if \(this\.config\.REVEAL\) keywords\.push\('REVEAL'\);/
+			/if \(this\.flowVisualizationActiveFor\(config\)\) keywords\.push\('FLOW_VISUALIZATION'\);[\s\S]*if \(config\.DISTORTION\) keywords\.push\('DISTORTION'\);[\s\S]*else if \(config\.REVEAL\) keywords\.push\('REVEAL'\);/
 		);
 	});
 
@@ -173,8 +173,9 @@ describe('solver pass order', () => {
 		expect(shadersSrc).toContain('vec2 velocity = (source + uAlpha * (L + R + T + B)) / (1.0 + 4.0 * uAlpha);');
 		expect(shadersSrc).toContain('export const wallFrictionShader');
 		expect(shadersSrc).toContain('float damping = clamp(1.0 - uWallFriction * edge, 0.0, 1.0);');
-		expect(engineSrc).toContain('this.viscosityProgram = makeProgram');
-		expect(engineSrc).toContain('this.wallFrictionProgram = makeProgram');
+		expect(engineSrc).toContain("'viscosity',");
+		expect(engineSrc).toContain("case 'viscosity': this.viscosityProgram = program;");
+		expect(engineSrc).toContain("case 'wallFriction': this.wallFrictionProgram = program;");
 		expect(engineSrc).toContain('private velocitySource!: FBO;');
 	});
 });
