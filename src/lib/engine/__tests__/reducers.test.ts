@@ -6,11 +6,14 @@ import {
 	fluxAcrossLine,
 	gridScaleEnergyFraction,
 	hasNonFinite,
+	horizontalMirrorSymmetryStats,
 	l2Norm,
+	obstacleAdjacentGridScaleEnergyFraction,
 	peakVectorMagnitude,
 	signChangeCount,
 	solidFaceFluxStats,
-	trackPeakAlongPath
+	trackPeakAlongPath,
+	weightedFluxAcrossLine
 } from '../__benches__/reducers.js';
 
 describe('bench reducers', () => {
@@ -24,16 +27,8 @@ describe('bench reducers', () => {
 	});
 
 	it('measures divergence with closed solid ghost values', () => {
-		const velocity = new Float32Array([
-			0, 0, 1, 1, 0, 0,
-			0, 0, 2, 2, 0, 0,
-			0, 0, 1, 1, 0, 0
-		]);
-		const solid = new Uint8Array([
-			1, 0, 1,
-			1, 0, 1,
-			1, 0, 1
-		]);
+		const velocity = new Float32Array([0, 0, 1, 1, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0, 1, 1, 0, 0]);
+		const solid = new Uint8Array([1, 0, 1, 1, 0, 1, 1, 0, 1]);
 		const stats = divergenceStats(velocity, 3, 3, 2, solid);
 		expect(stats.fluidCells).toBe(3);
 		expect(stats.rms).toBeGreaterThan(0);
@@ -49,6 +44,47 @@ describe('bench reducers', () => {
 			maxAbs: 2,
 			faceCount: 1
 		});
+	});
+
+	it('distinguishes symmetric flow from a mirrored transverse leak', () => {
+		const symmetric = new Float32Array([2, 1, 2, 1, 2, -1, 2, -1]);
+		const leaky = symmetric.slice();
+		leaky[5] = 1;
+		expect(horizontalMirrorSymmetryStats(symmetric, 2, 2).normalizedRms).toBe(0);
+		expect(horizontalMirrorSymmetryStats(leaky, 2, 2).normalizedRms).toBeGreaterThan(0.3);
+	});
+
+	it('detects obstacle-adjacent checkerboard chatter but not a healthy control', () => {
+		const width = 5;
+		const height = 5;
+		const solid = new Uint8Array(width * height);
+		for (let y = 0; y < height; y++) solid[y * width + 2] = 1;
+		const healthy = new Float32Array(width * height * 2);
+		const chattering = new Float32Array(width * height * 2);
+		for (let y = 0; y < height; y++) {
+			for (let x = 0; x < width; x++) {
+				const offset = (y * width + x) * 2;
+				healthy[offset] = 1;
+				chattering[offset] = (x + y) % 2 === 0 ? 1 : -1;
+			}
+		}
+		const control = obstacleAdjacentGridScaleEnergyFraction(healthy, width, height, solid);
+		const failure = obstacleAdjacentGridScaleEnergyFraction(chattering, width, height, solid);
+		expect(control.fluidCells).toBeGreaterThan(0);
+		expect(control.fraction).toBe(0);
+		expect(failure.fraction).toBeGreaterThan(0.5);
+	});
+
+	it('detects weighted flux through an intended thin barrier', () => {
+		const velocity = new Float32Array([0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 4, 0, 0, 0]);
+		const barrier = new Float32Array([0, 0, 0, 0, 1, 0, 0, 1, 0]);
+		const stats = weightedFluxAcrossLine(velocity, 3, 3, barrier, {
+			components: 2,
+			component: 0,
+			orientation: 'vertical',
+			line: 1
+		});
+		expect(stats).toEqual({ net: 8, meanAbs: 4, weight: 2 });
 	});
 
 	it('tracks the peak value along a crafted path', () => {
