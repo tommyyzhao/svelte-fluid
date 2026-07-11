@@ -185,11 +185,12 @@
       "wave": 1,
       "priority": "P1",
       "title": "Lazy optional framebuffer groups",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["LIF-001", "OBS-001"],
       "spec": "Allocate bloom, sunrays, glass, optional scalar, and future model resources only while active.",
       "acceptance": ["Disabled features own zero FBOs", "Enable/disable/re-enable has no stale sampling", "Disposal balances", "Baseline allocation improves", "Enabled output unchanged"],
-      "files": ["engine/resource helpers", "lifecycle/config tests", "ADR"]
+      "files": ["engine/resource helpers", "lifecycle/config tests", "ADR"],
+      "notes": "Bloom and sunrays FBO owners are now nullable and synchronized with resolved feature state, matching already-conditional glass/scalar ownership. Disabled resolution changes allocate nothing; enable/disable/re-enable transitions create/delete exact balanced groups; candidate allocation cleans partial failures; render paths assert config/resource presence; resize/restore/dispose tolerate null groups. All node/check/prepack plus targeted Chromium ownership, profiler, and resize gates pass. ADR-0061 records the invariant."
     },
     {
       "id": "LIF-006",

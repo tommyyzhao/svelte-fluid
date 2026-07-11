@@ -157,7 +157,8 @@ describe('solver pass order', () => {
 		expect(engineSrc).toContain('private shouldSimulateDye(): boolean');
 		expect(engineSrc).toContain('this.dyeMayContainContent = true;');
 		expect(engineSrc).toContain('if (simulateDye) {');
-		expect(engineSrc).toContain('if (this.config.BLOOM && hasDyeContent) this.applyBloom(this.dye.read, this.bloom);');
+		expect(engineSrc).toContain('if (this.config.BLOOM && hasDyeContent) {');
+		expect(engineSrc).toContain("this.requireOptionalFBO(this.bloom, 'bloom')");
 	});
 
 	it('substeps the solver from maxTimeStep instead of injecting one large frame step', () => {

@@ -660,10 +660,10 @@ export class FluidEngine implements FluidHandle {
 	private curlFBO!: FBO;
 	private pressure!: DoubleFBO;
 	private scalar: DoubleFBO | null = null;
-	private bloom!: FBO;
+	private bloom: FBO | null = null;
 	private bloomFramebuffers: FBO[] = [];
-	private sunrays!: FBO;
-	private sunraysTemp!: FBO;
+	private sunrays: FBO | null = null;
+	private sunraysTemp: FBO | null = null;
 	private sceneFBO: FBO | null = null;
 	private ditheringTexture!: DitheringTexture;
 
@@ -1083,6 +1083,8 @@ export class FluidEngine implements FluidHandle {
 		const dyeChanged = a.DYE_RESOLUTION !== b.DYE_RESOLUTION;
 		const bloomChanged = a.BLOOM_RESOLUTION !== b.BLOOM_RESOLUTION || a.BLOOM_ITERATIONS !== b.BLOOM_ITERATIONS;
 		const sunraysChanged = a.SUNRAYS_RESOLUTION !== b.SUNRAYS_RESOLUTION;
+		const bloomResourceChanged = bloomChanged || a.BLOOM !== b.BLOOM;
+		const sunraysResourceChanged = sunraysChanged || a.SUNRAYS !== b.SUNRAYS;
 		const kwChanged = a.SHADING !== b.SHADING || a.BLOOM !== b.BLOOM || a.SUNRAYS !== b.SUNRAYS;
 		const shapeChanged = !containerShapeEqual(a.CONTAINER_SHAPE, b.CONTAINER_SHAPE);
 		const glassChanged = a.GLASS !== b.GLASS || shapeChanged;
@@ -1122,8 +1124,8 @@ export class FluidEngine implements FluidHandle {
 			if (dyeChanged) this.initDyeFramebuffers('preserve');
 			else if (scalarNeedChanged) this.syncScalarFramebuffer('preserve');
 			if (simChanged) this.initSimulationFramebuffers('preserve');
-			if (bloomChanged) this.initBloomFramebuffers('preserve');
-			if (sunraysChanged) this.initSunraysFramebuffers('preserve');
+			if (bloomResourceChanged) this.initBloomFramebuffers('preserve');
+			if (sunraysResourceChanged) this.initSunraysFramebuffers('preserve');
 			if (shapeChanged) this.initMaskTexture();
 			if (obstructionsChanged) this.initObstructionMaskTexture();
 			if (solidDefinitionChanged) this.initSolidMaskTexture();
@@ -1138,7 +1140,7 @@ export class FluidEngine implements FluidHandle {
 			if (distortionImageChanged) this.loadDistortionImage(b.DISTORTION_IMAGE_URL);
 		};
 		const resourceChanged =
-			simChanged || dyeChanged || scalarNeedChanged || bloomChanged || sunraysChanged ||
+			simChanged || dyeChanged || scalarNeedChanged || bloomResourceChanged || sunraysResourceChanged ||
 			shapeChanged || obstructionsChanged || openBoundaryChanged || flowChanged || glassChanged ||
 			kwChanged || revealChanged || distortionChanged || obstructionColorChanged ||
 			stickyChanged || stickyMaskChanged || distortionImageChanged;
@@ -1250,7 +1252,10 @@ export class FluidEngine implements FluidHandle {
 		this.prescribedVelocityTexture = null;
 		this.prescribedScalarTexture = null;
 		this.scalar = null;
+		this.bloom = null;
 		this.bloomFramebuffers = [];
+		this.sunrays = null;
+		this.sunraysTemp = null;
 		this.sceneFBO = null;
 	}
 
@@ -1297,11 +1302,14 @@ export class FluidEngine implements FluidHandle {
 			disposeDoubleFBO(gl, this.scalar);
 			this.scalar = null;
 		}
-		disposeFBO(gl, this.bloom);
+		disposeFBO(gl, this.bloom ?? undefined);
+		this.bloom = null;
 		for (const fbo of this.bloomFramebuffers) disposeFBO(gl, fbo);
 		this.bloomFramebuffers = [];
-		disposeFBO(gl, this.sunrays);
-		disposeFBO(gl, this.sunraysTemp);
+		disposeFBO(gl, this.sunrays ?? undefined);
+		disposeFBO(gl, this.sunraysTemp ?? undefined);
+		this.sunrays = null;
+		this.sunraysTemp = null;
 		if (this.sceneFBO) {
 			disposeFBO(gl, this.sceneFBO);
 			this.sceneFBO = null;
@@ -1797,7 +1805,7 @@ export class FluidEngine implements FluidHandle {
 		this.pressure = createDoubleFBO(gl, simRes.width, simRes.height, r.internalFormat, r.format, texType, gl.NEAREST);
 	}
 
-	/** Post-processing remains eager until LIF-005; this only splits ownership. */
+	/** Synchronize only the optional post-process groups enabled by config. */
 	private initPostprocessFramebuffers(mode: ResourceInitMode): void {
 		this.initBloomFramebuffers(mode);
 		this.initSunraysFramebuffers(mode);
@@ -1805,41 +1813,71 @@ export class FluidEngine implements FluidHandle {
 
 	private initBloomFramebuffers(mode: ResourceInitMode): void {
 		const gl = this.gl;
+		if (!this.config.BLOOM) {
+			disposeFBO(gl, this.bloom ?? undefined);
+			for (const fbo of this.bloomFramebuffers) disposeFBO(gl, fbo);
+			this.bloom = null;
+			this.bloomFramebuffers = [];
+			return;
+		}
 		const res = getResolution(gl, this.config.BLOOM_RESOLUTION);
 		const texType = this.ext.halfFloatTexType;
 		const rgba = this.ext.formatRGBA;
 		const filtering = this.ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST;
 
+		let nextBloom: FBO | null = null;
+		const nextChain: FBO[] = [];
+		try {
+			nextBloom = createFBO(gl, res.width, res.height, rgba.internalFormat, rgba.format, texType, filtering);
+			for (let i = 0; i < this.config.BLOOM_ITERATIONS; i++) {
+				const width = res.width >> (i + 1);
+				const height = res.height >> (i + 1);
+				if (width < 2 || height < 2) break;
+				nextChain.push(createFBO(gl, width, height, rgba.internalFormat, rgba.format, texType, filtering));
+			}
+		} catch (error) {
+			disposeFBO(gl, nextBloom ?? undefined);
+			for (const fbo of nextChain) disposeFBO(gl, fbo);
+			throw error;
+		}
 		if (mode === 'preserve') {
-			disposeFBO(gl, this.bloom);
+			disposeFBO(gl, this.bloom ?? undefined);
 			for (const fbo of this.bloomFramebuffers) disposeFBO(gl, fbo);
 		}
-		this.bloomFramebuffers = [];
-
-		this.bloom = createFBO(gl, res.width, res.height, rgba.internalFormat, rgba.format, texType, filtering);
-
-		for (let i = 0; i < this.config.BLOOM_ITERATIONS; i++) {
-			const width = res.width >> (i + 1);
-			const height = res.height >> (i + 1);
-			if (width < 2 || height < 2) break;
-			this.bloomFramebuffers.push(createFBO(gl, width, height, rgba.internalFormat, rgba.format, texType, filtering));
-		}
+		this.bloom = nextBloom;
+		this.bloomFramebuffers = nextChain;
 	}
 
 	private initSunraysFramebuffers(mode: ResourceInitMode): void {
 		const gl = this.gl;
+		if (!this.config.SUNRAYS) {
+			disposeFBO(gl, this.sunrays ?? undefined);
+			disposeFBO(gl, this.sunraysTemp ?? undefined);
+			this.sunrays = null;
+			this.sunraysTemp = null;
+			return;
+		}
 		const res = getResolution(gl, this.config.SUNRAYS_RESOLUTION);
 		const texType = this.ext.halfFloatTexType;
 		const r = this.ext.formatR;
 		const filtering = this.ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST;
 
-		if (mode === 'preserve') {
-			disposeFBO(gl, this.sunrays);
-			disposeFBO(gl, this.sunraysTemp);
+		let nextSunrays: FBO | null = null;
+		let nextTemp: FBO | null = null;
+		try {
+			nextSunrays = createFBO(gl, res.width, res.height, r.internalFormat, r.format, texType, filtering);
+			nextTemp = createFBO(gl, res.width, res.height, r.internalFormat, r.format, texType, filtering);
+		} catch (error) {
+			disposeFBO(gl, nextSunrays ?? undefined);
+			disposeFBO(gl, nextTemp ?? undefined);
+			throw error;
 		}
-
-		this.sunrays = createFBO(gl, res.width, res.height, r.internalFormat, r.format, texType, filtering);
-		this.sunraysTemp = createFBO(gl, res.width, res.height, r.internalFormat, r.format, texType, filtering);
+		if (mode === 'preserve') {
+			disposeFBO(gl, this.sunrays ?? undefined);
+			disposeFBO(gl, this.sunraysTemp ?? undefined);
+		}
+		this.sunrays = nextSunrays;
+		this.sunraysTemp = nextTemp;
 	}
 
 	/**
@@ -3682,12 +3720,15 @@ export class FluidEngine implements FluidHandle {
 		const gl = this.gl;
 		const hasDyeContent = this.shouldSimulateDye();
 		if (this.config.BLOOM && hasDyeContent) {
-			this.profileGroup('bloom', () => this.applyBloom(this.dye.read, this.bloom));
+			const bloom = this.requireOptionalFBO(this.bloom, 'bloom');
+			this.profileGroup('bloom', () => this.applyBloom(this.dye.read, bloom));
 		}
 		if (this.config.SUNRAYS && hasDyeContent) {
+			const sunrays = this.requireOptionalFBO(this.sunrays, 'sunrays');
+			const sunraysTemp = this.requireOptionalFBO(this.sunraysTemp, 'sunrays temporary');
 			this.profileGroup('sunrays', () => {
-				this.applySunrays(this.dye.read, this.dye.write, this.sunrays);
-				this.blur(this.sunrays, this.sunraysTemp, 1);
+				this.applySunrays(this.dye.read, this.dye.write, sunrays);
+				this.blur(sunrays, sunraysTemp, 1);
 			});
 		}
 
@@ -3711,10 +3752,14 @@ export class FluidEngine implements FluidHandle {
 		const gl = this.gl;
 
 		const hasDyeContent = this.shouldSimulateDye();
-		if (this.config.BLOOM && hasDyeContent) this.applyBloom(this.dye.read, this.bloom);
+		if (this.config.BLOOM && hasDyeContent) {
+			this.applyBloom(this.dye.read, this.requireOptionalFBO(this.bloom, 'bloom'));
+		}
 		if (this.config.SUNRAYS && hasDyeContent) {
-			this.applySunrays(this.dye.read, this.dye.write, this.sunrays);
-			this.blur(this.sunrays, this.sunraysTemp, 1);
+			const sunrays = this.requireOptionalFBO(this.sunrays, 'sunrays');
+			const sunraysTemp = this.requireOptionalFBO(this.sunraysTemp, 'sunrays temporary');
+			this.applySunrays(this.dye.read, this.dye.write, sunrays);
+			this.blur(sunrays, sunraysTemp, 1);
 		}
 
 		// Distortion mode: image distorted by velocity, no background, no glass
@@ -3761,6 +3806,11 @@ export class FluidEngine implements FluidHandle {
 		gl.clear(gl.COLOR_BUFFER_BIT);
 	}
 
+	private requireOptionalFBO(target: FBO | null, owner: string): FBO {
+		if (!target) throw new Error(`svelte-fluid: ${owner} framebuffer invariant violated`);
+		return target;
+	}
+
 	private drawCheckerboard(target: FBO | null): void {
 		const gl = this.gl;
 		this.checkerboardProgram.bind();
@@ -3780,13 +3830,13 @@ export class FluidEngine implements FluidHandle {
 		gl.uniform3f(this.displayMaterial.uniforms.uBackColor, bg.r, bg.g, bg.b);
 		gl.uniform1i(this.displayMaterial.uniforms.uTexture, this.dye.read.attach(0));
 		if (this.config.BLOOM) {
-			gl.uniform1i(this.displayMaterial.uniforms.uBloom, this.bloom.attach(1));
+			gl.uniform1i(this.displayMaterial.uniforms.uBloom, this.requireOptionalFBO(this.bloom, 'bloom').attach(1));
 			gl.uniform1i(this.displayMaterial.uniforms.uDithering, this.ditheringTexture.attach(2));
 			const scale = getTextureScale(this.ditheringTexture, width, height);
 			gl.uniform2f(this.displayMaterial.uniforms.ditherScale, scale.x, scale.y);
 		}
 		if (this.config.SUNRAYS) {
-			gl.uniform1i(this.displayMaterial.uniforms.uSunrays, this.sunrays.attach(3));
+			gl.uniform1i(this.displayMaterial.uniforms.uSunrays, this.requireOptionalFBO(this.sunrays, 'sunrays').attach(3));
 		}
 		if (this.config.CONTAINER_SHAPE) {
 			this.setContainerShapeUniforms(this.displayMaterial.uniforms, width, height, 4);
