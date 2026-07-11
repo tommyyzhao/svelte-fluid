@@ -1,7 +1,7 @@
 import type { PerformanceAction, PerformanceState, PerformanceTier } from './types.js';
 
 export interface PerformanceGovernorThresholds {
-	shedAboveMs: number;
+	targetFrameMs: number;
 	hysteresisMs: number;
 	pressureStep: number;
 	emaAlpha: number;
@@ -32,7 +32,7 @@ export interface PerformanceGovernorDecision {
 }
 
 export const DEFAULT_PERFORMANCE_GOVERNOR_THRESHOLDS: PerformanceGovernorThresholds = {
-	shedAboveMs: 22,
+	targetFrameMs: 1000 / 60,
 	hysteresisMs: 3000,
 	pressureStep: 4,
 	emaAlpha: 0.12
@@ -48,6 +48,7 @@ export const DISABLED_PERFORMANCE_STATE: PerformanceState = Object.freeze({
 	tier: 'none',
 	emaMs: 0,
 	msSinceLastChange: 0,
+	targetFrameMs: 0,
 	pressureIterations: 0,
 	substeps: 0,
 	minPressureIterations: 0,
@@ -88,7 +89,7 @@ export function nextContinuousOverloadMs(
 	thresholds?: Partial<PerformanceGovernorThresholds>
 ): number {
 	const resolved = resolvedThresholds(thresholds);
-	if (!Number.isFinite(emaMs) || emaMs <= resolved.shedAboveMs) return 0;
+	if (!Number.isFinite(emaMs) || emaMs <= resolved.targetFrameMs) return 0;
 	const previous = Number.isFinite(previousOverloadMs) && previousOverloadMs > 0 ? previousOverloadMs : 0;
 	const sample = sanitizePerformanceFrameSampleMs(sampleMs);
 	return previous + sample;
@@ -109,7 +110,7 @@ export function performanceGovernorStep(input: PerformanceGovernorInput): Perfor
 		changed: false
 	});
 
-	if (!Number.isFinite(input.emaMs) || input.emaMs <= thresholds.shedAboveMs) {
+	if (!Number.isFinite(input.emaMs) || input.emaMs <= thresholds.targetFrameMs) {
 		return noChange();
 	}
 

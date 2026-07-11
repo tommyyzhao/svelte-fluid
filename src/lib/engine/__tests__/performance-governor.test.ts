@@ -7,6 +7,7 @@ import {
 	sanitizePerformanceFrameSampleMs
 } from '../performance-governor.js';
 import type { PerformanceGovernorFloors, PerformanceGovernorThresholds } from '../performance-governor.js';
+import { clampSimulationDeltaSeconds } from '../FluidEngine.js';
 import engineSrc from '../FluidEngine.ts?raw';
 
 function methodBody(src: string, name: string): string {
@@ -30,7 +31,7 @@ const floors: PerformanceGovernorFloors = {
 
 const thresholds: PerformanceGovernorThresholds = {
 	...DEFAULT_PERFORMANCE_GOVERNOR_THRESHOLDS,
-	shedAboveMs: 20,
+	targetFrameMs: 20,
 	hysteresisMs: 3000,
 	pressureStep: 4
 };
@@ -55,14 +56,18 @@ function initialSyntheticState(): SyntheticGovernorState {
 	};
 }
 
-function sampleSyntheticFrame(state: SyntheticGovernorState, frameMs: number) {
+function sampleSyntheticFrame(
+	state: SyntheticGovernorState,
+	frameMs: number,
+	activeThresholds: PerformanceGovernorThresholds = thresholds
+) {
 	const sampleMs = sanitizePerformanceFrameSampleMs(frameMs);
 	state.emaMs = nextFrameTimeEmaMs(state.emaMs, sampleMs, 1);
 	state.continuousOverloadMs = nextContinuousOverloadMs(
 		state.continuousOverloadMs,
 		state.emaMs,
 		sampleMs,
-		thresholds
+		activeThresholds
 	);
 	state.msSinceLastChange += sampleMs;
 	const decision = performanceGovernorStep({
@@ -73,7 +78,7 @@ function sampleSyntheticFrame(state: SyntheticGovernorState, frameMs: number) {
 		pressureIterations: state.pressureIterations,
 		substeps: state.substeps,
 		floors,
-		thresholds
+		thresholds: activeThresholds
 	});
 	if (decision.changed) {
 		state.msSinceLastChange = 0;
@@ -253,6 +258,36 @@ describe('performance governor pure decision function', () => {
 		expect(second).toBe(35);
 	});
 
+	it.each([30, 60, 120])('classifies synthetic %s Hz sequences against the selected budget', (hz) => {
+		const targetFrameMs = 1000 / hz;
+		const activeThresholds = { ...thresholds, targetFrameMs };
+		const atBudget = initialSyntheticState();
+		const atBudgetFrames = Math.ceil(4000 / targetFrameMs);
+
+		for (let i = 0; i < atBudgetFrames; i++) {
+			expect(sampleSyntheticFrame(atBudget, targetFrameMs, activeThresholds).changed).toBe(false);
+		}
+		expect(atBudget.continuousOverloadMs).toBe(0);
+
+		const overloaded = initialSyntheticState();
+		const slowFrameMs = targetFrameMs * 1.25;
+		let action = 'none';
+		let elapsedMs = 0;
+		while (action === 'none' && elapsedMs < 4000) {
+			action = sampleSyntheticFrame(overloaded, slowFrameMs, activeThresholds).action;
+			elapsedMs += slowFrameMs;
+		}
+
+		expect(action).toBe('shed-pressure');
+		expect(elapsedMs).toBeGreaterThanOrEqual(3000);
+	});
+
+	it('preserves the legacy accepted delta independently of effective quality shedding', () => {
+		const accepted = clampSimulationDeltaSeconds(0.04, 1 / 60, 2);
+		expect(accepted).toBeCloseTo(1 / 30);
+		expect(clampSimulationDeltaSeconds(0.01, 1 / 60, 2)).toBe(0.01);
+	});
+
 	it('does not accumulate intermittent spikes into a shed', () => {
 		const state = initialSyntheticState();
 
@@ -358,6 +393,18 @@ describe('FluidEngine governor integration guards', () => {
 		const body = methodBody(engineSrc, 'recordPerformanceFrameTime(frameMs: number)');
 		expect(body).not.toContain("this.performanceLastAction = 'none';");
 		expect(body).toContain('this.performanceLastAction = decision.action');
+	});
+
+	it('keeps requested configuration separate from effective governor quality', () => {
+		const sampler = methodBody(engineSrc, 'recordPerformanceFrameTime(frameMs: number)');
+		const delta = methodBody(engineSrc, 'calcDeltaTime(): number');
+		const projection = methodBody(engineSrc, 'projectVelocity(): void');
+
+		expect(sampler).not.toContain('this.config.PRESSURE_ITERATIONS =');
+		expect(sampler).not.toContain('this.config.SUBSTEPS =');
+		expect(sampler).toContain('this.performanceSubsteps = decision.substeps');
+		expect(delta).toContain('this.config.SUBSTEPS');
+		expect(projection).toContain('this.performancePressureIterations');
 	});
 
 	it('breaks an overload streak across imperative pause', () => {

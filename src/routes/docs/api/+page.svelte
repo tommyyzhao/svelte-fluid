@@ -230,6 +230,7 @@ interface PerformanceState {LB}
   readonly tier: PerformanceTier;
   readonly emaMs: number;
   readonly msSinceLastChange: number;
+  readonly targetFrameMs: number;
   readonly pressureIterations: number;
   readonly substeps: number;
   readonly minPressureIterations: number;

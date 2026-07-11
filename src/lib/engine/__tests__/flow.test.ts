@@ -161,7 +161,7 @@ describe('solver pass order', () => {
 	});
 
 	it('substeps the solver from maxTimeStep instead of injecting one large frame step', () => {
-		expect(engineSrc).toContain('dt = Math.min(dt, this.config.MAX_TIME_STEP * this.config.SUBSTEPS);');
+		expect(engineSrc).toContain('clampSimulationDeltaSeconds(dt, this.config.MAX_TIME_STEP, this.config.SUBSTEPS)');
 		expect(engineSrc).toContain('const stepCount = this.simulationSubsteps(dt);');
 		expect(engineSrc).toContain('const stepDt = dt / stepCount;');
 		expect(engineSrc).toContain('this.step(stepDt);');
