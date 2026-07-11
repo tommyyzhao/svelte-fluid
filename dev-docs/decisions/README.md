@@ -53,6 +53,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0054](./0054-refresh-aware-governor-budget.md)                  | Refresh-aware governor budget and independent catch-up time            | Accepted |
 | [0055](./0055-framebuffer-resource-ownership.md)                 | Explicit framebuffer resource ownership                               | Accepted |
 | [0056](./0056-projection-resolution-sweep.md)                   | Projection resolution sweep keeps the pressure ladder gated           | Accepted |
+| [0057](./0057-whole-frame-profiler.md)                          | Whole-frame profiler with inert opt-in instrumentation                 | Accepted |
 
 ## How to add a new ADR
 

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { FluidEngine } from '$lib/engine/FluidEngine.js';
+	import type { EngineProfileSnapshot } from '$lib/engine/engine-profiler.js';
 	import { fieldEnergy, hasNonFinite } from '$lib/engine/__benches__/reducers.js';
 	import { scenes } from '$lib/engine/__benches__/scenes.js';
 	import { mulberry32, type Rng } from '$lib/engine/rng.js';
@@ -14,6 +15,13 @@
 		fps: number;
 		energy: number;
 		done: boolean;
+		profile: EngineProfileSnapshot | null;
+		liveness: {
+			finite: boolean;
+			nonBlank: boolean;
+			contextLost: boolean;
+			rejection: string | null;
+		};
 	};
 
 	const sampleWindowMax = 240;
@@ -38,14 +46,16 @@
 	let rafHandle = $state(0);
 	let rng = $state<Rng>(mulberry32(scenes[sceneKeys[0]].seed));
 	let fallbackSamples = $state<number[]>([]);
-	let sampleSource = $state<'timer-query' | 'raf-ema'>('raf-ema');
+	let sampleSource = $state<'gpu-timer' | 'cpu-submit' | 'raf-ema'>('raf-ema');
 	let benchResult = $state<BenchResult>({
 		meanMs: 0,
 		p50: 0,
 		p95: 0,
 		fps: 0,
 		energy: 0,
-		done: false
+		done: false,
+		profile: null,
+		liveness: { finite: false, nonBlank: false, contextLost: false, rejection: 'warming-up' }
 	});
 
 	const clamp = (value: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, value));
@@ -61,7 +71,9 @@
 	};
 	type WindowWithBenchResult = Window & { __benchResult?: BenchResult };
 
-	const summarize = (values: number[]): Omit<BenchResult, 'energy' | 'done'> => {
+	const summarize = (
+		values: number[]
+	): Omit<BenchResult, 'energy' | 'done' | 'profile' | 'liveness'> => {
 		const filtered = values.filter((value) => Number.isFinite(value) && value > 0);
 		if (filtered.length === 0) {
 			return {
@@ -133,33 +145,57 @@
 			}
 		}
 
-		const timings = engine.getBenchTimings();
-		const frameSamples = timings?.frameMs ?? null;
+		const profile = engine.getBenchProfile();
+		const frameSamples = profile?.frames.map((sample) =>
+			profile.timingSource === 'gpu' ? (sample.gpuMs ?? sample.cpuMs) : sample.cpuMs
+		) ?? null;
 		let samples: number[] = frameSamples?.length ? frameSamples : fallbackSamples;
 		sampleSource = 'raf-ema';
 		if (frameSamples && frameSamples.length > 0) {
 			samples = frameSamples;
-			sampleSource = 'timer-query';
+			sampleSource = profile?.timingSource === 'gpu' ? 'gpu-timer' : 'cpu-submit';
 			trimSamples(samples);
 		}
 
 		const enoughSamples = samples.length >= minSamples;
-		const ready = warmup >= warmupFrames && enoughSamples && energyGood;
+		const profileGood = !instrument || !!profile?.valid;
+		const ready = warmup >= warmupFrames && enoughSamples && energyGood && profileGood;
 		const stats = ready ? summarize(samples) : { meanMs: 0, p50: 0, p95: 0, fps: 0 };
+		const finite = Number.isFinite(energy);
+		const contextLost = profile?.environment.contextLost ?? false;
 		publish({
 			meanMs: stats.meanMs,
 			p50: stats.p50,
 			p95: stats.p95,
 			fps: stats.fps,
 			energy,
-			done: ready
+			done: ready,
+			profile,
+			liveness: {
+				finite,
+				nonBlank: energyGood,
+				contextLost,
+				rejection: contextLost
+					? 'context-lost'
+					: !finite
+						? 'non-finite'
+						: !energyGood
+							? 'blank-field'
+							: profile && !profile.valid
+								? profile.invalidReasons.join(',') || 'no-valid-profile-samples'
+								: null
+			}
 		});
 
 		if (!ready && engine.isBenchmarkTimed() && !frameSamples?.length) {
 			status = 'Waiting for first finished timer query sample.';
 		} else if (ready) {
 			status = `Active scene: ${(activeScene.config.curl ?? 0) > 0 ? 'curl enabled' : 'curl disabled'}; ${
-				sampleSource === 'timer-query' ? 'timer-query path' : 'RAF EMA fallback'
+					sampleSource === 'gpu-timer'
+						? 'GPU timer-query path'
+						: sampleSource === 'cpu-submit'
+							? 'CPU submission path'
+							: 'RAF EMA fallback'
 			}.`;
 		}
 
@@ -182,7 +218,9 @@
 			p95: 0,
 			fps: 0,
 			energy: 0,
-			done: false
+			done: false,
+			profile: null,
+			liveness: { finite: false, nonBlank: false, contextLost: false, rejection: 'warming-up' }
 		});
 
 		if (!canvas) return;
@@ -223,14 +261,14 @@
 	<title>Benchmark profiler — svelte-fluid</title>
 	<meta
 		name="description"
-		content="Interactive fluid benchmark page that runs harness scenes from __benches__/scenes.ts with optional EXT_disjoint_timer_query_webgl2 timing and liveness checks."
+		content="Interactive fluid benchmark page with whole-frame GPU/CPU timing, lifecycle and resource telemetry, and liveness checks."
 	/>
 </svelte:head>
 
 <main class="bench-page">
 	<header>
 		<h1>Benchmark profiler</h1>
-		<p>Pick a scene, optionally enable WebGL timer queries, and watch the timing fields update in `window.__benchResult`.</p>
+		<p>Pick a scene, optionally enable whole-frame instrumentation, and watch the profile update in `window.__benchResult`.</p>
 	</header>
 
 	<div class="controls">
@@ -242,7 +280,7 @@
 		</select>
 		<label class="inline-toggle">
 			<input type="checkbox" onchange={onInstrumentChange} bind:checked={instrument} />
-			Enable timer-query instrumentation
+			Enable whole-frame instrumentation
 		</label>
 	</div>
 
@@ -271,6 +309,24 @@
 			<div>
 				<dt>energy</dt>
 				<dd>{benchResult.energy.toFixed(5)}</dd>
+			</div>
+			<div>
+				<dt>draws / submitted pixels</dt>
+				<dd>
+					{benchResult.profile?.frames.at(-1)?.draws ?? 0} /
+					{(benchResult.profile?.frames.at(-1)?.pixels ?? 0).toLocaleString()}
+				</dd>
+			</div>
+			<div>
+				<dt>estimated texture bytes</dt>
+				<dd>{(benchResult.profile?.resources.estimatedTextureBytes ?? 0).toLocaleString()}</dd>
+			</div>
+			<div>
+				<dt>renderer / DPR</dt>
+				<dd>
+					{benchResult.profile?.environment.renderer ?? 'instrumentation disabled'} /
+					{benchResult.profile?.environment.devicePixelRatio ?? 0}
+				</dd>
 			</div>
 		</dl>
 	</section>

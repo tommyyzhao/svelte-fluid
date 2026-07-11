@@ -125,11 +125,12 @@
       "wave": 1,
       "priority": "P1",
       "title": "Profile the whole frame and lifecycle",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["RLS-001", "RLS-002", "RLS-003", "RLS-004", "RLS-005", "RLS-006"],
       "spec": "Measure compile/link, allocation, resize, solver/post/display groups, draw count, pixels, estimated texture bytes, renderer/browser/DPR, with GPU timers and CPU fallback.",
       "acceptance": ["Feature toggles change expected groups", "Disjoint/blank runs are rejected", "Environment metadata is complete", "Instrumentation is inert when disabled"],
-      "files": ["src/lib/engine/FluidEngine.ts", "bench route/types/tests", "ADR/learnings"]
+      "files": ["src/lib/engine/FluidEngine.ts", "bench route/types/tests", "ADR/learnings"],
+      "notes": "Whole-frame groups now cover solver, bloom, sunrays, display, and glass with normalized WebGL1/WebGL2 disjoint timer adapters and labeled CPU fallback. Profiles include compile/link/allocation/reconfigure/restore lifecycle samples, renderer/browser/DPR/effective resolution, draws, submitted pixels, and estimated texture bytes. Blank, disjoint, timer-error, and context-lost samples are rejected. Disabled instances retain the raw blit closure. Unit and real-browser toggle/fallback coverage pass; ADR-0057 records the model."
     },
     {
       "id": "LIF-001",
