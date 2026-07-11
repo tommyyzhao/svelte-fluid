@@ -943,7 +943,7 @@
 					<Card title="LavaLamp" blurb="Slow warm blobs." snippet="<LavaLamp />" fullSnippet={presetScaffoldSnippet('LavaLamp')}>
 						<LavaLamp seed={11} lazy backColor={cardColor} aria-label="LavaLamp preset" />
 					</Card>
-					<Card title="Plasma" blurb="High-energy chromatic turbulence." snippet="<Plasma />" fullSnippet={presetScaffoldSnippet('Plasma')}>
+					<Card title="Plasma" blurb="Plasma-inspired chromatic fluid." snippet="<Plasma />" fullSnippet={presetScaffoldSnippet('Plasma')}>
 						<Plasma seed={22} lazy backColor={cardColor} aria-label="Plasma preset" />
 					</Card>
 					<Card title="InkInWater" blurb="Saturated dye dispersing." snippet="<InkInWater />" fullSnippet={presetScaffoldSnippet('InkInWater')}>

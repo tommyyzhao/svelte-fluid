@@ -616,7 +616,13 @@ export const TESLA_VALVE_CONFIG: PresetConfig = {
 /** Ordered preset definitions: classic → container → flow. */
 export const PRESETS: readonly PresetDefinition[] = [
 	{ id: 'LavaLamp', name: 'Lava Lamp', category: 'classic', blurb: 'Warm buoyant blobs rising in a glass vessel.', config: LAVA_LAMP_CONFIG },
-	{ id: 'Plasma', name: 'Plasma', category: 'classic', blurb: 'A confined full-spectrum plasma ball churning at center.', config: PLASMA_CONFIG },
+	{
+		id: 'Plasma',
+		name: 'Plasma',
+		category: 'classic',
+		blurb: 'A plasma-inspired visual fluid preset with full-spectrum jets churning at center.',
+		config: PLASMA_CONFIG
+	},
 	{ id: 'InkInWater', name: 'Ink in Water', category: 'classic', blurb: 'India-ink droplets blooming as they sink through dark water.', config: INK_IN_WATER_CONFIG },
 	{ id: 'FrozenSwirl', name: 'Frozen Swirl', category: 'classic', blurb: 'A single icy whirlpool that spins out and freezes in place.', config: FROZEN_SWIRL_CONFIG },
 	{ id: 'Aurora', name: 'Aurora', category: 'classic', blurb: 'Layered green and magenta ribbons glowing like northern lights.', config: AURORA_CONFIG },

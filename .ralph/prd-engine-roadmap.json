@@ -99,11 +99,12 @@
       "wave": 0,
       "priority": "P0",
       "title": "Correct existing Plasma product language",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["OPS-001"],
       "spec": "Describe current Plasma as a visual fluid preset, not a magnetic-pinch or discharge simulation, without changing its name/output.",
       "acceptance": ["Public descriptions are honest and consistent", "Generated agent docs agree", "No API or visual change", "Docs tests pass"],
-      "files": ["src/lib/presets/registry.ts", "docs preset route", "src/routes/agent-docs.ts", "README if applicable"]
+      "files": ["src/lib/presets/registry.ts", "docs preset route", "src/routes/agent-docs.ts", "README if applicable"],
+      "notes": "Reframed Plasma consistently as a plasma-inspired visual fluid preset, explicitly disclaimed plasma-physics behavior, preserved the exported component/config, and added public-copy/generated-agent regression tests."
     },
     {
       "id": "RLS-007",

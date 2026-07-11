@@ -1,6 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import { buildLlmsTxt, buildLlmsFullTxt, buildSkillMd, DEFAULT_SITE } from './agent-docs.js';
-import { PRESETS } from '$lib/presets/registry.js';
+import { PRESET_BY_ID, PRESETS } from '$lib/presets/registry.js';
+import presetDocs from './docs/presets/+page.svelte?raw';
+import landingPage from './+page.svelte?raw';
+import readme from '../../README.md?raw';
+
+describe('Plasma product language', () => {
+	const generated = [buildLlmsTxt(), buildLlmsFullTxt(), buildSkillMd()];
+	const publicCopy = [PRESET_BY_ID.Plasma.blurb, presetDocs, landingPage, readme, ...generated];
+
+	it('describes Plasma as a visual fluid effect rather than plasma physics', () => {
+		expect(PRESET_BY_ID.Plasma.blurb).toContain('visual fluid preset');
+		expect(presetDocs).toContain('not a plasma-physics');
+		for (const copy of publicCopy) {
+			expect(copy).not.toMatch(/magnetic[- ]pinch|discharge simulation/i);
+		}
+	});
+
+	it('keeps generated agent descriptions aligned with the registry', () => {
+		for (const output of generated) {
+			expect(output).toContain(PRESET_BY_ID.Plasma.blurb);
+		}
+	});
+});
 
 describe('buildLlmsTxt', () => {
 	const out = buildLlmsTxt();
