@@ -99,6 +99,16 @@ import {
 } from './container-shapes.js';
 import * as S from './shaders.js';
 import { VORTICITY_ADAPTIVE_LO, VORTICITY_ADAPTIVE_HI } from './shaders.js';
+import {
+	EngineProfiler,
+	createTimerQueryAdapter,
+	estimateTextureBytes,
+	type EngineProfileSnapshot,
+	type ProfileEnvironment,
+	type ProfileGroup,
+	type ProfileLifecyclePhase,
+	type ProfileResources
+} from './engine-profiler.js';
 
 const FLOW_SOURCE_BATCH_SIZE = 4;
 const FLOW_OUTLET_BATCH_SIZE = 4;
@@ -140,52 +150,6 @@ export interface ReadFieldResult {
 	readonly width: number;
 	readonly height: number;
 	readonly components: number;
-}
-
-type BenchPass = 'curl' | 'vorticity' | 'advect' | 'viscosity' | 'divergence' | 'pressure' | 'gradient';
-
-/** @internal */
-type BenchPassSamples = {
-	[K in BenchPass]: number[];
-};
-
-interface BenchFrameProfile {
-	passMs: Partial<BenchPassSamples>;
-	pendingQueries: number;
-	ended: boolean;
-}
-
-interface PendingBenchQuery {
-	pass: BenchPass;
-	query: WebGLQuery;
-	frame: number;
-}
-
-interface TimerQueryExtension {
-	TIME_ELAPSED_EXT: number;
-	QUERY_RESULT_AVAILABLE_EXT: number;
-	QUERY_RESULT_EXT: number;
-	GPU_DISJOINT_EXT: number;
-	createQueryEXT(): WebGLQuery | null;
-	deleteQueryEXT(query: WebGLQuery): void;
-	beginQueryEXT(target: number, query: WebGLQuery): void;
-	endQueryEXT(target: number): void;
-	getQueryObjectEXT(query: WebGLQuery, pname: number): boolean | number | null;
-}
-
-interface BenchProfileState {
-	ext: TimerQueryExtension;
-	currentFrame: number;
-	pending: PendingBenchQuery[];
-	frames: Map<number, BenchFrameProfile>;
-	frameSamples: number[];
-	passSamples: BenchPassSamples;
-}
-
-/** @internal */
-interface BenchTimings {
-	readonly frameMs: number[];
-	readonly passMs: BenchPassSamples;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -582,10 +546,10 @@ export interface FluidEngineOptions {
 	/** @internal Construct without auto-starting the requestAnimationFrame loop. */
 	autoStart?: boolean;
 	/**
-	 * @internal Benchmark instrumentation switch. When enabled, selected solver
-	 * passes are wrapped in EXT_disjoint_timer_query_webgl2 queries.
+	 * @internal Whole-frame benchmark instrumentation. Uses disjoint timer
+	 * queries when available and an explicit CPU submission-time fallback.
 	 */
-	instrument?: boolean;
+	instrument?: boolean | 'cpu';
 	/**
 	 * @internal Bench/test override for {@link FluidConfig.advectionScheme}. This
 	 * keeps the readback harness able to A/B schemes without mutating scene config.
@@ -647,6 +611,8 @@ export class FluidEngine implements FluidHandle {
 	private distortionTexture: WebGLTexture | null = null;
 	private distortionImgRatio = 1.0;
 	private distortionLoadedUrl: string | null = null;
+	private distortionTextureW = 0;
+	private distortionTextureH = 0;
 
 	// --- Prescribed grid textures (8-bit encoded, decoded in shader) ---
 	private prescribedVelocityTexture: WebGLTexture | null = null;
@@ -664,6 +630,8 @@ export class FluidEngine implements FluidHandle {
 	// --- Sticky mask texture ---
 	private stickyMaskTexture: WebGLTexture | null = null;
 	private stickyFallbackTexture: WebGLTexture | null = null;
+	private stickyMaskW = 0;
+	private stickyMaskH = 0;
 
 	// --- Combined interior-obstruction mask (union of all obstructions) ---
 	private obstructionMaskTexture: WebGLTexture | null = null;
@@ -727,6 +695,7 @@ export class FluidEngine implements FluidHandle {
 	private flowOutletBatchWidth = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
 	private autoStart = true;
 	private benchmarkInstrument = false;
+	private benchmarkForceCpu = false;
 	private performanceEmaMs = 0;
 	private performanceTier: PerformanceTier = 'none';
 	private performanceMsSinceLastChange = 0;
@@ -740,13 +709,7 @@ export class FluidEngine implements FluidHandle {
 	private useMacCormack = false;
 	private readbackUint8Buffer = new Uint8Array(0);
 	private readbackFloatBuffer = new Float32Array(0);
-	private benchProfileState: BenchProfileState | null = null;
-	private benchProfileActiveFrame = -1;
-	private benchProfileSampleLimit = 240;
-	// Whether the current pass actually began a timer query. When the query pool
-	// is exhausted createQueryEXT() returns null and we never call beginQueryEXT,
-	// so endBenchPass must not blindly call endQueryEXT (GL_INVALID_OPERATION).
-	private benchPassQueryActive = false;
+	private profiler: EngineProfiler | null = null;
 	private flowOutletBatchKeep = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
 
 	// --- Bound listeners ---
@@ -770,7 +733,8 @@ export class FluidEngine implements FluidHandle {
 			...s,
 			color: { ...s.color }
 		}));
-		this.benchmarkInstrument = opts.instrument ?? false;
+		this.benchmarkInstrument = !!opts.instrument;
+		this.benchmarkForceCpu = opts.instrument === 'cpu';
 		if (opts.advectionScheme !== undefined) {
 			this.config.ADVECTION_SCHEME = opts.advectionScheme;
 		}
@@ -784,25 +748,28 @@ export class FluidEngine implements FluidHandle {
 		// context and can still throw (e.g. a shader-compile failure, ADR-0008);
 		// if it does, release the context slot we already hold so a failed
 		// construction doesn't orphan a GL context, then re-throw.
+		const contextStart = this.benchmarkInstrument ? performance.now() : 0;
 		this.initContext();
 		this.initBenchmarkProfiler();
+		this.profiler?.recordLifecycle('contextCreate', performance.now() - contextStart);
 		try {
-			this.compileShaders();
-			this.initBuffersAndPrograms();
-			this.ditheringTexture = createDitheringTexture(this.gl);
-
-			this.initDistortionFallback();
-			this.updateKeywords();
-			this.initDyeFramebuffers('fresh');
-			this.initSimulationFramebuffers('fresh');
-			this.initPostprocessFramebuffers('fresh');
-			this.initMaskTexture();
-			this.initStickyMaskTexture();
-			this.initObstructionMaskTexture();
-			this.initSolidMaskTexture();
-			this.initSolidDerivedTextures();
-			this.initPrescribedGridTextures();
-			this.initGlassFramebuffer();
+			this.profileLifecycle('shaderCompile', () => this.compileShaders());
+			this.profileLifecycle('programLink', () => this.initBuffersAndPrograms());
+			this.profileLifecycle('initialAllocation', () => {
+				this.ditheringTexture = createDitheringTexture(this.gl);
+				this.initDistortionFallback();
+				this.updateKeywords();
+				this.initDyeFramebuffers('fresh');
+				this.initSimulationFramebuffers('fresh');
+				this.initPostprocessFramebuffers('fresh');
+				this.initMaskTexture();
+				this.initStickyMaskTexture();
+				this.initObstructionMaskTexture();
+				this.initSolidMaskTexture();
+				this.initSolidDerivedTextures();
+				this.initPrescribedGridTextures();
+				this.initGlassFramebuffer();
+			});
 			if (this.config.DISTORTION_IMAGE_URL) {
 				this.loadDistortionImage(this.config.DISTORTION_IMAGE_URL);
 			}
@@ -907,7 +874,16 @@ export class FluidEngine implements FluidHandle {
 		if (!Number.isFinite(steps) || steps <= 0 || dt <= 0) return;
 		const count = Math.max(0, Math.floor(steps));
 		for (let i = 0; i < count; i++) {
-			this.step(dt);
+			if (!this.profiler) {
+				this.step(dt);
+				continue;
+			}
+			this.profiler.beginFrame();
+			try {
+				this.profileGroup('solver', () => this.step(dt));
+			} finally {
+				this.profiler.endFrame();
+			}
 		}
 	}
 
@@ -1096,29 +1072,31 @@ export class FluidEngine implements FluidHandle {
 			this.normalizedBackColor = normalizeColor(b.BACK_COLOR);
 		}
 
-		if (dyeChanged) this.initDyeFramebuffers('preserve');
-		else if (scalarNeedChanged) this.syncScalarFramebuffer('preserve');
-		if (simChanged) this.initSimulationFramebuffers('preserve');
-		if (bloomChanged) this.initBloomFramebuffers('preserve');
-		if (sunraysChanged) this.initSunraysFramebuffers('preserve');
-		if (shapeChanged) this.initMaskTexture();
-		if (obstructionsChanged) this.initObstructionMaskTexture();
-		if (solidDefinitionChanged) this.initSolidMaskTexture();
-		if (simChanged || solidDefinitionChanged) this.initSolidDerivedTextures();
-		if (flowChanged) this.initPrescribedGridTextures();
-		if (glassChanged) this.initGlassFramebuffer();
-		if (
-			kwChanged ||
-			shapeChanged ||
-			revealChanged ||
-			distortionChanged ||
-			obstructionsChanged ||
-			obstructionColorChanged ||
-			flowChanged
-		)
-			this.updateKeywords();
-		if (stickyChanged || stickyMaskChanged) this.initStickyMaskTexture();
-		if (distortionImageChanged) this.loadDistortionImage(b.DISTORTION_IMAGE_URL);
+		const applyResourceChanges = () => {
+			if (dyeChanged) this.initDyeFramebuffers('preserve');
+			else if (scalarNeedChanged) this.syncScalarFramebuffer('preserve');
+			if (simChanged) this.initSimulationFramebuffers('preserve');
+			if (bloomChanged) this.initBloomFramebuffers('preserve');
+			if (sunraysChanged) this.initSunraysFramebuffers('preserve');
+			if (shapeChanged) this.initMaskTexture();
+			if (obstructionsChanged) this.initObstructionMaskTexture();
+			if (solidDefinitionChanged) this.initSolidMaskTexture();
+			if (simChanged || solidDefinitionChanged) this.initSolidDerivedTextures();
+			if (flowChanged) this.initPrescribedGridTextures();
+			if (glassChanged) this.initGlassFramebuffer();
+			if (
+				kwChanged || shapeChanged || revealChanged || distortionChanged || obstructionsChanged ||
+				obstructionColorChanged || flowChanged
+			) this.updateKeywords();
+			if (stickyChanged || stickyMaskChanged) this.initStickyMaskTexture();
+			if (distortionImageChanged) this.loadDistortionImage(b.DISTORTION_IMAGE_URL);
+		};
+		const resourceChanged =
+			simChanged || dyeChanged || scalarNeedChanged || bloomChanged || sunraysChanged ||
+			shapeChanged || obstructionsChanged || openBoundaryChanged || flowChanged || glassChanged ||
+			kwChanged || revealChanged || distortionChanged || obstructionColorChanged ||
+			stickyChanged || stickyMaskChanged || distortionImageChanged;
+		if (resourceChanged) this.profileLifecycle('reconfigure', applyResourceChanges);
 		if (pointerInputChanged || pointerTargetChanged) {
 			// Reinstall listeners when input toggles or target changes
 			this.removePointerListeners();
@@ -1148,39 +1126,44 @@ export class FluidEngine implements FluidHandle {
 	private handleContextLost(e: Event): void {
 		e.preventDefault(); // Signals to the browser we intend to restore
 		this.contextLost = true;
+		this.profiler?.rejectContextLost();
 		cancelAnimationFrame(this.rafId);
 		this.rafRunning = false;
 	}
 
 	private handleContextRestored(): void {
+		const restoreStart = this.benchmarkInstrument ? performance.now() : 0;
 		this.contextLost = false;
 		this.disposeBenchmarkProfiler();
 		this.invalidateLostContextHandles();
 		// Full reinit — the GL state is wiped on context loss.
 		this.initContext();
 		this.initBenchmarkProfiler();
-		this.compileShaders();
-		this.initBuffersAndPrograms();
-		this.ditheringTexture = createDitheringTexture(this.gl);
-		this.initDistortionFallback();
-		this.updateKeywords();
-		// Context loss invalidates every WebGL object. Every group takes its fresh
-		// path here; preserve/resize would retain dead same-sized handles.
-		this.initDyeFramebuffers('fresh');
-		this.initSimulationFramebuffers('fresh');
-		this.initPostprocessFramebuffers('fresh');
-		this.initMaskTexture();
-		this.initStickyMaskTexture();
-		this.initObstructionMaskTexture();
-		this.initSolidMaskTexture();
-		this.initSolidDerivedTextures();
-		this.initPrescribedGridTextures();
-		this.initGlassFramebuffer();
+		this.profileLifecycle('shaderCompile', () => this.compileShaders());
+		this.profileLifecycle('programLink', () => this.initBuffersAndPrograms());
+		this.profileLifecycle('initialAllocation', () => {
+			this.ditheringTexture = createDitheringTexture(this.gl);
+			this.initDistortionFallback();
+			this.updateKeywords();
+			// Context loss invalidates every WebGL object. Every group takes its fresh
+			// path here; preserve/resize would retain dead same-sized handles.
+			this.initDyeFramebuffers('fresh');
+			this.initSimulationFramebuffers('fresh');
+			this.initPostprocessFramebuffers('fresh');
+			this.initMaskTexture();
+			this.initStickyMaskTexture();
+			this.initObstructionMaskTexture();
+			this.initSolidMaskTexture();
+			this.initSolidDerivedTextures();
+			this.initPrescribedGridTextures();
+			this.initGlassFramebuffer();
+		});
 		// Re-load distortion image (GL texture was lost with context)
 		if (this.config.DISTORTION_IMAGE_URL) {
 			this.loadDistortionImage(this.config.DISTORTION_IMAGE_URL);
 		}
 		this.replayOpeningScene();
+		this.profiler?.recordLifecycle('contextRestore', performance.now() - restoreStart);
 		if (this.config.POINTER_INPUT && !this.pointerListenersInstalled) {
 			this.installPointerListeners();
 		}
@@ -1198,11 +1181,15 @@ export class FluidEngine implements FluidHandle {
 		this.ditheringTexture.dispose();
 		this.distortionTexture = null;
 		this.distortionLoadedUrl = null;
+		this.distortionTextureW = 0;
+		this.distortionTextureH = 0;
 		this.maskTexture = null;
 		this.maskData = null;
 		this.maskW = 0;
 		this.maskH = 0;
 		this.stickyMaskTexture = null;
+		this.stickyMaskW = 0;
+		this.stickyMaskH = 0;
 		this.stickyFallbackTexture = null;
 		this.obstructionMaskTexture = null;
 		this.obstructionMaskData = null;
@@ -1285,6 +1272,8 @@ export class FluidEngine implements FluidHandle {
 			this.distortionTexture = null;
 			this.distortionLoadedUrl = null;
 		}
+		this.distortionTextureW = 0;
+		this.distortionTextureH = 0;
 
 		// Mask texture
 		if (this.maskTexture) {
@@ -1298,6 +1287,8 @@ export class FluidEngine implements FluidHandle {
 			gl.deleteTexture(this.stickyMaskTexture);
 			this.stickyMaskTexture = null;
 		}
+		this.stickyMaskW = 0;
+		this.stickyMaskH = 0;
 		if (this.stickyFallbackTexture) {
 			gl.deleteTexture(this.stickyFallbackTexture);
 			this.stickyFallbackTexture = null;
@@ -1401,216 +1392,112 @@ export class FluidEngine implements FluidHandle {
 	}
 
 	private initBenchmarkProfiler(): void {
-		if (!this.benchmarkInstrument) {
-			this.benchProfileState = null;
-			return;
-		}
-
-		const gl = this.gl;
-		const ext = gl.getExtension('EXT_disjoint_timer_query_webgl2') as TimerQueryExtension | null;
-		if (!ext) {
-			this.benchProfileState = null;
-			return;
-		}
-
-		this.benchProfileState = {
-			ext,
-			currentFrame: 0,
-			pending: [],
-			frames: new Map<number, BenchFrameProfile>(),
-			frameSamples: [],
-			passSamples: {
-				curl: [],
-				vorticity: [],
-				advect: [],
-				viscosity: [],
-				divergence: [],
-				pressure: [],
-				gradient: []
-			}
-		};
-		this.benchProfileActiveFrame = -1;
+		this.profiler = this.benchmarkInstrument
+			? new EngineProfiler(createTimerQueryAdapter(this.gl, this.benchmarkForceCpu))
+			: null;
 	}
 
 	private disposeBenchmarkProfiler(): void {
-		const state = this.benchProfileState;
-		if (!state) return;
-
-		const gl = this.gl;
-		for (const pending of state.pending) {
-			state.ext.deleteQueryEXT(pending.query);
-		}
-		state.pending = [];
-		state.frames.clear();
-		this.benchProfileState = null;
-		this.benchProfileActiveFrame = -1;
-	}
-
-	private beginBenchFrame(): void {
-		const state = this.benchProfileState;
-		if (!state || this.benchProfileActiveFrame >= 0) return;
-
-		const frame = state.currentFrame++;
-		state.frames.set(frame, {
-			passMs: {},
-			pendingQueries: 0,
-			ended: false
-		});
-		this.benchProfileActiveFrame = frame;
-	}
-
-	private endBenchFrame(): void {
-		const state = this.benchProfileState;
-		if (!state || this.benchProfileActiveFrame < 0) return;
-
-		const frameProfile = state.frames.get(this.benchProfileActiveFrame);
-		if (frameProfile) {
-			frameProfile.ended = true;
-		}
-		this.benchProfileActiveFrame = -1;
-		this.finalizeReadyBenchFrames();
-	}
-
-	private beginBenchPass(pass: BenchPass): void {
-		this.benchPassQueryActive = false;
-		const state = this.benchProfileState;
-		if (!state || this.benchProfileActiveFrame < 0) return;
-		const frameProfile = state.frames.get(this.benchProfileActiveFrame);
-		if (!frameProfile) return;
-
-		const query = state.ext.createQueryEXT();
-		if (!query) return;
-
-		state.ext.beginQueryEXT(state.ext.TIME_ELAPSED_EXT, query);
-		this.benchPassQueryActive = true;
-		frameProfile.pendingQueries += 1;
-		state.pending.push({ pass, query, frame: this.benchProfileActiveFrame });
-	}
-
-	private endBenchPass(): void {
-		const state = this.benchProfileState;
-		// Only close the query if begin actually opened one; otherwise endQueryEXT
-		// raises GL_INVALID_OPERATION (no active TIME_ELAPSED_EXT query).
-		if (!state || !this.benchPassQueryActive) return;
-		this.benchPassQueryActive = false;
-		state.ext.endQueryEXT(state.ext.TIME_ELAPSED_EXT);
-	}
-
-	private trimBenchSamples(samples: number[]): void {
-		while (samples.length > this.benchProfileSampleLimit) samples.shift();
-	}
-
-	private pushBenchPassSample(frame: number, pass: BenchPass, ms: number): void {
-		const state = this.benchProfileState;
-		if (!state) return;
-
-		const frameProfile = state.frames.get(frame);
-		if (!frameProfile) return;
-
-		const frameSamples = frameProfile.passMs[pass] ?? [];
-		frameSamples.push(ms);
-		frameProfile.passMs[pass] = frameSamples;
-		this.trimBenchSamples(frameSamples);
-
-		const aggregateSamples = state.passSamples[pass];
-		aggregateSamples.push(ms);
-		this.trimBenchSamples(aggregateSamples);
-		frameProfile.pendingQueries = Math.max(0, frameProfile.pendingQueries - 1);
-	}
-
-	private finalizeBenchFrame(frame: number, frameProfile: BenchFrameProfile, state: BenchProfileState): void {
-		let total = 0;
-		for (const values of Object.values(frameProfile.passMs)) {
-			if (!values) continue;
-			for (const sample of values) {
-				total += sample;
-			}
-		}
-
-		state.frameSamples.push(total);
-		this.trimBenchSamples(state.frameSamples);
-		state.frames.delete(frame);
-	}
-
-	private finalizeReadyBenchFrames(): void {
-		const state = this.benchProfileState;
-		if (!state) return;
-		for (const [frame, frameProfile] of state.frames) {
-			if (!frameProfile.ended) continue;
-			if (frameProfile.pendingQueries > 0) continue;
-			this.finalizeBenchFrame(frame, frameProfile, state);
-		}
-	}
-
-	private pollBenchQueries(): void {
-		const state = this.benchProfileState;
-		if (!state) return;
-
-		const gl = this.gl;
-		const pending = state.pending;
-		const keep: PendingBenchQuery[] = [];
-
-		// Reading GPU_DISJOINT_EXT RESETS it to false, so a per-query read would
-		// let only the first query in this poll observe a disjoint event and the
-		// rest would accept timings spanning it. Read it exactly once and apply
-		// that single result to every query finalized in this poll.
-		const disjoint = !!gl.getParameter(state.ext.GPU_DISJOINT_EXT);
-
-		for (const item of pending) {
-			const available = state.ext.getQueryObjectEXT(item.query, state.ext.QUERY_RESULT_AVAILABLE_EXT);
-			if (!available) {
-				keep.push(item);
-				continue;
-			}
-
-			const frameProfile = state.frames.get(item.frame);
-			if (frameProfile) {
-				if (!disjoint) {
-					const nanos = state.ext.getQueryObjectEXT(item.query, state.ext.QUERY_RESULT_EXT);
-					if (typeof nanos === 'number' && Number.isFinite(nanos)) {
-						this.pushBenchPassSample(item.frame, item.pass, nanos / 1_000_000);
-					} else {
-						frameProfile.pendingQueries = Math.max(0, frameProfile.pendingQueries - 1);
-					}
-				} else {
-					frameProfile.pendingQueries = Math.max(0, frameProfile.pendingQueries - 1);
-				}
-			} else {
-				// no frame to attach this sample to; avoid leaking counters
-			}
-
-			state.ext.deleteQueryEXT(item.query);
-		}
-
-		state.pending = keep;
-		this.finalizeReadyBenchFrames();
-	}
-
-	/** @internal */
-	getBenchTimings(): BenchTimings | null {
-		this.pollBenchQueries();
-		const state = this.benchProfileState;
-		if (!state) return null;
-
-		const passMs: BenchPassSamples = {
-			curl: [...state.passSamples.curl],
-			vorticity: [...state.passSamples.vorticity],
-			advect: [...state.passSamples.advect],
-			viscosity: [...state.passSamples.viscosity],
-			divergence: [...state.passSamples.divergence],
-			pressure: [...state.passSamples.pressure],
-			gradient: [...state.passSamples.gradient]
-		};
-
-		return {
-			frameMs: [...state.frameSamples],
-			passMs
-		};
+		this.profiler?.dispose();
+		this.profiler = null;
 	}
 
 	/** @internal */
 	isBenchmarkTimed(): boolean {
-		return !!this.benchProfileState;
+		return !!this.profiler && this.profiler.timerKind !== 'cpu';
+	}
+
+	private profileLifecycle<T>(phase: ProfileLifecyclePhase, action: () => T): T {
+		if (!this.profiler) return action();
+		const start = performance.now();
+		try {
+			return action();
+		} finally {
+			this.profiler.recordLifecycle(phase, performance.now() - start);
+		}
+	}
+
+	/** @internal Whole-frame/lifecycle profiler snapshot for the dev bench. */
+	getBenchProfile(): EngineProfileSnapshot | null {
+		if (!this.profiler) return null;
+		return this.profiler.snapshot(this.profileEnvironment(), this.profileResources());
+	}
+
+	private profileEnvironment(): ProfileEnvironment {
+		const gl = this.gl;
+		const debug = gl.getExtension('WEBGL_debug_renderer_info') as {
+			UNMASKED_RENDERER_WEBGL: number;
+			UNMASKED_VENDOR_WEBGL: number;
+		} | null;
+		const rect = this.canvas.getBoundingClientRect();
+		const cssWidth = rect.width || this.canvas.clientWidth || this.canvas.width;
+		const cssHeight = rect.height || this.canvas.clientHeight || this.canvas.height;
+		return {
+			browser: typeof navigator === 'undefined' ? 'unknown' : navigator.userAgent,
+			webglVersion: this.ext.isWebGL2 ? 'WebGL2' : 'WebGL1',
+			renderer: String(debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)),
+			vendor: String(debug ? gl.getParameter(debug.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.VENDOR)),
+			devicePixelRatio: typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1,
+			effectivePixelRatioX: cssWidth > 0 ? gl.drawingBufferWidth / cssWidth : 0,
+			effectivePixelRatioY: cssHeight > 0 ? gl.drawingBufferHeight / cssHeight : 0,
+			cssWidth,
+			cssHeight,
+			drawingBufferWidth: gl.drawingBufferWidth,
+			drawingBufferHeight: gl.drawingBufferHeight,
+			canvasPixels: gl.drawingBufferWidth * gl.drawingBufferHeight,
+			simWidth: this.velocity.width,
+			simHeight: this.velocity.height,
+			dyeWidth: this.dye.width,
+			dyeHeight: this.dye.height,
+			linearFiltering: this.ext.supportLinearFiltering,
+			timerQuery: this.profiler?.timerKind ?? 'cpu',
+			contextLost: this.contextLost
+		};
+	}
+
+	private profileResources(): ProfileResources {
+		const gl = this.gl;
+		const half = this.ext.halfFloatTexType;
+		let bytes = 0;
+		const add = (fbo: FBO | null | undefined, format: number, type = half) => {
+			if (fbo) bytes += estimateTextureBytes(gl, fbo.width, fbo.height, format, type, half);
+		};
+		const addDouble = (fbo: DoubleFBO | null | undefined, format: number) => {
+			if (!fbo) return;
+			add(fbo.read, format);
+			add(fbo.write, format);
+		};
+		addDouble(this.dye, this.ext.formatRGBA.format);
+		addDouble(this.scalar, this.ext.formatRGBA.format);
+		addDouble(this.velocity, this.ext.formatRG.format);
+		add(this.velocitySource, this.ext.formatRG.format);
+		add(this.divergence, this.ext.formatR.format);
+		add(this.curlFBO, this.ext.formatR.format);
+		addDouble(this.pressure, this.ext.formatR.format);
+		add(this.bloom, this.ext.formatRGBA.format);
+		for (const fbo of this.bloomFramebuffers) add(fbo, this.ext.formatRGBA.format);
+		add(this.sunrays, this.ext.formatR.format);
+		add(this.sunraysTemp, this.ext.formatR.format);
+		add(this.sceneFBO, gl.RGBA, gl.UNSIGNED_BYTE);
+		const byteTexture = (exists: unknown, width: number, height: number, channels: number) => {
+			if (exists) bytes += Math.max(0, width) * Math.max(0, height) * channels;
+		};
+		byteTexture(this.maskTexture, this.maskW, this.maskH, 1);
+		byteTexture(this.stickyMaskTexture, this.stickyMaskW, this.stickyMaskH, 1);
+		byteTexture(this.stickyFallbackTexture, 1, 1, 1);
+		byteTexture(this.obstructionMaskTexture, this.obstructionMaskW, this.obstructionMaskH, 1);
+		byteTexture(this.solidMaskTexture, this.solidMaskW, this.solidMaskH, 1);
+		byteTexture(this.solidNeighborTexture, this.velocity.width, this.velocity.height, 4);
+		byteTexture(this.solidClearanceTexture, this.velocity.width, this.velocity.height, 1);
+		byteTexture(this.distortionTexture, this.distortionTextureW, this.distortionTextureH, 4);
+		byteTexture(this.ditheringTexture?.texture, this.ditheringTexture?.width ?? 0, this.ditheringTexture?.height ?? 0, 3);
+		const prescribed = this.config.FLOW?.prescribed;
+		if (prescribed?.kind === 'grid') {
+			byteTexture(this.prescribedVelocityTexture, prescribed.velocity?.width ?? 0, prescribed.velocity?.height ?? 0, 4);
+			const scalar = Object.values(prescribed.scalars ?? {})[0];
+			byteTexture(this.prescribedScalarTexture, scalar?.width ?? 0, scalar?.height ?? 0, 4);
+		}
+		return { estimatedTextureBytes: bytes, canvasPixels: gl.drawingBufferWidth * gl.drawingBufferHeight };
 	}
 
 	private compileShaders(): void {
@@ -1674,7 +1561,18 @@ export class FluidEngine implements FluidHandle {
 
 		this.vertexBuffer = gl.createBuffer()!;
 		this.indexBuffer = gl.createBuffer()!;
-		this.blit = createBlit(gl, this.vertexBuffer, this.indexBuffer);
+		const rawBlit = createBlit(gl, this.vertexBuffer, this.indexBuffer);
+		if (this.profiler) {
+			this.blit = (target, clear) => {
+				const pixels = target ? target.width * target.height : gl.drawingBufferWidth * gl.drawingBufferHeight;
+				this.profiler?.recordDraw(pixels);
+				rawBlit(target, clear);
+			};
+		} else {
+			// Normal instances keep the original closure: no profiler branch enters
+			// their draw path.
+			this.blit = rawBlit;
+		}
 
 		const f = this._fragmentShadersByName;
 		this.blurProgram = makeProgram(gl, this.blurVertexShader, f.blur);
@@ -1926,6 +1824,8 @@ export class FluidEngine implements FluidHandle {
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
+		this.distortionTextureW = 1;
+		this.distortionTextureH = 1;
 		this.distortionImgRatio = 1;
 	}
 
@@ -1941,6 +1841,8 @@ export class FluidEngine implements FluidHandle {
 				gl.deleteTexture(this.distortionTexture);
 				this.distortionTexture = null;
 				this.distortionLoadedUrl = null;
+				this.distortionTextureW = 0;
+				this.distortionTextureH = 0;
 			}
 			return;
 		}
@@ -1965,6 +1867,8 @@ export class FluidEngine implements FluidHandle {
 				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
 				this.distortionImgRatio = image.naturalWidth / image.naturalHeight;
 				this.distortionLoadedUrl = url;
+				this.distortionTextureW = image.naturalWidth;
+				this.distortionTextureH = image.naturalHeight;
 			} catch {
 				// Context lost between check and GL calls — silently ignore
 			}
@@ -1975,6 +1879,8 @@ export class FluidEngine implements FluidHandle {
 			if (this.distortionTexture) {
 				gl.deleteTexture(this.distortionTexture);
 				this.distortionTexture = null;
+				this.distortionTextureW = 0;
+				this.distortionTextureH = 0;
 			}
 			this.distortionLoadedUrl = null;
 			this.initDistortionFallback();
@@ -2433,6 +2339,8 @@ export class FluidEngine implements FluidHandle {
 			gl.deleteTexture(this.stickyMaskTexture);
 			this.stickyMaskTexture = null;
 		}
+		this.stickyMaskW = 0;
+		this.stickyMaskH = 0;
 
 		if (!this.config.STICKY || !mask) return;
 		if (!mask.text && !mask.d) return;
@@ -2509,6 +2417,8 @@ export class FluidEngine implements FluidHandle {
 		}
 		gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
 		this.stickyMaskTexture = tex;
+		this.stickyMaskW = maskW;
+		this.stickyMaskH = maskH;
 	}
 
 	/** In-place box blur of a single-channel mask. Multiple passes approximate Gaussian. */
@@ -2663,6 +2573,22 @@ export class FluidEngine implements FluidHandle {
 	private update(): void {
 		if (this.disposed || this.contextLost || !this.rafRunning) return;
 		const dt = this.calcDeltaTime();
+		if (this.profiler) {
+			this.profiler.beginFrame();
+			try {
+				this.profileGroup('solver', () => this.simulateFrame(dt));
+				this.renderProfiled(null);
+			} finally {
+				this.profiler.endFrame();
+			}
+		} else {
+			this.simulateFrame(dt);
+			this.renderCore(null);
+		}
+		this.rafId = requestAnimationFrame(this.tick);
+	}
+
+	private simulateFrame(dt: number): void {
 		this.updateColors(dt);
 		this.applyInputs();
 		if (!this.config.PAUSED) {
@@ -2673,8 +2599,17 @@ export class FluidEngine implements FluidHandle {
 				this.step(stepDt);
 			}
 		}
-		this.render(null);
-		this.rafId = requestAnimationFrame(this.tick);
+	}
+
+	private profileGroup<T>(group: ProfileGroup, action: () => T): T {
+		const profiler = this.profiler;
+		if (!profiler) return action();
+		profiler.beginGroup(group);
+		try {
+			return action();
+		} finally {
+			profiler.endGroup();
+		}
 	}
 
 	private calcDeltaTime(): number {
@@ -3186,7 +3121,6 @@ export class FluidEngine implements FluidHandle {
 			this.advectVelocityMacCormack(dt);
 			return;
 		}
-		this.beginBenchPass('advect');
 		const gl = this.gl;
 		this.advectionProgram.bind();
 		this.bindInlineMaskUniforms(this.advectionProgram.uniforms, 2, 3);
@@ -3217,7 +3151,6 @@ export class FluidEngine implements FluidHandle {
 		);
 		this.blit(this.velocity.write);
 		this.velocity.swap();
-		this.endBenchPass();
 	}
 
 	/**
@@ -3227,7 +3160,6 @@ export class FluidEngine implements FluidHandle {
 	 * Only reached when {@link useMacCormack} is set (requires linear filtering).
 	 */
 	private advectVelocityMacCormack(dt: number): void {
-		this.beginBenchPass('advect');
 		const gl = this.gl;
 		// Mirrors the SL velocity-dissipation expression below so the two schemes
 		// dissipate identically (apples-to-apples comparison).
@@ -3292,11 +3224,9 @@ export class FluidEngine implements FluidHandle {
 		gl.uniform1f(this.advectionMacCormackProgram.uniforms.dissipation, velocityDissipation);
 		this.blit(this.velocity.write);
 		this.velocity.swap();
-		this.endBenchPass();
 	}
 
 	private advectDye(dt: number): void {
-		this.beginBenchPass('advect');
 		const gl = this.gl;
 		this.advectionProgram.bind();
 		this.bindInlineMaskUniforms(this.advectionProgram.uniforms, 2, 3);
@@ -3319,12 +3249,10 @@ export class FluidEngine implements FluidHandle {
 		gl.uniform1f(this.advectionProgram.uniforms.dissipation, this.currentDensityDissipation());
 		this.blit(this.dye.write);
 		this.dye.swap();
-		this.endBenchPass();
 	}
 
 	private advectScalar(dt: number): void {
 		if (!this.scalar) return;
-		this.beginBenchPass('advect');
 		const gl = this.gl;
 		this.advectionProgram.bind();
 		this.bindInlineMaskUniforms(this.advectionProgram.uniforms, 2, 3);
@@ -3351,7 +3279,6 @@ export class FluidEngine implements FluidHandle {
 		gl.uniform1f(this.advectionProgram.uniforms.dissipation, this.currentDensityDissipation());
 		this.blit(this.scalar.write);
 		this.scalar.swap();
-		this.endBenchPass();
 	}
 
 	private flowOpenEdges(): [number, number, number, number] {
@@ -3509,7 +3436,6 @@ export class FluidEngine implements FluidHandle {
 	private applyViscosity(dt: number): void {
 		const iterations = this.config.VISCOSITY_ITERATIONS;
 		if (this.config.VISCOSITY <= 0 || iterations <= 0) return;
-		this.beginBenchPass('viscosity');
 		const gl = this.gl;
 
 		this.copyProgram.bind();
@@ -3537,7 +3463,6 @@ export class FluidEngine implements FluidHandle {
 			this.blit(this.velocity.write);
 			this.velocity.swap();
 		}
-		this.endBenchPass();
 	}
 
 	private applyWallFriction(): void {
@@ -3555,7 +3480,6 @@ export class FluidEngine implements FluidHandle {
 
 	private projectVelocity(): void {
 		const gl = this.gl;
-		this.beginBenchPass('divergence');
 		this.divergenceProgram.bind();
 		gl.uniform2f(this.divergenceProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
 		gl.uniform1i(this.divergenceProgram.uniforms.uVelocity, this.velocity.read.attach(0));
@@ -3563,7 +3487,6 @@ export class FluidEngine implements FluidHandle {
 		gl.uniform4f(this.divergenceProgram.uniforms.uOpenEdges, edges[0], edges[1], edges[2], edges[3]);
 		this.bindSolidMaskUniforms(this.divergenceProgram.uniforms, 2, 3);
 		this.blit(this.divergence);
-		this.endBenchPass();
 
 		const iterations = this.performancePressureIterations;
 		if (iterations <= 0) {
@@ -3592,9 +3515,6 @@ export class FluidEngine implements FluidHandle {
 		const usePairs = this.velocity.width * this.velocity.height <= PAIRED_JACOBI_MAX_TEXELS;
 		const pairs = usePairs ? Math.floor(iterations / 2) : 0;
 		const singles = iterations - pairs * 2;
-		if (pairs > 0 || singles > 0) {
-			this.beginBenchPass('pressure');
-		}
 		if (pairs > 0) {
 			this.pressureJacobi2Program.bind();
 			gl.uniform2f(this.pressureJacobi2Program.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
@@ -3628,11 +3548,6 @@ export class FluidEngine implements FluidHandle {
 				this.pressure.swap();
 			}
 		}
-		if (pairs > 0 || singles > 0) {
-			this.endBenchPass();
-		}
-
-		this.beginBenchPass('gradient');
 		this.gradientSubtractProgram.bind();
 		gl.uniform2f(this.gradientSubtractProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
 		gl.uniform1i(this.gradientSubtractProgram.uniforms.uPressure, this.pressure.read.attach(0));
@@ -3641,16 +3556,12 @@ export class FluidEngine implements FluidHandle {
 		this.bindInlineMaskUniforms(this.gradientSubtractProgram.uniforms, 4, 5);
 		this.blit(this.velocity.write);
 		this.velocity.swap();
-		this.endBenchPass();
 	}
 
 	private step(dt: number): void {
 		if (this.deterministicMode) {
 			this.simTime += dt;
 		}
-		this.pollBenchQueries();
-		this.beginBenchFrame();
-
 		const gl = this.gl;
 		gl.disable(gl.BLEND);
 		const prescribedOnly = this.flowMode() === 'prescribed';
@@ -3673,19 +3584,14 @@ export class FluidEngine implements FluidHandle {
 			}
 			this.advectScalar(dt);
 			this.applyFlowOutlets(simulateDye ? ['dye', 'scalar'] : ['scalar']);
-			this.endBenchFrame();
 			return;
 		}
 
 		if (this.config.CURL > 0) {
-			this.beginBenchPass('curl');
 			this.curlProgram.bind();
 			gl.uniform2f(this.curlProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
 			gl.uniform1i(this.curlProgram.uniforms.uVelocity, this.velocity.read.attach(0));
 			this.blit(this.curlFBO);
-			this.endBenchPass();
-
-			this.beginBenchPass('vorticity');
 			this.vorticityProgram.bind();
 			gl.uniform2f(this.vorticityProgram.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
 			gl.uniform1i(this.vorticityProgram.uniforms.uVelocity, this.velocity.read.attach(0));
@@ -3699,7 +3605,6 @@ export class FluidEngine implements FluidHandle {
 			this.bindSolidMaskUniforms(this.vorticityProgram.uniforms, 2, 3);
 			this.blit(this.velocity.write);
 			this.velocity.swap();
-			this.endBenchPass();
 		}
 
 		// Container/obstruction masking is folded into the advection,
@@ -3716,10 +3621,38 @@ export class FluidEngine implements FluidHandle {
 		}
 		this.advectScalar(dt);
 		this.applyFlowOutlets(simulateDye ? ['dye', 'scalar'] : ['scalar']);
-		this.endBenchFrame();
 	}
 
-	private render(target: FBO | null): void {
+	private renderProfiled(target: FBO | null): void {
+		const gl = this.gl;
+		const hasDyeContent = this.shouldSimulateDye();
+		if (this.config.BLOOM && hasDyeContent) {
+			this.profileGroup('bloom', () => this.applyBloom(this.dye.read, this.bloom));
+		}
+		if (this.config.SUNRAYS && hasDyeContent) {
+			this.profileGroup('sunrays', () => {
+				this.applySunrays(this.dye.read, this.dye.write, this.sunrays);
+				this.blur(this.sunrays, this.sunraysTemp, 1);
+			});
+		}
+
+		if (this.config.DISTORTION || this.config.REVEAL) {
+			gl.disable(gl.BLEND);
+			this.profileGroup('display', () => this.drawDisplay(target));
+			return;
+		}
+
+		const useGlass = this.config.GLASS && this.config.CONTAINER_SHAPE && this.sceneFBO;
+		const displayTarget = useGlass ? this.sceneFBO! : target;
+		gl.disable(gl.BLEND);
+		if (this.config.TRANSPARENT) this.clearRenderTarget(displayTarget, 0, 0, 0, 0);
+		this.profileGroup('display', () =>
+			this.drawDisplay(displayTarget, this.config.TRANSPARENT ? null : this.normalizedBackColor)
+		);
+		if (useGlass) this.profileGroup('glass', () => this.drawGlass(target));
+	}
+
+	private renderCore(target: FBO | null): void {
 		const gl = this.gl;
 
 		const hasDyeContent = this.shouldSimulateDye();
