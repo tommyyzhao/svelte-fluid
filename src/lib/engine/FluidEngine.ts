@@ -720,6 +720,8 @@ export class FluidEngine implements FluidHandle {
 	private dyeMayContainContent = false;
 	/** Monotonic within a live context; reset only when fresh zero fields are created. */
 	private solverMayContainContent = false;
+	/** True when the default framebuffer no longer represents engine state. */
+	private renderDirty = true;
 	private flowSourceBatchKind = new Int32Array(FLOW_SOURCE_BATCH_SIZE);
 	private flowSourceBatchProfile = new Int32Array(FLOW_SOURCE_BATCH_SIZE);
 	private flowSourceBatchFrom = new Float32Array(FLOW_SOURCE_BATCH_SIZE * 2);
@@ -794,7 +796,7 @@ export class FluidEngine implements FluidHandle {
 			this.profileLifecycle('shaderCompile', () => this.compileShaders());
 			this.profileLifecycle('programLink', () => this.initBuffersAndPrograms());
 			this.profileLifecycle('initialAllocation', () => {
-				this.ditheringTexture = createDitheringTexture(this.gl);
+				this.ditheringTexture = createDitheringTexture(this.gl, () => this.invalidateRender());
 				this.initDistortionFallback();
 				this.updateKeywords();
 				this.initDyeFramebuffers('fresh');
@@ -882,6 +884,7 @@ export class FluidEngine implements FluidHandle {
 		this.splatTo(this.velocity, x, y, { r: dx, g: dy, b: 0 }, radius, 0);
 		this.dyeMayContainContent = true;
 		this.splatTo(this.dye, x, y, color, radius, this.config.STICKY ? this.config.STICKY_AMPLIFY : 0);
+		this.invalidateRender();
 	}
 
 	randomSplats(count: number): void {
@@ -926,6 +929,7 @@ export class FluidEngine implements FluidHandle {
 
 		this.canvas.width = nextWidth;
 		this.canvas.height = nextHeight;
+		this.invalidateRender();
 		if (this.contextLost) return true;
 
 		const aspectChanged = oldWidth * nextHeight !== nextWidth * oldHeight;
@@ -971,6 +975,7 @@ export class FluidEngine implements FluidHandle {
 				this.profiler.endFrame();
 			}
 		}
+		this.invalidateRender();
 	}
 
 	/**
@@ -1153,6 +1158,7 @@ export class FluidEngine implements FluidHandle {
 			a.AUTO_PERFORMANCE_MIN_SUBSTEPS !== b.AUTO_PERFORMANCE_MIN_SUBSTEPS ||
 			patch.pressureIterations !== undefined ||
 			patch.substeps !== undefined;
+		const configChanged = (Object.keys(b) as (keyof ResolvedConfig)[]).some((key) => a[key] !== b[key]);
 
 		// Programs and the display keyword variant are prepared before config is
 		// committed. A compile/link failure leaves the old config and resources live.
@@ -1203,6 +1209,7 @@ export class FluidEngine implements FluidHandle {
 				}
 			}
 		}
+		if (configChanged) this.invalidateRender();
 	}
 
 	/* ---------------------------------------------------------------------- */
@@ -1234,7 +1241,7 @@ export class FluidEngine implements FluidHandle {
 		this.profileLifecycle('shaderCompile', () => this.compileShaders());
 		this.profileLifecycle('programLink', () => this.initBuffersAndPrograms());
 		this.profileLifecycle('initialAllocation', () => {
-			this.ditheringTexture = createDitheringTexture(this.gl);
+			this.ditheringTexture = createDitheringTexture(this.gl, () => this.invalidateRender());
 			this.initDistortionFallback();
 			this.updateKeywords();
 			// Context loss invalidates every WebGL object. Every group takes its fresh
@@ -1319,6 +1326,7 @@ export class FluidEngine implements FluidHandle {
 		this.lastUpdateTime = performance.now();
 		this.engineStartTime = this.lastUpdateTime;
 		this.simTime = 0;
+		this.invalidateRender();
 	}
 
 	dispose(): void {
@@ -2084,6 +2092,7 @@ export class FluidEngine implements FluidHandle {
 				this.distortionTextureW = 0;
 				this.distortionTextureH = 0;
 			}
+			this.invalidateRender();
 			return;
 		}
 		if (url === this.distortionLoadedUrl) return;
@@ -2109,6 +2118,7 @@ export class FluidEngine implements FluidHandle {
 				this.distortionLoadedUrl = url;
 				this.distortionTextureW = image.naturalWidth;
 				this.distortionTextureH = image.naturalHeight;
+				this.invalidateRender();
 			} catch {
 				// Context lost between check and GL calls — silently ignore
 			}
@@ -2124,6 +2134,7 @@ export class FluidEngine implements FluidHandle {
 			}
 			this.distortionLoadedUrl = null;
 			this.initDistortionFallback();
+			this.invalidateRender();
 		};
 		image.src = url;
 	}
@@ -2815,20 +2826,44 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	/*                                 Update loop                            */
 	/* ---------------------------------------------------------------------- */
 
+	/** Mark the paused presentation as stale without changing RAF ownership. */
+	private invalidateRender(): void {
+		this.renderDirty = true;
+	}
+
+	/** Pending input may write GL state even while simulation stepping is paused. */
+	private hasPendingFrameInput(): boolean {
+		return this.splatStack.length > 0 || this.pointers.some((pointer) => pointer.moved);
+	}
+
 	private update(): void {
 		if (this.disposed || this.contextLost || !this.rafRunning) return;
 		const dt = this.calcDeltaTime();
+		if (this.config.PAUSED && !this.renderDirty && !this.hasPendingFrameInput()) {
+			// Keep pointer colors and the timebase current, but submit no GL work and
+			// do not manufacture profiler frames while the paused image is stable.
+			this.updateColors(dt);
+			this.rafId = requestAnimationFrame(this.tick);
+			return;
+		}
+
 		if (this.profiler) {
 			this.profiler.beginFrame();
 			try {
 				this.profileGroup('solver', () => this.simulateFrame(dt));
-				this.renderProfiled(null);
+				if (!this.config.PAUSED || this.renderDirty) {
+					this.renderProfiled(null);
+					this.renderDirty = false;
+				}
 			} finally {
 				this.profiler.endFrame();
 			}
 		} else {
 			this.simulateFrame(dt);
-			this.renderCore(null);
+			if (!this.config.PAUSED || this.renderDirty) {
+				this.renderCore(null);
+				this.renderDirty = false;
+			}
 		}
 		this.rafId = requestAnimationFrame(this.tick);
 	}

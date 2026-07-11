@@ -30,7 +30,7 @@ export interface DitheringTexture {
  *
  * Ported from script.js:1128-1158, with the URL replaced by a base64 data URL.
  */
-export function createDitheringTexture(gl: GL): DitheringTexture {
+export function createDitheringTexture(gl: GL, onReady?: () => void): DitheringTexture {
 	const texture = gl.createTexture();
 	if (!texture) throw new Error('svelte-fluid: gl.createTexture returned null');
 
@@ -77,6 +77,7 @@ export function createDitheringTexture(gl: GL): DitheringTexture {
 			obj.height = image.height;
 			gl.bindTexture(gl.TEXTURE_2D, texture);
 			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+			onReady?.();
 		} catch {
 			// Context was lost between the disposed check and the GL calls.
 			// The contextrestored handler will recreate the texture.
