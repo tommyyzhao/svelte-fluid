@@ -87,11 +87,12 @@
       "wave": 0,
       "priority": "P0",
       "title": "Run browser tests in CI",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["OPS-001"],
       "spec": "Add an isolated Playwright Chromium job with explicit installation, timeout, caching, and failure artifacts.",
       "acceptance": ["All current browser tests run on PR/main", "Deliberate branch failure proves the job gates", "Node/package job remains independent", "No secrets required"],
-      "files": [".github/workflows/ci.yml", "tooling docs"]
+      "files": [".github/workflows/ci.yml", "tooling docs"],
+      "notes": "Added an independent 20-minute Chromium job with pinned Bun, lockfile-pinned Playwright, explicit browser/dependency installation, cached browser binaries, failure logs/artifacts, and no secret requirements. Local browser and full repository gates pass; remote branch-failure validation remains part of the release gate."
     },
     {
       "id": "RLS-006",
