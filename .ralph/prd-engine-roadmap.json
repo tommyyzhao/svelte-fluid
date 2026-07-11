@@ -236,11 +236,12 @@
       "wave": 2,
       "priority": "P1",
       "title": "Resolution and projection sweep",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["OBS-001"],
       "spec": "Measure divergence RMS/max, energy, grid-scale energy, peak velocity, and solid-face flux at 64/96/128/192/256 including both paired-Jacobi regimes.",
       "acceptance": ["Liveness/non-finite guards precede metrics", "Bands are measured", "Both paired/single paths covered", "Pressure resolution behavior is explicit"],
-      "files": ["bench scenes/reducers/browser tests", "bench route", "decision note"]
+      "files": ["bench scenes/reducers/browser tests", "bench route", "decision note"],
+      "notes": "Added a deterministic 4:1 projection sweep at 64/96/128/192/256 so 192 exercises paired Jacobi and 256 crosses into single Jacobi. Measured liveness-first divergence, energy, grid-scale, peak, and solid-face proxy bands; evidence does not activate FID-008 and routes the isolated 96-class boundary spike to FID-005."
     },
     {
       "id": "FID-002",

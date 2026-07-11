@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
 	divergenceL2,
+	divergenceStats,
 	fieldEnergy,
 	fluxAcrossLine,
 	gridScaleEnergyFraction,
 	hasNonFinite,
 	l2Norm,
+	peakVectorMagnitude,
 	signChangeCount,
+	solidFaceFluxStats,
 	trackPeakAlongPath
 } from '../__benches__/reducers.js';
 
@@ -18,6 +21,34 @@ describe('bench reducers', () => {
 	it('returns near-zero divergence for a constant vector field', () => {
 		const velocity = new Float32Array([1, 2, 1, 2, 1, 2, 1, 2]); // 2x2 field
 		expect(divergenceL2(velocity, 2, 2)).toBeLessThan(1e-12);
+	});
+
+	it('measures divergence with closed solid ghost values', () => {
+		const velocity = new Float32Array([
+			0, 0, 1, 1, 0, 0,
+			0, 0, 2, 2, 0, 0,
+			0, 0, 1, 1, 0, 0
+		]);
+		const solid = new Uint8Array([
+			1, 0, 1,
+			1, 0, 1,
+			1, 0, 1
+		]);
+		const stats = divergenceStats(velocity, 3, 3, 2, solid);
+		expect(stats.fluidCells).toBe(3);
+		expect(stats.rms).toBeGreaterThan(0);
+		expect(stats.max).toBeGreaterThanOrEqual(stats.rms);
+	});
+
+	it('measures peak magnitude and fluid-side solid-face normal flux', () => {
+		const velocity = new Float32Array([2, 3, 0, 0]);
+		const solid = new Uint8Array([0, 1]);
+		expect(peakVectorMagnitude(velocity, 2, 1)).toBeCloseTo(Math.sqrt(13));
+		expect(solidFaceFluxStats(velocity, 2, 1, solid)).toEqual({
+			meanAbs: 2,
+			maxAbs: 2,
+			faceCount: 1
+		});
 	});
 
 	it('tracks the peak value along a crafted path', () => {

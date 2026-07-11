@@ -5,6 +5,18 @@ export interface PeakSample {
 	value: number;
 }
 
+export interface DivergenceStats {
+	rms: number;
+	max: number;
+	fluidCells: number;
+}
+
+export interface SolidFaceFluxStats {
+	meanAbs: number;
+	maxAbs: number;
+	faceCount: number;
+}
+
 const clampIndex = (value: number, size: number): number => {
 	if (!Number.isFinite(value)) return 0;
 	return Math.max(0, Math.min(size - 1, Math.floor(value)));
@@ -58,6 +70,111 @@ export function divergenceL2(
 	}
 
 	return Math.sqrt(sum / n);
+}
+
+/**
+ * Measure the post-projection divergence of a collocated velocity field using
+ * the same closed/solid ghost-value convention as `divergenceShader`.
+ * `solid` is one byte/value per cell where values > 0.5 are blocked.
+ */
+export function divergenceStats(
+	velocity: ArrayLike<number>,
+	width: number,
+	height: number,
+	components: 2 | 4 = 2,
+	solid?: ArrayLike<number>
+): DivergenceStats {
+	if (width <= 0 || height <= 0 || (components !== 2 && components !== 4)) {
+		return { rms: 0, max: 0, fluidCells: 0 };
+	}
+
+	const isSolid = (x: number, y: number): boolean =>
+		x < 0 || x >= width || y < 0 || y >= height || (solid?.[y * width + x] ?? 0) > 0.5;
+	const sample = (x: number, y: number, component: 0 | 1): number =>
+		velocity[(y * width + x) * components + component] as number;
+
+	let sumSquares = 0;
+	let max = 0;
+	let fluidCells = 0;
+	for (let y = 0; y < height; y++) {
+		for (let x = 0; x < width; x++) {
+			if (isSolid(x, y)) continue;
+			const cx = sample(x, y, 0);
+			const cy = sample(x, y, 1);
+			const left = isSolid(x - 1, y) ? -cx : sample(x - 1, y, 0);
+			const right = isSolid(x + 1, y) ? -cx : sample(x + 1, y, 0);
+			const top = isSolid(x, y + 1) ? -cy : sample(x, y + 1, 1);
+			const bottom = isSolid(x, y - 1) ? -cy : sample(x, y - 1, 1);
+			const divergence = 0.5 * (right - left + top - bottom);
+			const magnitude = Math.abs(divergence);
+			sumSquares += divergence * divergence;
+			max = Math.max(max, magnitude);
+			fluidCells++;
+		}
+	}
+
+	return {
+		rms: fluidCells > 0 ? Math.sqrt(sumSquares / fluidCells) : 0,
+		max,
+		fluidCells
+	};
+}
+
+/** Largest vector magnitude in a two-component velocity field. */
+export function peakVectorMagnitude(
+	velocity: ArrayLike<number>,
+	width: number,
+	height: number,
+	components: 2 | 4 = 2
+): number {
+	if (width <= 0 || height <= 0 || (components !== 2 && components !== 4)) return 0;
+	let peak = 0;
+	for (let i = 0; i < width * height; i++) {
+		const offset = i * components;
+		peak = Math.max(peak, Math.hypot(velocity[offset] as number, velocity[offset + 1] as number));
+	}
+	return peak;
+}
+
+/**
+ * Collocated no-through-flow proxy: absolute normal velocity in each fluid
+ * cell adjacent to a solid cell. Each fluid/solid face is counted once.
+ */
+export function solidFaceFluxStats(
+	velocity: ArrayLike<number>,
+	width: number,
+	height: number,
+	solid: ArrayLike<number>,
+	components: 2 | 4 = 2
+): SolidFaceFluxStats {
+	if (width <= 0 || height <= 0 || (components !== 2 && components !== 4)) {
+		return { meanAbs: 0, maxAbs: 0, faceCount: 0 };
+	}
+	const isSolid = (x: number, y: number): boolean =>
+		x >= 0 && x < width && y >= 0 && y < height && (solid[y * width + x] ?? 0) > 0.5;
+	let total = 0;
+	let maxAbs = 0;
+	let faceCount = 0;
+	for (let y = 0; y < height; y++) {
+		for (let x = 0; x < width; x++) {
+			if (isSolid(x, y)) continue;
+			const offset = (y * width + x) * components;
+			const vx = Math.abs(velocity[offset] as number);
+			const vy = Math.abs(velocity[offset + 1] as number);
+			for (const [dx, dy, normal] of [
+				[-1, 0, vx],
+				[1, 0, vx],
+				[0, -1, vy],
+				[0, 1, vy]
+			] as const) {
+				if (!isSolid(x + dx, y + dy)) continue;
+				total += normal;
+				maxAbs = Math.max(maxAbs, normal);
+				faceCount++;
+			}
+		}
+	}
+	return { meanAbs: faceCount > 0 ? total / faceCount : 0, maxAbs, faceCount };
 }
 
 /**
