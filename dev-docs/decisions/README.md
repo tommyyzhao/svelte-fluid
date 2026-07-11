@@ -57,6 +57,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0058](./0058-state-preserving-engine-resize.md)                | State-preserving in-place engine resize                                | Accepted |
 | [0059](./0059-component-coalesces-in-place-resize.md)           | Component coalesces in-place resize transitions                        | Accepted |
 | [0060](./0060-css-quality-and-capped-physical-dpr.md)           | CSS quality policy with capped physical DPR                            | Accepted |
+| [0061](./0061-lazy-optional-framebuffers.md)                    | Optional framebuffers exist only while active                          | Accepted |
 
 ## How to add a new ADR
 

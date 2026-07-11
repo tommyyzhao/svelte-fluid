@@ -41,10 +41,10 @@ interface ResourceHarness {
 	divergence: FBO;
 	curlFBO: FBO;
 	pressure: DoubleFBO;
-	bloom: FBO;
+	bloom: FBO | null;
 	bloomFramebuffers: FBO[];
-	sunrays: FBO;
-	sunraysTemp: FBO;
+	sunrays: FBO | null;
+	sunraysTemp: FBO | null;
 	sceneFBO: FBO | null;
 	solidNeighborTexture: WebGLTexture | null;
 	solidClearanceTexture: WebGLTexture | null;
@@ -89,12 +89,9 @@ function handles(target: DoubleFBO): [WebGLFramebuffer, WebGLFramebuffer] {
 }
 
 function postHandles(engine: ResourceHarness): WebGLFramebuffer[] {
-	return [
-		engine.bloom.fbo,
-		...engine.bloomFramebuffers.map((fbo) => fbo.fbo),
-		engine.sunrays.fbo,
-		engine.sunraysTemp.fbo
-	];
+	return [engine.bloom, ...engine.bloomFramebuffers, engine.sunrays, engine.sunraysTemp]
+		.filter((fbo): fbo is FBO => fbo != null)
+		.map((fbo) => fbo.fbo);
 }
 
 function simulationHandles(engine: ResourceHarness): WebGLFramebuffer[] {
@@ -200,17 +197,55 @@ describe('framebuffer ownership transitions', () => {
 
 	it('combined dye/sim/bloom transition touches each group once and balances disposal', () => {
 		const { engine, harness, counter } = makeEngine();
-		const sunraysBefore = [harness.sunrays.fbo, harness.sunraysTemp.fbo];
+		const sunraysBefore = postHandles(harness);
 		const createsBefore = counter.creates;
 		const deletesBefore = counter.deletes;
 
 		engine.setConfig({ simResolution: 48, dyeResolution: 48, bloomResolution: 48 });
-		expect(sameHandles([harness.sunrays.fbo, harness.sunraysTemp.fbo], sunraysBefore)).toBe(true);
-		// dye pair (2) + simulation group (7) + bloom base/one mip (2)
-		expect(counter.creates - createsBefore).toBe(11);
-		expect(counter.deletes - deletesBefore).toBe(11);
+		expect(sameHandles(postHandles(harness), sunraysBefore)).toBe(true);
+		// Disabled post-process resolution changes allocate nothing.
+		// dye pair (2) + simulation group (7)
+		expect(counter.creates - createsBefore).toBe(9);
+		expect(counter.deletes - deletesBefore).toBe(9);
 
 		engine.dispose();
 		expect(counter.deletes).toBe(counter.creates);
+	});
+
+	it('owns no optional FBOs while disabled and balances enable/disable/re-enable', () => {
+		const { engine, harness, counter } = makeEngine();
+		try {
+			expect(harness.bloom).toBeNull();
+			expect(harness.bloomFramebuffers).toEqual([]);
+			expect(harness.sunrays).toBeNull();
+			expect(harness.sunraysTemp).toBeNull();
+			expect(harness.scalar).toBeNull();
+			expect(harness.sceneFBO).toBeNull();
+
+			counter.reset();
+			engine.setConfig({ bloomResolution: 48, bloomIterations: 2, sunraysResolution: 48 });
+			expect(counter.creates).toBe(0);
+			expect(counter.deletes).toBe(0);
+
+			engine.setConfig({ bloom: true, sunrays: true });
+			// bloom base + two mips, sunrays + temporary
+			expect(counter.creates).toBe(5);
+			expect(postHandles(harness)).toHaveLength(5);
+			const first = postHandles(harness);
+
+			counter.reset();
+			engine.setConfig({ bloom: false, sunrays: false });
+			expect(counter.creates).toBe(0);
+			expect(counter.deletes).toBe(5);
+			expect(postHandles(harness)).toEqual([]);
+
+			counter.reset();
+			engine.setConfig({ bloom: true, sunrays: true });
+			expect(counter.creates).toBe(5);
+			expect(counter.deletes).toBe(0);
+			expect(postHandles(harness).every((handle) => !first.includes(handle))).toBe(true);
+		} finally {
+			engine.dispose();
+		}
 	});
 });
