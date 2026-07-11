@@ -97,4 +97,39 @@ describe('frame-time governor browser smoke', () => {
 			engine.dispose();
 		}
 	});
+
+	it('keeps the last observed governor action stable across no-op frames', () => {
+		const canvas = document.createElement('canvas');
+		canvas.width = 64;
+		canvas.height = 64;
+
+		const engine = new FluidEngine({
+			canvas,
+			config: {
+				pointerInput: false,
+				initialSplatCount: 0,
+				autoPerformance: true,
+				pressureIterations: 12,
+				autoPerformanceMinPressureIterations: 8,
+				substeps: 2,
+				autoPerformanceMinSubsteps: 1
+			}
+		});
+		engine.pause();
+
+		try {
+			let action = 'none';
+			for (let i = 0; i < 75; i++) {
+				action = injectFrameMs(engine, 40);
+			}
+
+			expect(action).toBe('shed-pressure');
+			expect(engine.getPerformanceState().lastAction).toBe('shed-pressure');
+
+			expect(injectFrameMs(engine, 40)).toBe('none');
+			expect(engine.getPerformanceState().lastAction).toBe('shed-pressure');
+		} finally {
+			engine.dispose();
+		}
+	});
 });
