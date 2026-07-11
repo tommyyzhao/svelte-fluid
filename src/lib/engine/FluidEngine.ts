@@ -863,6 +863,47 @@ export class FluidEngine implements FluidHandle {
 	}
 
 	/**
+	 * @internal Resize the drawing buffer without replacing the GL context or
+	 * programs. Persistent fields are resampled only when the aspect ratio
+	 * changes; canvas-sized presentation resources are rebuilt every time.
+	 *
+	 * Returns `true` when the requested drawing-buffer size changed. During a
+	 * lost context the dimensions are retained and the normal restore path
+	 * rebuilds resources against them.
+	 */
+	resize(width: number, height: number): boolean {
+		if (this.disposed || !Number.isFinite(width) || !Number.isFinite(height)) return false;
+		const nextWidth = Math.max(1, Math.floor(width));
+		const nextHeight = Math.max(1, Math.floor(height));
+		const oldWidth = this.canvas.width;
+		const oldHeight = this.canvas.height;
+		if (oldWidth === nextWidth && oldHeight === nextHeight) return false;
+
+		this.canvas.width = nextWidth;
+		this.canvas.height = nextHeight;
+		if (this.contextLost) return true;
+
+		const aspectChanged = oldWidth * nextHeight !== nextWidth * oldHeight;
+		this.profileLifecycle('resize', () => {
+			if (aspectChanged) {
+				// getResolution() and every rasterized mask are aspect-driven. Preserve
+				// persistent fields while rebuilding transient and derived resources.
+				this.initDyeFramebuffers('preserve');
+				this.initSimulationFramebuffers('preserve');
+				this.initPostprocessFramebuffers('preserve');
+				this.initMaskTexture();
+				this.initObstructionMaskTexture();
+				this.initSolidMaskTexture();
+				this.initSolidDerivedTextures();
+			}
+			// Glass renders through an RGBA8 buffer at physical canvas size, so it
+			// must follow both same-aspect scale changes and aspect changes.
+			this.initGlassFramebuffer();
+		});
+		return true;
+	}
+
+	/**
 	 * @internal Advance the simulator by a fixed number of identical steps.
 	 *
 	 * Deterministic harnesses call this with fixed `dt` instead of relying on

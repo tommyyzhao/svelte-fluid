@@ -149,11 +149,12 @@
       "wave": 1,
       "priority": "P1",
       "title": "Add state-preserving FluidEngine.resize",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["LIF-001", "OBS-001"],
       "spec": "Resize drawing buffer and affected resources while preserving context, programs, masks, and resampled persistent fields.",
       "acceptance": ["No shader relink on resize", "Same-size no-op", "Dye/velocity remain live", "Glass/post match drawing buffer", "Lost-context fallback is safe"],
-      "files": ["engine", "GL resize helpers", "lifecycle/browser tests", "ADR"]
+      "files": ["engine", "GL resize helpers", "lifecycle/browser tests", "ADR"],
+      "notes": "FluidEngine.resize now updates the drawing buffer without context or program replacement. Exact-size calls are no-ops; same-aspect changes rebuild only canvas-sized glass; aspect changes resample dye/scalar/velocity, recreate transient/post resources, and rebuild aspect-derived masks. Context-lost calls retain dimensions for restore. Chromium coverage verifies liveness, zero relinks, ownership, same-size behavior, and lost-context safety; ADR-0058 records the transition."
     },
     {
       "id": "LIF-003",
