@@ -26,8 +26,8 @@ opening scene without treating invalid GL handles as resizeable resources.
   deletes, create all framebuffer groups afresh, reset the seeded RNG and opening
   clocks, then replay random initial splats followed by the preset snapshot
   exactly once.
-- Keep normal `initFramebuffers()` calls state-preserving, but give context
-  restoration an explicit fresh-allocation path.
+- Keep normal group transitions state-preserving, but initialize each resource
+  group explicitly through its fresh-allocation path on restoration.
 - Make glass scene-FBO ownership explicit: general framebuffer initialization
   does not allocate it; construction, restore, and glass/shape transitions each
   invoke its allocator once.

@@ -50,6 +50,8 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0051](./0051-sustained-performance-governor-overload.md)       | Sustained performance-governor overload                                | Accepted |
 | [0052](./0052-maccormack-solid-clearance-guard.md)               | Guard MacCormack traces with solid clearance                           | Accepted |
 | [0053](./0053-context-restore-recreates-resources.md)            | Context restore recreates resources and opening state                  | Accepted |
+| [0054](./0054-refresh-aware-governor-budget.md)                  | Refresh-aware governor budget and independent catch-up time            | Accepted |
+| [0055](./0055-framebuffer-resource-ownership.md)                 | Explicit framebuffer resource ownership                               | Accepted |
 
 ## How to add a new ADR
 

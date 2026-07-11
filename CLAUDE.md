@@ -35,7 +35,7 @@ When props change at runtime, `engine.setConfig()` classifies each field:
 
 - **Bucket A** (hot scalars): written to `this.config.X`, picked up next frame.
 - **Bucket B** (keyword recompile): `shading`, `bloom`, `sunrays`, `reveal`, `distortion`, `obstructionColor` presence → `updateKeywords()` recompiles the display shader.
-- **Bucket C** (FBO rebuild): `simResolution`, `dyeResolution`, `bloomResolution`, `bloomIterations`, `sunraysResolution` → `initFramebuffers()` / `initBloom()` / `initSunrays()`.
+- **Bucket C** (owned FBO transition): `simResolution`, `dyeResolution`, `bloomResolution`, `bloomIterations`, `sunraysResolution` → transition only the owning simulation, dye/scalar, bloom, or sunrays group.
 - **Bucket D** (construct-only): `seed`, `initialSplatCount*`, `presetSplats`, `requireHardwareAcceleration` → ignored after construction.
 
 When adding a new prop, decide which bucket it belongs to and wire it accordingly. See [ADR 0005](dev-docs/decisions/0005-hot-update-buckets.md) for rationale.
