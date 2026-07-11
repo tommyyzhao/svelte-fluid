@@ -1,5 +1,5 @@
 import type { Rng } from '../rng.js';
-import type { FluidConfig } from '../types.js';
+import type { ContainerShape, FluidConfig } from '../types.js';
 import type { FluidEngine } from '../FluidEngine.js';
 
 export interface BenchScene {
@@ -176,6 +176,51 @@ export const thinWallTeslaValve: BenchScene = {
 			g: 0.45,
 			b: 0.9
 		});
+	}
+};
+
+export const projectionSweepShape: ContainerShape = {
+	type: 'roundedRect',
+	cx: 0.5,
+	cy: 0.5,
+	halfW: 1.8,
+	halfH: 0.42,
+	cornerRadius: 0.08
+};
+
+/** Deterministic projection scene; callers override `simResolution`. */
+export const projectionSweep: BenchScene = {
+	seed: 0x51ee7,
+	thresholdBand: [0.01, 1_000],
+	config: {
+		pointerInput: false,
+		containerShape: projectionSweepShape,
+		openBoundary: false,
+		simResolution: 128,
+		dyeResolution: 64,
+		curl: 0,
+		velocityDissipation: 0.05,
+		densityDissipation: 1,
+		pressure: 0.8,
+		pressureIterations: 20,
+		substeps: 1,
+		maxTimeStep: 1 / 60,
+		initialSplatCount: 0,
+		shading: false,
+		bloom: false,
+		sunrays: false,
+		backColor: { r: 0, g: 0, b: 0 }
+	},
+	schedule: (engine, _rng, frame) => {
+		if (frame === 0) {
+			engine.splat(0.38, 0.5, 520, 45, { r: 0.8, g: 0.2, b: 0.1 });
+			engine.splat(0.62, 0.5, -520, -45, { r: 0.1, g: 0.3, b: 0.9 });
+			engine.splat(0.5, 0.32, 35, 380, { r: 0.3, g: 0.8, b: 0.2 });
+			engine.splat(0.5, 0.68, -35, -380, { r: 0.8, g: 0.2, b: 0.7 });
+		} else if (frame === 8) {
+			engine.splat(0.46, 0.44, 240, 120, { r: 0.4, g: 0.6, b: 0.9 });
+			engine.splat(0.54, 0.56, -240, -120, { r: 0.9, g: 0.5, b: 0.2 });
+		}
 	}
 };
 
