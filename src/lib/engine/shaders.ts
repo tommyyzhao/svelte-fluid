@@ -1383,6 +1383,7 @@ export const vorticityShader = `
     uniform float curl;
     uniform float dt;
     uniform float uAdaptiveMix;
+    uniform float uVorticityScale;
     uniform sampler2D uSolidNeighbors;
 
     void main () {
@@ -1399,7 +1400,7 @@ export const vorticityShader = `
 
         vec2 force = 0.5 * vec2(abs(T) - abs(B), abs(R) - abs(L));
         force /= length(force) + 0.0001;
-        float omega = abs(C) * 2.0;
+        float omega = abs(C) * 2.0 * uVorticityScale;
         float adaptiveWeight = smoothstep(${VORTICITY_ADAPTIVE_LO}, ${VORTICITY_ADAPTIVE_HI}, omega);
         float confinement = mix(curl * C, curl * C * adaptiveWeight, clamp(uAdaptiveMix, 0.0, 1.0));
         force *= confinement * attenuation;

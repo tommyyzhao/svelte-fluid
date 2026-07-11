@@ -256,11 +256,12 @@
       "wave": 2,
       "priority": "P1",
       "title": "Normalize adaptive vorticity gating",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["FID-001"],
       "spec": "Make adaptive omega thresholds resolution-invariant and test the real low/transition/high bands.",
       "acceptance": ["CPU known answers cover all bands", "Equivalent fields resolve equivalent mix across sweep", "Reference resolution unchanged", "Preset spectral/visual checks pass"],
-      "files": ["shaders", "engine helpers", "vorticity tests", "ADR/changeset if needed"]
+      "files": ["shaders", "engine helpers", "vorticity tests", "ADR/changeset if needed"],
+      "notes": "Adaptive omega is now converted from the shader's unscaled centered difference into a 128-reference gauge using min(actualWidth,actualHeight)/128 before the unchanged smoothstep band. CPU known answers exercise below/transition/above regions and equivalent 64/96/128/192/256 fields; the 128 path and adaptiveMix=0 remain unchanged. A finite/live Chromium dipole sweep measured normalized gate means 0.999800..0.999811 across all five grids, and the 12-case representative liveness/spectral suites pass. ADR-0066 and the existing resolution-normalized solver changeset record the corrected semantics."
     },
     {
       "id": "FID-003",

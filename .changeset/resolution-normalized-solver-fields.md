@@ -15,3 +15,8 @@ Also: vorticity confinement is now attenuated next to solid boundaries so it no
 longer injects momentum into walls and fight the pressure projection — near-wall
 vorticity around obstructions/container shapes is slightly reduced versus prior
 versions, independent of the new optional `vorticityAdaptive` knob (0 = off).
+
+The `vorticityAdaptive` threshold band now uses the same reference-resolution
+gauge. Equivalent vortices therefore enter its low/transition/high regions at
+the same physical strength from `simResolution` 64 through 256; resolution 128
+remains unchanged.
