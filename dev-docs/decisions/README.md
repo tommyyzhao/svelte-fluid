@@ -59,6 +59,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0060](./0060-css-quality-and-capped-physical-dpr.md)           | CSS quality policy with capped physical DPR                            | Accepted |
 | [0061](./0061-lazy-optional-framebuffers.md)                    | Optional framebuffers exist only while active                          | Accepted |
 | [0062](./0062-selected-program-compilation.md)                  | Compile and cache only selected engine programs                        | Accepted |
+| [0063](./0063-conservative-empty-solver-skip.md)                | Skip solver work only while emptiness is provable                      | Accepted |
 
 ## How to add a new ADR
 

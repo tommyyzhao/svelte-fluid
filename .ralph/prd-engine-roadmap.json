@@ -220,11 +220,12 @@
       "wave": 1,
       "priority": "P1",
       "title": "Skip provably empty solver work",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["OBS-001"],
       "spec": "Track conservative never-activated velocity/source state and skip solver draws only when emptiness is provable.",
       "acceptance": ["Empty scene has zero solver draws", "First input activates normal stepping", "Flow/forces/prescribed grids never false-idle", "Post-activation output matches control"],
-      "files": ["engine", "profiler", "flow/input tests", "ADR"]
+      "files": ["engine", "profiler", "flow/input tests", "ADR"],
+      "notes": "A per-context monotonic solverMayContainContent proof now skips every solver draw for fresh zero fields. Any splat activates permanently; flow sources, forces, and prescribed grids conservatively activate before use; outlet/boundary-only configs remain idle. Deterministic time advances while skipped, resize preserves activity, and restore/opening replay re-establishes the proof. Unit driver classification, direct draw counts, activation, and byte-level post-activation equivalence pass in three isolated Chromium cases; ADR-0063 rejects equilibrium inference/readback."
     },
     {
       "id": "LIF-009",

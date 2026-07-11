@@ -87,6 +87,7 @@ import {
 } from './pointer.js';
 import { type Rng, generateColor, mulberry32, normalizeColor, randomSeed } from './rng.js';
 import { fitDrawingBufferSize } from './resolution.js';
+import { flowCanDriveSolver } from './solver-activity.js';
 import {
 	containerShapeEqual,
 	stickyMaskEqual,
@@ -717,6 +718,8 @@ export class FluidEngine implements FluidHandle {
 	private normalizedBackColor: RGB = { r: 0, g: 0, b: 0 };
 	private contextLost = false;
 	private dyeMayContainContent = false;
+	/** Monotonic within a live context; reset only when fresh zero fields are created. */
+	private solverMayContainContent = false;
 	private flowSourceBatchKind = new Int32Array(FLOW_SOURCE_BATCH_SIZE);
 	private flowSourceBatchProfile = new Int32Array(FLOW_SOURCE_BATCH_SIZE);
 	private flowSourceBatchFrom = new Float32Array(FLOW_SOURCE_BATCH_SIZE * 2);
@@ -872,6 +875,9 @@ export class FluidEngine implements FluidHandle {
 
 	splat(x: number, y: number, dx: number, dy: number, color: RGB): void {
 		if (this.contextLost) return;
+		// Conservatively activate even for a numerically zero splat. Proving a
+		// caller's future values are zero is not worth a false-idle solver.
+		this.solverMayContainContent = true;
 		const radius = this.config.SPLAT_RADIUS / 100.0;
 		this.splatTo(this.velocity, x, y, { r: dx, g: dy, b: 0 }, radius, 0);
 		this.dyeMayContainContent = true;
@@ -1305,6 +1311,7 @@ export class FluidEngine implements FluidHandle {
 		this.colorUpdateTimer = 0;
 		this.autoSplatTimer = 0;
 		this.dyeMayContainContent = false;
+		this.solverMayContainContent = false;
 		this.multipleSplats(this.initialRandomSplatCount());
 		for (const s of this.openingPresetSplats) {
 			this.splat(s.x, s.y, s.dx, s.dy, s.color);
@@ -3804,6 +3811,10 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	private step(dt: number): void {
 		if (this.deterministicMode) {
 			this.simTime += dt;
+		}
+		if (!this.solverMayContainContent) {
+			if (!flowCanDriveSolver(this.config.FLOW)) return;
+			this.solverMayContainContent = true;
 		}
 		const gl = this.gl;
 		gl.disable(gl.BLEND);
