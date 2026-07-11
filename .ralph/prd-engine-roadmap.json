@@ -209,11 +209,12 @@
       "wave": 1,
       "priority": "P1",
       "title": "Dirty rendering while paused",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["OBS-001"],
       "spec": "Render paused scenes only after input, resize, relevant config changes, or explicit invalidation.",
       "acceptance": ["Stable paused scene has zero draws", "Display changes render once", "Pause/resume semantics remain", "Glass/reveal/distortion invalidate correctly"],
-      "files": ["engine update/render loop", "pause/config tests", "ADR"]
+      "files": ["engine update/render loop", "pause/config tests", "ADR"],
+      "notes": "A private presentation-dirty bit now separates declarative pause from imperative RAF ownership. Stable paused ticks retain time/color bookkeeping but create no profiler frame and submit no GL work; construction, splats, resize, resolved config changes, restore replay, and async dithering/distortion uploads invalidate exactly one presentation. A counted WebGL2 browser gate covers stable ticks, splat/config/resize, reveal/distortion/glass transitions, and pause/resume. Check, node suite, prepack, and focused Chromium gate pass; ADR-0064 records the contract."
     },
     {
       "id": "LIF-008",

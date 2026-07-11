@@ -471,7 +471,7 @@ export interface FluidConfig {
 	colorful?: boolean;
 	/** Color rotation rate (1/seconds). Default 10. */
 	colorUpdateSpeed?: number;
-	/** Pause the simulation step (rendering still occurs). Default false. */
+	/** Pause simulation stepping; RAF stays live and renders only after invalidation. Default false. */
 	paused?: boolean;
 	/**
 	 * Background color in **0–255 RGB** (CSS-style). Normalized internally
