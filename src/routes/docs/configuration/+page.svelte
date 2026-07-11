@@ -129,6 +129,12 @@
 			<td>Opt-in frame-time governor. Under sustained load it lowers Bucket-A quality only: pressure iterations first, then substeps. It never auto-restores quality, and deterministic <code>advance()</code> runs ignore it.</td>
 		</tr>
 		<tr>
+			<td><code>autoPerformanceTargetFrameMs</code></td>
+			<td><code>number</code></td>
+			<td><code>1000 / 60</code></td>
+			<td>Average live-frame budget used by <code>autoPerformance</code>. Use approximately <code>33.33</code>, <code>16.67</code>, or <code>8.33</code> for 30, 60, or 120 Hz targets. Bucket A.</td>
+		</tr>
+		<tr>
 			<td><code>autoPerformanceMinPressureIterations</code></td>
 			<td><code>number</code></td>
 			<td><code>8</code></td>
@@ -801,7 +807,7 @@
 		<code>velocityDissipation</code>, <code>maxTimeStep</code>, <code>substeps</code>,
 		<code>viscosity</code>, <code>viscosityIterations</code>, <code>wallFriction</code>,
 		<code>wallFrictionWidth</code>, <code>pressure</code>, <code>curl</code>,
-		<code>vorticityAdaptive</code>, <code>autoPerformance</code>,
+		<code>vorticityAdaptive</code>, <code>autoPerformance</code>, <code>autoPerformanceTargetFrameMs</code>,
 		<code>autoPerformanceMinPressureIterations</code>, <code>autoPerformanceMinSubsteps</code>,
 	<code>splatRadius</code>, <code>splatForce</code>, <code>colorUpdateSpeed</code>,
 	<code>bloomIntensity</code>, <code>sunraysWeight</code>, all <code>autoSplat*</code> props,

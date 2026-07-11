@@ -47,6 +47,7 @@ describe('resolveConfig', () => {
 					pressure: 0.6,
 					pressureIterations: 30,
 					autoPerformance: true,
+					autoPerformanceTargetFrameMs: 1000 / 120,
 					autoPerformanceMinPressureIterations: 6,
 					autoPerformanceMinSubsteps: 2,
 					splatForce: 8000
@@ -66,6 +67,7 @@ describe('resolveConfig', () => {
 			expect(r.PRESSURE).toBe(0.6);
 			expect(r.PRESSURE_ITERATIONS).toBe(30);
 			expect(r.AUTO_PERFORMANCE).toBe(true);
+			expect(r.AUTO_PERFORMANCE_TARGET_FRAME_MS).toBe(1000 / 120);
 			expect(r.AUTO_PERFORMANCE_MIN_PRESSURE_ITERATIONS).toBe(6);
 			expect(r.AUTO_PERFORMANCE_MIN_SUBSTEPS).toBe(2);
 			expect(r.VORTICITY_ADAPTIVE).toBe(0.6);
@@ -338,6 +340,15 @@ describe('resolveConfig', () => {
 	});
 
 	describe('clamping and normalization', () => {
+		it('clamps the target frame budget and ignores non-finite patches', () => {
+			expect(resolveConfig({ autoPerformanceTargetFrameMs: 0 }, DEFAULTS).AUTO_PERFORMANCE_TARGET_FRAME_MS).toBe(1);
+			expect(resolveConfig({ autoPerformanceTargetFrameMs: 2000 }, DEFAULTS).AUTO_PERFORMANCE_TARGET_FRAME_MS).toBe(1000);
+			expect(
+				resolveConfig({ autoPerformanceTargetFrameMs: Number.NaN }, DEFAULTS)
+					.AUTO_PERFORMANCE_TARGET_FRAME_MS
+			).toBe(DEFAULTS.AUTO_PERFORMANCE_TARGET_FRAME_MS);
+		});
+
 		it('clamps solver stability and wall-shear fields', () => {
 			const r = resolveConfig(
 				{
@@ -448,6 +459,7 @@ describe('DEFAULTS', () => {
 		expect(DEFAULTS.WALL_FRICTION_WIDTH).toBe(1);
 		expect(DEFAULTS.PRESSURE).toBe(0.8);
 		expect(DEFAULTS.AUTO_PERFORMANCE).toBe(false);
+		expect(DEFAULTS.AUTO_PERFORMANCE_TARGET_FRAME_MS).toBe(1000 / 60);
 		expect(DEFAULTS.AUTO_PERFORMANCE_MIN_PRESSURE_ITERATIONS).toBe(8);
 		expect(DEFAULTS.AUTO_PERFORMANCE_MIN_SUBSTEPS).toBe(1);
 		expect(DEFAULTS.CURL).toBe(30);

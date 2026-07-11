@@ -4,6 +4,7 @@ import { fieldEnergy, hasNonFinite } from './reducers.js';
 
 type GovernorHarness = {
 	recordPerformanceFrameTime(frameMs: number): string;
+	config: { SUBSTEPS: number };
 };
 
 function injectFrameMs(engine: FluidEngine, frameMs: number): string {
@@ -61,6 +62,7 @@ describe('frame-time governor browser smoke', () => {
 				pointerInput: false,
 				initialSplatCount: 0,
 				autoPerformance: true,
+				autoPerformanceTargetFrameMs: 1000 / 60,
 				pressureIterations: 12,
 				autoPerformanceMinPressureIterations: 8,
 				substeps: 2,
@@ -93,6 +95,17 @@ describe('frame-time governor browser smoke', () => {
 			expect(sawSubstepShed).toBe(true);
 			expect(state.pressureIterations).toBe(8);
 			expect(state.substeps).toBe(1);
+			expect(state.targetFrameMs).toBe(1000 / 60);
+			// The governor reports effective quality, but the requested value is
+			// retained for wall-clock catch-up clamping.
+			expect((engine as unknown as GovernorHarness).config.SUBSTEPS).toBe(2);
+
+			engine.setConfig({ pressureIterations: 12, substeps: 2 });
+			const restored = engine.getPerformanceState();
+			expect(restored.tier).toBe('none');
+			expect(restored.pressureIterations).toBe(12);
+			expect(restored.substeps).toBe(2);
+			expect(restored.lastAction).toBe('none');
 		} finally {
 			engine.dispose();
 		}

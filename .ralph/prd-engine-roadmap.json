@@ -54,11 +54,12 @@
       "wave": 0,
       "priority": "P0",
       "title": "Decouple frame budget from simulation time",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["RLS-001"],
       "spec": "Add refresh-aware or explicit target-frame semantics and separate catch-up delta clamping from quality substeps.",
       "acceptance": ["30/60/120 Hz synthetic sequences classify correctly", "Substep shedding does not change accepted wall-clock delta", "autoPerformance=false remains unchanged", "Any public field is forwarded, documented, tested, and changesetted"],
-      "files": ["governor/types/engine/component", "docs", "agent docs", "tests", "ADR"]
+      "files": ["governor/types/engine/component", "docs", "agent docs", "tests", "ADR"],
+      "notes": "Added explicit autoPerformanceTargetFrameMs semantics, separated requested config from effective shed quality, preserved the legacy catch-up delta across substep shedding, and covered 30/60/120 Hz classification, forwarding, docs, packaging, and browser behavior."
     },
     {
       "id": "RLS-003",

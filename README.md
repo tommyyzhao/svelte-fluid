@@ -138,6 +138,8 @@ config from the upstream project.
 | `velocityDissipation` | `number` | `0.2` | hot |
 | `pressure` | `number` | `0.8` | hot |
 | `pressureIterations` | `number` | `20` | hot |
+| `autoPerformance` | `boolean` | `false` | hot; sustained-load quality governor |
+| `autoPerformanceTargetFrameMs` | `number` | `1000 / 60` | hot; live-frame budget for the governor |
 | `curl` | `number` | `30` | vorticity confinement; hot |
 | `splatRadius` | `number` | `0.25` | hot |
 | `splatForce` | `number` | `6000` | hot |

@@ -430,6 +430,12 @@ export interface FluidConfig {
 	 */
 	autoPerformance?: boolean;
 	/**
+	 * Average live-frame duration, in milliseconds, that autoPerformance aims
+	 * to stay at or below. Set approximately 33.33 for 30 Hz, 16.67 for 60 Hz,
+	 * or 8.33 for 120 Hz. Default 1000/60. Bucket A.
+	 */
+	autoPerformanceTargetFrameMs?: number;
+	/**
 	 * Lower bound for autoPerformance pressure-iteration shedding.
 	 * Default 8. Bucket A.
 	 */
@@ -842,6 +848,7 @@ export interface ResolvedConfig {
 	PRESSURE: number;
 	PRESSURE_ITERATIONS: number;
 	AUTO_PERFORMANCE: boolean;
+	AUTO_PERFORMANCE_TARGET_FRAME_MS: number;
 	AUTO_PERFORMANCE_MIN_PRESSURE_ITERATIONS: number;
 	AUTO_PERFORMANCE_MIN_SUBSTEPS: number;
 	CURL: number;
@@ -919,6 +926,7 @@ export interface PerformanceState {
 	readonly tier: PerformanceTier;
 	readonly emaMs: number;
 	readonly msSinceLastChange: number;
+	readonly targetFrameMs: number;
 	readonly pressureIterations: number;
 	readonly substeps: number;
 	readonly minPressureIterations: number;

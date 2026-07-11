@@ -208,6 +208,7 @@ export const DEFAULTS: ResolvedConfig = {
 	PRESSURE: 0.8,
 	PRESSURE_ITERATIONS: 20,
 	AUTO_PERFORMANCE: false,
+	AUTO_PERFORMANCE_TARGET_FRAME_MS: 1000 / 60,
 	AUTO_PERFORMANCE_MIN_PRESSURE_ITERATIONS: 8,
 	AUTO_PERFORMANCE_MIN_SUBSTEPS: 1,
 	CURL: 30,
@@ -307,6 +308,15 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 	if (input.pressure !== undefined) out.PRESSURE = input.pressure;
 	if (input.pressureIterations !== undefined) out.PRESSURE_ITERATIONS = input.pressureIterations;
 	if (input.autoPerformance !== undefined) out.AUTO_PERFORMANCE = input.autoPerformance;
+	if (
+		input.autoPerformanceTargetFrameMs !== undefined &&
+		Number.isFinite(input.autoPerformanceTargetFrameMs)
+	) {
+		out.AUTO_PERFORMANCE_TARGET_FRAME_MS = Math.max(
+			1,
+			Math.min(1000, input.autoPerformanceTargetFrameMs)
+		);
+	}
 	if (input.autoPerformanceMinPressureIterations !== undefined)
 		out.AUTO_PERFORMANCE_MIN_PRESSURE_ITERATIONS = Math.max(
 			0,
@@ -479,6 +489,15 @@ function scalarDissipationForField(field: FlowScalarField | undefined, fallback:
 
 function clamp01(value: number): number {
 	return Math.max(0, Math.min(1, value));
+}
+
+/** @internal Exported for deterministic timing-policy tests. */
+export function clampSimulationDeltaSeconds(
+	frameSeconds: number,
+	maxTimeStep: number,
+	requestedSubsteps: number
+): number {
+	return Math.min(frameSeconds, maxTimeStep * requestedSubsteps);
 }
 
 // Single-sourced in shaders.ts (alongside the GLSL that consumes them) to keep
@@ -711,6 +730,8 @@ export class FluidEngine implements FluidHandle {
 	private performanceMsSinceLastChange = 0;
 	private performanceContinuousOverloadMs = 0;
 	private performanceLastAction: PerformanceAction = 'none';
+	private performancePressureIterations = 0;
+	private performanceSubsteps = 1;
 	// The requested advection scheme is construct-only; useMacCormack is the
 	// capability-gated effective decision, recomputed alongside MANUAL_FILTERING
 	// so a context restore re-derives it from the (possibly new) GL feature set.
@@ -742,6 +763,7 @@ export class FluidEngine implements FluidHandle {
 		this.canvas = opts.canvas;
 		const seed = opts.config?.seed ?? randomSeed();
 		this.config = resolveConfig({ ...opts.config, seed }, DEFAULTS);
+		this.resetPerformanceGovernor();
 		this.openingPresetSplats = (opts.config?.presetSplats ?? []).map((s) => ({
 			...s,
 			color: { ...s.color }
@@ -1000,8 +1022,9 @@ export class FluidEngine implements FluidHandle {
 			tier: enabled ? this.performanceTier : 'none',
 			emaMs: enabled ? this.performanceEmaMs : 0,
 			msSinceLastChange: enabled ? this.performanceMsSinceLastChange : 0,
-			pressureIterations: this.config.PRESSURE_ITERATIONS,
-			substeps: this.config.SUBSTEPS,
+			targetFrameMs: this.config.AUTO_PERFORMANCE_TARGET_FRAME_MS,
+			pressureIterations: this.performancePressureIterations,
+			substeps: this.performanceSubsteps,
 			minPressureIterations: this.config.AUTO_PERFORMANCE_MIN_PRESSURE_ITERATIONS,
 			minSubsteps: this.config.AUTO_PERFORMANCE_MIN_SUBSTEPS,
 			lastAction: enabled ? this.performanceLastAction : 'none'
@@ -1054,10 +1077,11 @@ export class FluidEngine implements FluidHandle {
 		const performanceResetChanged =
 			a.AUTO_PERFORMANCE !== b.AUTO_PERFORMANCE ||
 			a.PAUSED !== b.PAUSED ||
+			a.AUTO_PERFORMANCE_TARGET_FRAME_MS !== b.AUTO_PERFORMANCE_TARGET_FRAME_MS ||
 			a.AUTO_PERFORMANCE_MIN_PRESSURE_ITERATIONS !== b.AUTO_PERFORMANCE_MIN_PRESSURE_ITERATIONS ||
 			a.AUTO_PERFORMANCE_MIN_SUBSTEPS !== b.AUTO_PERFORMANCE_MIN_SUBSTEPS ||
-			a.PRESSURE_ITERATIONS !== b.PRESSURE_ITERATIONS ||
-			a.SUBSTEPS !== b.SUBSTEPS;
+			patch.pressureIterations !== undefined ||
+			patch.substeps !== undefined;
 
 		this.config = b;
 		if (performanceResetChanged) this.resetPerformanceGovernor();
@@ -2628,7 +2652,7 @@ export class FluidEngine implements FluidHandle {
 		const frameMs = Math.max(0, now - this.lastUpdateTime);
 		this.recordPerformanceFrameTime(frameMs);
 		let dt = frameMs / 1000;
-		dt = Math.min(dt, this.config.MAX_TIME_STEP * this.config.SUBSTEPS);
+		dt = clampSimulationDeltaSeconds(dt, this.config.MAX_TIME_STEP, this.config.SUBSTEPS);
 		this.lastUpdateTime = now;
 		return dt;
 	}
@@ -2639,6 +2663,8 @@ export class FluidEngine implements FluidHandle {
 		this.performanceMsSinceLastChange = 0;
 		this.performanceContinuousOverloadMs = 0;
 		this.performanceLastAction = 'none';
+		this.performancePressureIterations = this.config.PRESSURE_ITERATIONS;
+		this.performanceSubsteps = this.config.SUBSTEPS;
 	}
 
 	private recordPerformanceFrameTime(frameMs: number): PerformanceAction {
@@ -2647,11 +2673,13 @@ export class FluidEngine implements FluidHandle {
 		}
 
 		const sampleMs = sanitizePerformanceFrameSampleMs(frameMs);
+		const thresholds = { targetFrameMs: this.config.AUTO_PERFORMANCE_TARGET_FRAME_MS };
 		this.performanceEmaMs = nextFrameTimeEmaMs(this.performanceEmaMs, sampleMs);
 		this.performanceContinuousOverloadMs = nextContinuousOverloadMs(
 			this.performanceContinuousOverloadMs,
 			this.performanceEmaMs,
-			sampleMs
+			sampleMs,
+			thresholds
 		);
 		this.performanceMsSinceLastChange += sampleMs;
 		const decision = performanceGovernorStep({
@@ -2659,20 +2687,21 @@ export class FluidEngine implements FluidHandle {
 			currentTier: this.performanceTier,
 			msSinceLastChange: this.performanceMsSinceLastChange,
 			continuousOverloadMs: this.performanceContinuousOverloadMs,
-			pressureIterations: this.config.PRESSURE_ITERATIONS,
-			substeps: this.config.SUBSTEPS,
+			pressureIterations: this.performancePressureIterations,
+			substeps: this.performanceSubsteps,
 			floors: {
 				pressureIterations: this.config.AUTO_PERFORMANCE_MIN_PRESSURE_ITERATIONS,
 				substeps: this.config.AUTO_PERFORMANCE_MIN_SUBSTEPS
-			}
+			},
+			thresholds
 		});
 
 		if (!decision.changed) {
 			return 'none';
 		}
 
-		this.config.PRESSURE_ITERATIONS = decision.pressureIterations;
-		this.config.SUBSTEPS = decision.substeps;
+		this.performancePressureIterations = decision.pressureIterations;
+		this.performanceSubsteps = decision.substeps;
 		this.performanceTier = decision.tier;
 		this.performanceMsSinceLastChange = 0;
 		this.performanceContinuousOverloadMs = 0;
@@ -2681,7 +2710,7 @@ export class FluidEngine implements FluidHandle {
 	}
 
 	private simulationSubsteps(dt: number): number {
-		const configured = Math.max(1, Math.min(8, Math.floor(this.config.SUBSTEPS)));
+		const configured = Math.max(1, Math.min(8, Math.floor(this.performanceSubsteps)));
 		const required = Math.max(1, Math.ceil(dt / this.config.MAX_TIME_STEP));
 		return Math.max(configured, required);
 	}
@@ -3506,7 +3535,7 @@ export class FluidEngine implements FluidHandle {
 		this.blit(this.divergence);
 		this.endBenchPass();
 
-		const iterations = this.config.PRESSURE_ITERATIONS;
+		const iterations = this.performancePressureIterations;
 		if (iterations <= 0) {
 			// Degenerate config: keep the old standalone warm-start decay so
 			// stored pressure doesn't freeze at its last value forever.
