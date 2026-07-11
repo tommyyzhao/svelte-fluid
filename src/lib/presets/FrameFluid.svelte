@@ -18,7 +18,7 @@
 	/** Props consumed by `<FrameFluid />`. */
 	export type FrameFluidProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+		'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 	> & { innerCornerRadius?: number; outerCornerRadius?: number };
 </script>
 
@@ -31,6 +31,7 @@
 	let {
 		width,
 		height,
+		maxPixelRatio,
 		class: className,
 		style,
 		seed,
@@ -65,6 +66,7 @@
 	{containerShape}
 	{width}
 	{height}
+	{maxPixelRatio}
 	class={className}
 	{style}
 	{seed}

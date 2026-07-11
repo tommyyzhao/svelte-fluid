@@ -613,8 +613,14 @@ export function getResolution(gl: GL, resolution: number): { width: number; heig
 	let aspectRatio = gl.drawingBufferWidth / gl.drawingBufferHeight;
 	if (aspectRatio < 1) aspectRatio = 1.0 / aspectRatio;
 
-	const min = Math.round(resolution);
-	const max = Math.round(resolution * aspectRatio);
+	let min = Math.max(1, Math.round(resolution));
+	let max = Math.max(1, Math.round(resolution * aspectRatio));
+	const textureLimit = Number(gl.getParameter(gl.MAX_TEXTURE_SIZE));
+	if (Number.isFinite(textureLimit) && textureLimit > 0 && max > textureLimit) {
+		const scale = textureLimit / max;
+		min = Math.max(1, Math.floor(min * scale));
+		max = Math.floor(textureLimit);
+	}
 
 	return gl.drawingBufferWidth > gl.drawingBufferHeight
 		? { width: max, height: min }

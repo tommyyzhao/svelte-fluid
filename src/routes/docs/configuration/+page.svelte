@@ -404,6 +404,12 @@
 			<td><code>false</code></td>
 			<td>Reject a software/SwiftShader rendering path (<code>failIfMajorPerformanceCaveat</code>). When <code>true</code> and only a software renderer exists, the component shows its <a href="{base}/docs/components#fluid">WebGL fallback</a> instead of animating on a slow CPU path. Construct-only. See ADR-0041.</td>
 		</tr>
+		<tr>
+			<td><code>maxPixelRatio</code></td>
+			<td><code>number | null</code></td>
+			<td><code>2</code></td>
+			<td>Component drawing-buffer DPR cap. Pass <code>null</code> to use native DPR. Texture allocation caps use physical pixels, while small-canvas quality tiers use CSS pixels, so DPR alone does not disable or enable effects. Construct-only.</td>
+		</tr>
 	</tbody>
 </table>
 
@@ -839,5 +845,5 @@
 	Ignored by <code>setConfig()</code> after construction. These values are consumed once when the
 	engine is created: <code>seed</code>, <code>initialSplatCountMin</code>,
 	<code>initialSplatCountMax</code>, <code>initialSplatCount</code>, <code>presetSplats</code>, and
-	<code>requireHardwareAcceleration</code>, and <code>advectionScheme</code>.
+	<code>requireHardwareAcceleration</code>, <code>maxPixelRatio</code>, and <code>advectionScheme</code>.
 </p>

@@ -23,7 +23,7 @@ This one is built for Svelte 5 from the ground up:
 
 - **True component API** — `<Fluid />` with 70+ typed props, live reactive updates, and full cleanup on unmount
 - **Multiple independent instances** per page — no shared GL state
-- **Deterministic seeding** — same `seed` reproduces the same splat pattern across resizes
+- **State-preserving resize** — live dye and velocity survive layout changes without shader recompilation
 - **14 example presets** — reference configurations showing the range of what's possible
 - **5 container shapes** — circle, frame, roundedRect, annulus, and arbitrary SVG paths / text via mask texture
 - **Glass post-processing** — refraction, specular highlights, and chromatic aberration on any container shape
@@ -129,6 +129,7 @@ config from the upstream project.
 | --- | --- | --- | --- |
 | `width` | `number` | — | CSS px. Omit to fill parent. |
 | `height` | `number` | — | CSS px. Omit to fill parent. |
+| `maxPixelRatio` | `number \| null` | `2` | cap physical DPR; pass `null` for native DPR |
 | `seed` | `number` | random | 32-bit uint; deterministic initial splats |
 | `simResolution` | `number` | `128` | velocity grid; **rebuilds FBOs** |
 | `dyeResolution` | `number` | `1024` | dye grid; **rebuilds FBOs** |
@@ -224,7 +225,7 @@ container shapes, and solver-native flow scenes. Useful as starting points for b
 ```
 
 Each preset forwards a small common set of props: `width`, `height`,
-`class`, `style`, `seed`, `lazy`, `splatOnHover`, `aria-label`, and
+`class`, `style`, `seed`, `lazy`, `maxPixelRatio`, `splatOnHover`, `aria-label`, and
 `backColor`. Flow-scene presets also expose `pointerInput`, and some shape
 presets expose small shape-specific knobs such as corner radii. The main
 physics recipe is intentionally fixed. They all re-expose the imperative
@@ -404,8 +405,10 @@ For a local bounded canvas, use `<Fluid />` with a parent size or fixed
 
 ## Resize behavior
 
-On resize, the engine rebuilds from the same `seed` — same opening pattern,
-no flicker. Omit `seed` and the component picks one at mount and holds onto it.
+On resize, the engine keeps its WebGL context, programs, dye, and velocity in
+place. Aspect changes resample the persistent fields; same-aspect changes only
+resize canvas-sized presentation resources. Physical DPR is capped at 2 by
+default; pass `maxPixelRatio={null}` to use native DPR.
 
 ## Multiple instances
 

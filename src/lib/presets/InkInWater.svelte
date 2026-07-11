@@ -15,7 +15,7 @@
 	/** Props consumed by `<InkInWater />`. */
 	export type InkInWaterProps = Pick<
 		FluidProps,
-		'width' | 'height' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+		'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 	>;
 </script>
 
@@ -28,6 +28,7 @@
 	let {
 		width,
 		height,
+		maxPixelRatio,
 		class: className,
 		style,
 		seed,
@@ -54,6 +55,7 @@
 	{...INK_IN_WATER_CONFIG}
 	{width}
 	{height}
+	{maxPixelRatio}
 	class={className}
 	{style}
 	{seed}

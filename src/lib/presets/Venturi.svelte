@@ -21,6 +21,7 @@
 		FluidProps,
 		| 'width'
 		| 'height'
+		| 'maxPixelRatio'
 		| 'class'
 		| 'style'
 		| 'seed'
@@ -41,6 +42,7 @@
 	let {
 		width,
 		height,
+		maxPixelRatio,
 		class: className,
 		style,
 		seed,
@@ -68,6 +70,7 @@
 	{...VENTURI_CONFIG}
 	{width}
 	{height}
+	{maxPixelRatio}
 	class={className}
 	{style}
 	{seed}

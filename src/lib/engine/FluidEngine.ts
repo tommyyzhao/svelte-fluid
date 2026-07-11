@@ -25,10 +25,10 @@
  *  - This is a per-instance class. There is *no* module-level mutable state.
  *  - WebGL context, framebuffers, programs, listener set, RAF loop, RNG and
  *    pointer state are all owned by the instance and freed by `dispose()`.
- *  - The Svelte component is responsible for sizing the canvas backbuffer
- *    BEFORE constructing the engine. The engine never resizes itself.
- *  - All randomness is routed through a seeded RNG so resizing produces the
- *    same initial splat pattern.
+ *  - The Svelte component owns layout measurement; explicit resize transitions
+ *    preserve the context and persistent fields without reading DOM layout.
+ *  - All randomness is routed through a seeded RNG so reconstruction and
+ *    context restore reproduce the configured opening scene.
  */
 
 import type {
@@ -86,6 +86,7 @@ import {
 	updatePointerUpData
 } from './pointer.js';
 import { type Rng, generateColor, mulberry32, normalizeColor, randomSeed } from './rng.js';
+import { fitDrawingBufferSize } from './resolution.js';
 import {
 	containerShapeEqual,
 	stickyMaskEqual,
@@ -873,8 +874,12 @@ export class FluidEngine implements FluidHandle {
 	 */
 	resize(width: number, height: number): boolean {
 		if (this.disposed || !Number.isFinite(width) || !Number.isFinite(height)) return false;
-		const nextWidth = Math.max(1, Math.floor(width));
-		const nextHeight = Math.max(1, Math.floor(height));
+		const viewport = this.contextLost
+			? [width, height]
+			: (this.gl.getParameter(this.gl.MAX_VIEWPORT_DIMS) as Int32Array | number[]);
+		const fitted = fitDrawingBufferSize(width, height, Number(viewport[0]), Number(viewport[1]));
+		const nextWidth = fitted.width;
+		const nextHeight = fitted.height;
 		const oldWidth = this.canvas.width;
 		const oldHeight = this.canvas.height;
 		if (oldWidth === nextWidth && oldHeight === nextHeight) return false;
@@ -1420,6 +1425,15 @@ export class FluidEngine implements FluidHandle {
 		});
 		this.gl = gl;
 		this.ext = ext;
+		const viewport = gl.getParameter(gl.MAX_VIEWPORT_DIMS) as Int32Array | number[];
+		const fitted = fitDrawingBufferSize(
+			this.canvas.width,
+			this.canvas.height,
+			Number(viewport[0]),
+			Number(viewport[1])
+		);
+		this.canvas.width = fitted.width;
+		this.canvas.height = fitted.height;
 
 		// Mobile / non-linear-filtering fallback. Only relax features if the
 		// hardware can't support them — never override an explicit user opt-in.

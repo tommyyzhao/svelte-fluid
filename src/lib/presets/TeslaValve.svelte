@@ -23,6 +23,7 @@
 		FluidProps,
 		| 'width'
 		| 'height'
+		| 'maxPixelRatio'
 		| 'class'
 		| 'style'
 		| 'seed'
@@ -43,6 +44,7 @@
 	let {
 		width,
 		height,
+		maxPixelRatio,
 		class: className,
 		style,
 		seed,
@@ -70,6 +72,7 @@
 	{...TESLA_VALVE_CONFIG}
 	{width}
 	{height}
+	{maxPixelRatio}
 	class={className}
 	{style}
 	{seed}

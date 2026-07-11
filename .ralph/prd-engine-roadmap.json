@@ -173,11 +173,12 @@
       "wave": 1,
       "priority": "P1",
       "title": "Separate CSS quality from physical DPR",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["LIF-003"],
       "spec": "Add maxPixelRatio default 2 with opt-out; use CSS dimensions for quality tiers and physical dimensions for allocation caps.",
       "acceptance": ["DPR fixtures choose identical CSS tiers", "DPR3 caps at 2 by default", "Opt-out restores native DPR", "GL limits respected", "Public docs/tests/changeset complete"],
-      "files": ["types", "Fluid.svelte", "forwarding/config tests", "docs", "agent docs", "changeset", "ADR"]
+      "files": ["types", "Fluid.svelte", "forwarding/config tests", "docs", "agent docs", "changeset", "ADR"],
+      "notes": "FluidProps now exposes construct-only maxPixelRatio with default 2 and null native-DPR opt-out. Pure sizing policy keeps CSS feature/iteration tiers identical across DPR fixtures while physical pixels cap canvas/FBO allocation. Engine drawing buffers fit MAX_VIEWPORT_DIMS and texture grids fit MAX_TEXTURE_SIZE. Public/canonical/agent docs, changeset, forwarding/source checks, and ADR-0060 are included."
     },
     {
       "id": "LIF-005",

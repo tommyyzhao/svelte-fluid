@@ -56,6 +56,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0057](./0057-whole-frame-profiler.md)                          | Whole-frame profiler with inert opt-in instrumentation                 | Accepted |
 | [0058](./0058-state-preserving-engine-resize.md)                | State-preserving in-place engine resize                                | Accepted |
 | [0059](./0059-component-coalesces-in-place-resize.md)           | Component coalesces in-place resize transitions                        | Accepted |
+| [0060](./0060-css-quality-and-capped-physical-dpr.md)           | CSS quality policy with capped physical DPR                            | Accepted |
 
 ## How to add a new ADR
 

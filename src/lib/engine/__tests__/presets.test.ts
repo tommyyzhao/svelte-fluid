@@ -53,6 +53,16 @@ describe('preset pointer interaction defaults', () => {
 	}
 });
 
+describe('preset pixel-ratio forwarding', () => {
+	for (const [name, source] of Object.entries(presets)) {
+		if (name === 'Airfoil' || name === 'Maze') continue;
+		it(`${name} forwards maxPixelRatio`, () => {
+			expect(source).toContain("'maxPixelRatio'");
+			expect(source).toContain('{maxPixelRatio}');
+		});
+	}
+});
+
 describe('flow-sensitive obstruction demos', () => {
 	it('InkInWater remains an intermittent droplet preset, not a flow-scene retrofit', () => {
 		// Source-level: no flow-scene wiring.

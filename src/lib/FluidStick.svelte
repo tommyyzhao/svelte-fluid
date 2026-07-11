@@ -15,6 +15,8 @@
 	import type { FluidConfig, FluidHandle, RGB, StickyMask } from './engine/types.js';
 
 	export interface FluidStickProps extends FluidConfig {
+		/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
+		maxPixelRatio?: number | null;
 		/** Text to render as the sticky mask. `d` takes precedence if both are set. */
 		text?: string;
 		/** CSS font string for text mode. Default `'bold 72px sans-serif'`. */

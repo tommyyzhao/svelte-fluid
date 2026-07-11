@@ -11,6 +11,8 @@
 	import type { FluidConfig, FluidHandle } from './engine/types.js';
 
 	export interface FluidTextProps extends FluidConfig {
+		/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
+		maxPixelRatio?: number | null;
 		/** The text to render as fluid-filled letterforms. */
 		text: string;
 		/**
