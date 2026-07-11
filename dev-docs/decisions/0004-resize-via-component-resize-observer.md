@@ -1,6 +1,6 @@
 # ADR 0004: Resize handled by component ResizeObserver, not engine
 
-**Status:** Accepted
+**Status:** Superseded in part by ADR-0059
 **Date:** 2026-04-06
 
 ## Context
