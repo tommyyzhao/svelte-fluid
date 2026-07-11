@@ -337,14 +337,19 @@ export function getUniforms(gl: GL, program: WebGLProgram): Record<string, WebGL
 /** Convenience: compile + link + uniforms in one call. */
 export function makeProgram(gl: GL, vs: WebGLShader, fs: WebGLShader): ProgramWrap {
 	const program = createProgram(gl, vs, fs);
-	const uniforms = getUniforms(gl, program);
-	return {
-		program,
-		uniforms,
-		bind() {
-			gl.useProgram(program);
-		}
-	};
+	try {
+		const uniforms = getUniforms(gl, program);
+		return {
+			program,
+			uniforms,
+			bind() {
+				gl.useProgram(program);
+			}
+		};
+	} catch (error) {
+		gl.deleteProgram(program);
+		throw error;
+	}
 }
 
 /**
@@ -355,7 +360,7 @@ export function makeProgram(gl: GL, vs: WebGLShader, fs: WebGLShader): ProgramWr
  * Ported from script.js:351-382.
  */
 export class Material {
-	private programs = new Map<string, WebGLProgram>();
+	private programs = new Map<string, ProgramWrap>();
 	private fragmentShaders = new Map<string, WebGLShader>();
 	activeProgram: WebGLProgram | null = null;
 	uniforms: Record<string, WebGLUniformLocation | null> = {};
@@ -366,26 +371,38 @@ export class Material {
 		private fragmentShaderSource: string
 	) {}
 
-	setKeywords(keywords: string[]): void {
+	prepareKeywords(keywords: string[]): string {
 		const hash = [...keywords].sort().join(',');
+		if (this.programs.has(hash)) return hash;
 
-		let program = this.programs.get(hash) ?? null;
-		if (program == null) {
-			const fragmentShader = compileShader(
-				this.gl,
-				this.gl.FRAGMENT_SHADER,
-				this.fragmentShaderSource,
-				keywords
-			);
-			program = createProgram(this.gl, this.vertexShader, fragmentShader);
+		const fragmentShader = compileShader(
+			this.gl,
+			this.gl.FRAGMENT_SHADER,
+			this.fragmentShaderSource,
+			keywords
+		);
+		try {
+			const program = makeProgram(this.gl, this.vertexShader, fragmentShader);
 			this.programs.set(hash, program);
 			this.fragmentShaders.set(hash, fragmentShader);
+			return hash;
+		} catch (error) {
+			this.gl.deleteShader(fragmentShader);
+			throw error;
 		}
+	}
 
-		if (program === this.activeProgram) return;
+	activatePrepared(hash: string): void {
+		const program = this.programs.get(hash);
+		if (!program) throw new Error(`svelte-fluid: display material variant ${hash || '(default)'} was not prepared`);
+		if (program.program === this.activeProgram) return;
+		this.uniforms = program.uniforms;
+		this.activeProgram = program.program;
+	}
 
-		this.uniforms = getUniforms(this.gl, program);
-		this.activeProgram = program;
+	setKeywords(keywords: string[]): void {
+		const hash = this.prepareKeywords(keywords);
+		this.activatePrepared(hash);
 	}
 
 	bind(): void {
@@ -396,10 +413,10 @@ export class Material {
 		for (const [hash, p] of this.programs) {
 			const fs = this.fragmentShaders.get(hash);
 			if (fs) {
-				this.gl.detachShader(p, fs);
+				this.gl.detachShader(p.program, fs);
 				this.gl.deleteShader(fs);
 			}
-			this.gl.deleteProgram(p);
+			this.gl.deleteProgram(p.program);
 		}
 		this.programs.clear();
 		this.fragmentShaders.clear();

@@ -29,7 +29,8 @@ describe('maccormack: dye/scalar advection untouched', () => {
 		// advection shader never references it.
 		expect(shadersSrc).toContain('uniform sampler2D uPhiHat;');
 		expect(engineSrc).toContain('private advectionMacCormackProgram!: ProgramWrap;');
-		expect(engineSrc).toContain('this.advectionMacCormackProgram = makeProgram(gl, this.baseVertexShader, f.advectionMacCormack);');
+		expect(engineSrc).toContain("if (this.useMacCormack) selected.add('advectionMacCormack');");
+		expect(engineSrc).toContain("case 'advectionMacCormack': this.advectionMacCormackProgram = program;");
 	});
 
 	it('leaves advectDye and advectScalar on the shared advectionProgram', () => {

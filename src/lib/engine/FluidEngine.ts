@@ -114,6 +114,41 @@ import {
 const FLOW_SOURCE_BATCH_SIZE = 4;
 const FLOW_OUTLET_BATCH_SIZE = 4;
 
+const CORE_PROGRAM_NAMES = [
+	'copy',
+	'clear',
+	'splat',
+	'advection',
+	'divergence',
+	'curl',
+	'vorticity',
+	'viscosity',
+	'wallFriction',
+	'pressure',
+	'pressureJacobi2',
+	'gradientSubtract'
+] as const;
+
+const OPTIONAL_PROGRAM_NAMES = [
+	'blur',
+	'bloomPrefilter',
+	'bloomBlur',
+	'bloomFinal',
+	'sunraysMask',
+	'sunrays',
+	'advectionMacCormack',
+	'flowSource',
+	'flowOutlet',
+	'flowForce',
+	'prescribedField',
+	'applyMask',
+	'glass'
+] as const;
+
+type CoreProgramName = (typeof CORE_PROGRAM_NAMES)[number];
+type OptionalProgramName = (typeof OPTIONAL_PROGRAM_NAMES)[number];
+type EngineProgramName = CoreProgramName | OptionalProgramName;
+
 interface FlowSourceBatchEntry {
 	kind: 0 | 1 | 2;
 	profile: 0 | 1;
@@ -583,7 +618,6 @@ export class FluidEngine implements FluidHandle {
 	private blurProgram!: ProgramWrap;
 	private copyProgram!: ProgramWrap;
 	private clearProgram!: ProgramWrap;
-	private checkerboardProgram!: ProgramWrap;
 	private bloomPrefilterProgram!: ProgramWrap;
 	private bloomBlurProgram!: ProgramWrap;
 	private bloomFinalProgram!: ProgramWrap;
@@ -1114,6 +1148,10 @@ export class FluidEngine implements FluidHandle {
 			patch.pressureIterations !== undefined ||
 			patch.substeps !== undefined;
 
+		// Programs and the display keyword variant are prepared before config is
+		// committed. A compile/link failure leaves the old config and resources live.
+		this.ensureProgramsFor(b);
+		const preparedDisplayVariant = this.displayMaterial.prepareKeywords(this.displayKeywords(b));
 		this.config = b;
 		if (performanceResetChanged) this.resetPerformanceGovernor();
 		if (a.BACK_COLOR !== b.BACK_COLOR) {
@@ -1135,7 +1173,7 @@ export class FluidEngine implements FluidHandle {
 			if (
 				kwChanged || shapeChanged || revealChanged || distortionChanged || obstructionsChanged ||
 				obstructionColorChanged || flowChanged
-			) this.updateKeywords();
+			) this.updateKeywords(preparedDisplayVariant);
 			if (stickyChanged || stickyMaskChanged) this.initStickyMaskTexture();
 			if (distortionImageChanged) this.loadDistortionImage(b.DISTORTION_IMAGE_URL);
 		};
@@ -1226,6 +1264,8 @@ export class FluidEngine implements FluidHandle {
 	 * generate invalid-object GL errors; CPU config is retained and rebuilt.
 	 */
 	private invalidateLostContextHandles(): void {
+		this.resetOptionalProgramHandles();
+		this.blurVertexShader = undefined!;
 		this.ditheringTexture.dispose();
 		this.distortionTexture = null;
 		this.distortionLoadedUrl = null;
@@ -1381,11 +1421,10 @@ export class FluidEngine implements FluidHandle {
 		}
 
 		// Programs
-		const programs: ProgramWrap[] = [
+		const programs = [
 			this.blurProgram,
 			this.copyProgram,
 			this.clearProgram,
-			this.checkerboardProgram,
 			this.bloomPrefilterProgram,
 			this.bloomBlurProgram,
 			this.bloomFinalProgram,
@@ -1408,13 +1447,13 @@ export class FluidEngine implements FluidHandle {
 			this.prescribedFieldProgram,
 			this.applyMaskProgram,
 			this.glassProgram
-		];
+		].filter((program): program is ProgramWrap => program != null);
 		for (const p of programs) gl.deleteProgram(p.program);
 		this.displayMaterial.dispose();
 
 		// Shaders
 		gl.deleteShader(this.baseVertexShader);
-		gl.deleteShader(this.blurVertexShader);
+		if (this.blurVertexShader) gl.deleteShader(this.blurVertexShader);
 		for (const s of this.fragmentShaders) gl.deleteShader(s);
 		this.fragmentShaders = [];
 
@@ -1564,60 +1603,29 @@ export class FluidEngine implements FluidHandle {
 	}
 
 	private compileShaders(): void {
-		// On context restore the old shader handles are stale (driver already
-		// freed them). Reset the accumulator so dispose() only sees live handles.
+		// Context restore invalidates every shader. Rebuild only the set selected
+		// by the effective, capability-gated configuration.
 		this.fragmentShaders = [];
+		this._fragmentShadersByName = {};
+		this.blurVertexShader = undefined!;
+		this.resetOptionalProgramHandles();
 
 		const gl = this.gl;
-
 		this.baseVertexShader = compileShader(gl, gl.VERTEX_SHADER, S.baseVertexShader);
-		this.blurVertexShader = compileShader(gl, gl.VERTEX_SHADER, S.blurVertexShader);
-
-		const advectionKeywords = this.ext.supportLinearFiltering ? null : ['MANUAL_FILTERING'];
-
-		// MacCormack velocity advection is gated on hardware linear filtering: the
-		// manual-bilerp fallback would make the two-pass scheme too expensive on
-		// that path, so it is forced off (decided once here, like MANUAL_FILTERING).
 		this.useMacCormack = this.config.ADVECTION_SCHEME === 'maccormack' && this.ext.supportLinearFiltering;
 
-		const fragments: Record<string, WebGLShader> = {
-			blur: compileShader(gl, gl.FRAGMENT_SHADER, S.blurShader),
-			copy: compileShader(gl, gl.FRAGMENT_SHADER, S.copyShader),
-			clear: compileShader(gl, gl.FRAGMENT_SHADER, S.clearShader),
-			checkerboard: compileShader(gl, gl.FRAGMENT_SHADER, S.checkerboardShader),
-			bloomPrefilter: compileShader(gl, gl.FRAGMENT_SHADER, S.bloomPrefilterShader),
-			bloomBlur: compileShader(gl, gl.FRAGMENT_SHADER, S.bloomBlurShader),
-			bloomFinal: compileShader(gl, gl.FRAGMENT_SHADER, S.bloomFinalShader),
-			sunraysMask: compileShader(gl, gl.FRAGMENT_SHADER, S.sunraysMaskShader),
-			sunrays: compileShader(gl, gl.FRAGMENT_SHADER, S.sunraysShader),
-			splat: compileShader(gl, gl.FRAGMENT_SHADER, S.splatShader),
-			advection: compileShader(gl, gl.FRAGMENT_SHADER, S.advectionShader, advectionKeywords),
-			// No MANUAL_FILTERING variant: MacCormack only runs with hardware linear
-			// filtering (see useMacCormack), so it assumes hardware bilinear.
-			advectionMacCormack: compileShader(gl, gl.FRAGMENT_SHADER, S.advectionMacCormackShader),
-			divergence: compileShader(gl, gl.FRAGMENT_SHADER, S.divergenceShader),
-			curl: compileShader(gl, gl.FRAGMENT_SHADER, S.curlShader),
-			vorticity: compileShader(gl, gl.FRAGMENT_SHADER, S.vorticityShader),
-			viscosity: compileShader(gl, gl.FRAGMENT_SHADER, S.viscosityShader),
-			wallFriction: compileShader(gl, gl.FRAGMENT_SHADER, S.wallFrictionShader),
-			pressure: compileShader(gl, gl.FRAGMENT_SHADER, S.pressureShader),
-			pressureJacobi2: compileShader(gl, gl.FRAGMENT_SHADER, S.pressureJacobi2Shader),
-			gradientSubtract: compileShader(gl, gl.FRAGMENT_SHADER, S.gradientSubtractShader),
-			flowSource: compileShader(gl, gl.FRAGMENT_SHADER, S.flowSourceShader),
-			flowOutlet: compileShader(gl, gl.FRAGMENT_SHADER, S.flowOutletShader),
-			flowForce: compileShader(gl, gl.FRAGMENT_SHADER, S.flowForceShader),
-			prescribedField: compileShader(gl, gl.FRAGMENT_SHADER, S.prescribedFieldShader),
-			applyMask: compileShader(gl, gl.FRAGMENT_SHADER, S.applyMaskShader),
-			glass: compileShader(gl, gl.FRAGMENT_SHADER, S.glassShaderSource)
-		};
-
-		for (const f of Object.values(fragments)) this.fragmentShaders.push(f);
-
-		// Stash for use during program creation
-		this._fragmentShadersByName = fragments;
+		const selected = this.selectedOptionalPrograms(this.config);
+		if (selected.has('blur')) {
+			this.blurVertexShader = compileShader(gl, gl.VERTEX_SHADER, S.blurVertexShader);
+		}
+		for (const name of [...CORE_PROGRAM_NAMES, ...selected]) {
+			const fragment = this.compileFragmentShader(name);
+			this._fragmentShadersByName[name] = fragment;
+			this.fragmentShaders.push(fragment);
+		}
 	}
 
-	private _fragmentShadersByName!: Record<string, WebGLShader>;
+	private _fragmentShadersByName: Partial<Record<EngineProgramName, WebGLShader>> = {};
 
 	private initBuffersAndPrograms(): void {
 		const gl = this.gl;
@@ -1632,45 +1640,17 @@ export class FluidEngine implements FluidHandle {
 				rawBlit(target, clear);
 			};
 		} else {
-			// Normal instances keep the original closure: no profiler branch enters
-			// their draw path.
 			this.blit = rawBlit;
 		}
 
-		const f = this._fragmentShadersByName;
-		this.blurProgram = makeProgram(gl, this.blurVertexShader, f.blur);
-		this.copyProgram = makeProgram(gl, this.baseVertexShader, f.copy);
-		this.clearProgram = makeProgram(gl, this.baseVertexShader, f.clear);
-		this.checkerboardProgram = makeProgram(gl, this.baseVertexShader, f.checkerboard);
-		this.bloomPrefilterProgram = makeProgram(gl, this.baseVertexShader, f.bloomPrefilter);
-		this.bloomBlurProgram = makeProgram(gl, this.baseVertexShader, f.bloomBlur);
-		this.bloomFinalProgram = makeProgram(gl, this.baseVertexShader, f.bloomFinal);
-		this.sunraysMaskProgram = makeProgram(gl, this.baseVertexShader, f.sunraysMask);
-		this.sunraysProgram = makeProgram(gl, this.baseVertexShader, f.sunrays);
-		this.splatProgram = makeProgram(gl, this.baseVertexShader, f.splat);
-		this.advectionProgram = makeProgram(gl, this.baseVertexShader, f.advection);
-		this.advectionMacCormackProgram = makeProgram(gl, this.baseVertexShader, f.advectionMacCormack);
-		this.divergenceProgram = makeProgram(gl, this.baseVertexShader, f.divergence);
-		this.curlProgram = makeProgram(gl, this.baseVertexShader, f.curl);
-		this.vorticityProgram = makeProgram(gl, this.baseVertexShader, f.vorticity);
-		this.viscosityProgram = makeProgram(gl, this.baseVertexShader, f.viscosity);
-		this.wallFrictionProgram = makeProgram(gl, this.baseVertexShader, f.wallFriction);
-		this.pressureProgram = makeProgram(gl, this.baseVertexShader, f.pressure);
-		this.pressureJacobi2Program = makeProgram(gl, this.baseVertexShader, f.pressureJacobi2);
-		this.gradientSubtractProgram = makeProgram(gl, this.baseVertexShader, f.gradientSubtract);
-		this.flowSourceProgram = makeProgram(gl, this.baseVertexShader, f.flowSource);
-		this.flowOutletProgram = makeProgram(gl, this.baseVertexShader, f.flowOutlet);
-		this.flowForceProgram = makeProgram(gl, this.baseVertexShader, f.flowForce);
-		this.prescribedFieldProgram = makeProgram(gl, this.baseVertexShader, f.prescribedField);
-
-		// On context restore the old Material holds a Map of stale program/shader
-		// entries. Dispose it so the JS heap doesn't accumulate orphaned Maps.
-		if (this.displayMaterial) {
-			this.displayMaterial.dispose();
+		for (const name of CORE_PROGRAM_NAMES) this.assignProgram(name, this.linkCompiledProgram(name));
+		for (const name of this.selectedOptionalPrograms(this.config)) {
+			this.assignProgram(name, this.linkCompiledProgram(name));
 		}
+
+		// On restore, Material still owns stale handles from the lost context.
+		if (this.displayMaterial) this.displayMaterial.dispose();
 		this.displayMaterial = new Material(gl, this.baseVertexShader, S.displayShaderSource);
-		this.applyMaskProgram = makeProgram(gl, this.baseVertexShader, f.applyMask);
-		this.glassProgram = makeProgram(gl, this.baseVertexShader, f.glass);
 
 		// 1x1 black fallback for sticky mask (prevents undefined sampler reads)
 		if (this.stickyFallbackTexture) gl.deleteTexture(this.stickyFallbackTexture);
@@ -1681,6 +1661,166 @@ export class FluidEngine implements FluidHandle {
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 		gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, 1, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, new Uint8Array([0]));
+	}
+
+	private selectedOptionalPrograms(config: ResolvedConfig): Set<OptionalProgramName> {
+		const selected = new Set<OptionalProgramName>();
+		if (config.BLOOM) {
+			selected.add('blur');
+			selected.add('bloomPrefilter');
+			selected.add('bloomBlur');
+			selected.add('bloomFinal');
+		}
+		if (config.SUNRAYS) {
+			selected.add('blur');
+			selected.add('sunraysMask');
+			selected.add('sunrays');
+		}
+		if (this.useMacCormack) selected.add('advectionMacCormack');
+		if (config.GLASS && config.CONTAINER_SHAPE) selected.add('glass');
+
+		const flow = config.FLOW;
+		if (flow?.sources?.length) selected.add('flowSource');
+		if (flow?.outlets?.length) selected.add('flowOutlet');
+		if (flow?.forces?.length) selected.add('flowForce');
+		if (flow?.prescribed && (flow.mode ?? 'live') !== 'live') {
+			selected.add('prescribedField');
+			const physicalMask =
+				!!(config.OBSTRUCTIONS && config.OBSTRUCTIONS.length) ||
+				(!!config.CONTAINER_SHAPE && !config.OPEN_BOUNDARY);
+			if (physicalMask) selected.add('applyMask');
+		}
+		return selected;
+	}
+
+	private ensureProgramsFor(config: ResolvedConfig): void {
+		for (const name of this.selectedOptionalPrograms(config)) {
+			if (this.optionalProgram(name)) continue;
+			let fragment!: WebGLShader;
+			this.profileLifecycle('shaderCompile', () => {
+				if (name === 'blur' && !this.blurVertexShader) {
+					this.blurVertexShader = compileShader(this.gl, this.gl.VERTEX_SHADER, S.blurVertexShader);
+				}
+				fragment = this.compileFragmentShader(name);
+			});
+			try {
+				const program = this.profileLifecycle('programLink', () =>
+					makeProgram(this.gl, name === 'blur' ? this.blurVertexShader! : this.baseVertexShader, fragment)
+				);
+				this.fragmentShaders.push(fragment);
+				this.assignProgram(name, program);
+			} catch (error) {
+				this.gl.deleteShader(fragment);
+				throw error;
+			}
+		}
+	}
+
+	private compileFragmentShader(name: EngineProgramName): WebGLShader {
+		const keywords = name === 'advection' && !this.ext.supportLinearFiltering ? ['MANUAL_FILTERING'] : null;
+		return compileShader(this.gl, this.gl.FRAGMENT_SHADER, this.fragmentSource(name), keywords);
+	}
+
+	private fragmentSource(name: EngineProgramName): string {
+		switch (name) {
+			case 'blur': return S.blurShader;
+			case 'copy': return S.copyShader;
+			case 'clear': return S.clearShader;
+			case 'bloomPrefilter': return S.bloomPrefilterShader;
+			case 'bloomBlur': return S.bloomBlurShader;
+			case 'bloomFinal': return S.bloomFinalShader;
+			case 'sunraysMask': return S.sunraysMaskShader;
+			case 'sunrays': return S.sunraysShader;
+			case 'splat': return S.splatShader;
+			case 'advection': return S.advectionShader;
+			case 'advectionMacCormack': return S.advectionMacCormackShader;
+			case 'divergence': return S.divergenceShader;
+			case 'curl': return S.curlShader;
+			case 'vorticity': return S.vorticityShader;
+			case 'viscosity': return S.viscosityShader;
+			case 'wallFriction': return S.wallFrictionShader;
+			case 'pressure': return S.pressureShader;
+			case 'pressureJacobi2': return S.pressureJacobi2Shader;
+			case 'gradientSubtract': return S.gradientSubtractShader;
+			case 'flowSource': return S.flowSourceShader;
+			case 'flowOutlet': return S.flowOutletShader;
+			case 'flowForce': return S.flowForceShader;
+			case 'prescribedField': return S.prescribedFieldShader;
+			case 'applyMask': return S.applyMaskShader;
+			case 'glass': return S.glassShaderSource;
+		}
+	}
+
+	private linkCompiledProgram(name: EngineProgramName): ProgramWrap {
+		const fragment = this._fragmentShadersByName[name];
+		if (!fragment) throw new Error(`svelte-fluid: selected shader ${name} was not compiled`);
+		const vertex = name === 'blur' ? this.blurVertexShader : this.baseVertexShader;
+		if (!vertex) throw new Error(`svelte-fluid: selected vertex shader for ${name} was not compiled`);
+		return makeProgram(this.gl, vertex, fragment);
+	}
+
+	private optionalProgram(name: OptionalProgramName): ProgramWrap | null {
+		switch (name) {
+			case 'blur': return this.blurProgram;
+			case 'bloomPrefilter': return this.bloomPrefilterProgram;
+			case 'bloomBlur': return this.bloomBlurProgram;
+			case 'bloomFinal': return this.bloomFinalProgram;
+			case 'sunraysMask': return this.sunraysMaskProgram;
+			case 'sunrays': return this.sunraysProgram;
+			case 'advectionMacCormack': return this.advectionMacCormackProgram;
+			case 'flowSource': return this.flowSourceProgram;
+			case 'flowOutlet': return this.flowOutletProgram;
+			case 'flowForce': return this.flowForceProgram;
+			case 'prescribedField': return this.prescribedFieldProgram;
+			case 'applyMask': return this.applyMaskProgram;
+			case 'glass': return this.glassProgram;
+		}
+	}
+
+	private assignProgram(name: EngineProgramName, program: ProgramWrap): void {
+		switch (name) {
+			case 'blur': this.blurProgram = program; break;
+			case 'copy': this.copyProgram = program; break;
+			case 'clear': this.clearProgram = program; break;
+			case 'bloomPrefilter': this.bloomPrefilterProgram = program; break;
+			case 'bloomBlur': this.bloomBlurProgram = program; break;
+			case 'bloomFinal': this.bloomFinalProgram = program; break;
+			case 'sunraysMask': this.sunraysMaskProgram = program; break;
+			case 'sunrays': this.sunraysProgram = program; break;
+			case 'splat': this.splatProgram = program; break;
+			case 'advection': this.advectionProgram = program; break;
+			case 'advectionMacCormack': this.advectionMacCormackProgram = program; break;
+			case 'divergence': this.divergenceProgram = program; break;
+			case 'curl': this.curlProgram = program; break;
+			case 'vorticity': this.vorticityProgram = program; break;
+			case 'viscosity': this.viscosityProgram = program; break;
+			case 'wallFriction': this.wallFrictionProgram = program; break;
+			case 'pressure': this.pressureProgram = program; break;
+			case 'pressureJacobi2': this.pressureJacobi2Program = program; break;
+			case 'gradientSubtract': this.gradientSubtractProgram = program; break;
+			case 'flowSource': this.flowSourceProgram = program; break;
+			case 'flowOutlet': this.flowOutletProgram = program; break;
+			case 'flowForce': this.flowForceProgram = program; break;
+			case 'prescribedField': this.prescribedFieldProgram = program; break;
+			case 'applyMask': this.applyMaskProgram = program; break;
+			case 'glass': this.glassProgram = program; break;
+		}
+	}
+
+	private resetOptionalProgramHandles(): void {
+		this.blurProgram = undefined!;
+		this.bloomPrefilterProgram = undefined!;
+		this.bloomBlurProgram = undefined!;
+		this.bloomFinalProgram = undefined!;
+		this.sunraysMaskProgram = undefined!;
+		this.sunraysProgram = undefined!;
+		this.advectionMacCormackProgram = undefined!;
+		this.flowSourceProgram = undefined!;
+		this.flowOutletProgram = undefined!;
+		this.flowForceProgram = undefined!;
+		this.prescribedFieldProgram = undefined!;
+		this.applyMaskProgram = undefined!;
+		this.glassProgram = undefined!;
 	}
 
 	/** Owns persistent dye plus the optional dye-resolution scalar field. */
@@ -2573,8 +2713,8 @@ export class FluidEngine implements FluidHandle {
 		if (!shape && !hasObstruction) return;
 		const gl = this.gl;
 
-		this.applyMaskProgram.bind();
-		gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
+this.applyMaskProgram.bind();
+gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 
 		// Obstruction uniforms apply on every path (analytical, svgPath, and
 		// the no-container case). Bound on unit 2 — free in this pass.
@@ -2638,25 +2778,30 @@ export class FluidEngine implements FluidHandle {
 		target.swap();
 	}
 
-	private updateKeywords(): void {
+	private displayKeywords(config: ResolvedConfig): string[] {
 		const keywords: string[] = [];
-		if (this.config.SHADING) keywords.push('SHADING');
-		if (this.config.BLOOM) keywords.push('BLOOM');
-		if (this.config.SUNRAYS) keywords.push('SUNRAYS');
-		if (this.config.CONTAINER_SHAPE) keywords.push('CONTAINER_MASK');
+		if (config.SHADING) keywords.push('SHADING');
+		if (config.BLOOM) keywords.push('BLOOM');
+		if (config.SUNRAYS) keywords.push('SUNRAYS');
+		if (config.CONTAINER_SHAPE) keywords.push('CONTAINER_MASK');
 		// Obstructions and distortion share display texture unit 6; the
 		// obstruction mask is only bound when distortion is off, so the
 		// keyword must match that guard or the display samples a stale unit.
-		if (!this.config.DISTORTION && this.config.OBSTRUCTIONS && this.config.OBSTRUCTIONS.length) {
+		if (!config.DISTORTION && config.OBSTRUCTIONS && config.OBSTRUCTIONS.length) {
 			keywords.push('OBSTRUCTION_MASK');
 			// Paint obstruction footprints in a solid color (ADR-0039).
-			if (this.config.OBSTRUCTION_COLOR) keywords.push('OBSTRUCTION_FILL');
+			if (config.OBSTRUCTION_COLOR) keywords.push('OBSTRUCTION_FILL');
 		}
-		if (this.flowVisualizationActive()) keywords.push('FLOW_VISUALIZATION');
+		if (this.flowVisualizationActiveFor(config)) keywords.push('FLOW_VISUALIZATION');
 		// DISTORTION and REVEAL are mutually exclusive display modes
-		if (this.config.DISTORTION) keywords.push('DISTORTION');
-		else if (this.config.REVEAL) keywords.push('REVEAL');
-		this.displayMaterial.setKeywords(keywords);
+		if (config.DISTORTION) keywords.push('DISTORTION');
+		else if (config.REVEAL) keywords.push('REVEAL');
+		return keywords;
+	}
+
+	private updateKeywords(preparedVariant?: string): void {
+		const variant = preparedVariant ?? this.displayMaterial.prepareKeywords(this.displayKeywords(this.config));
+		this.displayMaterial.activatePrepared(variant);
 	}
 
 	/* ---------------------------------------------------------------------- */
@@ -3386,6 +3531,11 @@ export class FluidEngine implements FluidHandle {
 		return !!colorBy && colorBy !== 'dye' && !this.config.REVEAL && !this.config.DISTORTION;
 	}
 
+	private flowVisualizationActiveFor(config: ResolvedConfig): boolean {
+		const colorBy = config.FLOW?.visualization?.colorBy;
+		return !!colorBy && colorBy !== 'dye' && !config.REVEAL && !config.DISTORTION;
+	}
+
 	private flowVisualizationMode(): number {
 		const colorBy = this.config.FLOW?.visualization?.colorBy ?? 'dye';
 		if (colorBy === 'speed') return 1;
@@ -3809,13 +3959,6 @@ export class FluidEngine implements FluidHandle {
 	private requireOptionalFBO(target: FBO | null, owner: string): FBO {
 		if (!target) throw new Error(`svelte-fluid: ${owner} framebuffer invariant violated`);
 		return target;
-	}
-
-	private drawCheckerboard(target: FBO | null): void {
-		const gl = this.gl;
-		this.checkerboardProgram.bind();
-		gl.uniform1f(this.checkerboardProgram.uniforms.aspectRatio, this.canvas.width / this.canvas.height);
-		this.blit(target);
 	}
 
 	private drawDisplay(target: FBO | null, backgroundColor: RGB | null = null): void {

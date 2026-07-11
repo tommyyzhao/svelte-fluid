@@ -197,11 +197,12 @@
       "wave": 1,
       "priority": "P1",
       "title": "Compile only selected shader variants",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["OBS-001"],
       "spec": "Prewarm only programs required by resolved config; compile optional variants during explicit transitions, never unpredictably in first draw.",
       "acceptance": ["Baseline omits inactive variants", "Feature compiles once before use", "Restore rebuilds selected set", "Compile failure degrades predictably", "Startup improves"],
-      "files": ["engine", "program/material helpers", "compile/lifecycle tests", "ADR"]
+      "files": ["engine", "program/material helpers", "compile/lifecycle tests", "ADR"],
+      "notes": "Construction and restore now compile a selected core/optional set: inactive MacCormack, bloom, sunrays, glass, and exact flow families are omitted. Explicit setConfig transitions synchronously prewarm missing programs and display variants before config commit; disable/re-enable reuses the context-lifetime cache; render/step/input never compile. Failed link candidates clean program/shader resources and preserve the prior config/resources/active display variant. Dead checkerboard plumbing was removed. 575 node tests, check/prepack, and four focused Chromium omission/prewarm/failure/restore cases pass; ADR-0062 records the contract."
     },
     {
       "id": "LIF-007",
