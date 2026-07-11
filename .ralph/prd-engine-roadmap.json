@@ -136,11 +136,12 @@
       "wave": 1,
       "priority": "P1",
       "title": "Split framebuffer ownership",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["RLS-001", "RLS-002", "RLS-003", "RLS-004", "RLS-005", "RLS-006"],
       "spec": "Separate simulation, dye/scalar, post-process, mask, and presentation resource transitions without changing output.",
       "acceptance": ["Dye-only changes do not recreate simulation/post resources", "Sim-only changes preserve dye", "Bloom allocates once", "Lifecycle spies balance"],
-      "files": ["src/lib/engine/FluidEngine.ts", "GL helpers if mechanical", "lifecycle/setConfig tests", "ADR"]
+      "files": ["src/lib/engine/FluidEngine.ts", "GL helpers if mechanical", "lifecycle/setConfig tests", "ADR"],
+      "notes": "Dye/scalar, simulation, post-process, mask-derived, and presentation ownership is explicit with named fresh/preserve transitions. Config patches touch each affected group once; scalar presence never rebuilds dye; context restore freshly rebuilds all groups and invalidates MacCormack clearance. ADR-0055 plus framebuffer identity/count/balance coverage added; 525 node and 27 browser tests pass."
     },
     {
       "id": "LIF-002",

@@ -61,7 +61,7 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 │  Private (ports of script.js):                                  │
 │   update / step / render / drawColor / drawDisplay              │
 │   applyBloom / applySunrays / blur / multipleSplats             │
-│   initFramebuffers / initBloom / initSunrays / updateKeywords   │
+│   initDye/Simulation/PostprocessFramebuffers / updateKeywords   │
 │   handleMouseDown/Move/Up/Leave / handleTouchStart/Move/End           │
 └─────────────────────────────────────────────────────────────────┘
                              │
@@ -122,12 +122,15 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
    6. Link all 18 programs + display `Material`.
    7. Create dithering texture (1x1 placeholder, async PNG decode).
    8. `updateKeywords()` selects display shader variant.
-   9. `initFramebuffers()` allocates dye/velocity/divergence/curl/pressure/bloom*/sunrays*.
+   9. The explicit resource groups allocate dye/scalar, simulation, and
+      post-process framebuffers fresh; mask-derived solver textures and the glass
+      presentation target follow in dependency order (ADR
+      [`0055`](./decisions/0055-framebuffer-resource-ownership.md)).
    10. `replayOpeningScene()` resets the seeded RNG and opening clocks, paints
        the random initial scene, then replays the private value snapshot of
        `opts.config?.presetSplats` (see ADRs
        [`0015`](./decisions/0015-preset-components.md) and
-       [`0051`](./decisions/0051-context-restore-recreates-resources.md)).
+       [`0053`](./decisions/0053-context-restore-recreates-resources.md)).
    11. Install pointer listeners (mouse on canvas, mouseup/touchend on `window`).
    12. Schedule the first `requestAnimationFrame(this.tick)`; the opening clocks
        captured by `replayOpeningScene()` make `currentDensityDissipation()`
@@ -166,7 +169,7 @@ afresh, rebuilds textures, and calls `replayOpeningScene()`. It never uses the
 normal same-size resize path.
 Random and configured preset splats return exactly once, with the burn-in clock
 restarted; user-painted state is intentionally not preserved. See ADR
-[`0051`](./decisions/0051-context-restore-recreates-resources.md).
+[`0053`](./decisions/0053-context-restore-recreates-resources.md).
 
 ### Hot prop update
 
@@ -180,7 +183,9 @@ restarted; user-painted state is intentionally not preserved. See ADR
      `revealAccentColor`.
    - **B** SHADING/BLOOM/SUNRAYS/REVEAL/DISTORTION → `updateKeywords()` recompiles display shader.
      `sticky` toggle and `stickyMask` change trigger `initStickyMaskTexture()` rebuild.
-   - **C** SIM/DYE/BLOOM/SUNRAYS resolution → `init*Framebuffers()` rebuilds FBOs
+   - **C** SIM/DYE/BLOOM/SUNRAYS resolution → only the owning framebuffer
+     group transitions; combined changes visit each group once (ADR
+     [`0055`](./decisions/0055-framebuffer-resource-ownership.md)).
    - **A** also includes `stickyStrength`, `stickyPressure`, `stickyAmplify`.
    - **A** also includes `pointerInput` (installs/removes canvas+window
      event listeners on transition), `splatOnHover` (cursor movement
@@ -210,7 +215,7 @@ it doesn't affect this contract. The Svelte component snapshots
 array is replayed across every resize-driven rebuild — exactly like
 `stableSeed`. The engine additionally snapshots every splat and nested color by
 value, then replays that snapshot after context restoration (ADR
-[`0051`](./decisions/0051-context-restore-recreates-resources.md)).
+[`0053`](./decisions/0053-context-restore-recreates-resources.md)).
 
 User input is non-deterministic, so the contract only holds **before any
 interaction**. Touch a canvas and the pattern thereafter depends on input

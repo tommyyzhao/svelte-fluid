@@ -53,7 +53,7 @@ The original's typo `gradienSubtractProgram` (missing `t`) was corrected.
 | All 22 inline shader strings | 440–913 | `shaders.ts` as `export const` |
 | `blit` IIFE | 915–942 | `gl-utils.ts:createBlit` factory; vertex/index buffers now passed in so the engine can dispose them |
 | `CHECK_FRAMEBUFFER_STATUS` | 944–948 | Dropped (was already commented out in the original) |
-| `initFramebuffers` | 982–1010 | `FluidEngine.initFramebuffers` (also disposes old single-buffer FBOs before recreating) |
+| `initFramebuffers` | 982–1010 | Split by ownership into `FluidEngine.initDyeFramebuffers` and `initSimulationFramebuffers` (the latter disposes old transient solver FBOs before recreating) |
 | `initBloomFramebuffers` | 1012–1032 | `FluidEngine.initBloomFramebuffers` |
 | `initSunraysFramebuffers` | 1034–1043 | `FluidEngine.initSunraysFramebuffers` |
 | `createFBO` | 1045–1077 | `gl-utils.ts:createFBO` |
@@ -147,9 +147,9 @@ respects an explicit user `false`. The semantics happen to be identical
 (can't enable a feature that wasn't already enabled), but the intent is
 spelled out and a future "respect user opt-in" change is one line away.
 
-### 6. Single-buffer FBO disposal in `initFramebuffers`
+### 6. Single-buffer FBO disposal in `initSimulationFramebuffers`
 **Original:** Reassigning `divergence`, `curl`, and `pressure` on each
-`initFramebuffers()` call left the old textures and framebuffers
+simulation-group transition left the old textures and framebuffers
 orphaned. Acceptable for a single page-lifetime canvas; unacceptable for
 a library where consumers may call `setConfig({ simResolution: 256 })`
 hundreds of times.

@@ -104,6 +104,8 @@ describe('setConfig bucket classification', () => {
 		const b = next;
 
 		return {
+			simChanged: a.SIM_RESOLUTION !== b.SIM_RESOLUTION,
+			dyeChanged: a.DYE_RESOLUTION !== b.DYE_RESOLUTION,
 			fbChanged: a.SIM_RESOLUTION !== b.SIM_RESOLUTION || a.DYE_RESOLUTION !== b.DYE_RESOLUTION,
 			bloomChanged: a.BLOOM_RESOLUTION !== b.BLOOM_RESOLUTION || a.BLOOM_ITERATIONS !== b.BLOOM_ITERATIONS,
 			sunraysChanged: a.SUNRAYS_RESOLUTION !== b.SUNRAYS_RESOLUTION,
@@ -214,11 +216,15 @@ describe('setConfig bucket classification', () => {
 		it('changing simResolution triggers framebuffer rebuild', () => {
 			const c = classifyChanges({ simResolution: 64 });
 			expect(c.fbChanged).toBe(true);
+			expect(c.simChanged).toBe(true);
+			expect(c.dyeChanged).toBe(false);
 		});
 
 		it('changing dyeResolution triggers framebuffer rebuild', () => {
 			const c = classifyChanges({ dyeResolution: 512 });
 			expect(c.fbChanged).toBe(true);
+			expect(c.simChanged).toBe(false);
+			expect(c.dyeChanged).toBe(true);
 		});
 
 		it('changing bloomResolution triggers bloom rebuild', () => {
@@ -677,9 +683,12 @@ describe('context loss/restore contract', () => {
 				operations.push('initBuffersAndPrograms');
 				operations.push('recreateDithering');
 				operations.push('updateKeywords');
-				operations.push('initFramebuffers:fresh');
+				operations.push('initDyeFramebuffers:fresh');
+				operations.push('initSimulationFramebuffers:fresh');
+				operations.push('initPostprocessFramebuffers:fresh');
 				operations.push('initMaskTexture');
 				operations.push('initStickyMaskTexture');
+				operations.push('initSolidDerivedTextures');
 				operations.push('initGlassFramebuffer');
 				operations.push('replayOpeningScene');
 				if (pointerListenersInstalled) {
@@ -750,7 +759,10 @@ describe('context loss/restore contract', () => {
 		expect(e.operations).toContain('compileShaders');
 		expect(e.operations).toContain('initBuffersAndPrograms');
 		expect(e.operations).toContain('updateKeywords');
-		expect(e.operations).toContain('initFramebuffers:fresh');
+		expect(e.operations).toContain('initDyeFramebuffers:fresh');
+		expect(e.operations).toContain('initSimulationFramebuffers:fresh');
+		expect(e.operations).toContain('initPostprocessFramebuffers:fresh');
+		expect(e.operations).toContain('initSolidDerivedTextures');
 		expect(e.operations).toContain('replayOpeningScene');
 		expect(e.operations).toContain('startRaf');
 	});
@@ -762,7 +774,10 @@ describe('context loss/restore contract', () => {
 		expect(e.operations.indexOf('invalidateLostContextHandles')).toBeLessThan(
 			e.operations.indexOf('initContext')
 		);
-		expect(e.operations.indexOf('initFramebuffers:fresh')).toBeLessThan(
+		expect(e.operations.indexOf('initSimulationFramebuffers:fresh')).toBeLessThan(
+			e.operations.indexOf('initSolidDerivedTextures')
+		);
+		expect(e.operations.indexOf('initSolidDerivedTextures')).toBeLessThan(
 			e.operations.indexOf('replayOpeningScene')
 		);
 	});

@@ -128,6 +128,8 @@ interface FlowOutletBatchEntry {
 
 type ReadField = 'velocity' | 'dye' | 'pressure' | 'divergence' | 'curl' | 'scalar';
 
+type ResourceInitMode = 'fresh' | 'preserve';
+
 interface ReadFieldOptions {
 	components?: 1 | 2 | 3 | 4;
 }
@@ -791,11 +793,14 @@ export class FluidEngine implements FluidHandle {
 
 			this.initDistortionFallback();
 			this.updateKeywords();
-			this.initFramebuffers();
+			this.initDyeFramebuffers('fresh');
+			this.initSimulationFramebuffers('fresh');
+			this.initPostprocessFramebuffers('fresh');
 			this.initMaskTexture();
 			this.initStickyMaskTexture();
 			this.initObstructionMaskTexture();
 			this.initSolidMaskTexture();
+			this.initSolidDerivedTextures();
 			this.initPrescribedGridTextures();
 			this.initGlassFramebuffer();
 			if (this.config.DISTORTION_IMAGE_URL) {
@@ -1052,7 +1057,8 @@ export class FluidEngine implements FluidHandle {
 		const a = this.config;
 		const b = next;
 
-		const fbChanged = a.SIM_RESOLUTION !== b.SIM_RESOLUTION || a.DYE_RESOLUTION !== b.DYE_RESOLUTION;
+		const simChanged = a.SIM_RESOLUTION !== b.SIM_RESOLUTION;
+		const dyeChanged = a.DYE_RESOLUTION !== b.DYE_RESOLUTION;
 		const bloomChanged = a.BLOOM_RESOLUTION !== b.BLOOM_RESOLUTION || a.BLOOM_ITERATIONS !== b.BLOOM_ITERATIONS;
 		const sunraysChanged = a.SUNRAYS_RESOLUTION !== b.SUNRAYS_RESOLUTION;
 		const kwChanged = a.SHADING !== b.SHADING || a.BLOOM !== b.BLOOM || a.SUNRAYS !== b.SUNRAYS;
@@ -1072,6 +1078,7 @@ export class FluidEngine implements FluidHandle {
 		const obstructionColorChanged = !!a.OBSTRUCTION_COLOR !== !!b.OBSTRUCTION_COLOR;
 		const flowChanged = !flowConfigEqual(a.FLOW, b.FLOW);
 		const scalarNeedChanged = needsScalarFBOForFlow(a.FLOW) !== needsScalarFBOForFlow(b.FLOW);
+		const solidDefinitionChanged = shapeChanged || obstructionsChanged || openBoundaryChanged;
 		const pointerInputChanged = a.POINTER_INPUT !== b.POINTER_INPUT;
 		const pointerTargetChanged = a.POINTER_TARGET !== b.POINTER_TARGET;
 		const performanceResetChanged =
@@ -1089,12 +1096,15 @@ export class FluidEngine implements FluidHandle {
 			this.normalizedBackColor = normalizeColor(b.BACK_COLOR);
 		}
 
-		if (fbChanged || scalarNeedChanged) this.initFramebuffers();
-		if (bloomChanged) this.initBloomFramebuffers();
-		if (sunraysChanged) this.initSunraysFramebuffers();
+		if (dyeChanged) this.initDyeFramebuffers('preserve');
+		else if (scalarNeedChanged) this.syncScalarFramebuffer('preserve');
+		if (simChanged) this.initSimulationFramebuffers('preserve');
+		if (bloomChanged) this.initBloomFramebuffers('preserve');
+		if (sunraysChanged) this.initSunraysFramebuffers('preserve');
 		if (shapeChanged) this.initMaskTexture();
 		if (obstructionsChanged) this.initObstructionMaskTexture();
-		if (shapeChanged || obstructionsChanged || openBoundaryChanged) this.initSolidMaskTexture();
+		if (solidDefinitionChanged) this.initSolidMaskTexture();
+		if (simChanged || solidDefinitionChanged) this.initSolidDerivedTextures();
 		if (flowChanged) this.initPrescribedGridTextures();
 		if (glassChanged) this.initGlassFramebuffer();
 		if (
@@ -1154,14 +1164,16 @@ export class FluidEngine implements FluidHandle {
 		this.ditheringTexture = createDitheringTexture(this.gl);
 		this.initDistortionFallback();
 		this.updateKeywords();
-		// Context loss invalidates every WebGL object. Never take the normal
-		// resize/preserve path here: same-sized ping-pong buffers would otherwise
-		// retain dead framebuffer and texture handles.
-		this.initFramebuffers(false);
+		// Context loss invalidates every WebGL object. Every group takes its fresh
+		// path here; preserve/resize would retain dead same-sized handles.
+		this.initDyeFramebuffers('fresh');
+		this.initSimulationFramebuffers('fresh');
+		this.initPostprocessFramebuffers('fresh');
 		this.initMaskTexture();
 		this.initStickyMaskTexture();
 		this.initObstructionMaskTexture();
 		this.initSolidMaskTexture();
+		this.initSolidDerivedTextures();
 		this.initPrescribedGridTextures();
 		this.initGlassFramebuffer();
 		// Re-load distortion image (GL texture was lost with context)
@@ -1201,6 +1213,7 @@ export class FluidEngine implements FluidHandle {
 		this.solidMaskW = 0;
 		this.solidMaskH = 0;
 		this.solidNeighborTexture = null;
+		this.solidClearanceTexture = null;
 		this.prescribedVelocityTexture = null;
 		this.prescribedScalarTexture = null;
 		this.scalar = null;
@@ -1709,19 +1722,17 @@ export class FluidEngine implements FluidHandle {
 		gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, 1, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, new Uint8Array([0]));
 	}
 
-	private initFramebuffers(preservePersistentFields = true): void {
+	/** Owns persistent dye plus the optional dye-resolution scalar field. */
+	private initDyeFramebuffers(mode: ResourceInitMode): void {
 		const gl = this.gl;
-		const simRes = getResolution(gl, this.config.SIM_RESOLUTION);
 		const dyeRes = getResolution(gl, this.config.DYE_RESOLUTION);
 		const texType = this.ext.halfFloatTexType;
 		const rgba = this.ext.formatRGBA;
-		const rg = this.ext.formatRG;
-		const r = this.ext.formatR;
 		const filtering = this.ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST;
 
 		gl.disable(gl.BLEND);
 
-		if (!preservePersistentFields || this.dye == null) {
+		if (mode === 'fresh' || this.dye == null) {
 			this.dye = createDoubleFBO(gl, dyeRes.width, dyeRes.height, rgba.internalFormat, rgba.format, texType, filtering);
 		} else {
 			this.dye = resizeDoubleFBO(
@@ -1737,9 +1748,18 @@ export class FluidEngine implements FluidHandle {
 				this.blit
 			);
 		}
+		this.syncScalarFramebuffer(mode);
+	}
 
+	/** Scalar existence follows flow semantics but never owns or rebuilds dye. */
+	private syncScalarFramebuffer(mode: ResourceInitMode): void {
+		const gl = this.gl;
 		if (this.needsScalarFBO()) {
-			if (!preservePersistentFields || this.scalar == null) {
+			const dyeRes = getResolution(gl, this.config.DYE_RESOLUTION);
+			const texType = this.ext.halfFloatTexType;
+			const rgba = this.ext.formatRGBA;
+			const filtering = this.ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST;
+			if (mode === 'fresh' || this.scalar == null) {
 				this.scalar = createDoubleFBO(
 					gl,
 					dyeRes.width,
@@ -1767,8 +1787,20 @@ export class FluidEngine implements FluidHandle {
 			disposeDoubleFBO(gl, this.scalar);
 			this.scalar = null;
 		}
+	}
 
-		if (!preservePersistentFields || this.velocity == null) {
+	/** Owns the persistent velocity field and all transient solver targets. */
+	private initSimulationFramebuffers(mode: ResourceInitMode): void {
+		const gl = this.gl;
+		const simRes = getResolution(gl, this.config.SIM_RESOLUTION);
+		const texType = this.ext.halfFloatTexType;
+		const rg = this.ext.formatRG;
+		const r = this.ext.formatR;
+		const filtering = this.ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST;
+
+		gl.disable(gl.BLEND);
+
+		if (mode === 'fresh' || this.velocity == null) {
 			this.velocity = createDoubleFBO(
 				gl,
 				simRes.width,
@@ -1795,7 +1827,7 @@ export class FluidEngine implements FluidHandle {
 
 		// Single-buffer FBOs are recreated unconditionally — their contents are
 		// transient (recomputed every step), so no copy is needed.
-		if (preservePersistentFields) {
+		if (mode === 'preserve') {
 			disposeFBO(gl, this.velocitySource);
 			disposeFBO(gl, this.divergence);
 			disposeFBO(gl, this.curlFBO);
@@ -1810,25 +1842,22 @@ export class FluidEngine implements FluidHandle {
 		// stressed bench — every Jacobi neighbor fetch drags the extra bytes
 		// along, and the loop is the hottest path in the engine. See ADR-0038.
 		this.pressure = createDoubleFBO(gl, simRes.width, simRes.height, r.internalFormat, r.format, texType, gl.NEAREST);
-
-		// Restore rebuilds the solid-neighbor texture after its CPU masks are
-		// regenerated; doing it here would allocate a redundant transient copy.
-		if (preservePersistentFields) {
-			this.initSolidNeighborTexture();
-			this.initSolidClearanceTexture();
-		}
-		this.initBloomFramebuffers(preservePersistentFields);
-		this.initSunraysFramebuffers(preservePersistentFields);
 	}
 
-	private initBloomFramebuffers(disposePrevious = true): void {
+	/** Post-processing remains eager until LIF-005; this only splits ownership. */
+	private initPostprocessFramebuffers(mode: ResourceInitMode): void {
+		this.initBloomFramebuffers(mode);
+		this.initSunraysFramebuffers(mode);
+	}
+
+	private initBloomFramebuffers(mode: ResourceInitMode): void {
 		const gl = this.gl;
 		const res = getResolution(gl, this.config.BLOOM_RESOLUTION);
 		const texType = this.ext.halfFloatTexType;
 		const rgba = this.ext.formatRGBA;
 		const filtering = this.ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST;
 
-		if (disposePrevious) {
+		if (mode === 'preserve') {
 			disposeFBO(gl, this.bloom);
 			for (const fbo of this.bloomFramebuffers) disposeFBO(gl, fbo);
 		}
@@ -1844,14 +1873,14 @@ export class FluidEngine implements FluidHandle {
 		}
 	}
 
-	private initSunraysFramebuffers(disposePrevious = true): void {
+	private initSunraysFramebuffers(mode: ResourceInitMode): void {
 		const gl = this.gl;
 		const res = getResolution(gl, this.config.SUNRAYS_RESOLUTION);
 		const texType = this.ext.halfFloatTexType;
 		const r = this.ext.formatR;
 		const filtering = this.ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST;
 
-		if (disposePrevious) {
+		if (mode === 'preserve') {
 			disposeFBO(gl, this.sunrays);
 			disposeFBO(gl, this.sunraysTemp);
 		}
@@ -2191,9 +2220,6 @@ export class FluidEngine implements FluidHandle {
 		if (!shape && !hasObstruction) {
 			this.solidMaskW = 0;
 			this.solidMaskH = 0;
-			// solidMaskData is null here, so this just disposes the stale texture.
-			this.initSolidNeighborTexture();
-			this.initSolidClearanceTexture();
 			return;
 		}
 
@@ -2235,6 +2261,10 @@ export class FluidEngine implements FluidHandle {
 		}
 		gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
 		this.solidMaskTexture = tex;
+	}
+
+	/** Solver-grid textures derived jointly from the current solid CPU mask. */
+	private initSolidDerivedTextures(): void {
 		this.initSolidNeighborTexture();
 		this.initSolidClearanceTexture();
 	}

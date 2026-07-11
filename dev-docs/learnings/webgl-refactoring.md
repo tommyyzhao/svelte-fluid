@@ -20,7 +20,7 @@ disposable class, *every* `gl.create*()` call needs an obvious owner.
 IIFEs that create resources as a side effect are a smell — extract the
 allocation and pass the result in.
 
-## Single-buffer FBOs need explicit disposal in `initFramebuffers`
+## Single-buffer FBOs need explicit disposal in `initSimulationFramebuffers`
 
 **Symptom:** `setConfig({ simResolution: 256 })` would silently leak
 three FBOs (`divergence`, `curlFBO`, `pressure`) every call.
@@ -38,7 +38,7 @@ with no check for an existing instance. For a long-lived single-page
 app, that's a one-time tiny leak. For a library where consumers might
 hot-update resolution dozens of times, it adds up to OOM in minutes.
 
-**Fix:** In `FluidEngine.initFramebuffers`:
+**Fix:** In `FluidEngine.initSimulationFramebuffers`:
 
 ```ts
 disposeFBO(gl, this.divergence);
