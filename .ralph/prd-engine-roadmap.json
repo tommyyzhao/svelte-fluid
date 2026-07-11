@@ -289,11 +289,12 @@
       "wave": 2,
       "priority": "P1",
       "title": "Reproduce or close fractional-aperture gate",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["FID-001"],
       "spec": "Add curved-cylinder, narrow-throat, and subcell-wall scenes measuring flux, divergence, symmetry, and adjacent spectral energy.",
       "acceptance": ["Synthetic leak is detected", "Current results recorded", "Shipping-relevant defect reproduced or gate stays closed", "No speculative implementation"],
-      "files": ["scenes/reducers/browser tests", "bench route", "gate note"]
+      "files": ["scenes/reducers/browser tests", "bench route", "gate note"],
+      "notes": "Added deterministic curved-cylinder, six-cell narrow-throat, and deliberately subcell-wall WebGL2 scenes plus mirror-symmetry, obstacle-adjacent tangential high-pass, and intended-barrier flux reducers with synthetic failure controls. At 192x96 the resolved scenes stayed finite/live, symmetry error was 0.0234/0.0007, adjacent grid-scale fraction 0.1585/0.1121, divergence RMS 1.488/1.447, and upstream/downstream flow remained comparable. The subcell probe had zero center-sampled solid cells yet zero measured blocked-segment flux. No shipping-relevant fractional-aperture defect was reproduced, so FID-006/007 remain closed; ADR-0065 records exact metrics and activation terms."
     },
     {
       "id": "FID-006",

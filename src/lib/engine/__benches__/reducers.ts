@@ -17,6 +17,22 @@ export interface SolidFaceFluxStats {
 	faceCount: number;
 }
 
+export interface MirrorSymmetryStats {
+	normalizedRms: number;
+	pairs: number;
+}
+
+export interface ObstacleAdjacentSpectralStats {
+	fraction: number;
+	fluidCells: number;
+}
+
+export interface WeightedLineFluxStats {
+	net: number;
+	meanAbs: number;
+	weight: number;
+}
+
 const clampIndex = (value: number, size: number): number => {
 	if (!Number.isFinite(value)) return 0;
 	return Math.max(0, Math.min(size - 1, Math.floor(value)));
@@ -56,15 +72,15 @@ export function divergenceL2(
 			const here = (y * width + x) * components;
 			const left = (y * width + xPrev) * components;
 			const right = (y * width + xNext) * components;
-			const up = ((yNext * width + x) * components);
-			const down = ((yPrev * width + x) * components);
+			const up = (yNext * width + x) * components;
+			const down = (yPrev * width + x) * components;
 
 			const vxL = velocity[left];
 			const vxR = velocity[right];
 			const vyD = velocity[down + 1];
 			const vyU = velocity[up + 1];
 
-			const divergence = 0.5 * ((vxR - vxL) + (vyU - vyD));
+			const divergence = 0.5 * (vxR - vxL + (vyU - vyD));
 			sum += divergence * divergence;
 		}
 	}
@@ -178,14 +194,103 @@ export function solidFaceFluxStats(
 }
 
 /**
+ * Horizontal-mirror error for a vector field. A symmetric left-to-right flow
+ * keeps `vx(x,y) = vx(x,1-y)` and flips `vy`; the result is normalized by the
+ * mirrored signal energy so scenes with different forcing remain comparable.
+ */
+export function horizontalMirrorSymmetryStats(
+	velocity: ArrayLike<number>,
+	width: number,
+	height: number,
+	components: 2 | 4 = 2,
+	solid?: ArrayLike<number>
+): MirrorSymmetryStats {
+	if (width <= 0 || height <= 1 || (components !== 2 && components !== 4)) {
+		return { normalizedRms: 0, pairs: 0 };
+	}
+	let error = 0;
+	let signal = 0;
+	let pairs = 0;
+	for (let y = 0; y < Math.floor(height / 2); y++) {
+		const mirrorY = height - 1 - y;
+		for (let x = 0; x < width; x++) {
+			const aCell = y * width + x;
+			const bCell = mirrorY * width + x;
+			if ((solid?.[aCell] ?? 0) > 0.5 || (solid?.[bCell] ?? 0) > 0.5) continue;
+			const a = aCell * components;
+			const b = bCell * components;
+			const ax = velocity[a] as number;
+			const ay = velocity[a + 1] as number;
+			const bx = velocity[b] as number;
+			const by = velocity[b + 1] as number;
+			error += (ax - bx) ** 2 + (ay + by) ** 2;
+			signal += ax * ax + ay * ay + bx * bx + by * by;
+			pairs++;
+		}
+	}
+	return {
+		normalizedRms: signal > 0 ? Math.sqrt(error / signal) : 0,
+		pairs
+	};
+}
+
+/**
+ * High-pass energy restricted to fluid cells sharing a face with a solid.
+ * This catches cell-scale boundary chatter without letting calm bulk fluid
+ * dilute the signal.
+ */
+export function obstacleAdjacentGridScaleEnergyFraction(
+	field: ArrayLike<number>,
+	width: number,
+	height: number,
+	solid: ArrayLike<number>,
+	components: 2 | 4 = 2
+): ObstacleAdjacentSpectralStats {
+	if (width <= 2 || height <= 2 || (components !== 2 && components !== 4)) {
+		return { fraction: 0, fluidCells: 0 };
+	}
+	const isSolid = (x: number, y: number): boolean =>
+		x < 0 || x >= width || y < 0 || y >= height || (solid[y * width + x] ?? 0) > 0.5;
+	let totalEnergy = 0;
+	let highPassEnergy = 0;
+	let fluidCells = 0;
+	for (let y = 1; y < height - 1; y++) {
+		for (let x = 1; x < width - 1; x++) {
+			if (isSolid(x, y)) continue;
+			const solidLeft = isSolid(x - 1, y);
+			const solidRight = isSolid(x + 1, y);
+			const solidBottom = isSolid(x, y - 1);
+			const solidTop = isSolid(x, y + 1);
+			if (!solidLeft && !solidRight && !solidBottom && !solidTop) continue;
+			const cell = (y * width + x) * components;
+			for (let component = 0; component < components; component++) {
+				const center = field[cell + component] as number;
+				const accumulateTangentialResidual = (dx: number, dy: number): void => {
+					if (isSolid(x - dx, y - dy) || isSolid(x + dx, y + dy)) return;
+					const before = field[((y - dy) * width + x - dx) * components + component] as number;
+					const after = field[((y + dy) * width + x + dx) * components + component] as number;
+					const residual = (2 * center - before - after) * 0.25;
+					totalEnergy += center * center;
+					highPassEnergy += residual * residual;
+				};
+				// Remove the physical wall-normal boundary layer from the proxy:
+				// only second differences tangent to the locally blocked face count.
+				if (solidLeft || solidRight) accumulateTangentialResidual(0, 1);
+				if (solidBottom || solidTop) accumulateTangentialResidual(1, 0);
+			}
+			fluidCells++;
+		}
+	}
+	return {
+		fraction: totalEnergy > 0 ? Math.sqrt(highPassEnergy / totalEnergy) : 0,
+		fluidCells
+	};
+}
+
+/**
  * Track the largest magnitude value on an index-specified path.
  */
-export function trackPeakAlongPath(
-	values: ArrayLike<number>,
-	start: number,
-	stop: number,
-	step = 1
-): PeakSample {
+export function trackPeakAlongPath(values: ArrayLike<number>, start: number, stop: number, step = 1): PeakSample {
 	if (!Number.isFinite(start) || !Number.isFinite(stop) || step === 0) {
 		return { index: -1, value: 0 };
 	}
@@ -274,6 +379,40 @@ export function fluxAcrossLine(
 		total += field[(i * width + x) * components + component] as number;
 	}
 	return total;
+}
+
+/** Integrate a line flux with per-cell 0..1 weights (for intended subcell barriers). */
+export function weightedFluxAcrossLine(
+	field: ArrayLike<number>,
+	width: number,
+	height: number,
+	weights: ArrayLike<number>,
+	options: FluxAcrossLineOptions = {}
+): WeightedLineFluxStats {
+	const component = options.component ?? 0;
+	const components = options.components ?? 1;
+	const orientation = options.orientation ?? 'horizontal';
+	if (width <= 0 || height <= 0 || component < 0 || component >= components) {
+		return { net: 0, meanAbs: 0, weight: 0 };
+	}
+	const y = clampIndex(options.line ?? Math.floor((height - 1) / 2), height);
+	const x = clampIndex(options.line ?? Math.floor((width - 1) / 2), width);
+	let net = 0;
+	let absolute = 0;
+	let weight = 0;
+	const accumulate = (cell: number): void => {
+		const cellWeight = Math.max(0, Math.min(1, weights[cell] ?? 0));
+		const value = field[cell * components + component] as number;
+		net += value * cellWeight;
+		absolute += Math.abs(value) * cellWeight;
+		weight += cellWeight;
+	};
+	if (orientation === 'horizontal') {
+		for (let i = 0; i < width; i++) accumulate(y * width + i);
+	} else {
+		for (let i = 0; i < height; i++) accumulate(i * width + x);
+	}
+	return { net, meanAbs: weight > 0 ? absolute / weight : 0, weight };
 }
 
 /**

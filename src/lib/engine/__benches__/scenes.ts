@@ -9,6 +9,14 @@ export interface BenchScene {
 	schedule(engine: FluidEngine, rng: Rng, frame: number, dt: number): void;
 }
 
+export interface FractionalApertureScene extends BenchScene {
+	canvas: { width: number; height: number };
+	frames: number;
+	dt: number;
+	/** Geometry-level solid predicate, independent of the engine's binary grid bake. */
+	intendedSolidAt(u: number, v: number): boolean;
+}
+
 const clamp01 = (value: number): number => Math.max(0, Math.min(1, value));
 
 const dipoleColor = (rng: Rng) => ({
@@ -223,6 +231,110 @@ export const projectionSweep: BenchScene = {
 		}
 	}
 };
+
+const apertureGateBase: FluidConfig = {
+	pointerInput: false,
+	openBoundary: true,
+	flow: {
+		mode: 'live',
+		boundary: { left: 'open', right: 'open', top: 'wall', bottom: 'wall' },
+		forces: [{ kind: 'pressureGradient', vector: { x: 24, y: 0 } }]
+	},
+	simResolution: 96,
+	dyeResolution: 64,
+	pressureIterations: 24,
+	pressure: 0.82,
+	velocityDissipation: 0.12,
+	densityDissipation: 1,
+	curl: 0,
+	wallFriction: 0.08,
+	wallFrictionWidth: 2,
+	substeps: 1,
+	maxTimeStep: 1 / 120,
+	initialSplatCount: 0,
+	shading: false,
+	bloom: false,
+	sunrays: false,
+	backColor: { r: 0, g: 0, b: 0 }
+};
+
+const symmetricGateSchedule: BenchScene['schedule'] = (engine, _rng, frame) => {
+	if (frame !== 0) return;
+	engine.splat(0.16, 0.38, 150, 0, { r: 0.1, g: 0.4, b: 0.9 });
+	engine.splat(0.16, 0.62, 150, 0, { r: 0.1, g: 0.4, b: 0.9 });
+};
+
+/** Curved interior obstacle with deliberately non-grid-aligned faces. */
+export const curvedCylinderGate: FractionalApertureScene = {
+	seed: 0x6c11d,
+	thresholdBand: [0.01, 1_000],
+	canvas: { width: 256, height: 128 },
+	frames: 72,
+	dt: 1 / 120,
+	config: {
+		...apertureGateBase,
+		obstructions: [
+			{
+				d: 'M 41 50 A 9 18 0 1 0 59 50 A 9 18 0 1 0 41 50 Z',
+				fit: 'fill',
+				viewBox: [0, 0, 100, 100]
+			}
+		]
+	},
+	schedule: symmetricGateSchedule,
+	intendedSolidAt: (u, v) => ((u - 0.5) / 0.09) ** 2 + ((v - 0.5) / 0.18) ** 2 <= 1
+};
+
+/** A resolved six-cell throat that exposes staircase and symmetry regressions. */
+export const narrowThroatGate: FractionalApertureScene = {
+	seed: 0x7a20a,
+	thresholdBand: [0.01, 1_000],
+	canvas: { width: 256, height: 128 },
+	frames: 72,
+	dt: 1 / 120,
+	config: {
+		...apertureGateBase,
+		obstructions: [
+			{
+				d: 'M 45 0 H 55 V 46 H 45 Z M 45 54 H 55 V 100 H 45 Z',
+				fit: 'fill',
+				viewBox: [0, 0, 100, 100]
+			}
+		]
+	},
+	schedule: symmetricGateSchedule,
+	intendedSolidAt: (u, v) => u >= 0.45 && u <= 0.55 && (v <= 0.46 || v >= 0.54)
+};
+
+/**
+ * A 0.77-cell wall at this scene's 192×96 solver grid. It is an intentional
+ * resolution-limit probe: visible resolved scenes must not inherit its leak.
+ */
+export const subcellWallGate: FractionalApertureScene = {
+	seed: 0x8bc31,
+	thresholdBand: [0.01, 1_000],
+	canvas: { width: 256, height: 128 },
+	frames: 72,
+	dt: 1 / 120,
+	config: {
+		...apertureGateBase,
+		obstructions: [
+			{
+				d: 'M 49.8 0 H 50.2 V 46 H 49.8 Z M 49.8 54 H 50.2 V 100 H 49.8 Z',
+				fit: 'fill',
+				viewBox: [0, 0, 100, 100]
+			}
+		]
+	},
+	schedule: symmetricGateSchedule,
+	intendedSolidAt: (u, v) => u >= 0.498 && u <= 0.502 && (v <= 0.46 || v >= 0.54)
+};
+
+export const fractionalApertureScenes = {
+	curvedCylinder: curvedCylinderGate,
+	narrowThroat: narrowThroatGate,
+	subcellWall: subcellWallGate
+} as const;
 
 export const scenes = {
 	dipole,
