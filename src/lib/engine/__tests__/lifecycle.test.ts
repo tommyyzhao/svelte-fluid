@@ -671,15 +671,17 @@ describe('context loss/restore contract', () => {
 
 			handleContextRestored() {
 				contextLost = false;
+				operations.push('invalidateLostContextHandles');
 				operations.push('initContext');
 				operations.push('compileShaders');
 				operations.push('initBuffersAndPrograms');
 				operations.push('recreateDithering');
 				operations.push('updateKeywords');
-				operations.push('initFramebuffers');
+				operations.push('initFramebuffers:fresh');
 				operations.push('initMaskTexture');
 				operations.push('initStickyMaskTexture');
 				operations.push('initGlassFramebuffer');
+				operations.push('replayOpeningScene');
 				if (pointerListenersInstalled) {
 					operations.push('installPointerListeners');
 				}
@@ -748,8 +750,21 @@ describe('context loss/restore contract', () => {
 		expect(e.operations).toContain('compileShaders');
 		expect(e.operations).toContain('initBuffersAndPrograms');
 		expect(e.operations).toContain('updateKeywords');
-		expect(e.operations).toContain('initFramebuffers');
+		expect(e.operations).toContain('initFramebuffers:fresh');
+		expect(e.operations).toContain('replayOpeningScene');
 		expect(e.operations).toContain('startRaf');
+	});
+
+	it('invalidates stale handles before allocating restored resources', () => {
+		const e = createMockEngine();
+		e.handleContextLost({ preventDefault: vi.fn() });
+		e.handleContextRestored();
+		expect(e.operations.indexOf('invalidateLostContextHandles')).toBeLessThan(
+			e.operations.indexOf('initContext')
+		);
+		expect(e.operations.indexOf('initFramebuffers:fresh')).toBeLessThan(
+			e.operations.indexOf('replayOpeningScene')
+		);
 	});
 
 	it('context restore recreates dithering texture', () => {

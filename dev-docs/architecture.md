@@ -123,15 +123,15 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
    7. Create dithering texture (1x1 placeholder, async PNG decode).
    8. `updateKeywords()` selects display shader variant.
    9. `initFramebuffers()` allocates dye/velocity/divergence/curl/pressure/bloom*/sunrays*.
-   10. `multipleSplats(initialRandomSplatCount())` paints the random initial scene.
-   11. If `opts.config?.presetSplats` is set, replay each one through
-       `splat(...)` to paint the deterministic preset opening scene
-       (see ADR [`0015`](./decisions/0015-preset-components.md)).
-   12. Install pointer listeners (mouse on canvas, mouseup/touchend on `window`).
-   13. Capture `lastUpdateTime` AND `engineStartTime`, schedule first
-       `requestAnimationFrame(this.tick)`. The engine clock starts here
-       (not earlier in construction) so `currentDensityDissipation()`
-       measures elapsed time since the canvas began ticking.
+   10. `replayOpeningScene()` resets the seeded RNG and opening clocks, paints
+       the random initial scene, then replays the private value snapshot of
+       `opts.config?.presetSplats` (see ADRs
+       [`0015`](./decisions/0015-preset-components.md) and
+       [`0051`](./decisions/0051-context-restore-recreates-resources.md)).
+   11. Install pointer listeners (mouse on canvas, mouseup/touchend on `window`).
+   12. Schedule the first `requestAnimationFrame(this.tick)`; the opening clocks
+       captured by `replayOpeningScene()` make `currentDensityDissipation()`
+       measure elapsed time from the completed opening scene.
 7. The RAF loop runs every frame: `update()` → `calcDeltaTime` → `updateColors` → `applyInputs` → `step` (if not paused) → `render(null)` → reschedule. The dye advection inside `step()` calls `currentDensityDissipation()` for the dissipation uniform (see ADR [`0016`](./decisions/0016-burn-in-density-dissipation.md)) so a burn-in ramp from `INITIAL_DENSITY_DISSIPATION` toward `DENSITY_DISSIPATION` is applied automatically without per-frame setConfig calls. When `glass` is enabled, `render()` routes `drawDisplay` through a `sceneFBO` and adds a `drawGlass` post-processing pass with Snell's law refraction (hemisphere model for circles, rim model for other shapes). See ADR [`0025`](./decisions/0025-glass-refraction-post-processing.md). When `distortion` is enabled, `render()` disables blending and returns early after `drawDisplay()` (no background, no glass). The display shader's `DISTORTION` branch reads `dye.r` as distortion intensity and `velocity.xy` as direction, offsets image UVs, and samples a pre-loaded distortion texture. See ADR [`0030`](./decisions/0030-fluid-distortion-component.md).
 
 ### Resize
@@ -156,6 +156,17 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
      tiny sim grids (≤ 64).
 6. `new FluidEngine` is created with the **same `stableSeed`**.
 7. The deterministic RNG produces the same initial splat pattern.
+
+### Context restoration
+
+Context loss destroys every GL object even though JavaScript can still hold its
+wrapper. Restoration therefore abandons stale framebuffer/texture handles
+without deleting them, recompiles programs, allocates all framebuffer groups
+afresh, rebuilds textures, and calls `replayOpeningScene()`. It never uses the
+normal same-size resize path.
+Random and configured preset splats return exactly once, with the burn-in clock
+restarted; user-painted state is intentionally not preserved. See ADR
+[`0051`](./decisions/0051-context-restore-recreates-resources.md).
 
 ### Hot prop update
 
@@ -197,7 +208,9 @@ applied immediately after `multipleSplats()` and uses no randomness, so
 it doesn't affect this contract. The Svelte component snapshots
 `presetSplats` via `untrack` into `stablePresetSplats` so the same
 array is replayed across every resize-driven rebuild — exactly like
-`stableSeed`.
+`stableSeed`. The engine additionally snapshots every splat and nested color by
+value, then replays that snapshot after context restoration (ADR
+[`0051`](./decisions/0051-context-restore-recreates-resources.md)).
 
 User input is non-deterministic, so the contract only holds **before any
 interaction**. Touch a canvas and the pattern thereafter depends on input
@@ -207,7 +220,8 @@ The burn-in dissipation ramp (ADR [`0016`](./decisions/0016-burn-in-density-diss
 uses `performance.now()` and isn't seed-dependent. After resize the
 clock starts over (because the engine is reconstructed), so the burn-in
 plays from the beginning each time — same shape, just shifted in
-wall-clock time.
+wall-clock time. Context restoration also restarts this opening clock because
+the simulation fields have necessarily been reset.
 
 ## Why split engine and component?
 

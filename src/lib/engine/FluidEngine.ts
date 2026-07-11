@@ -46,6 +46,7 @@ import type {
 	PerformanceAction,
 	PerformanceState,
 	PerformanceTier,
+	PresetSplat,
 	PrescribedFlowField,
 	ResolvedConfig,
 	RGB
@@ -578,6 +579,9 @@ export class FluidEngine implements FluidHandle {
 	private ext!: ExtInfo;
 	private config: ResolvedConfig;
 	private rng: Rng;
+	// Bucket-D input is retained as an immutable value snapshot solely so a
+	// context restore can rebuild the same opening scene as construction.
+	private readonly openingPresetSplats: readonly PresetSplat[];
 
 	// --- GL buffers ---
 	private vertexBuffer!: WebGLBuffer;
@@ -738,6 +742,10 @@ export class FluidEngine implements FluidHandle {
 		this.canvas = opts.canvas;
 		const seed = opts.config?.seed ?? randomSeed();
 		this.config = resolveConfig({ ...opts.config, seed }, DEFAULTS);
+		this.openingPresetSplats = (opts.config?.presetSplats ?? []).map((s) => ({
+			...s,
+			color: { ...s.color }
+		}));
 		this.benchmarkInstrument = opts.instrument ?? false;
 		if (opts.advectionScheme !== undefined) {
 			this.config.ADVECTION_SCHEME = opts.advectionScheme;
@@ -771,20 +779,7 @@ export class FluidEngine implements FluidHandle {
 			if (this.config.DISTORTION_IMAGE_URL) {
 				this.loadDistortionImage(this.config.DISTORTION_IMAGE_URL);
 			}
-			this.dyeMayContainContent = false;
-			this.multipleSplats(this.initialRandomSplatCount());
-
-			// Construct-only preset splats. Applied after the random initial
-			// splats so wrappers can either combine with or suppress them
-			// (via `initialSplatCount: 0`). Read directly from the raw input
-			// config because this field is intentionally absent from
-			// `ResolvedConfig` — it has no meaning after construction.
-			const presetSplats = opts.config?.presetSplats;
-			if (presetSplats) {
-				for (const s of presetSplats) {
-					this.splat(s.x, s.y, s.dx, s.dy, s.color);
-				}
-			}
+			this.replayOpeningScene();
 
 			if (this.config.POINTER_INPUT) {
 				this.installPointerListeners();
@@ -793,9 +788,6 @@ export class FluidEngine implements FluidHandle {
 			this.canvas.addEventListener('webglcontextlost', this.onContextLost);
 			this.canvas.addEventListener('webglcontextrestored', this.onContextRestored);
 
-			this.lastUpdateTime = performance.now();
-			this.engineStartTime = this.lastUpdateTime;
-			this.simTime = 0;
 			if (this.autoStart) {
 				this.startRaf();
 			}
@@ -1129,18 +1121,19 @@ export class FluidEngine implements FluidHandle {
 	private handleContextRestored(): void {
 		this.contextLost = false;
 		this.disposeBenchmarkProfiler();
+		this.invalidateLostContextHandles();
 		// Full reinit — the GL state is wiped on context loss.
 		this.initContext();
 		this.initBenchmarkProfiler();
 		this.compileShaders();
 		this.initBuffersAndPrograms();
-		this.ditheringTexture.dispose(); // prevent stale image.onload from touching the new context
 		this.ditheringTexture = createDitheringTexture(this.gl);
-		this.distortionTexture = null;
-		this.distortionLoadedUrl = null;
 		this.initDistortionFallback();
 		this.updateKeywords();
-		this.initFramebuffers();
+		// Context loss invalidates every WebGL object. Never take the normal
+		// resize/preserve path here: same-sized ping-pong buffers would otherwise
+		// retain dead framebuffer and texture handles.
+		this.initFramebuffers(false);
 		this.initMaskTexture();
 		this.initStickyMaskTexture();
 		this.initObstructionMaskTexture();
@@ -1151,15 +1144,59 @@ export class FluidEngine implements FluidHandle {
 		if (this.config.DISTORTION_IMAGE_URL) {
 			this.loadDistortionImage(this.config.DISTORTION_IMAGE_URL);
 		}
-		this.dyeMayContainContent = false;
-		this.multipleSplats(this.initialRandomSplatCount());
+		this.replayOpeningScene();
 		if (this.config.POINTER_INPUT && !this.pointerListenersInstalled) {
 			this.installPointerListeners();
 		}
-		this.lastUpdateTime = performance.now();
 		if (this.autoStart) {
 			this.startRaf();
 		}
+	}
+
+	/**
+	 * Drop framebuffer/texture references the browser already destroyed with the
+	 * lost context. Deleting them after restoration is both unnecessary and can
+	 * generate invalid-object GL errors; CPU config is retained and rebuilt.
+	 */
+	private invalidateLostContextHandles(): void {
+		this.ditheringTexture.dispose();
+		this.distortionTexture = null;
+		this.distortionLoadedUrl = null;
+		this.maskTexture = null;
+		this.maskData = null;
+		this.maskW = 0;
+		this.maskH = 0;
+		this.stickyMaskTexture = null;
+		this.stickyFallbackTexture = null;
+		this.obstructionMaskTexture = null;
+		this.obstructionMaskData = null;
+		this.obstructionMaskW = 0;
+		this.obstructionMaskH = 0;
+		this.solidMaskTexture = null;
+		this.solidMaskData = null;
+		this.solidMaskW = 0;
+		this.solidMaskH = 0;
+		this.solidNeighborTexture = null;
+		this.prescribedVelocityTexture = null;
+		this.prescribedScalarTexture = null;
+		this.scalar = null;
+		this.bloomFramebuffers = [];
+		this.sceneFBO = null;
+	}
+
+	/** Rebuild the configured deterministic opening after construction/restore. */
+	private replayOpeningScene(): void {
+		this.rng = mulberry32(this.config.SEED);
+		this.colorUpdateTimer = 0;
+		this.autoSplatTimer = 0;
+		this.dyeMayContainContent = false;
+		this.multipleSplats(this.initialRandomSplatCount());
+		for (const s of this.openingPresetSplats) {
+			this.splat(s.x, s.y, s.dx, s.dy, s.color);
+		}
+		this.lastUpdateTime = performance.now();
+		this.engineStartTime = this.lastUpdateTime;
+		this.simTime = 0;
 	}
 
 	dispose(): void {
@@ -1648,7 +1685,7 @@ export class FluidEngine implements FluidHandle {
 		gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, 1, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, new Uint8Array([0]));
 	}
 
-	private initFramebuffers(): void {
+	private initFramebuffers(preservePersistentFields = true): void {
 		const gl = this.gl;
 		const simRes = getResolution(gl, this.config.SIM_RESOLUTION);
 		const dyeRes = getResolution(gl, this.config.DYE_RESOLUTION);
@@ -1660,7 +1697,7 @@ export class FluidEngine implements FluidHandle {
 
 		gl.disable(gl.BLEND);
 
-		if (this.dye == null) {
+		if (!preservePersistentFields || this.dye == null) {
 			this.dye = createDoubleFBO(gl, dyeRes.width, dyeRes.height, rgba.internalFormat, rgba.format, texType, filtering);
 		} else {
 			this.dye = resizeDoubleFBO(
@@ -1678,7 +1715,7 @@ export class FluidEngine implements FluidHandle {
 		}
 
 		if (this.needsScalarFBO()) {
-			if (this.scalar == null) {
+			if (!preservePersistentFields || this.scalar == null) {
 				this.scalar = createDoubleFBO(
 					gl,
 					dyeRes.width,
@@ -1707,7 +1744,7 @@ export class FluidEngine implements FluidHandle {
 			this.scalar = null;
 		}
 
-		if (this.velocity == null) {
+		if (!preservePersistentFields || this.velocity == null) {
 			this.velocity = createDoubleFBO(
 				gl,
 				simRes.width,
@@ -1734,10 +1771,12 @@ export class FluidEngine implements FluidHandle {
 
 		// Single-buffer FBOs are recreated unconditionally — their contents are
 		// transient (recomputed every step), so no copy is needed.
-		disposeFBO(gl, this.velocitySource);
-		disposeFBO(gl, this.divergence);
-		disposeFBO(gl, this.curlFBO);
-		disposeDoubleFBO(gl, this.pressure);
+		if (preservePersistentFields) {
+			disposeFBO(gl, this.velocitySource);
+			disposeFBO(gl, this.divergence);
+			disposeFBO(gl, this.curlFBO);
+			disposeDoubleFBO(gl, this.pressure);
+		}
 
 		this.velocitySource = createFBO(gl, simRes.width, simRes.height, rg.internalFormat, rg.format, texType, gl.NEAREST);
 		this.divergence = createFBO(gl, simRes.width, simRes.height, r.internalFormat, r.format, texType, gl.NEAREST);
@@ -1748,22 +1787,27 @@ export class FluidEngine implements FluidHandle {
 		// along, and the loop is the hottest path in the engine. See ADR-0038.
 		this.pressure = createDoubleFBO(gl, simRes.width, simRes.height, r.internalFormat, r.format, texType, gl.NEAREST);
 
-		this.initSolidNeighborTexture();
-		this.initSolidClearanceTexture();
-		this.initBloomFramebuffers();
-		this.initSunraysFramebuffers();
-		this.initGlassFramebuffer();
+		// Restore rebuilds the solid-neighbor texture after its CPU masks are
+		// regenerated; doing it here would allocate a redundant transient copy.
+		if (preservePersistentFields) {
+			this.initSolidNeighborTexture();
+			this.initSolidClearanceTexture();
+		}
+		this.initBloomFramebuffers(preservePersistentFields);
+		this.initSunraysFramebuffers(preservePersistentFields);
 	}
 
-	private initBloomFramebuffers(): void {
+	private initBloomFramebuffers(disposePrevious = true): void {
 		const gl = this.gl;
 		const res = getResolution(gl, this.config.BLOOM_RESOLUTION);
 		const texType = this.ext.halfFloatTexType;
 		const rgba = this.ext.formatRGBA;
 		const filtering = this.ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST;
 
-		disposeFBO(gl, this.bloom);
-		for (const fbo of this.bloomFramebuffers) disposeFBO(gl, fbo);
+		if (disposePrevious) {
+			disposeFBO(gl, this.bloom);
+			for (const fbo of this.bloomFramebuffers) disposeFBO(gl, fbo);
+		}
 		this.bloomFramebuffers = [];
 
 		this.bloom = createFBO(gl, res.width, res.height, rgba.internalFormat, rgba.format, texType, filtering);
@@ -1776,15 +1820,17 @@ export class FluidEngine implements FluidHandle {
 		}
 	}
 
-	private initSunraysFramebuffers(): void {
+	private initSunraysFramebuffers(disposePrevious = true): void {
 		const gl = this.gl;
 		const res = getResolution(gl, this.config.SUNRAYS_RESOLUTION);
 		const texType = this.ext.halfFloatTexType;
 		const r = this.ext.formatR;
 		const filtering = this.ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST;
 
-		disposeFBO(gl, this.sunrays);
-		disposeFBO(gl, this.sunraysTemp);
+		if (disposePrevious) {
+			disposeFBO(gl, this.sunrays);
+			disposeFBO(gl, this.sunraysTemp);
+		}
 
 		this.sunrays = createFBO(gl, res.width, res.height, r.internalFormat, r.format, texType, filtering);
 		this.sunraysTemp = createFBO(gl, res.width, res.height, r.internalFormat, r.format, texType, filtering);
