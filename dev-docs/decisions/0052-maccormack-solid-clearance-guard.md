@@ -1,4 +1,4 @@
-# ADR 0051: Guard MacCormack traces with solid clearance
+# ADR 0052: Guard MacCormack traces with solid clearance
 
 ## Status
 
