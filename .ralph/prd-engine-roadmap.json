@@ -65,7 +65,7 @@
       "wave": 0,
       "priority": "P0",
       "title": "Guard MacCormack departure paths near solids",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["OPS-001"],
       "spec": "Fall back to semi-Lagrangian advection when the departure segment or limiter stencil crosses blocked faces.",
       "acceptance": ["Trace/stencil analytical tests pass", "Thin-wall flux does not worsen versus SL", "Dipole retention and NaN soak stay green", "Default SL path remains byte-stable"],

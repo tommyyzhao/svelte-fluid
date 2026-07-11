@@ -362,3 +362,64 @@ export function bakeSolidNeighborData(solid: MaskContext, simW: number, simH: nu
 	}
 	return out;
 }
+
+/**
+ * Bake the Chebyshev distance, in simulation cells, to the nearest solid cell.
+ * MacCormack uses this conservative clearance radius to prove that both
+ * departure segments and their bilinear stencils stay in fluid with one
+ * texture fetch instead of walking each trace in the fragment shader.
+ *
+ * Values are capped at 255 so the field fits in an R8/LUMINANCE texture.
+ * A solid cell is 0, its eight neighbors are 1, and cells with no solid within
+ * the representable radius are 255.
+ */
+export function bakeSolidClearanceData(solid: MaskContext, simW: number, simH: number): Uint8Array {
+	const out = new Uint8Array(simW * simH);
+	out.fill(255);
+	const sampleSolid = (u: number, v: number): boolean => {
+		const cu = Math.min(1, Math.max(0, u));
+		const cv = 1 - Math.min(1, Math.max(0, v));
+		const px = Math.min(solid.width - 1, Math.max(0, Math.floor(cu * solid.width)));
+		const py = Math.min(solid.height - 1, Math.max(0, Math.floor(cv * solid.height)));
+		return solid.data[py * solid.width + px] > 127;
+	};
+
+	for (let y = 0; y < simH; y++) {
+		const v = (y + 0.5) / simH;
+		for (let x = 0; x < simW; x++) {
+			const u = (x + 0.5) / simW;
+			if (sampleSolid(u, v)) out[y * simW + x] = 0;
+		}
+	}
+
+	// Unit-weight 8-neighbor chamfer passes are the exact L-infinity distance
+	// transform on this Cartesian grid.
+	for (let y = 0; y < simH; y++) {
+		for (let x = 0; x < simW; x++) {
+			const i = y * simW + x;
+			let d = out[i];
+			if (x > 0) d = Math.min(d, out[i - 1] + 1);
+			if (y > 0) {
+				d = Math.min(d, out[i - simW] + 1);
+				if (x > 0) d = Math.min(d, out[i - simW - 1] + 1);
+				if (x + 1 < simW) d = Math.min(d, out[i - simW + 1] + 1);
+			}
+			out[i] = Math.min(255, d);
+		}
+	}
+	for (let y = simH - 1; y >= 0; y--) {
+		for (let x = simW - 1; x >= 0; x--) {
+			const i = y * simW + x;
+			let d = out[i];
+			if (x + 1 < simW) d = Math.min(d, out[i + 1] + 1);
+			if (y + 1 < simH) {
+				d = Math.min(d, out[i + simW] + 1);
+				if (x > 0) d = Math.min(d, out[i + simW - 1] + 1);
+				if (x + 1 < simW) d = Math.min(d, out[i + simW + 1] + 1);
+			}
+			out[i] = Math.min(255, d);
+		}
+	}
+
+	return out;
+}
