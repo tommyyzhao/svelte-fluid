@@ -19,6 +19,11 @@ invoked repeatedly and advance exactly one implementation story per invocation.
   the runner, a human is responsible for this isolation prerequisite.
 - Inspect the worktree and the previous commit. Existing partial work for the selected
   `in_progress` story may be continued; unrelated changes are a blocker.
+- Use Git status through the orchestrator's clean-worktree preflight as authoritative.
+  If sandbox policy prevents Git and you implement a manual index check, preserve symlink
+  semantics with `lstat`/`readlink`; do not hash the target of the tracked symlink
+  `.agents/skills/end-fluid-session/scripts/save-session-memory.sh` as though it were the
+  symlink blob. That path is not an unrelated modification in a clean worktree.
 
 ## Story selection
 
