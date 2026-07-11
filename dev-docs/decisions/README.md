@@ -47,6 +47,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0039](./0039-obstruction-fill-color.md)                        | Obstruction fill color (`obstructionColor`)                             | Accepted |
 | [0040](./0040-preset-config-registry.md)                        | Internal preset config registry (single source of truth)               | Accepted |
 | [0041](./0041-webgl-unavailable-fallback.md)                    | Graceful, accessible WebGL-unavailable fallback                        | Accepted |
+| [0051](./0051-sustained-performance-governor-overload.md)       | Sustained performance-governor overload                                | Accepted |
 
 ## How to add a new ADR
 

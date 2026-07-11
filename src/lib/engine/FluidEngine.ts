@@ -51,8 +51,10 @@ import type {
 	RGB
 } from './types.js';
 import {
+	nextContinuousOverloadMs,
 	nextFrameTimeEmaMs,
-	performanceGovernorStep
+	performanceGovernorStep,
+	sanitizePerformanceFrameSampleMs
 } from './performance-governor.js';
 import {
 	type BlitFn,
@@ -700,6 +702,7 @@ export class FluidEngine implements FluidHandle {
 	private performanceEmaMs = 0;
 	private performanceTier: PerformanceTier = 'none';
 	private performanceMsSinceLastChange = 0;
+	private performanceContinuousOverloadMs = 0;
 	private performanceLastAction: PerformanceAction = 'none';
 	// The requested advection scheme is construct-only; useMacCormack is the
 	// capability-gated effective decision, recomputed alongside MANUAL_FILTERING
@@ -860,6 +863,7 @@ export class FluidEngine implements FluidHandle {
 		if (!this.rafRunning || this.disposed) return;
 		cancelAnimationFrame(this.rafId);
 		this.rafRunning = false;
+		this.resetPerformanceGovernor();
 	}
 
 	/** Restart the animation loop after a pause. Idempotent. */
@@ -1054,6 +1058,7 @@ export class FluidEngine implements FluidHandle {
 		const pointerTargetChanged = a.POINTER_TARGET !== b.POINTER_TARGET;
 		const performanceResetChanged =
 			a.AUTO_PERFORMANCE !== b.AUTO_PERFORMANCE ||
+			a.PAUSED !== b.PAUSED ||
 			a.AUTO_PERFORMANCE_MIN_PRESSURE_ITERATIONS !== b.AUTO_PERFORMANCE_MIN_PRESSURE_ITERATIONS ||
 			a.AUTO_PERFORMANCE_MIN_SUBSTEPS !== b.AUTO_PERFORMANCE_MIN_SUBSTEPS ||
 			a.PRESSURE_ITERATIONS !== b.PRESSURE_ITERATIONS ||
@@ -2539,21 +2544,28 @@ export class FluidEngine implements FluidHandle {
 		this.performanceEmaMs = 0;
 		this.performanceTier = 'none';
 		this.performanceMsSinceLastChange = 0;
+		this.performanceContinuousOverloadMs = 0;
 		this.performanceLastAction = 'none';
 	}
 
 	private recordPerformanceFrameTime(frameMs: number): PerformanceAction {
-		this.performanceLastAction = 'none';
 		if (!this.config.AUTO_PERFORMANCE || this.deterministicMode || this.config.PAUSED) {
 			return 'none';
 		}
 
-		this.performanceEmaMs = nextFrameTimeEmaMs(this.performanceEmaMs, frameMs);
-		this.performanceMsSinceLastChange += Math.max(0, frameMs);
+		const sampleMs = sanitizePerformanceFrameSampleMs(frameMs);
+		this.performanceEmaMs = nextFrameTimeEmaMs(this.performanceEmaMs, sampleMs);
+		this.performanceContinuousOverloadMs = nextContinuousOverloadMs(
+			this.performanceContinuousOverloadMs,
+			this.performanceEmaMs,
+			sampleMs
+		);
+		this.performanceMsSinceLastChange += sampleMs;
 		const decision = performanceGovernorStep({
 			emaMs: this.performanceEmaMs,
 			currentTier: this.performanceTier,
 			msSinceLastChange: this.performanceMsSinceLastChange,
+			continuousOverloadMs: this.performanceContinuousOverloadMs,
 			pressureIterations: this.config.PRESSURE_ITERATIONS,
 			substeps: this.config.SUBSTEPS,
 			floors: {
@@ -2570,6 +2582,7 @@ export class FluidEngine implements FluidHandle {
 		this.config.SUBSTEPS = decision.substeps;
 		this.performanceTier = decision.tier;
 		this.performanceMsSinceLastChange = 0;
+		this.performanceContinuousOverloadMs = 0;
 		this.performanceLastAction = decision.action;
 		return decision.action;
 	}

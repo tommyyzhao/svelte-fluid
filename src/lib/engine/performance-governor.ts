@@ -16,6 +16,7 @@ export interface PerformanceGovernorInput {
 	emaMs: number;
 	currentTier: PerformanceTier;
 	msSinceLastChange: number;
+	continuousOverloadMs: number;
 	pressureIterations: number;
 	substeps: number;
 	floors: PerformanceGovernorFloors;
@@ -36,6 +37,11 @@ export const DEFAULT_PERFORMANCE_GOVERNOR_THRESHOLDS: PerformanceGovernorThresho
 	pressureStep: 4,
 	emaAlpha: 0.12
 };
+
+// A tab suspension or debugger pause is not evidence of sustained device load.
+// Capping one contribution also prevents a single GC stall from satisfying the
+// entire hysteresis window by itself.
+export const MAX_PERFORMANCE_FRAME_SAMPLE_MS = 250;
 
 export const DISABLED_PERFORMANCE_STATE: PerformanceState = Object.freeze({
 	enabled: false,
@@ -70,12 +76,31 @@ export function nextFrameTimeEmaMs(previousEmaMs: number, sampleMs: number, alph
 	return previousEmaMs + (sampleMs - previousEmaMs) * a;
 }
 
+export function sanitizePerformanceFrameSampleMs(sampleMs: number): number {
+	if (!Number.isFinite(sampleMs) || sampleMs <= 0) return 0;
+	return Math.min(sampleMs, MAX_PERFORMANCE_FRAME_SAMPLE_MS);
+}
+
+export function nextContinuousOverloadMs(
+	previousOverloadMs: number,
+	emaMs: number,
+	sampleMs: number,
+	thresholds?: Partial<PerformanceGovernorThresholds>
+): number {
+	const resolved = resolvedThresholds(thresholds);
+	if (!Number.isFinite(emaMs) || emaMs <= resolved.shedAboveMs) return 0;
+	const previous = Number.isFinite(previousOverloadMs) && previousOverloadMs > 0 ? previousOverloadMs : 0;
+	const sample = sanitizePerformanceFrameSampleMs(sampleMs);
+	return previous + sample;
+}
+
 export function performanceGovernorStep(input: PerformanceGovernorInput): PerformanceGovernorDecision {
 	const thresholds = resolvedThresholds(input.thresholds);
 	const pressureIterations = sanitizeInteger(input.pressureIterations, 0);
 	const substeps = sanitizeInteger(input.substeps, 1);
 	const pressureFloor = sanitizeInteger(input.floors.pressureIterations, 0);
 	const substepsFloor = sanitizeInteger(input.floors.substeps, 1);
+	const requiredOverloadMs = Math.max(3000, thresholds.hysteresisMs);
 	const noChange = (tier = input.currentTier): PerformanceGovernorDecision => ({
 		action: 'none',
 		tier,
@@ -88,7 +113,7 @@ export function performanceGovernorStep(input: PerformanceGovernorInput): Perfor
 		return noChange();
 	}
 
-	if (input.msSinceLastChange < Math.max(3000, thresholds.hysteresisMs)) {
+	if (input.continuousOverloadMs < requiredOverloadMs || input.msSinceLastChange < requiredOverloadMs) {
 		return noChange();
 	}
 

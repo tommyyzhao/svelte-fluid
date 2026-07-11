@@ -42,11 +42,12 @@
       "wave": 0,
       "priority": "P0",
       "title": "Make governor overload duration genuinely sustained",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["OPS-001"],
       "spec": "Separate continuous-overload duration from time since action; reset/decay it below budget and make observable action state stable.",
       "acceptance": ["Intermittent spikes never shed", "Continuous overload waits the full interval", "Recovery breaks the interval", "Deterministic advance remains byte-identical"],
-      "files": ["src/lib/engine/performance-governor.ts", "src/lib/engine/FluidEngine.ts", "governor tests", "ADR"]
+      "files": ["src/lib/engine/performance-governor.ts", "src/lib/engine/FluidEngine.ts", "governor tests", "ADR"],
+      "notes": "Continuous overload and cooldown are separate; recovery and pause break streaks; one frame contributes at most 250 ms; invalid samples are ignored; lastAction remains observable until reset. Node/check/prepack and the targeted real-browser governor suite pass."
     },
     {
       "id": "RLS-002",
