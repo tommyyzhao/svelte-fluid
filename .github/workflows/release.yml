@@ -23,7 +23,7 @@ jobs:
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -50,8 +50,14 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Build library
-        run: bun run prepack
+      - name: Install Playwright Chromium
+        run: bunx playwright install --with-deps chromium
+
+      # Keep publishing in the same gate as the real-WebGL suite. The release
+      # workflow is independent of CI, so relying on the CI workflow alone can
+      # race a publish against a browser-test failure.
+      - name: Verify release candidate
+        run: bun run verify:release
 
       # If `.changeset/*.md` files exist, opens a "Version Packages" PR.
       # When that PR is merged (no remaining changesets), runs `publish`.

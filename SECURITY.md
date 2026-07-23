@@ -32,9 +32,10 @@ The attack surface is limited to:
 
 Security updates are applied to the latest release only.
 
-| Version | Supported |
-| ------- | --------- |
-| 0.1.x   | ✅        |
+| Version            | Supported |
+| ------------------ | --------- |
+| Latest npm release | ✅        |
+| Older releases     | ❌        |
 
 ## Non-Sensitive Issues
 

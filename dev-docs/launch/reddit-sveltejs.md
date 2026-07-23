@@ -1,23 +1,25 @@
 # r/sveltejs launch post
 
-**Target:** r/sveltejs (~25k members)
+**Target:** r/sveltejs
 **Recommended day/time:** Tuesday–Thursday, 9–11am ET (general programming-sub peak)
 **Sequence:** Goes second, after Show HN. Different framing than HN.
 **Image:** Attach hero.webp (or carve a smaller GIF from it). Reddit prefers visual posts in visual subs.
-**Pre-flight (manual):** Open r/sveltejs sidebar, confirm no rule against launch posts, no required flair, no weekly project-share megathread.
+**Pre-flight (manual):** Open r/sveltejs immediately before posting, re-read
+the sidebar rules, and apply its self-promotion label/flair. Confirm there is
+no active project-share megathread that supersedes a standalone post.
 
 ---
 
 ## Title (90 chars)
 
 ```
-svelte-fluid — WebGL fluid simulation as 6 Svelte 5 components, 10 presets, MIT
+[Self Promotion] svelte-fluid — 6 Svelte 5 fluid components, 14 presets, MIT
 ```
 
 ## Body
 
 ```
-Demo: https://tommyyzhao.github.io/svelte-fluid/
+Demo: https://svelte-fluid.dev/
 
 Built this as a Svelte 5 component library wrapping a WebGL Navier-Stokes fluid sim. It's a port of Pavel Dobryakov's 2017 fluid sim, with a Svelte 5 component API in front of the original shaders rather than a vanilla-JS wrapper:
 
@@ -26,12 +28,12 @@ Built this as a Svelte 5 component library wrapping a WebGL Navier-Stokes fluid 
 - `<Fluid />` with 70+ typed props, live reactive updates via runes, full cleanup on unmount
 - Deterministic seeding — same `seed` reproduces the splat pattern across resize
 - Glass post-processing (Snell refraction + chromatic aberration) on any shape
-- 10 presets (LavaLamp, Plasma, InkInWater, Aurora, ToroidalTempest, FrameFluid, AnnularFluid, SvgPathFluid, …)
+- 14 presets, from visual recipes such as LavaLamp and Plasma to solver-native flow scenes such as Venturi and Karman
 - Imperative `splat()` / `randomSplats()` via `bind:this`
 
 Shaders are Pavel's, unchanged (both MIT). The Svelte 5 component API, container-shape boundary enforcement, glass post-processing, presets, and engine lifecycle are mine.
 
-276 tests and 32 ADRs in the repo if you want to dig into design choices.
+The repo includes node and real-WebGL browser suites plus ADRs for the major design decisions.
 
 npm: https://www.npmjs.com/package/svelte-fluid
 repo: https://github.com/tommyyzhao/svelte-fluid

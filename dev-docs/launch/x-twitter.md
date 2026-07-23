@@ -3,25 +3,27 @@
 **Target:** Personal X account.
 **Recommended timing:** After both r/sveltejs and Show HN have posted. Use accumulated comment threads as social proof in replies.
 **Asset:** Attach `static/hero.webp` (2.4 MB, 96 frames, 4-panel showcase) to the parent tweet.
-**Strategy:** Parent tweet leads with the visual, kept short. Links go in replies — link-bearing parent tweets are reach-suppressed by the algorithm.
+**Strategy:** Lead with the visual and keep the parent concise. Put the live
+demo in the parent when click-through is the goal; use replies for the repo,
+npm package, and discussion links.
 
 ---
 
 ## Parent tweet (under 280 chars)
 
 ```
-shipped svelte-fluid — WebGL fluid simulation as a Svelte 5 component library. fluid flowing inside SVG paths and text glyphs, glass refraction on any shape, deterministic seeding, 10 presets. shaders by Pavel Dobryakov (MIT), API mine.
+shipped svelte-fluid — WebGL fluid simulation as a Svelte 5 component library. fluid flowing inside SVG paths and text glyphs, glass refraction on any shape, deterministic seeding, 14 presets. shaders by Pavel Dobryakov (MIT), API mine.
 
-demo + repo ↓
+https://svelte-fluid.dev/
 ```
 
-(243 chars including the down-arrow. Attach hero.webp. No links in this tweet.)
+(Attach hero.webp.)
 
 ## Reply 1 (live demo)
 
 ```
-demo (10 presets, 6 components, 5 container shapes):
-https://tommyyzhao.github.io/svelte-fluid/
+demo (14 presets, 6 components, 5 container shapes):
+https://svelte-fluid.dev/
 ```
 
 ## Reply 2 (repo + npm)
@@ -55,7 +57,7 @@ demo + repo ↓
 Skip the front-page framing, lead with the most-shared technical detail from the comment threads:
 
 ```
-shipped svelte-fluid — fluid simulation that physically respects SVG paths and text glyphs, so you can have fluid flowing inside the letters of the word "fluid". Svelte 5 component library, 10 presets, MIT. shaders by Pavel Dobryakov.
+shipped svelte-fluid — fluid simulation that physically respects SVG paths and text glyphs, so you can have fluid flowing inside the letters of the word "fluid". Svelte 5 component library, 14 presets, MIT. shaders by Pavel Dobryakov.
 
 demo + repo ↓
 ```
@@ -64,7 +66,7 @@ demo + repo ↓
 
 ## Don't
 
-- Don't put links in the parent tweet (algorithmic reach drops sharply).
 - Don't tag Anthropic/Svelte/Pavel unless you have a real reason and it's not solicitation.
-- Don't post a screenshot — post the hero.webp animation (X auto-converts webp to mp4 inline; the motion is the hook).
+- Prefer the animated hero asset when the platform accepts it; otherwise export
+  a short MP4/GIF rather than assuming animated WebP support.
 - Don't repost. If it lands flat, leave it. Quote-tweeting yourself a week later with new context is fine.

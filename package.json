@@ -19,18 +19,20 @@
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"prepack": "svelte-kit sync && svelte-package && publint",
-		"prepublishOnly": "bun run test && bun run check && bun run prepack",
+		"prepublishOnly": "bun run verify:release",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"test": "vitest run",
 		"test:browser": "VITEST_BROWSER=1 vitest run --project browser",
 		"test:watch": "vitest",
+		"verify:release": "bun run test && bun run check && bun run test:browser && bun run build",
 		"changeset": "changeset",
 		"version": "changeset version",
 		"release": "changeset publish"
 	},
 	"files": [
 		"dist",
+		"NOTICE",
 		"!dist/**/*.test.*",
 		"!dist/**/*.spec.*",
 		"!dist/**/__benches__/**"
@@ -53,24 +55,34 @@
 	"peerDependencies": {
 		"svelte": "^5.0.0"
 	},
+	"overrides": {
+		"basic-ftp": "5.3.1",
+		"cookie": "0.7.2",
+		"esbuild": "0.28.1",
+		"ip-address": "10.2.0",
+		"js-yaml": "5.2.1",
+		"postcss": "8.5.22",
+		"read-yaml-file": "2.1.0",
+		"ws": "8.21.1"
+	},
 	"devDependencies": {
 		"@changesets/changelog-github": "^0.6.0",
-		"@changesets/cli": "^2.31.0",
-		"@sveltejs/adapter-auto": "^7.0.0",
+		"@changesets/cli": "^2.31.1",
+		"@sveltejs/adapter-auto": "^7.0.1",
 		"@sveltejs/adapter-static": "^3.0.10",
-		"@sveltejs/kit": "^2.50.2",
-		"@sveltejs/package": "^2.5.7",
+		"@sveltejs/kit": "^2.70.1",
+		"@sveltejs/package": "^2.5.8",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
-		"@vitest/browser": "^4",
-		"@vitest/browser-playwright": "^4.1.9",
+		"@vitest/browser": "^4.1.10",
+		"@vitest/browser-playwright": "^4.1.10",
 		"playwright": "^1.61.1",
-		"publint": "^0.3.17",
-		"puppeteer-core": "^24.42.0",
-		"svelte": "^5.54.0",
-		"svelte-check": "^4.4.2",
+		"publint": "^0.3.22",
+		"puppeteer-core": "^24.43.1",
+		"svelte": "^5.56.7",
+		"svelte-check": "^4.7.3",
 		"typescript": "^5.9.3",
-		"vite": "^7.3.1",
-		"vitest": "^4.1.9"
+		"vite": "^7.3.6",
+		"vitest": "^4.1.10"
 	},
 	"keywords": [
 		"svelte",

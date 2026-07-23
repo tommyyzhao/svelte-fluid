@@ -8,6 +8,12 @@ const browserProject = defineProject({
 		name: 'browser',
 		include: ['src/**/*.browser.test.ts'],
 		exclude: ['dist/**', '.svelte-kit/**'],
+		// The bench files each create real WebGL contexts and run sustained GPU
+		// workloads. Running files in parallel makes their wall-clock timing
+		// depend on shared GPU contention and can trip otherwise healthy test
+		// timeouts. Keep inter-file execution serial; individual tests remain
+		// deterministic and exercise the same frames.
+		fileParallelism: false,
 		// Several benches run 2+ full deterministic advance() passes (100-220
 		// frames of real WebGL sim each) inside one `it`; the 5s/15s vitest
 		// defaults time out those tests even though nothing is hung.

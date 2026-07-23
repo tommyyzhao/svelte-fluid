@@ -83,7 +83,7 @@ Tradeoff: Sunday morning gets you on the front page more easily but with fewer t
 - DON'T: "I built a Svelte component for fluid simulation" — author-centric titles consistently underperform on HN
 - DON'T: "svelte-fluid: a Svelte component library for WebGL fluid simulation" — colon format is weaker than em-dash
 
-**URL field on HN:** Submit `https://tommyyzhao.github.io/svelte-fluid/` (the demo). Not GitHub, not npm.
+**URL field on HN:** Submit `https://svelte-fluid.dev/` (the demo). Not GitHub, not npm.
 
 **Body (text field):**
 - 1 paragraph: what it is + the novel claim ("hot-reloadable simulation params", "Svelte 5 runes API", whatever the strongest hook is)

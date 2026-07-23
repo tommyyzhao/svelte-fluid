@@ -19,7 +19,7 @@ Show HN: svelte-fluid – WebGL fluid simulation as a Svelte 5 component
 ## URL field
 
 ```
-https://tommyyzhao.github.io/svelte-fluid/
+https://svelte-fluid.dev/
 ```
 
 ## Text field (1–3 paragraphs)
@@ -27,9 +27,9 @@ https://tommyyzhao.github.io/svelte-fluid/
 ```
 A Svelte 5 component library wrapping Pavel Dobryakov's WebGL Navier-Stokes fluid simulation. Pavel's shaders run unchanged under MIT; what's new is the component API, container-shape boundary enforcement (the fluid physically flows inside arbitrary SVG paths and text glyphs), glass post-processing (Snell refraction + chromatic aberration), and a lifecycle that survives multiple instances per page without exhausting iOS Safari's WebGL context cap.
 
-Six components (Fluid, FluidBackground, FluidReveal, FluidDistortion, FluidStick, FluidText), ten presets, five container shapes. 70+ typed props live-reactive via runes. Deterministic seeding so the same `seed` reproduces splat patterns across resize.
+Six components (Fluid, FluidBackground, FluidReveal, FluidDistortion, FluidStick, FluidText), fourteen presets, five container shapes. 70+ typed props live-reactive via runes. Deterministic seeding so the same `seed` reproduces splat patterns across resize.
 
-276 tests, 32 ADRs documenting design tradeoffs. MIT. Demo above; repo at https://github.com/tommyyzhao/svelte-fluid.
+The repository includes node and real-WebGL browser suites plus ADRs documenting design tradeoffs. MIT. Demo above; repo at https://github.com/tommyyzhao/svelte-fluid.
 ```
 
 ---
@@ -54,8 +54,7 @@ Happy to talk about any of it — boundary SDFs, the glass refraction math, the 
 - Post the first comment within 60 seconds of submission.
 - Reply to every top-level comment within minutes.
 - Tone: acknowledge → clarify, never defensive. The Svader thread (HN 42416230) is the model — the author replied to even the accessibility critique he disagreed with, kept the thread alive past the algorithm's velocity-decay window.
-- Don't ask anyone to upvote (HN bans this and shadow-flags posts).
-- If it dies in /newest, you can email hn@ycombinator.com asking for second-chance pool re-up. This is real, undocumented but well-documented in IndieHackers writeups.
+- Don't ask anyone to upvote or comment; the official Show HN guidelines prohibit both.
 
 ---
 
