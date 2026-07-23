@@ -1,0 +1,8 @@
+svelte-fluid
+
+This project is derived from Pavel Dobryakov's WebGL-Fluid-Simulation:
+https://github.com/PavelDoGreat/WebGL-Fluid-Simulation
+
+The original work and this Svelte 5 / TypeScript port are distributed under
+the MIT License. The original and port copyright notices are retained in
+LICENSE.
