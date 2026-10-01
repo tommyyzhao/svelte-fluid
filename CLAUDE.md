@@ -97,12 +97,3 @@ route as part of the same change — not as a follow-up.
 | [`dev-docs/porting-notes.md`](dev-docs/porting-notes.md) | Upstream `script.js` symbol map — read before modifying the engine |
 | [`dev-docs/decisions/`](dev-docs/decisions/) | ADRs documenting every major design choice |
 | [`dev-docs/learnings/`](dev-docs/learnings/) | Gotchas with symptom/cause/fix — check before debugging |
-
-## Session workflow
-
-- Start: use the `resume-fluid-session` skill or run `/resume-fluid-session`.
-- End: use the `end-fluid-session` skill, the resume skill's end workflow, or run
-  `/end-fluid-session`.
-- Session memories live in `.agents/memories/fluid-sessions/` as local-only,
-  timestamped files. Do not overwrite prior memories; keep `.claude/handoff.md`
-  as a legacy read-only fallback.
