@@ -49,3 +49,39 @@ export function cssQualityPolicy(
 	}
 	return policy;
 }
+
+/** Engine defaults for the fields the CSS quality policy can override. */
+const POLICY_DEFAULTS = { bloom: true, sunrays: true, bloomIterations: 8, pressureIterations: 20 } as const;
+export type PolicyField = keyof typeof POLICY_DEFAULTS;
+
+/**
+ * Apply the CSS quality policy to `cfg` in place; return the fields it forced.
+ * Feed the return value back as `previouslyForced`: a field forced last time, no
+ * longer forced, and with no user value resets to the engine default, because
+ * `FluidEngine.setConfig` drops `undefined` and would keep the stale override.
+ * User-supplied values are never replaced by defaults.
+ */
+export function applyCssQualityPolicy(
+	cfg: Partial<Record<PolicyField, boolean | number | undefined>>,
+	policy: ReturnType<typeof cssQualityPolicy>,
+	previouslyForced: ReadonlySet<PolicyField> = new Set()
+): Set<PolicyField> {
+	const forced = new Set<PolicyField>();
+	if (policy.suppressPost) {
+		cfg.bloom = false;
+		cfg.sunrays = false;
+		forced.add('bloom').add('sunrays');
+	}
+	if (policy.bloomIterations !== undefined) {
+		cfg.bloomIterations = policy.bloomIterations;
+		forced.add('bloomIterations');
+	}
+	if (policy.pressureIterations !== undefined) {
+		cfg.pressureIterations = policy.pressureIterations;
+		forced.add('pressureIterations');
+	}
+	for (const key of previouslyForced) {
+		if (!forced.has(key) && cfg[key] === undefined) cfg[key] = POLICY_DEFAULTS[key];
+	}
+	return forced;
+}

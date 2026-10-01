@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	applyCssQualityPolicy,
 	canvasPixelSize,
 	cssQualityPolicy,
 	resolvePixelRatio
@@ -29,4 +30,23 @@ describe('component pixel ratio and CSS quality policy', () => {
 		expect(fluidSrc).toContain('canvasPixelSize(cssW, cssH, window.devicePixelRatio || 1, stableMaxPixelRatio)');
 	});
 
+
+	it('undoes policy-injected values when the canvas grows, never user values', () => {
+		const small = cssQualityPolicy(320, 240, 128, false, false);
+		const large = cssQualityPolicy(900, 700, 128, false, false);
+		const cfg: Record<string, boolean | number | undefined> = {};
+		const forced = applyCssQualityPolicy(cfg, small);
+		expect(cfg).toMatchObject({ bloom: false, sunrays: false, bloomIterations: 4, pressureIterations: 10 });
+
+		const grown: Record<string, boolean | number | undefined> = {};
+		applyCssQualityPolicy(grown, large, forced);
+		expect(grown).toEqual({ bloom: true, sunrays: true, bloomIterations: 8, pressureIterations: 20 });
+
+		// User-resolved values survive: bloom explicit false, pressureIterations explicit 7.
+		const userSmall = cssQualityPolicy(320, 240, 128, false, true);
+		const userForced = applyCssQualityPolicy({ bloom: false, pressureIterations: 7 }, userSmall);
+		const userGrown: Record<string, boolean | number | undefined> = { bloom: false, pressureIterations: 7 };
+		applyCssQualityPolicy(userGrown, cssQualityPolicy(900, 700, 128, false, true), userForced);
+		expect(userGrown).toMatchObject({ bloom: false, pressureIterations: 7, sunrays: true, bloomIterations: 8 });
+	});
 });

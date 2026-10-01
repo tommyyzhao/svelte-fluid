@@ -95,7 +95,7 @@
 
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
-	import { canvasPixelSize, cssQualityPolicy } from './engine/resolution.js';
+	import { applyCssQualityPolicy, canvasPixelSize, cssQualityPolicy, type PolicyField } from './engine/resolution.js';
 	import { FluidEngine } from './engine/FluidEngine.js';
 	import {
 		FluidUnavailableError,
@@ -378,6 +378,8 @@
 		};
 	}
 
+	let policyForced = new Set<PolicyField>();
+
 	/** Resolve canvas-size policy without making CSS dimensions a Svelte effect dependency. */
 	function buildCanvasConfig(
 		cssWidth: number,
@@ -400,14 +402,8 @@
 		cfg.bloomResolution = Math.min(cfg.bloomResolution ?? 256, maxPx);
 		cfg.sunraysResolution = Math.min(cfg.sunraysResolution ?? 196, maxPx);
 
-		// Auto-suppress expensive post-processing on small canvases.
-		if (policy.suppressPost) {
-			cfg.bloom = false;
-			cfg.sunrays = false;
-		}
-
-		if (policy.bloomIterations !== undefined) cfg.bloomIterations = policy.bloomIterations;
-		if (policy.pressureIterations !== undefined) cfg.pressureIterations = policy.pressureIterations;
+		// Small-canvas policy; undoes values it injected once it stops applying.
+		policyForced = applyCssQualityPolicy(cfg, policy, policyForced);
 		return cfg;
 	}
 
