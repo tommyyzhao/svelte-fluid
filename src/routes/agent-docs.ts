@@ -155,6 +155,8 @@ export function buildSkillMd(site = DEFAULT_SITE): string {
 		'<!-- fluid.handle.splat(x, y, dx, dy, color) | randomSplats(n) | pause() | resume() | isPaused | getPerformanceState() -->',
 		'```',
 		'',
+		'Input limits: non-finite `splat()` arguments are ignored (one-time warning); `randomSplats(n)` backlog caps at 64 (16 consumed per frame), non-finite/negative `n` ignored; `initialSplatCount*` clamp 0–64, `autoSplatCount` 0–16; non-finite top-level numeric config values are ignored (previous value kept).',
+		'',
 		'## Presets (zero-config wrappers)',
 		'',
 		'Import and drop in — each pins a tuned `<Fluid>` config. Forwarded props: `width`, `height`, `class`, `style`, `seed`, `lazy`, `maxPixelRatio`, `splatOnHover`, `aria-label`, `backColor` (flow presets also `pointerInput`).',
