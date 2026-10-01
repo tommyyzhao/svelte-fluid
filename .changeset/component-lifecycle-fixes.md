@@ -12,9 +12,7 @@ Component lifecycle and quality-policy fixes.
   now typed and forwarded by `FluidBackground`, `FluidDistortion`, `FluidReveal`,
   `FluidStick` and `FluidText`. `FluidDistortion` defaults `poster` to `src`.
 - Fix: bloom, sunrays, `bloomIterations` and `pressureIterations` no longer stay
-  forced off/reduced after a small canvas grows past the 600 CSS px threshold,
-  and the small-canvas policy no longer overrides an explicit value such as
-  `bloom={true}`.
+  forced off/reduced after a small canvas grows past the 600 CSS px threshold.
 - `FluidDistortion`: opening splats are seeded from `seed` (reproducible, capped
   at 64); `autoDistort` waits for the engine, no longer jumps after pause/resume,
   and now honours `autoDistortSpeed`.

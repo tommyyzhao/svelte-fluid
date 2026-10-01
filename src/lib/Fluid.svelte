@@ -426,8 +426,7 @@
 		cfg.bloomResolution = Math.min(cfg.bloomResolution ?? 256, maxPx);
 		cfg.sunraysResolution = Math.min(cfg.sunraysResolution ?? 196, maxPx);
 
-		// Small-canvas policy: never overrides user values; undoes its own
-		// injections once the canvas grows.
+		// Small-canvas policy; undoes its injections once the canvas grows.
 		policyForced = applyCssQualityPolicy(
 			cfg,
 			policy,
