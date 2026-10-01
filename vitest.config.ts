@@ -23,7 +23,12 @@ const browserProject = defineProject({
 			headless: true,
 			// vitest 4 takes a provider factory (not the string 'playwright')
 			// and per-browser `instances` instead of a top-level `name`.
-			provider: playwright(),
+			// VITEST_CHROME_PATH selects a hardware-capable installed Chrome.
+			provider: playwright(
+				process.env.VITEST_CHROME_PATH
+					? { launchOptions: { executablePath: process.env.VITEST_CHROME_PATH } }
+					: {}
+			),
 			instances: [{ browser: 'chromium' }]
 		}
 	}
