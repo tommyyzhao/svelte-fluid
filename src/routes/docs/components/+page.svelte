@@ -75,6 +75,8 @@ ${SCRIPT_CLOSE}
 		<tr><td><code>poster</code></td><td><code>string</code></td><td>—</td><td>Static image (object-fit: cover) shown when WebGL is unavailable and no <code>fallback</code> is given. A graceful still of the animation.</td></tr>
 		<tr><td><code>posterAlt</code></td><td><code>string</code></td><td><code>''</code></td><td>Alt text for the <code>poster</code> image. Defaults to empty (decorative) — set it when the poster conveys meaning.</td></tr>
 		<tr><td><code>fallbackText</code></td><td><code>string</code></td><td><em>see below</em></td><td>Visually-hidden message for the default fallback, discoverable by assistive tech (rendered alongside a <code>poster</code> too). Set <code>''</code> to suppress for purely decorative instances.</td></tr>
+					<tr><td><code>onReady</code></td><td><code>() =&gt; void</code></td><td>—</td><td>Called after the engine is constructed and its first frame is scheduled; fires again when a <code>lazy</code> instance rebuilds. Throwing callbacks are caught and logged.</td></tr>
+					<tr><td><code>onError</code></td><td><code>(error: Error) =&gt; void</code></td><td>—</td><td>Called when engine construction fails — a <code>WebGLUnavailableError</code> (check <code>.reason</code>) or another init error. Throwing callbacks are caught and logged.</td></tr>
 	</tbody>
 </table>
 
@@ -151,7 +153,7 @@ ${SCRIPT_CLOSE}
 	</tbody>
 </table>
 
-<p>Also accepts <code>width</code>, <code>height</code>, <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, and all <a href="{base}/docs/configuration">FluidConfig</a> props.</p>
+<p>Also accepts <code>width</code>, <code>height</code>, <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, <code>fallback</code>, <code>poster</code>, <code>posterAlt</code>, <code>fallbackText</code>, <code>onReady</code>, <code>onError</code>, and all <a href="{base}/docs/configuration">FluidConfig</a> props.</p>
 
 <div class="callout">
 	<strong>Note:</strong> The canvas sits on top of children for alpha compositing. Interactive elements (links, buttons) inside the slot will not receive pointer events.
@@ -183,7 +185,7 @@ ${SCRIPT_CLOSE}
 	</tbody>
 </table>
 
-<p>Also accepts <code>width</code>, <code>height</code>, <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, and all <a href="{base}/docs/configuration">FluidConfig</a> props.</p>
+<p>Also accepts <code>width</code>, <code>height</code>, <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, <code>fallback</code>, <code>poster</code>, <code>posterAlt</code>, <code>fallbackText</code>, <code>onReady</code>, <code>onError</code>, and all <a href="{base}/docs/configuration">FluidConfig</a> props.</p>
 
 <!-- ============================================================ -->
 <h2 id="fluidstick">&lt;FluidStick&gt;</h2>
@@ -220,7 +222,7 @@ ${SCRIPT_CLOSE}
 	</tbody>
 </table>
 
-<p>Also accepts <code>width</code>, <code>height</code>, <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, and all <a href="{base}/docs/configuration">FluidConfig</a> props.</p>
+<p>Also accepts <code>width</code>, <code>height</code>, <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, <code>fallback</code>, <code>poster</code>, <code>posterAlt</code>, <code>fallbackText</code>, <code>onReady</code>, <code>onError</code>, and all <a href="{base}/docs/configuration">FluidConfig</a> props.</p>
 
 <!-- ============================================================ -->
 <h2 id="fluidtext">&lt;FluidText&gt;</h2>
@@ -250,4 +252,4 @@ ${SCRIPT_CLOSE}
 	</tbody>
 </table>
 
-<p>Also accepts <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, and all <a href="{base}/docs/configuration">FluidConfig</a> props. Defaults to <code>transparent=true</code>.</p>
+<p>Also accepts <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, <code>fallback</code>, <code>poster</code>, <code>posterAlt</code>, <code>fallbackText</code>, <code>onReady</code>, <code>onError</code>, and all <a href="{base}/docs/configuration">FluidConfig</a> props. Defaults to <code>transparent=true</code>.</p>
