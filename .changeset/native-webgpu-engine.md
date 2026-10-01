@@ -28,6 +28,8 @@ Migration notes:
 | Public `ResolvedConfig`, `FBO`, `DoubleFBO`, and `ExtInfo` | Removed; backend internals are no longer public |
 | Synchronous usable engine after construction | Await `engine.ready` or use `await FluidEngine.create(...)` |
 | WebGL fallback runtime | Accessible poster/snippet fallback when no suitable WebGPU adapter exists |
+| `FlowSource.samples?: number` (ignored compatibility hint) | Removed; line/rect sources use one analytic shader pass, so drop the field |
+| `ToroidalTempest` / `ToroidalTempestProps` (deprecated alias) | `Toroidal` / `ToroidalProps` |
 
 WebGPU adapter acquisition is the new browser support floor. There is no slower
 WebGL simulation fallback, and device loss reconstructs the native engine from
