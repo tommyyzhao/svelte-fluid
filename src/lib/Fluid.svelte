@@ -100,6 +100,7 @@
 	import {
 		FluidUnavailableError,
 		isFluidUnavailableError,
+		isTerminalFailure,
 		type FluidUnavailableReason as RuntimeUnavailableReason
 	} from './engine/gpu-support.js';
 	import { DISABLED_PERFORMANCE_STATE } from './engine/performance-governor.js';
@@ -426,7 +427,9 @@
 
 	async function instantiate() {
 		if (!canvasEl || cssW === 0 || cssH === 0 || !isVisible) return;
-		if (initializing || failureReason) return;
+		if (initializing || isTerminalFailure(failureReason)) return;
+		// A failed distortion asset is not terminal: the rebuilt engine retries the image.
+		if (lastError?.reason === 'asset-failed') lastError = null;
 
 		const size = canvasPixelSize(cssW, cssH, window.devicePixelRatio || 1, stableMaxPixelRatio);
 		canvasEl.width = size.width;
@@ -493,6 +496,9 @@
 				if (engine === next) engine = undefined;
 				return;
 			}
+			// Startup recovery after an early device loss already announced readiness
+			// via onRecovered; a failed recovery cleared `engine`. Fire onReady once.
+			if (engine !== next || engineReady) return;
 			engineReady = true;
 			lastError = null;
 			notifyHost(onReady, 'onReady');

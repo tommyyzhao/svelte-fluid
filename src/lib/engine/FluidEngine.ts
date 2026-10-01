@@ -58,6 +58,7 @@ export class FluidEngine implements FluidHandle {
 	private disposed = false;
 	private shouldRun: boolean;
 	private recoveryToken = 0;
+	private recovery: Promise<void> | null = null;
 	private configVersion = 0;
 	private sizeVersion = 0;
 	private desiredWidth: number;
@@ -72,7 +73,7 @@ export class FluidEngine implements FluidHandle {
 		this.desiredWidth = options.canvas.width;
 		this.desiredHeight = options.canvas.height;
 		this.shouldRun = options.autoStart !== false;
-		this.ready = this.createNativeEngine();
+		this.ready = this.createNativeEngine().then(() => this.settleStartup());
 	}
 
 	static async create(options: FluidEngineOptions): Promise<FluidEngine> {
@@ -209,7 +210,12 @@ export class FluidEngine implements FluidHandle {
 					else console.error(error);
 				}
 			},
-			onDeviceLost: () => void this.recover()
+			onDeviceLost: () => {
+				const recovery = this.recover().finally(() => {
+					if (this.recovery === recovery) this.recovery = null;
+				});
+				this.recovery = recovery;
+			}
 		});
 		if (this.disposed || token !== this.recoveryToken) {
 			next.dispose();
@@ -254,6 +260,15 @@ export class FluidEngine implements FluidHandle {
 			next.dispose();
 			throw error;
 		}
+	}
+
+	/**
+	 * A device lost during startup supersedes the first candidate. `ready` must not
+	 * resolve until recovery has published a usable engine (or failed/disposed),
+	 * otherwise hosts see a success followed by a second `onRecovered`.
+	 */
+	private async settleStartup(): Promise<void> {
+		while (!this.disposed && !this.engine && this.recovery) await this.recovery;
 	}
 
 	private async recover(): Promise<void> {

@@ -37,6 +37,11 @@ export interface FluidGpuDeviceSnapshot extends FluidGpuResourceSnapshot {
 	generation: number;
 }
 
+/** Whether a recorded failure forbids building a new engine. Asset failures are recoverable. */
+export function isTerminalFailure(reason: FluidUnavailableReason | null | undefined): boolean {
+	return reason != null && reason !== 'asset-failed';
+}
+
 export function isFluidUnavailableError(error: unknown): error is FluidUnavailableError {
 	return error instanceof FluidUnavailableError;
 }
