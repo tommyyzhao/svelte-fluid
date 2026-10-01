@@ -26,7 +26,7 @@ describe('startup device loss', () => {
 		const create = vi
 			.spyOn(NativeWebGpuFluidEngine, 'create')
 			.mockImplementationOnce(async (options) => {
-				lose = () => options.onDeviceLost?.();
+				lose = () => options.onDeviceLost?.({} as GPUDeviceLostInfo);
 				return fakeEngine(() => lose());
 			})
 			.mockImplementationOnce(async () => {
