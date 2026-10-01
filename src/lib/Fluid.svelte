@@ -97,6 +97,19 @@
 		 * requires WebGL, which isn't available in your browser."
 		 */
 		fallbackText?: string;
+		/**
+		 * Called after the engine is constructed and its first frame is
+		 * scheduled. Fires again whenever a `lazy` instance rebuilds its engine.
+		 * A throwing callback is caught and logged.
+		 */
+		onReady?: () => void;
+		/**
+		 * Called when engine construction fails — a {@link WebGLUnavailableError}
+		 * (check `.reason`) or any other initialization error such as a shader
+		 * compile failure. Also fires for transient failures that the component
+		 * retries. A throwing callback is caught and logged.
+		 */
+		onError?: (error: Error) => void;
 	}
 </script>
 
@@ -110,6 +123,7 @@
 	} from './engine/resolution.js';
 	import { DEFAULTS, FluidEngine } from './engine/FluidEngine.js';
 	import { WebGLUnavailableError } from './engine/gl-utils.js';
+	import { notifyHost } from './engine/notify-host.js';
 	import { DISABLED_PERFORMANCE_STATE } from './engine/performance-governor.js';
 	import { randomSeed } from './engine/rng.js';
 	import type { FluidHandle } from './engine/types.js';
@@ -212,6 +226,8 @@
 		poster,
 		posterAlt,
 		fallbackText = "This animation requires WebGL, which isn't available in your browser.",
+		onReady,
+		onError,
 		'aria-hidden': ariaHidden,
 		...rest
 	}: FluidProps = $props();
@@ -495,6 +511,12 @@
 		try {
 			engine = new FluidEngine({ canvas: canvasEl, config: cfg });
 			lastError = null;
+			// `autoPause` must hold for a tab that is already hidden: the engine
+			// starts its RAF loop in the constructor, so stop it again here. The
+			// visibilitychange handler resumes it.
+			if (stableAutoPause && typeof document !== 'undefined' && document.hidden) engine.pause();
+			// The constructor schedules the first frame (unless the tab is hidden).
+			notifyHost(onReady, 'onReady');
 		} catch (err) {
 			// Engine init can fail. Degrade gracefully — never crash the host page.
 			// The transient/permanent + reveal-masking policy lives in the
@@ -508,6 +530,7 @@
 				lastError = null;
 				console.error('svelte-fluid: engine initialization failed', err);
 			}
+			notifyHost(onError, 'onError', err instanceof Error ? err : new Error(String(err)));
 		}
 	}
 
