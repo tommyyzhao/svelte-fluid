@@ -356,7 +356,8 @@
 
 <!-- ================================================================ -->
 <h2>Initial Splats</h2>
-<p>Splats created once at engine construction. These are construct-only (Bucket D) — changing them at runtime has no effect.</p>
+<p>Splats created once at engine construction. These are construct-only (Bucket D) — changing them at runtime has no effect.
+	<code>initialSplatCount</code>, <code>initialSplatCountMin</code>, and <code>initialSplatCountMax</code> are clamped to 0–64.</p>
 
 <table>
 	<thead>
@@ -440,7 +441,7 @@
 			<td><code>autoSplatCount</code></td>
 			<td><code>number</code></td>
 			<td><code>1</code></td>
-			<td>Number of splats emitted each automatic burst.</td>
+			<td>Number of splats emitted each automatic burst. Clamped to 0–16.</td>
 		</tr>
 		<tr>
 			<td><code>autoSplatColor</code></td>
@@ -801,6 +802,10 @@
 
 <!-- ================================================================ -->
 <h2>Hot-update buckets</h2>
+<p>
+	Non-finite top-level numeric config values (<code>NaN</code>, <code>±Infinity</code>) are ignored and the
+	previous value is kept.
+</p>
 <p>
 	When props change at runtime, <code>setConfig()</code> classifies each field into one of four buckets
 	that determine how the change takes effect:
