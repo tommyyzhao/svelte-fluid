@@ -70,15 +70,16 @@ describe('component pixel ratio and CSS quality policy', () => {
 			});
 		});
 
-		it('never overrides an explicit user value, including bloom={true}', () => {
+		it('suppresses supplied bloom on small canvases and restores it on growth', () => {
+			// Presets supply bloom/sunrays; small cards must still skip post.
+			const userIterations = cssQualityPolicy(320, 240, 128, false, true);
 			const cfg: Cfg = { bloom: true, pressureIterations: 7 };
-			const forced = applyCssQualityPolicy(cfg, small, defaults);
-			expect(cfg).toMatchObject({ bloom: true, pressureIterations: 7, sunrays: false });
-			expect(forced.has('bloom')).toBe(false);
+			const forced = applyCssQualityPolicy(cfg, userIterations, defaults);
+			expect(cfg).toMatchObject({ bloom: false, sunrays: false, pressureIterations: 7 });
 			expect(forced.has('pressureIterations')).toBe(false);
 			const grown: Cfg = { bloom: true, pressureIterations: 7 };
 			applyCssQualityPolicy(grown, large, defaults, forced);
-			expect(grown).toMatchObject({ bloom: true, pressureIterations: 7, sunrays: true });
+			expect(grown).toMatchObject({ bloom: true, pressureIterations: 7, sunrays: DEFAULTS.SUNRAYS });
 		});
 	});
 });

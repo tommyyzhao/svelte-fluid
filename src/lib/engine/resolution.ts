@@ -60,7 +60,6 @@ export type PolicyDefaults = Readonly<{
 
 /**
  * Apply the CSS quality policy to `cfg` in place; return the fields it forced.
- * A user-supplied value (anything but `undefined`) is never overridden.
  * Feed the return value back as `previouslyForced`: a field forced last time,
  * no longer forced, and with no user value resets to the engine default,
  * because `FluidEngine.setConfig` drops `undefined` and would keep the stale
@@ -73,8 +72,10 @@ export function applyCssQualityPolicy(
 	previouslyForced: ReadonlySet<PolicyField> = new Set()
 ): Set<PolicyField> {
 	const forced = new Set<PolicyField>();
+	// Overrides bloom/sunrays even when supplied (0.7 behaviour; presets set
+	// them). Iteration overrides are already skipped by cssQualityPolicy when
+	// the user supplied a value.
 	const force = (key: PolicyField, value: boolean | number) => {
-		if (cfg[key] !== undefined) return;
 		cfg[key] = value;
 		forced.add(key);
 	};
