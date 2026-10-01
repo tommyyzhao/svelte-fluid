@@ -152,8 +152,10 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
    - `dyeResolution`, `bloomResolution`, `sunraysResolution` are capped
      to `max(canvas.width, canvas.height)` so textures never exceed the
      canvas's actual pixel dimensions.
-   - Bloom and sunrays are auto-suppressed on canvases under 600 px
-     (max dimension) when the user hasn't explicitly opted in.
+   - Bloom and sunrays are auto-suppressed on canvases under 600 CSS px
+     (max dimension) only when the user supplied no value; an explicit
+     `bloom={true}` is respected. Injected values are reverted to engine
+     defaults when the canvas grows (`applyCssQualityPolicy`).
    - `bloomIterations` is capped to 4 (< 512 px) or 5 (< 768 px).
    - `pressureIterations` is reduced to 10 on small canvases, 6 on
      tiny sim grids (≤ 64).

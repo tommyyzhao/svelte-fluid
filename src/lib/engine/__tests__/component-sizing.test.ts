@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+	applyCssQualityPolicy,
 	canvasPixelSize,
 	cssQualityPolicy,
 	fitDrawingBufferSize,
 	resolvePixelRatio
 } from '../resolution.js';
+import { DEFAULTS } from '../FluidEngine.js';
 import { getResolution } from '../gl-utils.js';
 import type { GL } from '../gl-utils.js';
 import fluidSrc from '../../Fluid.svelte?raw';
@@ -41,5 +43,42 @@ describe('component pixel ratio and CSS quality policy', () => {
 			getParameter: () => 4096
 		} as unknown as GL;
 		expect(getResolution(gl, 3000)).toEqual({ width: 4096, height: 2048 });
+	});
+
+	describe('applyCssQualityPolicy', () => {
+		type Cfg = Record<string, boolean | number | undefined>;
+		const defaults = {
+			bloom: DEFAULTS.BLOOM,
+			sunrays: DEFAULTS.SUNRAYS,
+			bloomIterations: DEFAULTS.BLOOM_ITERATIONS,
+			pressureIterations: DEFAULTS.PRESSURE_ITERATIONS
+		};
+		const small = cssQualityPolicy(320, 240, 128, false, false);
+		const large = cssQualityPolicy(900, 700, 128, false, false);
+
+		it('undoes policy-injected values when the canvas grows', () => {
+			const cfg: Cfg = {};
+			const forced = applyCssQualityPolicy(cfg, small, defaults);
+			expect(cfg).toEqual({ bloom: false, sunrays: false, bloomIterations: 4, pressureIterations: 10 });
+			const grown: Cfg = {};
+			applyCssQualityPolicy(grown, large, defaults, forced);
+			expect(grown).toEqual({
+				bloom: DEFAULTS.BLOOM,
+				sunrays: DEFAULTS.SUNRAYS,
+				bloomIterations: DEFAULTS.BLOOM_ITERATIONS,
+				pressureIterations: DEFAULTS.PRESSURE_ITERATIONS
+			});
+		});
+
+		it('never overrides an explicit user value, including bloom={true}', () => {
+			const cfg: Cfg = { bloom: true, pressureIterations: 7 };
+			const forced = applyCssQualityPolicy(cfg, small, defaults);
+			expect(cfg).toMatchObject({ bloom: true, pressureIterations: 7, sunrays: false });
+			expect(forced.has('bloom')).toBe(false);
+			expect(forced.has('pressureIterations')).toBe(false);
+			const grown: Cfg = { bloom: true, pressureIterations: 7 };
+			applyCssQualityPolicy(grown, large, defaults, forced);
+			expect(grown).toMatchObject({ bloom: true, pressureIterations: 7, sunrays: true });
+		});
 	});
 });
