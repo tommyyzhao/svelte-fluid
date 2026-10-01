@@ -1,0 +1,14 @@
+[
+	{
+		"name": "splash-cursor",
+		"title": "Splash Cursor",
+		"type": "registry:component",
+		"author": "Tommy Zhao <https://github.com/tommyyzhao>",
+		"description": "Full-viewport WebGL fluid splash that follows the pointer. Thin wrapper around svelte-fluid.",
+		"dependencies": [
+			"svelte-fluid"
+		],
+		"registryDependencies": [],
+		"relativeUrl": "splash-cursor.json"
+	}
+]

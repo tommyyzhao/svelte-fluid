@@ -110,6 +110,28 @@ start with a slightly brighter starter config:
 <Fluid bind:this={ref} />
 ```
 
+## Splash cursor
+
+A full-viewport, transparent, pointer-following fluid cursor:
+
+```svelte
+<script lang="ts">
+  import { Fluid } from 'svelte-fluid';
+</script>
+
+<div class="splash-cursor" aria-hidden="true">
+  <Fluid transparent pointerTarget="window" splatOnHover bloom={false} sunrays={false}
+    densityDissipation={2} velocityDissipation={2} pressure={0.1} curl={3} splatRadius={0.25} />
+</div>
+
+<style>
+  .splash-cursor { position: fixed; inset: 0; z-index: 9999; pointer-events: none; }
+</style>
+```
+
+Or `npx shadcn-svelte@latest add https://svelte-fluid.dev/r/splash-cursor.json`.
+See the [recipe](https://svelte-fluid.dev/docs/recipes/splash-cursor).
+
 ## Browser compatibility
 
 - **WebGL 1** (with linear filtering) and **WebGL 2** both work

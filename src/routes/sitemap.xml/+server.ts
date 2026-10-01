@@ -12,7 +12,8 @@ const ROUTES = [
 	'/docs/configuration',
 	'/docs/shapes',
 	'/docs/presets',
-	'/docs/api'
+	'/docs/api',
+	'/docs/recipes/splash-cursor'
 ];
 
 export function GET() {
