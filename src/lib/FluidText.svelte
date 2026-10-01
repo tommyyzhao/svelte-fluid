@@ -9,8 +9,11 @@
 
 <script lang="ts" module>
 	import type { FluidConfig, FluidHandle } from './engine/types.js';
+	import type { FluidProps } from './Fluid.svelte';
 
-	export interface FluidTextProps extends FluidConfig {
+	export interface FluidTextProps
+		extends FluidConfig,
+			Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
 		/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
 		maxPixelRatio?: number | null;
 		/** The text to render as fluid-filled letterforms. */

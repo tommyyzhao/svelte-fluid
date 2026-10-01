@@ -18,8 +18,11 @@
 <script lang="ts" module>
 	import type { Snippet } from 'svelte';
 	import type { FluidConfig, FluidHandle } from './engine/types.js';
+	import type { FluidProps } from './Fluid.svelte';
 
-	export interface FluidBackgroundProps extends FluidConfig {
+	export interface FluidBackgroundProps
+		extends FluidConfig,
+			Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
 		/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
 		maxPixelRatio?: number | null;
 		/**
