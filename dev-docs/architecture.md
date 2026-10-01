@@ -45,7 +45,7 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 │   • divergence / curlFBO single FBOs                            │
 │   • bloom + bloomFramebuffers + sunrays + sunraysTemp           │
 │   • DitheringTexture                                            │
-│   • pointers[], splatStack[]                                    │
+│   • pointers[], pendingRandomSplats (bounded)                   │
 │   • rafId, lastUpdateTime, engineStartTime                      │
 │                                                                 │
 │  Public API:                                                    │

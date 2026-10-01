@@ -90,6 +90,14 @@ import { fitDrawingBufferSize } from './resolution.js';
 import { flowCanDriveSolver } from './solver-activity.js';
 import { blurMaskData } from './sticky-blur.js';
 import {
+	MAX_AUTO_SPLAT_COUNT,
+	MAX_INITIAL_SPLATS,
+	enqueueRandomSplats,
+	isFiniteSplat,
+	randomSplatsThisFrame,
+	withoutNonFiniteConfig
+} from './input-bounds.js';
+import {
 	containerShapeEqual,
 	stickyMaskEqual,
 	containerMask,
@@ -286,6 +294,8 @@ export const DEFAULTS: ResolvedConfig = {
 export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): ResolvedConfig {
 	const out: ResolvedConfig = { ...base };
 	if (!input) return out;
+	input = withoutNonFiniteConfig(input);
+	const splatCount = (value: number, max: number) => Math.max(0, Math.min(max, Math.floor(value)));
 	if (input.simResolution !== undefined) out.SIM_RESOLUTION = input.simResolution;
 	if (input.dyeResolution !== undefined) out.DYE_RESOLUTION = input.dyeResolution;
 	if (input.densityDissipation !== undefined) {
@@ -350,11 +360,13 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 	if (input.sunrays !== undefined) out.SUNRAYS = input.sunrays;
 	if (input.sunraysResolution !== undefined) out.SUNRAYS_RESOLUTION = input.sunraysResolution;
 	if (input.sunraysWeight !== undefined) out.SUNRAYS_WEIGHT = input.sunraysWeight;
-	if (input.initialSplatCountMin !== undefined) out.INITIAL_SPLAT_MIN = input.initialSplatCountMin;
-	if (input.initialSplatCountMax !== undefined) out.INITIAL_SPLAT_MAX = input.initialSplatCountMax;
+	if (input.initialSplatCountMin !== undefined)
+		out.INITIAL_SPLAT_MIN = splatCount(input.initialSplatCountMin, MAX_INITIAL_SPLATS);
+	if (input.initialSplatCountMax !== undefined)
+		out.INITIAL_SPLAT_MAX = splatCount(input.initialSplatCountMax, MAX_INITIAL_SPLATS);
 	if (input.initialSplatCount !== undefined) {
-		out.INITIAL_SPLAT_MIN = input.initialSplatCount;
-		out.INITIAL_SPLAT_MAX = input.initialSplatCount;
+		out.INITIAL_SPLAT_MIN = splatCount(input.initialSplatCount, MAX_INITIAL_SPLATS);
+		out.INITIAL_SPLAT_MAX = out.INITIAL_SPLAT_MIN;
 	}
 	if (input.pointerInput !== undefined) out.POINTER_INPUT = input.pointerInput;
 	if (input.pointerTarget !== undefined) out.POINTER_TARGET = input.pointerTarget;
@@ -363,7 +375,7 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 	if (input.requireHardwareAcceleration !== undefined)
 		out.REQUIRE_HARDWARE_ACCELERATION = input.requireHardwareAcceleration;
 	if (input.autoSplatRate !== undefined) out.AUTO_SPLAT_RATE = input.autoSplatRate;
-	if (input.autoSplatCount !== undefined) out.AUTO_SPLAT_COUNT = input.autoSplatCount;
+	if (input.autoSplatCount !== undefined) out.AUTO_SPLAT_COUNT = splatCount(input.autoSplatCount, MAX_AUTO_SPLAT_COUNT);
 	if (input.autoSplatColor !== undefined) out.AUTO_SPLAT_COLOR = input.autoSplatColor;
 	if (input.autoSplatVelocityX !== undefined) out.AUTO_SPLAT_VELOCITY_X = input.autoSplatVelocityX;
 	if (input.autoSplatVelocityY !== undefined) out.AUTO_SPLAT_VELOCITY_Y = input.autoSplatVelocityY;
@@ -704,7 +716,8 @@ export class FluidEngine implements FluidHandle {
 
 	// --- Runtime state ---
 	private pointers: Pointer[] = [createPointer()];
-	private splatStack: number[] = [];
+	/** Random splats requested but not yet run; bounded by input-bounds.ts. */
+	private pendingRandomSplats = 0;
 	private lastUpdateTime = 0;
 	private engineStartTime = 0;
 	private simTime = 0;
@@ -876,7 +889,7 @@ export class FluidEngine implements FluidHandle {
 	/* ---------------------------------------------------------------------- */
 
 	splat(x: number, y: number, dx: number, dy: number, color: RGB): void {
-		if (this.contextLost) return;
+		if (this.contextLost || !isFiniteSplat(x, y, dx, dy, color)) return;
 		// Conservatively activate even for a numerically zero splat. Proving a
 		// caller's future values are zero is not worth a false-idle solver.
 		this.solverMayContainContent = true;
@@ -888,7 +901,7 @@ export class FluidEngine implements FluidHandle {
 	}
 
 	randomSplats(count: number): void {
-		this.splatStack.push(count);
+		this.pendingRandomSplats = enqueueRandomSplats(this.pendingRandomSplats, count);
 	}
 
 	/** Stop the animation loop. The GL context stays alive. Idempotent. */
@@ -2794,7 +2807,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 
 	/** Pending input may write GL state even while simulation stepping is paused. */
 	private hasPendingFrameInput(): boolean {
-		return this.splatStack.length > 0 || this.pointers.some((pointer) => pointer.moved);
+		return this.pendingRandomSplats > 0 || this.pointers.some((pointer) => pointer.moved);
 	}
 
 	private update(): void {
@@ -2933,8 +2946,10 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	}
 
 	private applyInputs(): void {
-		if (this.splatStack.length > 0) {
-			this.multipleSplats(this.splatStack.pop()!);
+		if (this.pendingRandomSplats > 0) {
+			const count = randomSplatsThisFrame(this.pendingRandomSplats);
+			this.pendingRandomSplats -= count;
+			this.multipleSplats(count);
 		}
 		for (const p of this.pointers) {
 			if (p.moved) {

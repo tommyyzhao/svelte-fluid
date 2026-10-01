@@ -986,9 +986,14 @@ export interface FluidHandle {
 	 * @param dx X velocity (raw value, **not** scaled by `splatForce`)
 	 * @param dy Y velocity (raw value, **not** scaled by `splatForce`)
 	 * @param color RGB triple in 0–1 linear range; HDR (>1) is valid
+	 *
+	 * Calls with any non-finite argument are ignored (one console warning).
 	 */
 	splat(x: number, y: number, dx: number, dy: number, color: RGB): void;
-	/** Push N additional random splats onto the splat queue. */
+	/**
+	 * Queue N additional random splats. The backlog holds at most 64 and at
+	 * most 16 run per frame; non-finite or negative counts are ignored.
+	 */
 	randomSplats(count: number): void;
 	/**
 	 * Stop the animation loop. The WebGL context stays alive but no frames
