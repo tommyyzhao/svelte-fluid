@@ -88,6 +88,7 @@ import {
 import { type Rng, generateColor, mulberry32, normalizeColor, randomSeed } from './rng.js';
 import { fitDrawingBufferSize } from './resolution.js';
 import { flowCanDriveSolver } from './solver-activity.js';
+import { blurMaskData } from './sticky-blur.js';
 import {
 	containerShapeEqual,
 	stickyMaskEqual,
@@ -2647,7 +2648,7 @@ export class FluidEngine implements FluidHandle {
 		// Optional blur — soften edges for smoother physics interaction
 		const blurRadius = mask.blur ?? 0;
 		if (blurRadius > 0) {
-			this.blurMaskData(maskData, maskW, maskH, blurRadius);
+			blurMaskData(maskData, maskW, maskH, blurRadius);
 		}
 
 		// Upload as GPU texture on unit 7 (its dedicated slot)
@@ -2669,45 +2670,6 @@ export class FluidEngine implements FluidHandle {
 		this.stickyMaskTexture = tex;
 		this.stickyMaskW = maskW;
 		this.stickyMaskH = maskH;
-	}
-
-	/** In-place box blur of a single-channel mask. Multiple passes approximate Gaussian. */
-	private blurMaskData(data: Uint8Array, w: number, h: number, radius: number): void {
-		const passes = Math.max(1, Math.ceil(radius / 2));
-		const r = Math.max(1, Math.round(radius));
-		const temp = new Uint8Array(w * h);
-		for (let pass = 0; pass < passes; pass++) {
-			// Horizontal pass → temp
-			for (let y = 0; y < h; y++) {
-				for (let x = 0; x < w; x++) {
-					let sum = 0,
-						count = 0;
-					for (let dx = -r; dx <= r; dx++) {
-						const nx = x + dx;
-						if (nx >= 0 && nx < w) {
-							sum += data[y * w + nx];
-							count++;
-						}
-					}
-					temp[y * w + x] = (sum / count) | 0;
-				}
-			}
-			// Vertical pass → data
-			for (let x = 0; x < w; x++) {
-				for (let y = 0; y < h; y++) {
-					let sum = 0,
-						count = 0;
-					for (let dy = -r; dy <= r; dy++) {
-						const ny = y + dy;
-						if (ny >= 0 && ny < h) {
-							sum += temp[ny * w + x];
-							count++;
-						}
-					}
-					data[y * w + x] = (sum / count) | 0;
-				}
-			}
-		}
 	}
 
 	/** Bind the sticky mask texture (or 1x1 black fallback) to texture unit 7. */
