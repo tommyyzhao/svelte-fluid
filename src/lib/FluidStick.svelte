@@ -13,8 +13,11 @@
 
 <script lang="ts" module>
 	import type { FluidConfig, FluidHandle, RGB, StickyMask } from './engine/types.js';
+	import type { FluidProps } from './Fluid.svelte';
 
-	export interface FluidStickProps extends FluidConfig {
+	export interface FluidStickProps
+		extends FluidConfig,
+			Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
 		/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
 		maxPixelRatio?: number | null;
 		/** Text to render as the sticky mask. `d` takes precedence if both are set. */
