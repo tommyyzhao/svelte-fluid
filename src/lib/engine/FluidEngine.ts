@@ -23,8 +23,10 @@
  * --------------------------------------------------------------------------
  * Architectural notes:
  *  - This is a per-instance class. There is *no* module-level mutable state.
- *  - WebGL context, framebuffers, programs, listener set, RAF loop, RNG and
- *    pointer state are all owned by the instance and freed by `dispose()`.
+ *  - WebGL context, framebuffers, programs, listener set, frame subscription,
+ *    RNG and pointer state are all owned by the instance and freed by
+ *    `dispose()`. The only shared object is the GL-free frame scheduler, which
+ *    drives every instance from one requestAnimationFrame (ADR 0080).
  *  - The Svelte component owns layout measurement; explicit resize transitions
  *    preserve the context and persistent fields without reading DOM layout.
  *  - All randomness is routed through a seeded RNG so reconstruction and
@@ -89,6 +91,7 @@ import { type Rng, generateColor, mulberry32, normalizeColor, randomSeed } from 
 import { fitDrawingBufferSize } from './resolution.js';
 import { flowCanDriveSolver } from './solver-activity.js';
 import { blurMaskData } from './sticky-blur.js';
+import { subscribeFrame } from './frame-scheduler.js';
 import {
 	MAX_AUTO_SPLAT_COUNT,
 	MAX_INITIAL_SPLATS,
@@ -724,7 +727,8 @@ export class FluidEngine implements FluidHandle {
 	private deterministicMode = false;
 	private colorUpdateTimer = 0;
 	private autoSplatTimer = 0;
-	private rafId = 0;
+	/** Unsubscribe from the shared frame scheduler; non-null exactly while subscribed. */
+	private stopFrames: (() => void) | null = null;
 	private disposed = false;
 	private pointerListenersInstalled = false;
 	private rafRunning = false;
@@ -907,8 +911,7 @@ export class FluidEngine implements FluidHandle {
 	/** Stop the animation loop. The GL context stays alive. Idempotent. */
 	pause(): void {
 		if (!this.rafRunning || this.disposed) return;
-		cancelAnimationFrame(this.rafId);
-		this.rafRunning = false;
+		this.stopRaf();
 		this.resetPerformanceGovernor();
 	}
 
@@ -1232,15 +1235,25 @@ export class FluidEngine implements FluidHandle {
 	private startRaf(): void {
 		if (this.rafRunning) return;
 		this.rafRunning = true;
-		this.rafId = requestAnimationFrame(this.tick);
+		// The scheduler evicts a throwing tick so siblings keep rendering; mirror
+		// that here so isPaused reports the stopped loop and resume() can retry.
+		this.stopFrames = subscribeFrame(this.tick, () => {
+			this.stopFrames = null;
+			this.rafRunning = false;
+		});
+	}
+
+	private stopRaf(): void {
+		this.stopFrames?.();
+		this.stopFrames = null;
+		this.rafRunning = false;
 	}
 
 	private handleContextLost(e: Event): void {
 		e.preventDefault(); // Signals to the browser we intend to restore
 		this.contextLost = true;
 		this.profiler?.rejectContextLost();
-		cancelAnimationFrame(this.rafId);
-		this.rafRunning = false;
+		this.stopRaf();
 	}
 
 	private handleContextRestored(): void {
@@ -1346,8 +1359,7 @@ export class FluidEngine implements FluidHandle {
 		if (this.disposed) return;
 		this.disposed = true;
 
-		cancelAnimationFrame(this.rafId);
-		this.rafRunning = false;
+		this.stopRaf();
 		this.disposeBenchmarkProfiler();
 
 		this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
@@ -2817,7 +2829,6 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			// Keep pointer colors and the timebase current, but submit no GL work and
 			// do not manufacture profiler frames while the paused image is stable.
 			this.updateColors(dt);
-			this.rafId = requestAnimationFrame(this.tick);
 			return;
 		}
 
@@ -2839,7 +2850,6 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 				this.renderDirty = false;
 			}
 		}
-		this.rafId = requestAnimationFrame(this.tick);
 	}
 
 	private simulateFrame(dt: number): void {

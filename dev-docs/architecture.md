@@ -46,7 +46,7 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 │   • bloom + bloomFramebuffers + sunrays + sunraysTemp           │
 │   • DitheringTexture                                            │
 │   • pointers[], pendingRandomSplats (bounded)                   │
-│   • rafId, lastUpdateTime, engineStartTime                      │
+│   • frame subscription, lastUpdateTime, engineStartTime         │
 │                                                                 │
 │  Public API:                                                    │
 │   • new FluidEngine({ canvas, config? })                        │
@@ -132,10 +132,11 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
        [`0015`](./decisions/0015-preset-components.md) and
        [`0053`](./decisions/0053-context-restore-recreates-resources.md)).
    11. Install pointer listeners (mouse on canvas, mouseup/touchend on `window`).
-   12. Schedule the first `requestAnimationFrame(this.tick)`; the opening clocks
+   12. Subscribe `this.tick` to the shared frame scheduler (ADR
+       [`0080`](./decisions/0080-shared-frame-scheduler.md)); the opening clocks
        captured by `replayOpeningScene()` make `currentDensityDissipation()`
        measure elapsed time from the completed opening scene.
-7. The RAF loop runs every frame: `update()` → `calcDeltaTime` → `updateColors` → `applyInputs` → `step` (if not paused) → `render(null)` → reschedule. The dye advection inside `step()` calls `currentDensityDissipation()` for the dissipation uniform (see ADR [`0016`](./decisions/0016-burn-in-density-dissipation.md)) so a burn-in ramp from `INITIAL_DENSITY_DISSIPATION` toward `DENSITY_DISSIPATION` is applied automatically without per-frame setConfig calls. When `glass` is enabled, `render()` routes `drawDisplay` through a `sceneFBO` and adds a `drawGlass` post-processing pass with Snell's law refraction (hemisphere model for circles, rim model for other shapes). See ADR [`0025`](./decisions/0025-glass-refraction-post-processing.md). When `distortion` is enabled, `render()` disables blending and returns early after `drawDisplay()` (no background, no glass). The display shader's `DISTORTION` branch reads `dye.r` as distortion intensity and `velocity.xy` as direction, offsets image UVs, and samples a pre-loaded distortion texture. See ADR [`0030`](./decisions/0030-fluid-distortion-component.md).
+7. The shared scheduler's single RAF calls every subscribed engine each frame: `update()` → `calcDeltaTime` → `updateColors` → `applyInputs` → `step` (if not paused) → `render(null)`. A throwing tick is evicted and its engine reports `isPaused`. The dye advection inside `step()` calls `currentDensityDissipation()` for the dissipation uniform (see ADR [`0016`](./decisions/0016-burn-in-density-dissipation.md)) so a burn-in ramp from `INITIAL_DENSITY_DISSIPATION` toward `DENSITY_DISSIPATION` is applied automatically without per-frame setConfig calls. When `glass` is enabled, `render()` routes `drawDisplay` through a `sceneFBO` and adds a `drawGlass` post-processing pass with Snell's law refraction (hemisphere model for circles, rim model for other shapes). See ADR [`0025`](./decisions/0025-glass-refraction-post-processing.md). When `distortion` is enabled, `render()` disables blending and returns early after `drawDisplay()` (no background, no glass). The display shader's `DISTORTION` branch reads `dye.r` as distortion intensity and `velocity.xy` as direction, offsets image UVs, and samples a pre-loaded distortion texture. See ADR [`0030`](./decisions/0030-fluid-distortion-component.md).
 
 ### Resize
 
