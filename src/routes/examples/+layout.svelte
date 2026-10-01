@@ -18,8 +18,7 @@
 		{ slug: 'backgrounds', label: 'Backgrounds' },
 		{ slug: 'reveal', label: 'Reveal' },
 		{ slug: 'shapes', label: 'Shapes' },
-		{ slug: 'flow', label: 'Flow' },
-		{ slug: 'webgpu', label: 'WebGPU R&D' }
+		{ slug: 'flow', label: 'Flow' }
 	];
 
 	const current = $derived($page.url.pathname.replace(/\/$/, '').split('/')[2] ?? '');

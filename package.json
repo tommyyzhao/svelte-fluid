@@ -14,7 +14,7 @@
 	},
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build && bun run prepack",
+		"build": "vite build && bun scripts/check-build-output.mjs && bun run prepack",
 		"package": "svelte-kit sync && svelte-package",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
@@ -97,6 +97,7 @@
 		"navier-stokes",
 		"wgsl",
 		"background",
+		"cursor",
 		"animation",
 		"reveal",
 		"distortion",

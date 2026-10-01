@@ -42,7 +42,7 @@ ${SCRIPT_CLOSE}
 <p class="subtitle">Six fluid components share one native WebGPU solver. Three experimental material treatments compose with your existing text, images and controls.</p>
 
 <h2 id="materials">Experimental material treatments</h2>
-<p><code>MaterialEnamel</code>, <code>MaterialFoil</code> and <code>MaterialImage</code> are small visual layers, not a second UI kit. Your native heading, button or link owns its content, focus, activation and state. <a href="{base}/lab/interfaces/library">Try the borderless foil appearance switch</a>; its Plain comparison is in Study notes. The page deliberately does not stack all three treatments.</p>
+<p><code>MaterialEnamel</code>, <code>MaterialFoil</code> and <code>MaterialImage</code> are small visual layers, not a second UI kit. Your native heading, button or link owns its content, focus, activation and state. They are experimental; use them sparingly and never stack all three.</p>
 <pre><code>{SCRIPT_OPEN}
   import {'{'} MaterialEnamel, MaterialFoil, MaterialImage {'}'} from 'svelte-fluid';
   let dark = $state(false);

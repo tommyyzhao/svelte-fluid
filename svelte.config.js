@@ -14,7 +14,9 @@ const config = {
 			assets: 'build',
 			fallback: undefined,
 			precompress: false,
-			strict: true
+			// R&D routes (src/routes/lab, src/routes/examples/webgpu) opt out of
+			// prerendering in production; see their +layout.ts.
+			strict: false
 		}),
 		paths: {
 			base: process.env.BASE_PATH ?? ''

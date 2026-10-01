@@ -24,11 +24,6 @@
 			slug: 'flow',
 			title: 'Flow & obstructions',
 			blurb: 'Solver-native flow scenes routing around obstructions — airfoils, mazes, and channels.'
-		},
-		{
-			slug: 'webgpu',
-			title: 'WebGPU R&D',
-			blurb: 'Production-engine demanding canary, composed feature matrix, and replacement evidence.'
 		}
 	];
 </script>
