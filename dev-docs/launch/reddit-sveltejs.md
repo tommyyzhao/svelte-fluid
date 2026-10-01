@@ -1,50 +1,63 @@
-# r/sveltejs launch post
+# r/sveltejs launch post (0.8.0, WebGL)
 
 **Target:** r/sveltejs
-**Recommended day/time:** Tuesday–Thursday, 9–11am ET (general programming-sub peak)
-**Sequence:** Goes second, after Show HN. Different framing than HN.
-**Image:** Attach hero.webp (or carve a smaller GIF from it). Reddit prefers visual posts in visual subs.
-**Pre-flight (manual):** Open r/sveltejs immediately before posting, re-read
-the sidebar rules, and apply its self-promotion label/flair. Confirm there is
-no active project-share megathread that supersedes a standalone post.
+**Day/time:** Tue-Thu, 9-11am ET (see `launch-research.md`). After Show HN; Svelte-specific framing.
+**Owner posts this**; nothing is automated.
+**Media:** Attach a short clip: the demo's `FluidBackground` hero with the cursor dragging through text/cards, cards carved out via `exclude` (MP4/GIF, not animated WebP). Fallback: `static/hero.webp`.
+**Pre-flight (manual):** Re-read the sidebar rules, apply the self-promotion flair if one exists, check for a project-share megathread. Account history is thin; reply to everything for the first hour.
 
 ---
 
-## Title (90 chars)
+## Title (76 chars)
 
 ```
-[Self Promotion] svelte-fluid — 6 Svelte 5 fluid components, 14 presets, MIT
+[Self Promotion] svelte-fluid 0.8: fluid backgrounds and cursor for Svelte 5
 ```
 
 ## Body
 
-```
+````
 Demo: https://svelte-fluid.dev/
 
-Built this as a Svelte 5 component library wrapping a WebGL Navier-Stokes fluid sim. It's a port of Pavel Dobryakov's 2017 fluid sim, with a Svelte 5 component API in front of the original shaders rather than a vanilla-JS wrapper:
+svelte-fluid is a fluid simulation for Svelte 5, built on WebGL so it works wherever WebGL does. The solver derives from Pavel Dobryakov's WebGL-Fluid-Simulation (MIT); the component API, shapes, flow scenes and presets are the new part.
 
-- 5 container shapes including arbitrary SVG paths and text glyphs — the fluid actually flows inside the letterforms
-- Multiple independent instances per page, each with its own GL context (lazy-loaded so iOS Safari doesn't hit the WebGL context cap)
-- `<Fluid />` with 70+ typed props, live reactive updates via runes, full cleanup on unmount
-- Deterministic seeding — same `seed` reproduces the splat pattern across resize
-- Glass post-processing (Snell refraction + chromatic aberration) on any shape
-- 14 presets, from visual recipes such as LavaLamp and Plasma to solver-native flow scenes such as Venturi and Karman
-- Imperative `splat()` / `randomSplats()` via `bind:this`
+A full-page background where your nav and cards punch holes in the fluid:
 
-Shaders are Pavel's, unchanged (both MIT). The Svelte 5 component API, container-shape boundary enforcement, glass post-processing, presets, and engine lifecycle are mine.
+```svelte
+<script>
+  import { FluidBackground } from 'svelte-fluid';
+</script>
+<FluidBackground exclude=".nav, .card" splatOnHover>
+  <nav class="nav">...</nav><main>...</main>
+</FluidBackground>
+```
 
-The repo includes node and real-WebGL browser suites plus ADRs for the major design decisions.
+(Give interactive children `pointer-events: auto`; the slot is `pointer-events: none` so window pointer input keeps feeding the sim. README has the full CSS.)
+
+What's in it:
+
+- `Fluid`, `FluidBackground`, `FluidReveal`, `FluidDistortion`, `FluidStick`, `FluidText`, plus 14 presets (LavaLamp, Plasma, Venturi, Karman...)
+- Container shapes: circle, frame, annulus, arbitrary SVG paths, or text. The fluid is confined by the shape, not clipped.
+- Flow scenes: solver-native Venturi, Karman vortex street, Tesla valve and gas flare.
+- A splash cursor in one command via shadcn-svelte (full viewport, pointer events pass through, respects `prefers-reduced-motion`):
+  `npx shadcn-svelte@latest add https://svelte-fluid.dev/r/splash-cursor.json`
+- `lazy` and `autoPause` for dense pages (browsers cap WebGL contexts). Resize keeps live dye and velocity.
+- `<Fluid>` props are typed and reactive. Zero runtime dependencies; Svelte is a peer.
+
+Browsers: WebGL1 or WebGL2; tested on Chrome 120+, Firefox 121+, Safari 17+, iOS Safari 16+. Without WebGL you get your `fallback` snippet, a `poster`, or an accessible color fill. `isWebGLAvailable()` lets you branch yourself.
 
 npm: https://www.npmjs.com/package/svelte-fluid
 repo: https://github.com/tommyyzhao/svelte-fluid
-```
+
+Feedback welcome, especially on mobile and low-end devices.
+````
 
 ---
 
 ## First-30-minutes engagement plan
 
-- Be at the keyboard the moment the post goes live.
-- Reply to every comment in the first hour, including one-liners.
-- Tone: acknowledge → clarify, never defensive.
-- If the "yet another wrapper" critique appears: redirect to what's actually new (container-shape boundary enforcement on SVG paths/text glyphs, glass post-processing, the Svelte 5 reactive surface).
-- Don't ask anyone to upvote.
+- At the keyboard when it goes live; reply to every comment in the first hour.
+- Acknowledge, then clarify; never defensive. Don't ask for upvotes.
+- "Yet another wrapper": credited upstream; shape-confined fluid, flow scenes, Svelte 5 reactive surface and lifecycle are the new work.
+- "Why not a newer GPU API": WebGL runs in every current browser; one backend, no gating.
+- "Heavy on the page?": point to `lazy`, `autoPause`, and the splash cursor's reduced-motion handling. Don't quote numbers.
