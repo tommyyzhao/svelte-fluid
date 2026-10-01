@@ -112,76 +112,37 @@ start with a slightly brighter starter config:
 
 ## Experimental material treatments
 
-On the R&D branch, three small treatments compose with your own HTML. They are
-not replacements for links, buttons, headings, or application state. No new
-runtime dependencies; no change to the fluid solver.
+`MaterialEnamel`, `MaterialFoil` and `MaterialImage` are small decorative layers
+that compose with your own HTML. They are **experimental exports**: the API may
+change in minor releases. Your native heading, button or link keeps content,
+focus and activation; text and images exist before GPU startup, and
+`enabled={false}` or an unavailable GPU retains the plain finish.
 
 ```svelte
 <script lang="ts">
-  import { MaterialEnamel, MaterialFoil, MaterialImage } from 'svelte-fluid';
-  let dark = $state(false);
+  import { MaterialEnamel } from 'svelte-fluid';
 </script>
 
 <h1><MaterialEnamel text="Made to be felt." /></h1>
-
-<button type="button" role="switch" aria-label="Dark appearance"
-  aria-checked={dark} onclick={() => dark = !dark}>
-  <MaterialFoil selected={dark} />
-  Dark appearance: {dark ? 'On' : 'Off'}
-</button>
-
-<a href="/journal/arles">
-  <MaterialImage src="/arles.jpg" alt="Sunlit arches in Arles"
-    width={3803} height={3162} />
-</a>
 ```
 
-Your application applies the selected theme. Foil observes the boolean; it never
-toggles it. The entire enclosing button/link owns input, focus and activation.
-Canvases do not capture pointers or cancel scrolling. Enamel keeps the actual
-text and a stationary outline; image motion never hides the source or gates a link.
+| Treatment | Required props |
+| --- | --- |
+| `MaterialEnamel` | `text: string` |
+| `MaterialFoil` | `selected: boolean` |
+| `MaterialImage` | `src`, `alt`, positive `width`, `height` |
 
-| Treatment | Required props | Intended role |
-| --- | --- | --- |
-| `MaterialEnamel` | `text: string` | Molded enamel on short display text. Inherits font, color and wrapping from its parent. |
-| `MaterialFoil` | `selected: boolean` | A 6rem × 3rem decorative snap mechanism inside an existing binary control. |
-| `MaterialImage` | `src`, `alt`, positive `width`, `height` | Local retained distortion over an explicit image. Dimensions reserve its aspect ratio. Cross-origin sources require CORS. |
+All three accept `enabled`, `class` and `onStatus(status: MaterialStatus)`, and
+expose `retry()` via `bind:this`. Reduced motion uses still finishes. These are
+illustrative material models, not calibrated physics. See the
+[components docs](https://svelte-fluid.dev/docs/components).
 
-All three accept `enabled` (default `true`), `class`, and
-`onStatus(status: MaterialStatus)`. Status is `loading`, `ready`, `static`, or
-`unavailable`, with an optional `reason`. `bind:this` exposes `retry()`; show local
-recovery when it is useful. Callback exceptions are isolated. `enabled={false}`
-releases resources and retains the ordinary text/image/vector finish.
-
-Reduced motion uses still finishes and immediate selected-state changes.
-Forced colors uses native content and a vector foil. Initialization/asset/device
-failure cannot disable the host control. Text/image content exists before startup.
-No endless ambient animation: resting, hidden and offscreen treatments stop drawing.
-
-Presentation uses actual fractional CSS dimensions × DPR, including 3×, without
-a quality cap. Model density is independent. Sources, mips, profiles and local
-outputs have explicit native-size limits; unsupported sizes retain plain content
-instead of being silently blurred. Large original images still cost memory.
-
-Current enamel support is **plain, horizontal, untransformed display text** (up
-to 2048 UTF-16 code units), not arbitrary styled DOM capture. Font/text/reflow
-changes rebuild its relief; DPR-only updates preserve the physical fields and
-color-only updates do not allocate GPU resources. New geometry resets transient
-deformation. Use `retry()` after external stylesheet changes that do not change
-observed geometry/classes; native text remains authoritative.
-
-These are illustrative material models, not calibrated metal/liquid physics.
-The image uses bounded invertible coordinate maps, not a full fluid solve.
-Phone energy/thermal performance and broad assistive-technology coverage are
-not yet established. The simplified composition at `/lab/interfaces/library`
-uses only the foil appearance switch; **Plain** comparison is in Study notes.
-The enamel and image treatments remain available separately, not stacked on that page.
 
 ## Browser compatibility
 
 svelte-fluid requires WebGPU in a secure context (`https:` or localhost) and a
-usable adapter. Current Chromium-family browsers and Safari 26+ provide WebGPU;
-Firefox availability still depends on release/platform. Capability—not user-agent
+usable adapter: Chrome/Edge 113+, Safari 26+ (macOS/iOS/iPadOS), Firefox 147+.
+Other browsers get the accessible fallback/poster. Capability—not user-agent
 version—is the contract:
 
 ```ts
