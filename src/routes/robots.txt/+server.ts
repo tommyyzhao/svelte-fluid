@@ -3,7 +3,7 @@ import { DEFAULT_SITE } from '../agent-docs.js';
 export const prerender = true;
 
 // The /examples/* feature demos ship in the static build but are intentionally
-// unlisted for now (see dev-docs/plans/scratch-route-consolidation.md) — keep
+// unlisted for now — keep
 // crawlers out until we choose to feature them.
 const DISALLOW = ['/examples'];
 
