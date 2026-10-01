@@ -9,6 +9,8 @@ const config = {
 	},
 	preprocess: vitePreprocess(),
 	kit: {
+		// Docs site only: registry/ files import 'svelte-fluid' exactly as a consumer would.
+		alias: { 'svelte-fluid': 'src/lib/index.ts' },
 		adapter: adapter({
 			pages: 'build',
 			assets: 'build',

@@ -15,6 +15,7 @@
 		{ label: 'Container Shapes', href: `${base}/docs/shapes` },
 		{ label: 'Presets', href: `${base}/docs/presets` },
 		{ label: 'API Reference', href: `${base}/docs/api` },
+		{ label: 'Splash cursor', href: `${base}/docs/recipes/splash-cursor` },
 		{ label: 'For Agents', href: `${base}/for-agents` }
 	];
 

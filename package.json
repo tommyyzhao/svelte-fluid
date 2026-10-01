@@ -1,7 +1,7 @@
 {
 	"name": "svelte-fluid",
 	"version": "0.7.0",
-	"description": "Fluid simulation for Svelte 5. Six WebGL components and fourteen presets for backgrounds, reveals, distortion, sticky text, and flow demos.",
+	"description": "WebGL fluid simulation for Svelte 5: interactive backgrounds, splash cursor, text and shape masks, reveals and image distortion. Zero dependencies.",
 	"license": "MIT",
 	"author": "Tommy Zhao (https://github.com/tommyyzhao)",
 	"repository": {
@@ -95,6 +95,9 @@
 		"navier-stokes",
 		"glsl",
 		"background",
+		"cursor",
+		"splash",
+		"splash-cursor",
 		"animation",
 		"reveal",
 		"distortion",

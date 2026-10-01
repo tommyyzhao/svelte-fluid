@@ -1,0 +1,19 @@
+{
+	"$schema": "https://shadcn-svelte.com/schema/registry-item.json",
+	"name": "splash-cursor",
+	"title": "Splash Cursor",
+	"type": "registry:component",
+	"author": "Tommy Zhao <https://github.com/tommyyzhao>",
+	"description": "Full-viewport WebGL fluid splash that follows the pointer. Thin wrapper around svelte-fluid.",
+	"dependencies": [
+		"svelte-fluid"
+	],
+	"registryDependencies": [],
+	"files": [
+		{
+			"content": "<script lang=\"ts\">\n\timport { onMount } from 'svelte';\n\timport { Fluid, type FluidProps } from 'svelte-fluid';\n\n\tlet props: FluidProps = $props();\n\tlet reduceMotion = $state(true);\n\n\tonMount(() => {\n\t\treduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;\n\t});\n</script>\n\n{#if !reduceMotion}\n\t<div class=\"splash-cursor\" aria-hidden=\"true\">\n\t\t<Fluid\n\t\t\tpointerTarget=\"window\"\n\t\t\tsplatOnHover\n\t\t\ttransparent\n\t\t\tbloom={false}\n\t\t\tsunrays={false}\n\t\t\tsimResolution={128}\n\t\t\tdyeResolution={512}\n\t\t\tdensityDissipation={2}\n\t\t\tvelocityDissipation={2}\n\t\t\tpressure={0.1}\n\t\t\tcurl={3}\n\t\t\tsplatRadius={0.25}\n\t\t\t{...props}\n\t\t/>\n\t</div>\n{/if}\n\n<style>\n\t.splash-cursor {\n\t\tposition: fixed;\n\t\tinset: 0;\n\t\tz-index: 9999;\n\t\tpointer-events: none;\n\t}\n</style>\n",
+			"type": "registry:component",
+			"target": "splash-cursor/SplashCursor.svelte"
+		}
+	]
+}

@@ -1,0 +1,24 @@
+{
+	"$schema": "https://shadcn-svelte.com/schema/registry.json",
+	"name": "svelte-fluid",
+	"homepage": "https://svelte-fluid.dev",
+	"items": [
+		{
+			"name": "splash-cursor",
+			"type": "registry:component",
+			"title": "Splash Cursor",
+			"description": "Full-viewport WebGL fluid splash that follows the pointer. Thin wrapper around svelte-fluid.",
+			"author": "Tommy Zhao <https://github.com/tommyyzhao>",
+			"dependencies": ["svelte-fluid"],
+			"registryDependencies": [],
+			"docs": "Render <SplashCursor /> once, e.g. in your root +layout.svelte. See https://svelte-fluid.dev/docs/recipes/splash-cursor",
+			"files": [
+				{
+					"path": "./registry/splash-cursor/SplashCursor.svelte",
+					"type": "registry:component",
+					"target": "splash-cursor/SplashCursor.svelte"
+				}
+			]
+		}
+	]
+}
