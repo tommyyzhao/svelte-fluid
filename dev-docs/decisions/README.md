@@ -63,6 +63,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0064](./0064-dirty-rendering-while-paused.md)                  | Render paused scenes only after invalidation                           | Accepted |
 | [0065](./0065-fractional-aperture-gate-stays-closed.md)         | Keep fractional face apertures gated                                  | Accepted |
 | [0066](./0066-resolution-normalized-adaptive-vorticity.md)      | Normalize adaptive vorticity before gating                            | Accepted |
+| [0079](./0079-bound-imperative-input.md)                       | Bound imperative input and reject non-finite values                   | Accepted |
 
 ## How to add a new ADR
 
