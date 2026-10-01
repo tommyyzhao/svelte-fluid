@@ -151,7 +151,7 @@
 		seed: seedProp,
 		onReady,
 		onError,
-		poster = src,
+		poster,
 		...fluidProps
 	}: FluidDistortionProps = $props();
 
@@ -331,7 +331,7 @@
 			{backColor}
 			{lazy}
 			{autoPause}
-			{poster}
+			poster={poster ?? src}
 			{...fluidProps}
 			seed={stableSeed}
 			onReady={() => {
