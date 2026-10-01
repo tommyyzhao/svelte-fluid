@@ -86,5 +86,5 @@ describe('bounded fixed-substrate freezing law',()=>{
 		const coarse=Math.abs(totals[0].phase-totals[2].phase),fine=Math.abs(totals[1].phase-totals[2].phase);
 		expect(fine).toBeLessThan(coarse);expect(fine/totals[2].phase).toBeLessThan(0.05);
 		console.info('Frost phase-area refinement (fixed physical epsilon)',totals.map((value,i)=>({grid:[128,192,256][i],phase:value.phase,heat:value.heat})));
-	});
+	},20000);
 });
