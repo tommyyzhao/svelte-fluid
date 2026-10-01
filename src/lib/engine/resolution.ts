@@ -50,6 +50,46 @@ export function cssQualityPolicy(
 	return policy;
 }
 
+export type PolicyField = 'bloom' | 'sunrays' | 'bloomIterations' | 'pressureIterations';
+export type PolicyDefaults = Readonly<{
+	bloom: boolean;
+	sunrays: boolean;
+	bloomIterations: number;
+	pressureIterations: number;
+}>;
+
+/**
+ * Apply the CSS quality policy to `cfg` in place; return the fields it forced.
+ * A user-supplied value (anything but `undefined`) is never overridden.
+ * Feed the return value back as `previouslyForced`: a field forced last time,
+ * no longer forced, and with no user value resets to the engine default,
+ * because `FluidEngine.setConfig` drops `undefined` and would keep the stale
+ * override. `defaults` come from the engine so they cannot drift.
+ */
+export function applyCssQualityPolicy(
+	cfg: Partial<Record<PolicyField, boolean | number | undefined>>,
+	policy: ReturnType<typeof cssQualityPolicy>,
+	defaults: PolicyDefaults,
+	previouslyForced: ReadonlySet<PolicyField> = new Set()
+): Set<PolicyField> {
+	const forced = new Set<PolicyField>();
+	const force = (key: PolicyField, value: boolean | number) => {
+		if (cfg[key] !== undefined) return;
+		cfg[key] = value;
+		forced.add(key);
+	};
+	if (policy.suppressPost) {
+		force('bloom', false);
+		force('sunrays', false);
+	}
+	if (policy.bloomIterations !== undefined) force('bloomIterations', policy.bloomIterations);
+	if (policy.pressureIterations !== undefined) force('pressureIterations', policy.pressureIterations);
+	for (const key of previouslyForced) {
+		if (!forced.has(key) && cfg[key] === undefined) cfg[key] = defaults[key];
+	}
+	return forced;
+}
+
 /** Preserve aspect while fitting a requested drawing buffer inside GL limits. */
 export function fitDrawingBufferSize(
 	width: number,
