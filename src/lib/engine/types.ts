@@ -830,6 +830,8 @@ export interface FluidConfig {
 /**
  * Internal, fully resolved configuration. Uses the original SCREAMING_CASE
  * field names so the porting from script.js stays mechanical and obvious.
+ *
+ * @deprecated Internal WebGL type; will be removed from the public API in 1.0.
  */
 export interface ResolvedConfig {
 	SIM_RESOLUTION: number;
@@ -940,7 +942,11 @@ export interface SupportedFormat {
 	format: number;
 }
 
-/** WebGL extension / capability info gathered at context creation. */
+/**
+ * WebGL extension / capability info gathered at context creation.
+ *
+ * @deprecated Internal WebGL type; will be removed from the public API in 1.0.
+ */
 export interface ExtInfo {
 	formatRGBA: SupportedFormat;
 	formatRG: SupportedFormat;
@@ -950,7 +956,11 @@ export interface ExtInfo {
 	isWebGL2: boolean;
 }
 
-/** A single framebuffer object plus the texture it owns. */
+/**
+ * A single framebuffer object plus the texture it owns.
+ *
+ * @deprecated Internal WebGL type; will be removed from the public API in 1.0.
+ */
 export interface FBO {
 	texture: WebGLTexture;
 	fbo: WebGLFramebuffer;
@@ -961,7 +971,11 @@ export interface FBO {
 	attach(id: number): number;
 }
 
-/** Read/write FBO pair used for ping-pong shader passes. */
+/**
+ * Read/write FBO pair used for ping-pong shader passes.
+ *
+ * @deprecated Internal WebGL type; will be removed from the public API in 1.0.
+ */
 export interface DoubleFBO {
 	width: number;
 	height: number;
