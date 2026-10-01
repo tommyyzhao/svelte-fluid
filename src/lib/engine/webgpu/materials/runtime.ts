@@ -31,7 +31,6 @@ export class MaterialRuntime {
 	private driver?: MaterialDriver;
 	private context?: GPUCanvasContext;
 	private unsubscribe?: () => void;
-	private removeError?: () => void;
 	private removeDpr = () => {};
 	private abort?: AbortController;
 	private generation = 0;
@@ -111,7 +110,6 @@ export class MaterialRuntime {
 			const context = this.canvas.getContext('webgpu');
 			if (!context) throw new Error('A WebGPU canvas could not be created.');
 			this.context = context;
-			this.removeError = lease.onUncapturedError((error) => this.fail(error));
 			void lease.lost.then((info) => { if (generation === this.generation && !this.disposed) this.fail(new Error(`GPU device lost: ${info.message || info.reason}`)); });
 			candidate = await this.factory(lease, this.size, (bytes) => {
 				if (generation !== this.generation || abort.signal.aborted) throw new Error('Material preparation was cancelled.');
@@ -241,7 +239,7 @@ export class MaterialRuntime {
 	private teardown() {
 		this.generation++; this.abort?.abort(); this.stop(); this.busy = false; this.refreshPending = this.forcePending = false; this.inFlight = 0; this.clearInput();
 		this.driver?.dispose(); this.driver = undefined; this.context?.unconfigure(); this.context = undefined;
-		this.removeError?.(); this.removeError = undefined; this.lease?.release(); this.lease = undefined; reservations.delete(this);
+		this.lease?.release(); this.lease = undefined; reservations.delete(this);
 	}
 	snapshot() { return { state: this.status.state, frames: this.frames, submissions: this.submissions, inFlight: this.inFlight, active: Boolean(this.unsubscribe), bytes: reservations.get(this) ?? 0, width: this.canvas.width, height: this.canvas.height, device: this.lease?.device }; }
 	dispose() {

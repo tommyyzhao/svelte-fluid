@@ -1114,6 +1114,46 @@ describe('native WebGPU production slice', () => {
 		expect(activeFrameSubscribers()).toBe(baseline);
 	}, 30_000);
 
+	it('attributes a frame validation error to its instance without failing siblings', async () => {
+		if (!('gpu' in navigator)) return;
+		const config = { simResolution: 16, dyeResolution: 16, initialSplatCount: 0, bloom: false, sunrays: false };
+		const fatal = { a: [] as Error[], b: [] as Error[] };
+		const create = (key: 'a' | 'b') => {
+			const canvas = document.createElement('canvas');
+			canvas.width = 32;
+			canvas.height = 32;
+			return NativeWebGpuFluidEngine.create({
+				canvas,
+				autoStart: false,
+				config,
+				onFatalError: (error) => fatal[key].push(error)
+			});
+		};
+		const a = await create('a');
+		const b = await create('b');
+		try {
+			// Test-only seam: a destroyed texture in A's live graph fails
+			// validation at A's next frame submit on the shared device.
+			(a as unknown as { dye: { read: { texture: GPUTexture } } }).dye.read.texture.destroy();
+			a.splat(0.5, 0.5, 10, 0, { r: 1, g: 0, b: 0 });
+			a.advance(1, 1 / 60);
+			await expect.poll(() => fatal.a.length).toBe(1);
+			expect(fatal.a[0]!.message).toMatch(/frame failed/);
+			await expect(a.awaitIdle()).rejects.toThrow(/frame failed/);
+
+			const before = b.frameSubmissions();
+			b.splat(0.5, 0.5, 10, 0, { r: 0, g: 1, b: 0 });
+			b.advance(2, 1 / 60);
+			await b.awaitIdle();
+			expect(b.frameSubmissions()).toBeGreaterThan(before);
+			expect(channelMax((await b.readField('dye')).data, 4, 1)).toBeGreaterThan(0);
+			expect(fatal.b).toEqual([]);
+		} finally {
+			a.dispose();
+			b.dispose();
+		}
+	}, 30_000);
+
 	it('keeps shared-device resource counts flat across 100 instance lifecycles', async () => {
 		if (!('gpu' in navigator)) return;
 		const before = sharedWebGpuDevicePool.snapshot();

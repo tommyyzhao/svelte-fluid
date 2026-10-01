@@ -472,7 +472,6 @@ export class NativeWebGpuFluidEngine {
 	private readonly onAssetError: ((error: Error) => void) | undefined;
 	private readonly onAssetReady: (() => void) | undefined;
 	private readonly onFatalError: ((error: Error) => void) | undefined;
-	private readonly unsubscribeDeviceError: () => void;
 	private config: NativeFluidConfig;
 	private maskResourceSignature = '';
 	private solidTopologySignature = '';
@@ -583,6 +582,8 @@ export class NativeWebGpuFluidEngine {
 		}
 		try {
 			await finishGpuErrorScopes(lease.device, 'initial WebGPU resource graph');
+			// Startup frames own nested scopes that settle before the outer pair.
+			if (engine.terminalError) throw engine.terminalError;
 		} catch (error) {
 			engine.dispose();
 			throw error;
@@ -686,12 +687,6 @@ export class NativeWebGpuFluidEngine {
 		this.onAssetReady = options.onAssetReady;
 		this.onFatalError = options.onFatalError;
 		this.resetPerformanceGovernor();
-		// Resource transitions use per-operation scopes below. Anything still
-		// uncaptured is an invariant failure on the shared device, so every lease
-		// fails closed instead of continuing with unknown GPU state.
-		this.unsubscribeDeviceError = lease.onUncapturedError((error) => {
-			this.failGpuWork(new Error(`svelte-fluid: uncaptured WebGPU error: ${error.message}`, { cause: error }), error);
-		});
 		try {
 			this.sampler = lease.device.createSampler({
 				label: 'svelte-fluid-linear-sampler',
@@ -1142,7 +1137,6 @@ export class NativeWebGpuFluidEngine {
 		this.splatVelocityUniforms.length = 0;
 		this.splatDyeUniforms.length = 0;
 		this.context.unconfigure();
-		this.unsubscribeDeviceError();
 		this.lease.release();
 	}
 
@@ -3107,26 +3101,47 @@ export class NativeWebGpuFluidEngine {
 
 	private renderFrame(steps: number, dt: number, present: boolean): void {
 		if (this.disposed || this.deviceLost) return;
-		const stickyPressure = this.config.sticky ? this.config.stickyPressure : 0;
-		this.writeUniform(this.pressureFirstUniform, new Float32Array([this.config.pressure, stickyPressure, 0, 0]));
-		this.writeUniform(this.pressureSteadyUniform, new Float32Array([1, stickyPressure, 0, 0]));
-		this.writeUniform(this.boundaryUniform, new Float32Array(this.flowOpenEdges()));
-		const encoder = this.lease.device.createCommandEncoder({
-			label: 'svelte-fluid-frame'
-		});
-		this.applySplats(encoder);
-		for (let index = 0; index < steps; index += 1) {
-			this.simulationTime += dt;
-			this.simulateStep(encoder, dt);
+		// The device is shared. Per-instance scopes, pushed and popped synchronously
+		// around this frame, attribute validation/OOM to this instance only.
+		const device = this.lease.device;
+		device.pushErrorScope('validation');
+		device.pushErrorScope('out-of-memory');
+		try {
+			const stickyPressure = this.config.sticky ? this.config.stickyPressure : 0;
+			this.writeUniform(this.pressureFirstUniform, new Float32Array([this.config.pressure, stickyPressure, 0, 0]));
+			this.writeUniform(this.pressureSteadyUniform, new Float32Array([1, stickyPressure, 0, 0]));
+			this.writeUniform(this.boundaryUniform, new Float32Array(this.flowOpenEdges()));
+			const encoder = device.createCommandEncoder({
+				label: 'svelte-fluid-frame'
+			});
+			this.applySplats(encoder);
+			for (let index = 0; index < steps; index += 1) {
+				this.simulationTime += dt;
+				this.simulateStep(encoder, dt);
+			}
+			if (present) {
+				this.applyPresentation(encoder);
+				this.present(encoder);
+			}
+			device.queue.submit([encoder.finish()]);
+			this.frameSubmissionCount += 1;
+			this.frameDirty = this.splats.length > 0;
+		} finally {
+			// ponytail: two popErrorScope promises + two `.then` promises per frame;
+			// handlers are pre-bound so no closures. Batch scopes across frames if
+			// profiling ever shows promise churn.
+			device.popErrorScope().then(this.onFrameScope, this.onFrameScopeRejected);
+			device.popErrorScope().then(this.onFrameScope, this.onFrameScopeRejected);
 		}
-		if (present) {
-			this.applyPresentation(encoder);
-			this.present(encoder);
-		}
-		this.lease.device.queue.submit([encoder.finish()]);
-		this.frameSubmissionCount += 1;
-		this.frameDirty = this.splats.length > 0;
 	}
+
+	private readonly onFrameScope = (error: GPUError | null): void => {
+		if (error) this.failGpuWork(new Error(`svelte-fluid: WebGPU frame failed: ${error.message}`, { cause: error }), error);
+	};
+
+	// Paired scopes reject only on a lost device; `lease.lost` owns recovery, so a
+	// rejection here must not mark the instance terminal.
+	private readonly onFrameScopeRejected = (): void => {};
 
 	private activateConfiguredFlow(): void {
 		if (flowCanDriveSolver(this.config.flow)) this.solverMayContainContent = true;

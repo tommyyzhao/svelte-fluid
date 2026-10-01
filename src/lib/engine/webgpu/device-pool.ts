@@ -22,7 +22,6 @@ export interface WebGpuDeviceLease {
 		targetFormat: GPUTextureFormat,
 		constants?: Record<string, number>
 	): Promise<GPURenderPipeline>;
-	onUncapturedError(listener: (error: GPUError) => void): () => void;
 	snapshot(): WebGpuDeviceSnapshot;
 	release(): void;
 }
@@ -41,7 +40,6 @@ interface DeviceEntry {
 	leases: number;
 	generation: number;
 	lost: Promise<GPUDeviceLostInfo>;
-	errorListeners: Set<(error: GPUError) => void>;
 	errorHandler: (event: GPUUncapturedErrorEvent) => void;
 }
 
@@ -151,10 +149,6 @@ export class WebGpuDevicePool {
 				}
 				return pipeline;
 			},
-			onUncapturedError: (listener) => {
-				entry.errorListeners.add(listener);
-				return () => entry.errorListeners.delete(listener);
-			},
 			snapshot: () => ({
 				...entry.tracker.snapshot(),
 				leases: entry.leases,
@@ -209,20 +203,14 @@ export class WebGpuDevicePool {
 				cause
 			});
 		}
-		const errorListeners = new Set<(error: GPUError) => void>();
+		// Diagnostic only. The device is shared, so an uncaptured error cannot be
+		// attributed to one instance; failing every lease would let one bad canvas
+		// drop the whole page to fallback. Instance work (resource transitions and
+		// frame submits) owns per-instance error scopes; device loss is the only
+		// shared terminal signal and travels through `lost`.
 		const errorHandler = (event: GPUUncapturedErrorEvent): void => {
 			event.preventDefault();
-			if (errorListeners.size === 0) {
-				console.error('svelte-fluid: uncaptured WebGPU error', event.error);
-				return;
-			}
-			for (const listener of errorListeners) {
-				try {
-					listener(event.error);
-				} catch (cause) {
-					console.error('svelte-fluid: WebGPU error listener threw', cause);
-				}
-			}
+			console.error('svelte-fluid: uncaptured WebGPU error', event.error);
 		};
 		device.addEventListener('uncapturederror', errorHandler);
 		const entry: DeviceEntry = {
@@ -235,12 +223,10 @@ export class WebGpuDevicePool {
 			leases: 0,
 			generation: ++this.generation,
 			lost: device.lost,
-			errorListeners,
 			errorHandler
 		};
 		void entry.lost.then(() => {
 			entry.device.removeEventListener('uncapturederror', entry.errorHandler);
-			entry.errorListeners.clear();
 			if (this.entry === entry) this.entry = null;
 		});
 		return entry;
