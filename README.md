@@ -137,6 +137,27 @@ expose `retry()` via `bind:this`. Reduced motion uses still finishes. These are
 illustrative material models, not calibrated physics. See the
 [components docs](https://svelte-fluid.dev/docs/components).
 
+## Splash cursor
+
+A full-viewport, transparent, pointer-following fluid cursor:
+
+```svelte
+<script lang="ts">
+  import { Fluid } from 'svelte-fluid';
+</script>
+
+<div class="splash-cursor" aria-hidden="true">
+  <Fluid transparent pointerTarget="window" splatOnHover bloom={false} sunrays={false}
+    densityDissipation={3.5} velocityDissipation={2} pressure={0.1} curl={3} splatRadius={0.2} />
+</div>
+
+<style>
+  .splash-cursor { position: fixed; inset: 0; z-index: 9999; pointer-events: none; }
+</style>
+```
+
+Or `npx shadcn-svelte@latest add https://svelte-fluid.dev/r/splash-cursor.json`.
+See the [recipe](https://svelte-fluid.dev/docs/recipes/splash-cursor).
 
 ## Browser compatibility
 

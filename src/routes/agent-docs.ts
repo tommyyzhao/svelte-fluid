@@ -37,7 +37,8 @@ export function buildLlmsTxt(site = DEFAULT_SITE): string {
 		['Configuration', '/docs/configuration', 'full FluidConfig prop reference (70+ props)'],
 		['Container shapes', '/docs/shapes', 'ContainerShape variants and fields'],
 		['Presets', '/docs/presets', 'all 14 presets with configs and playground links'],
-		['Imperative API', '/docs/api', 'FluidHandle, RGB, PresetSplat']
+		['Imperative API', '/docs/api', 'FluidHandle, RGB, PresetSplat'],
+		['Splash cursor recipe', '/docs/recipes/splash-cursor', 'full-viewport pointer-following fluid cursor; copy-paste snippet or `npx shadcn-svelte@latest add ' + site + '/r/splash-cursor.json`']
 	];
 	return [
 		'# svelte-fluid',
