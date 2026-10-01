@@ -39,3 +39,21 @@ describe('FluidDistortion opening splats and autoDistort', () => {
 		expect(distortionSrc).not.toContain('now - startTime');
 	});
 });
+
+describe('FluidDistortion poster default tracks src', () => {
+	it('resolves poster ?? src at the forward site, not as a one-shot prop default', () => {
+		expect(distortionSrc).not.toContain('poster = src');
+		expect(distortionSrc).toContain('poster={poster ?? src}');
+	});
+});
+
+describe('auto-animation loops pause with the engine', () => {
+	it.each([
+		['FluidReveal', revealSrc, 'function startAutoReveal'],
+		['FluidStick', stickSrc, 'function startAutoAnimate']
+	])('%s skips splats while paused', (_name, src, marker) => {
+		const loop = src.slice(src.indexOf(marker));
+		expect(loop).toContain('!inner || inner.handle.isPaused');
+		expect(loop.indexOf('inner.handle.isPaused')).toBeLessThan(loop.indexOf('inner.handle.splat('));
+	});
+});
