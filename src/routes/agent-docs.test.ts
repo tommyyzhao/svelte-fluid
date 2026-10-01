@@ -28,7 +28,7 @@ describe('buildLlmsTxt', () => {
 	const out = buildLlmsTxt();
 	it('follows the llms.txt shape (H1 + blockquote summary)', () => {
 		expect(out.startsWith('# svelte-fluid\n')).toBe(true);
-		expect(out).toContain('\n> WebGL');
+		expect(out).toContain('\n> Native WebGPU');
 	});
 	it('lists every preset and links the agent resources', () => {
 		for (const p of PRESETS) expect(out, p.id).toContain(`- ${p.id} (${p.category}):`);

@@ -13,8 +13,21 @@
 
 <script lang="ts" module>
 	import type { FluidConfig, FluidHandle, RGB, StickyMask } from './engine/types.js';
+	import type { FluidProps } from './Fluid.svelte';
 
-	export interface FluidStickProps extends FluidConfig {
+	export interface FluidStickProps
+		extends Omit<FluidConfig, 'sticky' | 'stickyMask' | 'stickyStrength' | 'stickyPressure' | 'stickyAmplify'>,
+			Pick<
+				FluidProps,
+				| 'fallback'
+				| 'poster'
+				| 'posterAlt'
+				| 'fallbackText'
+				| 'onReady'
+				| 'onRecovering'
+				| 'onAssetError'
+				| 'onAssetReady'
+			> {
 		/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
 		maxPixelRatio?: number | null;
 		/** Text to render as the sticky mask. `d` takes precedence if both are set. */
@@ -107,11 +120,19 @@
 		height,
 		class: className,
 		style,
-		// Sticky uses multiplicative dissipation (like REVEAL mode).
-		// 0.98 = 2%/frame off-mask fade — trails visible ~1-2s, matching
-		// standard Fluid feel. On-mask (strength 0.95): mix → 0.999,
-		// dye persists ~74% after 5s.
-		densityDissipation = 0.98,
+		fallback,
+		poster,
+		posterAlt,
+		fallbackText,
+		onReady,
+		onRecovering,
+		onAssetError,
+		onAssetReady,
+		// Sticky reduces the ordinary time-based fade rate on the mask.
+		// 1.2 is the continuous-time equivalent of the old 0.98/frame
+		// recipe at 60 fps; strength 0.95 keeps a recognisable trail on the
+		// text or path while unmasked dye clears promptly.
+		densityDissipation = 1.2,
 		velocityDissipation = 0.2,
 		curl = 20,
 		splatRadius = 1.0,
@@ -152,6 +173,7 @@
 	let prevX = 0.5;
 	let prevY = 0.5;
 	let userInteracted = false;
+	let fluidReady = false;
 
 	function onPointerActivity() {
 		userInteracted = true;
@@ -169,7 +191,7 @@
 				autoAnimateRaf = undefined;
 				return;
 			}
-			if (!inner) {
+			if (!inner || !fluidReady) {
 				autoAnimateRaf = requestAnimationFrame(tick);
 				return;
 			}
@@ -228,6 +250,7 @@
 >
 	<Fluid
 		bind:this={inner}
+		{...fluidProps}
 		sticky={true}
 		{stickyMask}
 		stickyStrength={strength}
@@ -253,7 +276,20 @@
 		{splatOnHover}
 		{lazy}
 		{autoPause}
-		{...fluidProps}
+		{fallback}
+		{poster}
+		{posterAlt}
+		{fallbackText}
+		{onAssetError}
+		{onAssetReady}
+		onReady={() => {
+			fluidReady = true;
+			onReady?.();
+		}}
+		onRecovering={() => {
+			fluidReady = false;
+			onRecovering?.();
+		}}
 	/>
 </div>
 

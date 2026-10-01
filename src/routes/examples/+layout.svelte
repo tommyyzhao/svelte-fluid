@@ -18,10 +18,11 @@
 		{ slug: 'backgrounds', label: 'Backgrounds' },
 		{ slug: 'reveal', label: 'Reveal' },
 		{ slug: 'shapes', label: 'Shapes' },
-		{ slug: 'flow', label: 'Flow' }
+		{ slug: 'flow', label: 'Flow' },
+		{ slug: 'webgpu', label: 'WebGPU R&D' }
 	];
 
-	const current = $derived($page.url.pathname.replace(/\/$/, '').split('/').pop() ?? '');
+	const current = $derived($page.url.pathname.replace(/\/$/, '').split('/')[2] ?? '');
 </script>
 
 <svelte:head>
@@ -49,6 +50,9 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
+		height: 41px;
+		box-sizing: border-box;
+		overflow-x: auto;
 		padding: 0.6rem 1rem;
 		font-size: 0.85rem;
 		background: rgba(10, 10, 14, 0.72);
@@ -70,7 +74,7 @@
 		display: flex;
 		gap: 0.85rem;
 		margin-left: auto;
-		flex-wrap: wrap;
+		flex-wrap: nowrap;
 	}
 	.examples-nav a {
 		opacity: 0.65;

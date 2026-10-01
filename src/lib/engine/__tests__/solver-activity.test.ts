@@ -14,5 +14,8 @@ describe('conservative flow activity proof', () => {
 		expect(flowCanDriveSolver(null)).toBe(false);
 		expect(flowCanDriveSolver({})).toBe(false);
 		expect(flowCanDriveSolver({ boundary: { left: 'open' }, outlets: [{ edge: 'right' }] })).toBe(false);
+		expect(flowCanDriveSolver({ prescribed: { kind: 'grid', scalars: {} } })).toBe(false);
+		expect(flowCanDriveSolver({ sources: [{ kind: 'point', x: 0.5, y: 0.5 }] })).toBe(false);
+		expect(flowCanDriveSolver({ forces: [{ kind: 'gravity', vector: { x: 0, y: 0 } }] })).toBe(false);
 	});
 });

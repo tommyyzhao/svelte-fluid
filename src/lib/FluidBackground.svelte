@@ -18,8 +18,21 @@
 <script lang="ts" module>
 	import type { Snippet } from 'svelte';
 	import type { FluidConfig, FluidHandle } from './engine/types.js';
+	import type { FluidProps } from './Fluid.svelte';
 
-	export interface FluidBackgroundProps extends FluidConfig {
+	export interface FluidBackgroundProps
+		extends Omit<FluidConfig, 'containerShape'>,
+			Pick<
+				FluidProps,
+				| 'fallback'
+				| 'poster'
+				| 'posterAlt'
+				| 'fallbackText'
+				| 'onReady'
+				| 'onRecovering'
+				| 'onAssetError'
+				| 'onAssetReady'
+			> {
 		/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
 		maxPixelRatio?: number | null;
 		/**
@@ -55,6 +68,14 @@
 		class: className,
 		style,
 		children,
+		fallback,
+		poster,
+		posterAlt,
+		fallbackText,
+		onReady,
+		onRecovering,
+		onAssetError,
+		onAssetReady,
 		// Background-optimized defaults (consumer can override)
 		simResolution = 64,
 		dyeResolution = 512,
@@ -171,6 +192,7 @@
 	<div class="svelte-fluid-bg__canvas">
 		<Fluid
 			bind:this={inner}
+			{...fluidProps}
 			containerShape={shape}
 			{simResolution}
 			{dyeResolution}
@@ -181,7 +203,14 @@
 			{backColor}
 			{pointerTarget}
 			{splatOnHover}
-			{...fluidProps}
+			{fallback}
+			{poster}
+			{posterAlt}
+			{fallbackText}
+			{onReady}
+			{onRecovering}
+			{onAssetError}
+			{onAssetReady}
 		/>
 	</div>
 	<div class="svelte-fluid-bg__content" bind:this={contentEl}>

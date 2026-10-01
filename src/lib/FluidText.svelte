@@ -9,8 +9,21 @@
 
 <script lang="ts" module>
 	import type { FluidConfig, FluidHandle } from './engine/types.js';
+	import type { FluidProps } from './Fluid.svelte';
 
-	export interface FluidTextProps extends FluidConfig {
+	export interface FluidTextProps
+		extends Omit<FluidConfig, 'containerShape'>,
+			Pick<
+				FluidProps,
+				| 'fallback'
+				| 'poster'
+				| 'posterAlt'
+				| 'fallbackText'
+				| 'onReady'
+				| 'onRecovering'
+				| 'onAssetError'
+				| 'onAssetReady'
+			> {
 		/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
 		maxPixelRatio?: number | null;
 		/** The text to render as fluid-filled letterforms. */
@@ -50,6 +63,14 @@
 		transparent = true,
 		class: className,
 		style,
+		fallback,
+		poster,
+		posterAlt,
+		fallbackText,
+		onReady,
+		onRecovering,
+		onAssetError,
+		onAssetReady,
 		...fluidProps
 	}: FluidTextProps = $props();
 
@@ -102,11 +123,19 @@
 >
 	<Fluid
 		bind:this={inner}
+		{...fluidProps}
 		containerShape={shape}
 		{transparent}
 		{lazy}
 		{autoPause}
-		{...fluidProps}
+		{fallback}
+		{poster}
+		{posterAlt}
+		{fallbackText}
+		{onReady}
+		{onRecovering}
+		{onAssetError}
+		{onAssetReady}
 	/>
 </div>
 

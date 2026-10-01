@@ -828,7 +828,7 @@
 	<title>svelte-fluid — fluid simulation for Svelte 5</title>
 	<meta
 		name="description"
-		content="A Svelte 5 WebGL fluid component with backgrounds, reveal masks, sticky text, distortion, glass containers, flow sources, scalar fields, and obstruction presets."
+		content="A Svelte 5 native WebGPU fluid component with backgrounds, reveal masks, sticky text, distortion, glass containers, flow sources, scalar fields, and obstruction presets."
 	/>
 </svelte:head>
 
@@ -882,7 +882,7 @@
 
 		<section class="hero">
 			<h1 class="display">
-				WebGL fluid simulation,<br />
+				Native WebGPU fluid simulation,<br />
 				as a Svelte&nbsp;5 component.
 			</h1>
 			<p class="lede">

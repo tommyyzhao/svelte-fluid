@@ -1,12 +1,10 @@
 /*
  * svelte-fluid — container shape utilities
  *
- * Pure functions for container shape comparison and SDF evaluation.
- * The SDF functions are TypeScript mirrors of the GLSL in applyMaskShader
- * and the display shader's CONTAINER_MASK block, kept in sync by tests.
+ * Pure CPU-side shape-mask evaluation for rejection sampling and mask baking.
  */
 
-import type { ContainerShape, Obstruction, StickyMask } from './types.js';
+import type { ContainerShape } from './types.js';
 
 /**
  * CPU-side mask data for svgPath shapes, used for rejection sampling
@@ -19,50 +17,9 @@ export interface MaskContext {
 	height: number;
 }
 
-/** Deep equality for ContainerShape values. */
-export function containerShapeEqual(
-	a: ContainerShape | null | undefined,
-	b: ContainerShape | null | undefined
-): boolean {
-	if (a === b) return true;
-	if (a == null || b == null) return false;
-	if (a.type !== b.type) return false;
-	if (a.type === 'circle' && b.type === 'circle') {
-		return a.cx === b.cx && a.cy === b.cy && a.radius === b.radius;
-	}
-	if (a.type === 'frame' && b.type === 'frame') {
-		return a.cx === b.cx && a.cy === b.cy && a.halfW === b.halfW && a.halfH === b.halfH &&
-			(a.innerCornerRadius ?? 0) === (b.innerCornerRadius ?? 0) &&
-			(a.outerHalfW ?? 0.5) === (b.outerHalfW ?? 0.5) &&
-			(a.outerHalfH ?? 0.5) === (b.outerHalfH ?? 0.5) &&
-			(a.outerCornerRadius ?? 0) === (b.outerCornerRadius ?? 0);
-	}
-	if (a.type === 'roundedRect' && b.type === 'roundedRect') {
-		return (
-			a.cx === b.cx &&
-			a.cy === b.cy &&
-			a.halfW === b.halfW &&
-			a.halfH === b.halfH &&
-			a.cornerRadius === b.cornerRadius
-		);
-	}
-	if (a.type === 'annulus' && b.type === 'annulus') {
-		return a.cx === b.cx && a.cy === b.cy && a.innerRadius === b.innerRadius && a.outerRadius === b.outerRadius;
-	}
-	if (a.type === 'svgPath' && b.type === 'svgPath') {
-		return a.d === b.d &&
-			a.text === b.text &&
-			(a.font ?? '') === (b.font ?? '') &&
-			(a.fillRule ?? 'nonzero') === (b.fillRule ?? 'nonzero') &&
-			(a.maskResolution ?? 512) === (b.maskResolution ?? 512) &&
-			viewBoxEqual(a.viewBox, b.viewBox);
-	}
-	return false;
-}
-
 /**
  * Evaluate the container mask at a UV coordinate. Returns 0–1 where
- * 1 = fluid allowed, 0 = fluid zeroed. Mirrors the GLSL applyMaskShader.
+ * 1 = fluid allowed, 0 = fluid zeroed. Mirrors the GPU mask pass.
  *
  * @param shape   - The container shape definition
  * @param uvX     - Horizontal UV coordinate (0 = left, 1 = right)
@@ -94,7 +51,7 @@ export function containerMask(
 
 /**
  * Circle mask: 1 inside the circle, 0 outside, smooth edge.
- * Matches the GLSL: `1.0 - smoothstep(uRadius - 0.005, uRadius + 0.005, length(p))`
+ * Matches the WGSL expression: `1.0 - smoothstep(radius - 0.005, radius + 0.005, length(p))`.
  */
 function circleMask(
 	uvX: number, uvY: number,
@@ -103,7 +60,7 @@ function circleMask(
 	const px = (uvX - cx) * aspect;
 	const py = uvY - cy;
 	const d = Math.sqrt(px * px + py * py);
-	return 1.0 - glslSmoothstep(radius - 0.005, radius + 0.005, d);
+	return 1.0 - shaderSmoothstep(radius - 0.005, radius + 0.005, d);
 }
 
 /**
@@ -140,11 +97,11 @@ function frameMask(
 		const outsideDist = Math.sqrt(Math.max(dx, 0) ** 2 + Math.max(dy, 0) ** 2);
 		const insideDist = Math.min(Math.max(dx, dy), 0);
 		const dist = outsideDist + insideDist - icr;
-		innerMask = glslSmoothstep(-0.005, 0.005, dist);
+		innerMask = shaderSmoothstep(-0.005, 0.005, dist);
 	} else {
 		const dx = Math.abs(uvX - cx) - halfW;
 		const dy = Math.abs(uvY - cy) - halfH;
-		innerMask = glslSmoothstep(-0.005, 0.005, Math.max(dx, dy));
+		innerMask = shaderSmoothstep(-0.005, 0.005, Math.max(dx, dy));
 	}
 
 	// Outer mask: 1 inside outer rect, 0 outside
@@ -160,11 +117,11 @@ function frameMask(
 		const outsideDist = Math.sqrt(Math.max(dx, 0) ** 2 + Math.max(dy, 0) ** 2);
 		const insideDist = Math.min(Math.max(dx, dy), 0);
 		const dist = outsideDist + insideDist - ocr;
-		outerMask = 1.0 - glslSmoothstep(-0.005, 0.005, dist);
+		outerMask = 1.0 - shaderSmoothstep(-0.005, 0.005, dist);
 	} else {
 		const dx = Math.abs(uvX - cx) - ohw;
 		const dy = Math.abs(uvY - cy) - ohh;
-		outerMask = 1.0 - glslSmoothstep(-0.005, 0.005, Math.max(dx, dy));
+		outerMask = 1.0 - shaderSmoothstep(-0.005, 0.005, Math.max(dx, dy));
 	}
 
 	return innerMask * outerMask;
@@ -192,7 +149,7 @@ export function roundedRectSDF(
 	const outsideDist = Math.sqrt(Math.max(dx, 0) ** 2 + Math.max(dy, 0) ** 2);
 	const insideDist = Math.min(Math.max(dx, dy), 0);
 	const d = outsideDist + insideDist - cornerRadius;
-	return 1.0 - glslSmoothstep(-0.005, 0.005, d);
+	return 1.0 - shaderSmoothstep(-0.005, 0.005, d);
 }
 
 /**
@@ -212,7 +169,7 @@ function annulusMask(
 	const py = uvY - cy;
 	const d = Math.sqrt(px * px + py * py);
 	const sdf = Math.max(d - outerRadius, innerRadius - d);
-	return 1.0 - glslSmoothstep(-0.005, 0.005, sdf);
+	return 1.0 - shaderSmoothstep(-0.005, 0.005, sdf);
 }
 
 /**
@@ -231,59 +188,6 @@ function svgPathMask(uvX: number, uvY: number, maskCtx?: MaskContext): number {
 	return data[cy * width + cx] / 255;
 }
 
-/** Deep equality for StickyMask values. */
-export function stickyMaskEqual(
-	a: StickyMask | null | undefined,
-	b: StickyMask | null | undefined
-): boolean {
-	if (a === b) return true;
-	if (a == null || b == null) return false;
-	return a.d === b.d && a.text === b.text &&
-		(a.font ?? '') === (b.font ?? '') &&
-		(a.fillRule ?? 'nonzero') === (b.fillRule ?? 'nonzero') &&
-		(a.maskResolution ?? 512) === (b.maskResolution ?? 512) &&
-		(a.blur ?? 0) === (b.blur ?? 0) &&
-		(a.padding ?? 0.9) === (b.padding ?? 0.9) &&
-		viewBoxEqual(a.viewBox, b.viewBox);
-}
-
-/**
- * Deep equality for obstruction arrays. Two arrays are equal when they are
- * the same reference, both null/undefined/empty, or have identical length
- * with element-wise equal descriptors. Defaults match {@link Obstruction}:
- * `font` → `''`, `fillRule` → `'nonzero'`, `scale` → 1, `offset` → `{0,0}`,
- * `fit` → `'contain'`.
- */
-export function obstructionsEqual(
-	a: ReadonlyArray<Obstruction> | null | undefined,
-	b: ReadonlyArray<Obstruction> | null | undefined
-): boolean {
-	if (a === b) return true;
-	// Treat null/undefined/empty as the same "no obstructions" state.
-	const al = a?.length ?? 0;
-	const bl = b?.length ?? 0;
-	if (al === 0 && bl === 0) return true;
-	if (al !== bl) return false;
-	for (let i = 0; i < al; i++) {
-		const x = a![i];
-		const y = b![i];
-		if (
-			x.d !== y.d ||
-			x.text !== y.text ||
-			(x.font ?? '') !== (y.font ?? '') ||
-			(x.fillRule ?? 'nonzero') !== (y.fillRule ?? 'nonzero') ||
-			(x.scale ?? 1) !== (y.scale ?? 1) ||
-			(x.fit ?? 'contain') !== (y.fit ?? 'contain') ||
-			(x.offset?.x ?? 0) !== (y.offset?.x ?? 0) ||
-			(x.offset?.y ?? 0) !== (y.offset?.y ?? 0) ||
-			!viewBoxEqual(x.viewBox, y.viewBox)
-		) {
-			return false;
-		}
-	}
-	return true;
-}
-
 /**
  * Sample the combined obstruction mask at a UV coordinate. Returns 0–1 where
  * 1 = fully blocked (fluid rejected), 0 = unobstructed. Mirrors svgPathMask's
@@ -299,123 +203,51 @@ export function obstructionMask(uvX: number, uvY: number, ctx?: MaskContext): nu
 	return data[cy * width + cx] / 255;
 }
 
-/** Compare two optional viewBox tuples. Defaults to [0,0,100,100]. */
-export function viewBoxEqual(
-	a: [number, number, number, number] | undefined,
-	b: [number, number, number, number] | undefined
-): boolean {
-	const va = a ?? [0, 0, 100, 100];
-	const vb = b ?? [0, 0, 100, 100];
-	return va[0] === vb[0] && va[1] === vb[1] && va[2] === vb[2] && va[3] === vb[3];
-}
-
-/**
- * Compute area fraction from mask data for hdrMultiplier calculation.
- * Counts pixels above threshold and returns ratio to total pixels.
- */
-export function maskAreaFraction(maskCtx: MaskContext): number {
-	let count = 0;
-	for (let i = 0; i < maskCtx.data.length; i++) {
-		if (maskCtx.data[i] > 127) count++;
-	}
-	return count / maskCtx.data.length;
-}
-
-/** GLSL smoothstep: Hermite interpolation clamped to [0,1]. */
-export function glslSmoothstep(edge0: number, edge1: number, x: number): number {
+/** Shader smoothstep: Hermite interpolation clamped to [0,1]. */
+export function shaderSmoothstep(edge0: number, edge1: number, x: number): number {
 	const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
 	return t * t * (3 - 2 * t);
 }
 
 /**
- * Bake the per-cell neighbor-solidity (face aperture) texture for the solver
- * (epic 0001 Phase 1b). For each sim-grid texel, samples the combined solid
- * mask at the four neighbor texel centers exactly the way the GLSL
- * `solidAt()` helper does (clamp to [0,1], y-flip, NEAREST), and packs the
- * results as RGBA = (L, R, T, B), 255 = solid.
- *
- * In Phase 1 the values are strictly binary so solver behavior is
- * bit-identical to the old per-fragment probes; Phase 3 writes fractional
- * face apertures into the same layout.
+ * Convert a grid whose solid cells are already zero into an exact, capped
+ * Chebyshev distance field. This lower-level form avoids resampling or changing
+ * row orientation when the caller already owns a simulation-aligned mask.
  */
-export function bakeSolidNeighborData(solid: MaskContext, simW: number, simH: number): Uint8Array {
-	const out = new Uint8Array(simW * simH * 4);
-	const sampleSolid = (u: number, v: number): number => {
-		const cu = Math.min(1, Math.max(0, u));
-		const cv = 1 - Math.min(1, Math.max(0, v));
-		const px = Math.min(solid.width - 1, Math.max(0, Math.floor(cu * solid.width)));
-		const py = Math.min(solid.height - 1, Math.max(0, Math.floor(cv * solid.height)));
-		return solid.data[py * solid.width + px] > 127 ? 255 : 0;
-	};
-	const du = 1 / simW;
-	const dv = 1 / simH;
-	for (let j = 0; j < simH; j++) {
-		const v = (j + 0.5) / simH;
-		for (let i = 0; i < simW; i++) {
-			const u = (i + 0.5) / simW;
-			const o = (j * simW + i) * 4;
-			out[o] = sampleSolid(u - du, v);
-			out[o + 1] = sampleSolid(u + du, v);
-			out[o + 2] = sampleSolid(u, v + dv);
-			out[o + 3] = sampleSolid(u, v - dv);
-		}
+export function bakeChebyshevDistanceField(
+	seeded: Uint8Array,
+	width: number,
+	height: number
+): Uint8Array {
+	if (seeded.length !== width * height) {
+		throw new Error('svelte-fluid: solid-clearance seed size does not match its extent');
 	}
-	return out;
-}
-
-/**
- * Bake the Chebyshev distance, in simulation cells, to the nearest solid cell.
- * MacCormack uses this conservative clearance radius to prove that both
- * departure segments and their bilinear stencils stay in fluid with one
- * texture fetch instead of walking each trace in the fragment shader.
- *
- * Values are capped at 255 so the field fits in an R8/LUMINANCE texture.
- * A solid cell is 0, its eight neighbors are 1, and cells with no solid within
- * the representable radius are 255.
- */
-export function bakeSolidClearanceData(solid: MaskContext, simW: number, simH: number): Uint8Array {
-	const out = new Uint8Array(simW * simH);
-	out.fill(255);
-	const sampleSolid = (u: number, v: number): boolean => {
-		const cu = Math.min(1, Math.max(0, u));
-		const cv = 1 - Math.min(1, Math.max(0, v));
-		const px = Math.min(solid.width - 1, Math.max(0, Math.floor(cu * solid.width)));
-		const py = Math.min(solid.height - 1, Math.max(0, Math.floor(cv * solid.height)));
-		return solid.data[py * solid.width + px] > 127;
-	};
-
-	for (let y = 0; y < simH; y++) {
-		const v = (y + 0.5) / simH;
-		for (let x = 0; x < simW; x++) {
-			const u = (x + 0.5) / simW;
-			if (sampleSolid(u, v)) out[y * simW + x] = 0;
-		}
-	}
+	const out = new Uint8Array(seeded);
 
 	// Unit-weight 8-neighbor chamfer passes are the exact L-infinity distance
 	// transform on this Cartesian grid.
-	for (let y = 0; y < simH; y++) {
-		for (let x = 0; x < simW; x++) {
-			const i = y * simW + x;
+	for (let y = 0; y < height; y++) {
+		for (let x = 0; x < width; x++) {
+			const i = y * width + x;
 			let d = out[i];
 			if (x > 0) d = Math.min(d, out[i - 1] + 1);
 			if (y > 0) {
-				d = Math.min(d, out[i - simW] + 1);
-				if (x > 0) d = Math.min(d, out[i - simW - 1] + 1);
-				if (x + 1 < simW) d = Math.min(d, out[i - simW + 1] + 1);
+				d = Math.min(d, out[i - width] + 1);
+				if (x > 0) d = Math.min(d, out[i - width - 1] + 1);
+				if (x + 1 < width) d = Math.min(d, out[i - width + 1] + 1);
 			}
 			out[i] = Math.min(255, d);
 		}
 	}
-	for (let y = simH - 1; y >= 0; y--) {
-		for (let x = simW - 1; x >= 0; x--) {
-			const i = y * simW + x;
+	for (let y = height - 1; y >= 0; y--) {
+		for (let x = width - 1; x >= 0; x--) {
+			const i = y * width + x;
 			let d = out[i];
-			if (x + 1 < simW) d = Math.min(d, out[i + 1] + 1);
-			if (y + 1 < simH) {
-				d = Math.min(d, out[i + simW] + 1);
-				if (x > 0) d = Math.min(d, out[i + simW - 1] + 1);
-				if (x + 1 < simW) d = Math.min(d, out[i + simW + 1] + 1);
+			if (x + 1 < width) d = Math.min(d, out[i + 1] + 1);
+			if (y + 1 < height) {
+				d = Math.min(d, out[i + width] + 1);
+				if (x > 0) d = Math.min(d, out[i + width - 1] + 1);
+				if (x + 1 < width) d = Math.min(d, out[i + width + 1] + 1);
 			}
 			out[i] = Math.min(255, d);
 		}

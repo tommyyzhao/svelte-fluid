@@ -7,8 +7,8 @@ import {
 	sanitizePerformanceFrameSampleMs
 } from '../performance-governor.js';
 import type { PerformanceGovernorFloors, PerformanceGovernorThresholds } from '../performance-governor.js';
-import { clampSimulationDeltaSeconds } from '../FluidEngine.js';
-import engineSrc from '../FluidEngine.ts?raw';
+import { clampSimulationDeltaSeconds } from '../solver-policy.js';
+import engineSrc from '../webgpu/NativeWebGpuFluidEngine.ts?raw';
 
 function methodBody(src: string, name: string): string {
 	const start = src.indexOf(name);
@@ -376,17 +376,24 @@ describe('performance governor pure decision function', () => {
 	);
 });
 
-describe('FluidEngine governor integration guards', () => {
+describe('WebGPU engine governor integration guards', () => {
 	it('keeps deterministic advance() off the frame-time governor path', () => {
-		const body = methodBody(engineSrc, 'advance(steps: number, dt: number)');
-		expect(body).toContain('this.step(dt)');
+		const body = methodBody(engineSrc, 'advanceDeterministic(steps: number, dt: number, present: boolean)');
+		expect(body).toContain('this.renderFrame(1, stepDt, false)');
 		expect(body).not.toContain('recordPerformanceFrameTime');
 		expect(body).not.toContain('performanceGovernorStep');
 	});
 
-	it('hard-guards the sampler in deterministic mode', () => {
+	it('samples performance only from the live scheduler', () => {
+		const body = methodBody(engineSrc, 'tick = (now: number): void =>');
+		expect(body).toContain('this.recordPerformanceFrameTime(frameMs)');
+		const deterministic = methodBody(engineSrc, 'advanceDeterministic(steps: number, dt: number, present: boolean)');
+		expect(deterministic).not.toContain('recordPerformanceFrameTime');
+	});
+
+	it('hard-guards the sampler while disabled or paused', () => {
 		const body = methodBody(engineSrc, 'recordPerformanceFrameTime(frameMs: number)');
-		expect(body).toContain('!this.config.AUTO_PERFORMANCE || this.deterministicMode || this.config.PAUSED');
+		expect(body).toContain('!this.config.autoPerformance || this.config.paused');
 	});
 
 	it('keeps lastAction stable between governor actions', () => {
@@ -397,13 +404,13 @@ describe('FluidEngine governor integration guards', () => {
 
 	it('keeps requested configuration separate from effective governor quality', () => {
 		const sampler = methodBody(engineSrc, 'recordPerformanceFrameTime(frameMs: number)');
-		const delta = methodBody(engineSrc, 'calcDeltaTime(): number');
-		const projection = methodBody(engineSrc, 'projectVelocity(): void');
+		const tick = methodBody(engineSrc, 'tick = (now: number): void =>');
+		const projection = methodBody(engineSrc, 'simulateStep(encoder: GPUCommandEncoder, dt: number): void');
 
-		expect(sampler).not.toContain('this.config.PRESSURE_ITERATIONS =');
-		expect(sampler).not.toContain('this.config.SUBSTEPS =');
+		expect(sampler).not.toContain('this.config.pressureIterations =');
+		expect(sampler).not.toContain('this.config.substeps =');
 		expect(sampler).toContain('this.performanceSubsteps = decision.substeps');
-		expect(delta).toContain('this.config.SUBSTEPS');
+		expect(tick).toContain('this.performanceSubsteps');
 		expect(projection).toContain('this.performancePressureIterations');
 	});
 

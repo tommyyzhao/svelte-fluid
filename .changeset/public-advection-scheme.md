@@ -5,13 +5,13 @@
 Public `advectionScheme` config field.
 
 Promotes the previously-internal MacCormack velocity advection switch to a
-public, construct-only `FluidConfig` field:
+public, hot-updatable `FluidConfig` field:
 `advectionScheme?: 'semilagrangian' | 'maccormack'` (default `'semilagrangian'`).
 `'maccormack'` gives crisper second-order velocity advection for flow/structured
 scenes, but can look angular or "cubey" on diffuse decorative dye, so it is
-opt-in and unset by every built-in preset. Devices without linear-filtering
-support are capability-gated back to `'semilagrangian'` automatically. This is
-a construct-only (Bucket D) field — `setConfig()` ignores runtime changes to it.
+opt-in and unset by every built-in preset. Both native WebGPU pipelines are
+prepared during startup, so `setConfig()` can switch schemes without clearing
+fields or compiling at interaction time.
 
 No built-in preset changes behavior: every preset still resolves to
 `'semilagrangian'`, confirmed by a registry invariant test.

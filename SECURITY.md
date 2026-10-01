@@ -15,17 +15,21 @@ Instead, contact @tommyyzhao directly via GitHub:
 
 ## Scope
 
-svelte-fluid is a client-side WebGL fluid simulation library. It:
+svelte-fluid is a client-side WebGPU fluid simulation library. It:
 
 - Runs entirely in the browser (no server-side component)
-- Uses the WebGL API to render to a `<canvas>` element
-- Does not make network requests, handle user data, or manage authentication
+- Uses the WebGPU and Canvas 2D APIs to render to a `<canvas>` element
+- Fetches only an explicitly configured distortion-image URL; remote images must
+  permit CORS for decoding/upload
+- Does not handle user data or manage authentication
 - Does not ship any runtime dependencies beyond Svelte 5
 
 The attack surface is limited to:
 
-- Shader compilation (controlled by the library, not user input)
-- DOM manipulation (standard canvas/WebGL operations)
+- WGSL compilation (controlled by the library, not user input)
+- Bounded GPU allocation and user-configured SVG/text mask rasterization
+- Distortion image fetching and browser image decoding
+- DOM manipulation (standard canvas/WebGPU operations)
 - Event listeners for pointer input (mouse/touch)
 
 ## Supported Versions

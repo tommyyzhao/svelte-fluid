@@ -512,18 +512,20 @@
 
 <hr />
 
-<h2>Mask Texture Approach</h2>
+<h2>Packed mask textures</h2>
 
 <p>
-	The <code>circle</code>, <code>frame</code>, <code>roundedRect</code>, and <code>annulus</code> types use
-	direct distance formulas in the GLSL shader. They are cheap to compute and produce smooth edges.
+	Every geometry type is rasterized on the CPU into one canonical packed mask. Analytical
+	<code>circle</code>, <code>frame</code>, <code>roundedRect</code>, and <code>annulus</code> shapes use
+	distance functions during that rasterization; path and text shapes use Canvas 2D. The same
+	packed channels drive solid boundaries, visual edges, obstructions, and sticky coverage.
 </p>
 
 <p>
-	The <code>svgPath</code> type uses a <strong>mask texture</strong> approach instead. An
-	<code>OffscreenCanvas</code> rasterizes the path or text at the configured
-	<code>maskResolution</code> (default 512px), producing a grayscale alpha mask. This mask is
-	uploaded as a WebGL texture and sampled by the physics shaders to determine which regions contain fluid.
+	For <code>svgPath</code>, an <code>OffscreenCanvas</code> rasterizes the path or text at the
+	configured <code>maskResolution</code> (default 512px). Physics receives a simulation-grid
+	texture while presentation receives a higher-detail texture, both uploaded once per mask
+	change and sampled by the native WGSL graph.
 </p>
 
 <p>

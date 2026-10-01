@@ -14,7 +14,7 @@
 	import type { Snippet } from 'svelte';
 	import type { HTMLCanvasAttributes } from 'svelte/elements';
 	import type { FluidConfig } from './engine/types.js';
-	import type { WebGLUnavailableReason } from './engine/gl-utils.js';
+	import type { FluidUnavailableReason } from './engine/gpu-support.js';
 
 	/** Public props for the `<Fluid />` component. */
 	export interface FluidProps
@@ -35,20 +35,10 @@
 		 */
 		maxPixelRatio?: number | null;
 		/**
-		 * Defer engine creation until the container enters the viewport,
-		 * and tear it down when it leaves. Frees the WebGL context for
-		 * other instances on dense pages, at the cost of a shader-recompile
-		 * pause when scrolled back into view. Default `false` (immediate
-		 * instantiation) so the library default matches naive usage.
-		 *
-		 * Recommended `true` for any page with more than ~6 simultaneous
-		 * `<Fluid />` instances. Browsers cap WebGL contexts at 8–16 per
-		 * tab, so dense layouts hit the ceiling otherwise.
-		 *
-		 * The IntersectionObserver uses `rootMargin: 50px` so the engine
-		 * comes alive shortly before it would be visible, hiding the
-		 * recompile pause behind the user's scroll momentum while
-		 * minimizing simultaneous context creation.
+		 * Defer per-instance field allocation until the container enters the
+		 * viewport, and release those resources when it leaves. The shared WebGPU
+		 * device and pipeline cache remain warm, so remounting does not reacquire a
+		 * device or recompile the graph. Default `false`.
 		 */
 		lazy?: boolean;
 		/**
@@ -56,27 +46,22 @@
 		 * visible — either scrolled out of the viewport or on a hidden
 		 * browser tab. Resumes when visibility is restored. Default `true`.
 		 *
-		 * This is lighter than `lazy`: the WebGL context stays alive (no
-		 * recompile pause on resume) but the RAF loop stops, freeing CPU
-		 * and GPU cycles. When both `lazy` and `autoPause` are set, `lazy`
+		 * This is lighter than `lazy`: instance fields stay alive but the RAF loop
+		 * stops, freeing CPU and GPU cycles. When both `lazy` and `autoPause` are set, `lazy`
 		 * takes precedence for scroll visibility (full teardown), while
 		 * `autoPause` still handles tab-level visibility (Page Visibility API).
 		 */
 		autoPause?: boolean;
 		/**
-		 * Custom UI rendered when WebGL is permanently unavailable (no WebGL,
-		 * or no half-float texture support). Receives the typed failure
-		 * `reason`. Takes precedence over {@link poster}. Transient failures
-		 * (e.g. hitting the browser's live-context limit) do NOT trigger it —
-		 * those stay blank and retry on the next reconcile — EXCEPT in `reveal`
-		 * mode, where any failure (including transient) surfaces the fallback,
-		 * because the transparent reveal canvas would otherwise expose the
-		 * covered content. See ADR-0041.
+		 * Custom UI rendered when WebGPU cannot start or recover. Receives the
+		 * typed failure `reason` and takes precedence over {@link poster}. During
+		 * device recovery the last frame remains covered until the replacement
+		 * engine is ready; a failed recovery surfaces this fallback. See ADR-0041.
 		 */
-		fallback?: Snippet<[{ reason: WebGLUnavailableReason }]>;
+		fallback?: Snippet<[{ reason: FluidUnavailableReason }]>;
 		/**
-		 * Static image shown (object-fit: cover) when WebGL is permanently
-		 * unavailable and no {@link fallback} snippet is provided. A graceful
+		 * Static image shown (object-fit: cover) when WebGPU cannot run and no
+		 * {@link fallback} snippet is provided. A graceful
 		 * still of what the animation would have rendered.
 		 */
 		poster?: string;
@@ -89,14 +74,22 @@
 		posterAlt?: string;
 		/**
 		 * Visually-hidden message for the default fallback, discoverable (not
-		 * announced) by assistive tech when WebGL is permanently unavailable. It
+		 * announced) by assistive tech when WebGPU cannot run. It
 		 * is rendered for the `backColor`-fill fallback AND alongside a
 		 * {@link poster} (since the dead canvas is `aria-hidden`), but NOT for a
 		 * custom {@link fallback} snippet (which owns its own semantics). Set `''`
 		 * to suppress for a purely decorative instance. Default: "This animation
-		 * requires WebGL, which isn't available in your browser."
+		 * requires GPU graphics, which aren't available in your browser."
 		 */
 		fallbackText?: string;
+		/** Called after initial WebGPU startup and after successful device recovery. */
+		onReady?: () => void;
+		/** Called immediately when device-loss reconstruction begins. */
+		onRecovering?: () => void;
+		/** Called when a distortion image fails to load or upload. */
+		onAssetError?: (error: Error) => void;
+		/** Called after a distortion image is uploaded successfully. */
+		onAssetReady?: () => void;
 	}
 </script>
 
@@ -104,7 +97,11 @@
 	import { onMount, untrack } from 'svelte';
 	import { canvasPixelSize, cssQualityPolicy } from './engine/resolution.js';
 	import { FluidEngine } from './engine/FluidEngine.js';
-	import { WebGLUnavailableError } from './engine/gl-utils.js';
+	import {
+		FluidUnavailableError,
+		isFluidUnavailableError,
+		type FluidUnavailableReason as RuntimeUnavailableReason
+	} from './engine/gpu-support.js';
 	import { DISABLED_PERFORMANCE_STATE } from './engine/performance-governor.js';
 	import { randomSeed } from './engine/rng.js';
 	import type { FluidHandle } from './engine/types.js';
@@ -206,7 +203,11 @@
 		fallback,
 		poster,
 		posterAlt,
-		fallbackText = "This animation requires WebGL, which isn't available in your browser.",
+		fallbackText = "This animation requires GPU graphics, which aren't available in your browser.",
+		onReady,
+		onRecovering,
+		onAssetError,
+		onAssetReady,
 		'aria-hidden': ariaHidden,
 		...rest
 	}: FluidProps = $props();
@@ -219,29 +220,25 @@
 	const stableLazy = untrack(() => lazy);
 	const stableAutoPause = untrack(() => autoPause);
 	// Like `seed`, captured once — re-acquiring a context mid-life isn't
-	// supported, so this is construct-only (Bucket D).
+	// supported, so this is construct-only.
 	const stableRequireHW = untrack(() => requireHardwareAcceleration);
 	const stableMaxPixelRatio = untrack(() => maxPixelRatio);
 	let isVisible = !stableLazy;
+	let documentVisible = true;
 
 	/**
-	 * The last engine-init WebGL failure, or `null` when the engine is running.
+	 * The last typed engine-init failure, or `null` when the engine is running.
 	 * Stored raw (not pre-resolved) so {@link failureReason} can recompute the
 	 * displayed state reactively when `reveal` changes at runtime. See ADR-0041.
 	 */
-	let lastError = $state<WebGLUnavailableError | null>(null);
+	let lastError = $state<FluidUnavailableError | null>(null);
 
 	/**
 	 * The reason to SHOW the accessible fallback, or `null` to stay blank.
-	 * Permanent reasons always surface; a transient `context-limit` stays blank
-	 * and retries — EXCEPT in reveal mode, where the canvas is transparent and a
-	 * blank box would expose the content the reveal is meant to cover, so any
-	 * failure masks. Derived (not set imperatively) so toggling `reveal` re-masks
-	 * without waiting for a reconcile.
+	 * WebGPU capability failures always surface. Device loss is reconstructed by
+	 * the runtime controller first and reaches this state only if recovery fails.
 	 */
-	const failureReason = $derived<WebGLUnavailableReason | null>(
-		lastError && (lastError.reason !== 'context-limit' || reveal) ? lastError.reason : null
-	);
+	const failureReason = $derived<RuntimeUnavailableReason | null>(lastError?.reason ?? null);
 
 	// Fill color for the default fallback box. Mode-aware so the fallback never
 	// contradicts the live render's intent:
@@ -263,13 +260,13 @@
 		return backColor ? `rgb(${backColor.r}, ${backColor.g}, ${backColor.b})` : '#000';
 	});
 
-	// Context slot management for lazy mode. Browsers cap WebGL contexts
-	// at ~16 per tab — calling loseContext() after dispose frees the slot
-	// so other instances can use it. We save the extension ref because
-	// getExtension() returns null on an already-lost context.
-	let savedLoseExt: WEBGL_lose_context | undefined;
-	let savedLoseGl: WebGLRenderingContext | WebGL2RenderingContext | undefined;
-	let pendingRestore = false;
+	let instantiateToken = 0;
+	let initializing = false;
+	// Unlike the legacy synchronous constructor, WebGPU acquisition crosses an
+	// async boundary. Keep readiness reactive so reveal mode can paint its cover
+	// from the first rendered frame until the runtime is genuinely usable.
+	let engineReady = $state(false);
+	const revealStartupCover = $derived(Boolean(reveal && !engineReady && !failureReason));
 
 	/**
 	 * Stable seed: generated once per mount, reused across every
@@ -415,64 +412,25 @@
 	}
 
 	function teardown() {
-		// For lazy instances, grab the lose-context extension while the
-		// context is still alive so we can release the slot afterward.
-		if (stableLazy && canvasEl && !savedLoseExt) {
-			const gl =
-				(canvasEl.getContext('webgl2') as WebGL2RenderingContext | null) ??
-				(canvasEl.getContext('webgl') as WebGLRenderingContext | null);
-			if (gl && !gl.isContextLost()) {
-				savedLoseExt = gl.getExtension('WEBGL_lose_context') ?? undefined;
-				savedLoseGl = savedLoseExt ? gl : undefined;
-			}
-		}
+		instantiateToken += 1;
+		initializing = false;
+		engineReady = false;
 		engine?.dispose();
 		engine = undefined;
-		// Release the context slot so other lazy instances can use it.
-		// preventDefault on contextlost is required — without it the browser
-		// won't allow restoreContext() later (per WEBGL_lose_context spec).
-		if (stableLazy && savedLoseExt && savedLoseGl && !savedLoseGl.isContextLost() && canvasEl) {
-			canvasEl.addEventListener(
-				'webglcontextlost',
-				(e) => e.preventDefault(),
-				{ once: true }
-			);
-			savedLoseExt.loseContext();
-		} else if (savedLoseGl?.isContextLost()) {
-			savedLoseExt = undefined;
-			savedLoseGl = undefined;
+	}
+
+	function notifyHost(callback: (() => void) | undefined, name: string) {
+		if (!callback) return;
+		try {
+			callback();
+		} catch (cause) {
+			console.error(`svelte-fluid: ${name} callback threw`, cause);
 		}
 	}
 
-	function instantiate() {
+	async function instantiate() {
 		if (!canvasEl || cssW === 0 || cssH === 0 || !isVisible) return;
-		if (pendingRestore) return;
-		// A permanent failure won't recover by retrying — skip re-instantiation
-		// (and the capability probe / doomed engine init it entails) on every
-		// resize/scroll reconcile. The fallback overlay already fills the resized
-		// container. Transient context-limit still retries (failureReason is null,
-		// or 'context-limit' when reveal masked it).
-		if (failureReason === 'no-webgl' || failureReason === 'no-float-textures') return;
-
-		// If the context was lost by a previous lazy teardown, restore it
-		// before creating a new engine. restoreContext() is async — wait
-		// for webglcontextrestored before proceeding.
-			if (savedLoseExt) {
-				pendingRestore = true;
-				const ext = savedLoseExt;
-				savedLoseExt = undefined;
-				savedLoseGl = undefined;
-			canvasEl.addEventListener(
-				'webglcontextrestored',
-				() => {
-					pendingRestore = false;
-					reconcile();
-				},
-				{ once: true }
-			);
-			ext.restoreContext();
-			return;
-		}
+		if (initializing || failureReason) return;
 
 		const size = canvasPixelSize(cssW, cssH, window.devicePixelRatio || 1, stableMaxPixelRatio);
 		canvasEl.width = size.width;
@@ -480,22 +438,88 @@
 
 		const cfg = buildCanvasConfig(cssW, cssH, canvasEl.width, canvasEl.height);
 
+		const token = ++instantiateToken;
+		initializing = true;
+		let next: FluidEngine | undefined;
 		try {
-			engine = new FluidEngine({ canvas: canvasEl, config: cfg });
+			next = new FluidEngine({
+					canvas: canvasEl,
+					config: cfg,
+					autoStart: !stableAutoPause || documentVisible,
+					onRecovering: () => {
+						if (token !== instantiateToken || engine !== next) return;
+						engineReady = false;
+						notifyHost(onRecovering, 'onRecovering');
+					},
+					onRecovered: () => {
+						if (token !== instantiateToken || engine !== next) return;
+						engineReady = true;
+						lastError = null;
+						notifyHost(onReady, 'onReady');
+					},
+					onAssetError: (error) => {
+						if (token !== instantiateToken || engine !== next) return;
+						console.error('svelte-fluid: distortion asset failed', error);
+						lastError = new FluidUnavailableError(
+							'svelte-fluid: distortion image failed to load or upload',
+							'asset-failed',
+							{ cause: error }
+						);
+						notifyHost(() => onAssetError?.(error), 'onAssetError');
+					},
+					onAssetReady: () => {
+						if (token !== instantiateToken || engine !== next) return;
+						if (lastError?.reason === 'asset-failed') lastError = null;
+						notifyHost(onAssetReady, 'onAssetReady');
+					},
+					onFatalError: (error) => {
+						if (token !== instantiateToken || engine !== next) return;
+						next?.dispose();
+						engine = undefined;
+						engineReady = false;
+						if (isFluidUnavailableError(error)) lastError = error;
+						else {
+							console.error('svelte-fluid: runtime failed', error);
+							lastError = new FluidUnavailableError(
+								'svelte-fluid: WebGPU runtime failed',
+								'runtime-failed',
+								{ cause: error }
+							);
+						}
+					}
+				});
+			// Install the queueing controller before adapter/pipeline acquisition so
+			// resize, pause, prop changes, and imperative splats cannot be lost.
+			engine = next;
+			await next.ready;
+			if (token !== instantiateToken || !isVisible) {
+				next.dispose();
+				if (engine === next) engine = undefined;
+				return;
+			}
+			engineReady = true;
 			lastError = null;
+			notifyHost(onReady, 'onReady');
 		} catch (err) {
-			// Engine init can fail. Degrade gracefully — never crash the host page.
-			// The transient/permanent + reveal-masking policy lives in the
-			// `failureReason` derived; here we just record the typed error (or, for
-			// a non-WebGL engine error like a shader-compile failure per ADR-0008,
-			// stay blank and surface it rather than misdiagnose an unsupported browser).
-			engine = undefined;
-			if (err instanceof WebGLUnavailableError) {
+			if (token !== instantiateToken) return;
+			// Engine init can fail after adapter acquisition (for example WGSL or
+			// resource validation). Surface a typed fallback instead of leaving a
+			// permanently blank canvas.
+			next?.dispose();
+			if (engine === next) engine = undefined;
+			engineReady = false;
+			if (isFluidUnavailableError(err)) {
 				lastError = err;
 			} else {
-				lastError = null;
 				console.error('svelte-fluid: engine initialization failed', err);
+				lastError = new FluidUnavailableError(
+					'svelte-fluid: WebGPU engine initialization failed',
+					'initialization-failed',
+					{ cause: err }
+				);
 			}
+		} finally {
+			if (token === instantiateToken) initializing = false;
 		}
 	}
 
@@ -506,8 +530,8 @@
 	 */
 	function reconcile() {
 		const shouldExist = isVisible && cssW > 0 && cssH > 0;
-		if (shouldExist && !engine) {
-			instantiate();
+		if (shouldExist && !engine && !initializing) {
+			void instantiate();
 		} else if (!shouldExist && engine) {
 			teardown();
 		}
@@ -525,6 +549,7 @@
 
 	onMount(() => {
 		if (!container) return;
+		documentVisible = !document.hidden;
 		let resizeFrame = 0;
 		let rebuildingAfterResizeFailure = false;
 
@@ -542,13 +567,13 @@
 				engine.setConfig(buildCanvasConfig(cssW, cssH, canvasEl.width, canvasEl.height));
 				rebuildingAfterResizeFailure = false;
 			} catch (err) {
-				// A resize failure can leave an uncertain GL resource set. Rebuild
+				// A resize failure can leave an uncertain GPU resource set. Rebuild
 				// once through the established constructor fallback, never in a loop.
 				console.error('svelte-fluid: in-place resize failed; rebuilding once', err);
 				if (rebuildingAfterResizeFailure) return;
 				rebuildingAfterResizeFailure = true;
 				teardown();
-				instantiate();
+				void instantiate();
 			}
 		};
 
@@ -614,6 +639,7 @@
 		let onVisibilityChange: (() => void) | undefined;
 		if (stableAutoPause) {
 			onVisibilityChange = () => {
+				documentVisible = !document.hidden;
 				if (document.hidden) {
 					engine?.pause();
 				} else if (inViewport) {
@@ -622,6 +648,7 @@
 				}
 			};
 			document.addEventListener('visibilitychange', onVisibilityChange);
+			onVisibilityChange();
 		}
 
 		return () => {
@@ -632,15 +659,14 @@
 			}
 			if (resizeFrame) cancelAnimationFrame(resizeFrame);
 			resizeFrame = 0;
-			pendingRestore = false;
 			teardown();
 		};
 	});
 
 	/**
-	 * Hot prop updates. Buckets A/B/C are handled inside `engine.setConfig`.
-	 * Bucket D fields (seed / initialSplatCount* / presetSplats /
-	 * requireHardwareAcceleration / maxPixelRatio / advectionScheme) are
+	 * Hot prop updates are handled inside `engine.setConfig`.
+	 * Construct-only fields (seed / initialSplatCount* / presetSplats /
+	 * requireHardwareAcceleration / maxPixelRatio) are
 	 * applied only at construction time and ignored here.
 	 */
 	$effect(() => {
@@ -663,9 +689,9 @@
 >
 	<canvas
 		bind:this={canvasEl}
-		style:background={transparent || reveal ? 'transparent' : undefined}
+		style:background={transparent || reveal || distortion ? 'transparent' : undefined}
 		{...rest}
-		aria-hidden={failureReason ? 'true' : ariaHidden}
+		aria-hidden={failureReason || revealStartupCover ? 'true' : ariaHidden}
 	></canvas>
 	{#if failureReason}
 		<div
@@ -686,6 +712,10 @@
 				{/if}
 			{/if}
 		</div>
+	{:else if revealStartupCover}
+		<!-- WebGPU device acquisition is asynchronous. Reveal must never expose the
+		     covered content while the runtime is still being constructed. -->
+		<div class="svelte-fluid-fallback inert" style:background={fallbackFill}></div>
 	{/if}
 </div>
 
@@ -703,8 +733,8 @@
 		background: #000;
 		touch-action: none;
 	}
-	/* Accessible WebGL fallback overlay (ADR-0041). Covers the blank canvas
-	   when WebGL is permanently unavailable. */
+	/* Accessible GPU fallback overlay (ADR-0041). Covers the blank canvas when
+	   rendering is unavailable, and protects reveal content during async init. */
 	.svelte-fluid-fallback {
 		position: absolute;
 		inset: 0;

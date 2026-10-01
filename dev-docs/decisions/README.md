@@ -63,6 +63,18 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0064](./0064-dirty-rendering-while-paused.md)                  | Render paused scenes only after invalidation                           | Accepted |
 | [0065](./0065-fractional-aperture-gate-stays-closed.md)         | Keep fractional face apertures gated                                  | Accepted |
 | [0066](./0066-resolution-normalized-adaptive-vorticity.md)      | Normalize adaptive vorticity before gating                            | Accepted |
+| [0067](./0067-stage-webgpu-replacement-at-semantic-boundary.md) | Stage WebGPU replacement at the semantic runtime boundary             | Superseded by 0068 |
+| [0068](./0068-replace-webgl-with-one-native-webgpu-engine.md)   | Replace WebGL with one native WebGPU engine                            | Accepted |
+| [0069](./0069-own-and-bound-asynchronous-gpu-input.md)          | Own and bound asynchronous GPU input                                   | Accepted |
+| [0070](./0070-isolate-cleanroom-liquid-experiments.md)          | Isolate cleanroom liquid experiments                                   | Accepted for R&D |
+| [0071](./0071-test-film-materials-on-native-ui.md)              | Test film materials on native UI                                      | Accepted for R&D |
+| [0072](./0072-focus-material-ui-on-compliant-enamel.md)         | Focus material UI on compliant enamel                                 | Accepted for R&D |
+| [0073](./0073-test-shape-transition-and-memory-as-ui-materials.md) | Test shape, transition, and memory as UI materials                    | Accepted for R&D |
+| [0074](./0074-prove-material-effects-before-component-integration.md) | Prove material effects before component integration                | Accepted for R&D |
+| [0075](./0075-separate-presentation-quality-and-test-ordinary-browsers.md) | Separate presentation quality and test ordinary browsers         | Accepted for R&D |
+| [0076](./0076-make-private-material-studies-native-pixel-only.md) | Make private material studies native-pixel only | Accepted for R&D; supersedes 0075 presentation modes |
+| [0077](./0077-test-small-material-laws-with-persistent-interaction.md) | Test small material laws with persistent interaction | Accepted for R&D |
+| [0078](./0078-compose-material-treatments-with-native-ui.md) | Compose material treatments with native UI | Accepted — experimental first slice |
 
 ## How to add a new ADR
 

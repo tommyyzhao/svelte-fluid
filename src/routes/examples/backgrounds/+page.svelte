@@ -10,7 +10,7 @@
 	const cards = [
 		{
 			title: 'Fluid Simulation',
-			body: 'Real-time fluid dynamics on the GPU via WebGL. Velocity, pressure, advection — the full physics pipeline.'
+			body: 'Real-time fluid dynamics through native WebGPU. Velocity, pressure, advection — the full physics pipeline.'
 		},
 		{
 			title: 'Container Shapes',
@@ -39,7 +39,7 @@
 	<title>Backgrounds — svelte-fluid</title>
 	<meta
 		name="description"
-		content="A full-viewport WebGL fluid simulation that flows behind page content, with DOM cards encoded as real exclusion zones the fluid cannot enter."
+		content="A full-viewport WebGPU fluid simulation that flows behind page content, with DOM cards encoded as real exclusion zones the fluid cannot enter."
 	/>
 </svelte:head>
 

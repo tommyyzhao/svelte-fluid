@@ -1,0 +1,2 @@
+export const VORTICITY_ADAPTIVE_LO = 0.02;
+export const VORTICITY_ADAPTIVE_HI = 0.08;

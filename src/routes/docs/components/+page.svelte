@@ -35,16 +35,43 @@ ${SCRIPT_CLOSE}
 
 <svelte:head>
 	<title>Components — svelte-fluid</title>
-	<meta name="description" content="All six svelte-fluid components — Fluid, FluidBackground, FluidReveal, FluidDistortion, FluidStick, FluidText." />
+	<meta name="description" content="Fluid components and experimental native-UI material treatments for Svelte 5." />
 </svelte:head>
 
 <h1>Components</h1>
-<p class="subtitle">Six components for different use cases. Each one wraps the same WebGL engine with a different interface.</p>
+<p class="subtitle">Six fluid components share one native WebGPU solver. Three experimental material treatments compose with your existing text, images and controls.</p>
+
+<h2 id="materials">Experimental material treatments</h2>
+<p><code>MaterialEnamel</code>, <code>MaterialFoil</code> and <code>MaterialImage</code> are small visual layers, not a second UI kit. Your native heading, button or link owns its content, focus, activation and state. <a href="{base}/lab/interfaces/library">Try the borderless foil appearance switch</a>; its Plain comparison is in Study notes. The page deliberately does not stack all three treatments.</p>
+<pre><code>{SCRIPT_OPEN}
+  import {'{'} MaterialEnamel, MaterialFoil, MaterialImage {'}'} from 'svelte-fluid';
+  let dark = $state(false);
+{SCRIPT_CLOSE}
+
+&lt;h1&gt;&lt;MaterialEnamel text="Made to be felt." /&gt;&lt;/h1&gt;
+&lt;button type="button" role="switch" aria-label="Dark appearance"
+  aria-checked={'{'}dark{'}'} onclick={'{'}() =&gt; dark = !dark{'}'}&gt;
+  &lt;MaterialFoil selected={'{'}dark{'}'} /&gt;
+  Dark appearance: {'{'}dark ? 'On' : 'Off'{'}'}
+&lt;/button&gt;
+&lt;a href="/journal/arles"&gt;
+  &lt;MaterialImage src="/arles.jpg" alt="Sunlit arches in Arles"
+    width={'{'}3803{'}'} height={'{'}3162{'}'} /&gt;
+&lt;/a&gt;</code></pre>
+<p>Your application applies the theme; foil observes <code>selected</code> without changing it. Enamel inherits font, color and native wrapping. It keeps the silhouette stationary. The image retains its real <code>img</code>, alt text and reserved aspect ratio; its local wake is never required to follow the link.</p>
+<table><thead><tr><th>Component</th><th>Required props</th><th>Scope</th></tr></thead><tbody>
+<tr><td><code>MaterialEnamel</code></td><td><code>text: string</code></td><td>Short plain display text; horizontal writing, no text-transform. Unsupported text keeps its ordinary rendering.</td></tr>
+<tr><td><code>MaterialFoil</code></td><td><code>selected: boolean</code></td><td>A decorative 6rem × 3rem snap mechanism, normally inside a native binary control.</td></tr>
+<tr><td><code>MaterialImage</code></td><td><code>src</code>, <code>alt</code>, positive <code>width</code>, <code>height</code></td><td>An explicit image with local distortion. Cross-origin image fetches need CORS.</td></tr>
+</tbody></table>
+<p>Shared props: <code>enabled</code> (default true), <code>class</code>, and <code>onStatus(status: MaterialStatus)</code>. States are <code>loading</code>, <code>ready</code>, <code>static</code> and <code>unavailable</code>, with an optional <code>reason</code>. A component reference exposes <code>retry()</code>. Use local recovery copy when appropriate. Disabling a treatment releases GPU resources.</p>
+<p>All use actual CSS × DPR pixels, one shared device and an idle-aware frame scheduler. Reduced motion uses still finishes and immediate state changes; forced colors uses native content and a vector foil. Canvases do not capture pointers or cancel native scrolling. GPU failure never disables the host control.</p>
+<div class="callout"><strong>Experimental, deliberately bounded:</strong> these are illustrative material laws, not calibrated mechanics or arbitrary DOM capture. The image uses invertible coordinate maps, not a full fluid solver. Large source images still cost memory; oversized native resources fall back rather than blur. Enamel reflow/text changes reset transient deformation; DPR-only changes retain fields and color-only changes do not allocate GPU resources. Real-phone energy/thermal and broad assistive-technology validation remain open evaluation work.</div>
 
 <!-- ============================================================ -->
 <h2 id="fluid">&lt;Fluid&gt;</h2>
 
-<p>The core component. Renders a WebGL fluid simulation on a canvas that fills its parent container.</p>
+<p>The core component. Renders a native WebGPU fluid simulation on a canvas that fills its parent container.</p>
 
 <pre><code>{SCRIPT_OPEN}
   import {'{'} Fluid {'}'} from 'svelte-fluid';
@@ -69,17 +96,17 @@ ${SCRIPT_CLOSE}
 		<tr><td><code>maxPixelRatio</code></td><td><code>number | null</code></td><td><code>2</code></td><td>Cap physical pixels per CSS pixel on high-DPR displays. Pass <code>null</code> for native device DPR. CSS quality tiers are unchanged.</td></tr>
 		<tr><td><code>class</code></td><td><code>string</code></td><td>—</td><td>Class on wrapper div.</td></tr>
 		<tr><td><code>style</code></td><td><code>string</code></td><td>—</td><td>Inline style on wrapper div.</td></tr>
-		<tr><td><code>lazy</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Defer engine until the element enters the viewport. Frees the WebGL context slot. Recommended when you have 6+ instances on one page.</td></tr>
+		<tr><td><code>lazy</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Defer per-instance field allocation until the element enters the viewport, then release those fields when it leaves. The shared device and pipelines stay warm.</td></tr>
 		<tr><td><code>autoPause</code></td><td><code>boolean</code></td><td><code>true</code></td><td>Pause the RAF loop when not visible or tab is hidden.</td></tr>
-		<tr><td><code>fallback</code></td><td><code>Snippet&lt;[{'{'} reason {'}'}]&gt;</code></td><td>—</td><td>Custom UI rendered when WebGL is permanently unavailable. Receives the typed failure <code>reason</code>. Takes precedence over <code>poster</code>.</td></tr>
-		<tr><td><code>poster</code></td><td><code>string</code></td><td>—</td><td>Static image (object-fit: cover) shown when WebGL is unavailable and no <code>fallback</code> is given. A graceful still of the animation.</td></tr>
+		<tr><td><code>fallback</code></td><td><code>Snippet&lt;[{'{'} reason {'}'}]&gt;</code></td><td>—</td><td>Custom UI rendered when WebGPU cannot start/recover or a distortion asset fails. Receives the typed failure <code>reason</code>, including <code>'asset-failed'</code>. Takes precedence over <code>poster</code>.</td></tr>
+		<tr><td><code>poster</code></td><td><code>string</code></td><td>—</td><td>Static image (object-fit: cover) shown when WebGPU cannot run and no <code>fallback</code> is given. A graceful still of the animation.</td></tr>
 		<tr><td><code>posterAlt</code></td><td><code>string</code></td><td><code>''</code></td><td>Alt text for the <code>poster</code> image. Defaults to empty (decorative) — set it when the poster conveys meaning.</td></tr>
 		<tr><td><code>fallbackText</code></td><td><code>string</code></td><td><em>see below</em></td><td>Visually-hidden message for the default fallback, discoverable by assistive tech (rendered alongside a <code>poster</code> too). Set <code>''</code> to suppress for purely decorative instances.</td></tr>
 	</tbody>
 </table>
 
 <div class="callout">
-	<strong>WebGL fallback (ADR-0041):</strong> when WebGL is <em>permanently</em> unavailable — no WebGL, or no half-float texture support — <code>&lt;Fluid&gt;</code> keeps the page intact. It renders, in order of preference, your <code>fallback</code> snippet, then a <code>poster</code> image, else it fills the box with <code>backColor</code> and exposes a visually-hidden <code>fallbackText</code> message (default: <em>"This animation requires WebGL, which isn't available in your browser."</em>). Short-lived failures, such as hitting the browser's live-context cap on a dense <code>lazy</code> page, stay blank and retry on the next scroll. The fill matches the mode: <code>transparent</code> stays see-through, and <code>reveal</code> uses the cover color and masks on <em>any</em> failure so hidden content is never exposed. For <code>distortion</code>, pass <code>poster=&#123;yourImageUrl&#125;</code> so the still image stands in for the warp. Set <a href="{base}/docs/configuration"><code>requireHardwareAcceleration</code></a> to also treat a software-only renderer as unavailable. The helper <code>isWebGLAvailable()</code> is exported if you want to gate rendering yourself.
+	<strong>WebGPU fallback (ADR-0041):</strong> when an adapter/device is unavailable, initialization fails, or device recovery fails, <code>&lt;Fluid&gt;</code> keeps the page intact. It renders, in order of preference, your <code>fallback</code> snippet, then a <code>poster</code> image, else a mode-aware color fill with a visually-hidden <code>fallbackText</code> message (default: <em>"This animation requires GPU graphics, which aren't available in your browser."</em>). Reveal mode always retains an opaque cover so hidden content is never exposed. For <code>distortion</code>, pass <code>poster=&#123;yourImageUrl&#125;</code> so the source still stands in for the warp. Set <a href="{base}/docs/configuration"><code>requireHardwareAcceleration</code></a> to reject a software-only adapter. The helper <code>isFluidGpuAvailable()</code> is exported if you want to probe support yourself.
 </div>
 
 <p>Exposes a <a href="{base}/docs/api"><code>FluidHandle</code></a> via <code>bind:this</code> for programmatic control (splats, pause, resume, performance state).</p>
@@ -151,7 +178,7 @@ ${SCRIPT_CLOSE}
 	</tbody>
 </table>
 
-<p>Also accepts <code>width</code>, <code>height</code>, <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, and all <a href="{base}/docs/configuration">FluidConfig</a> props.</p>
+<p>Also accepts <code>width</code>, <code>height</code>, <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, and compatible <a href="{base}/docs/configuration">FluidConfig</a> physics props. Use <code>fadeBack</code> or <code>fadeSpeed</code> rather than <code>densityDissipation</code>: reveal uses an intentionally per-frame fade factor.</p>
 
 <div class="callout">
 	<strong>Note:</strong> The canvas sits on top of children for alpha compositing. Interactive elements (links, buttons) inside the slot will not receive pointer events.

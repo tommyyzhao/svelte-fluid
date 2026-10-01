@@ -59,12 +59,6 @@ interface FlowSourceBase {
 	radius?: number;
 	/** Optional profile across line/rect sources. Default `uniform`. */
 	profile?: FlowProfile;
-	/**
-	 * Deprecated compatibility hint from the earlier sampled-source
-	 * implementation. Line/rect sources now render through one analytic shader
-	 * pass per target and ignore this value.
-	 */
-	samples?: number;
 }
 
 export type FlowSource =
@@ -125,9 +119,13 @@ export type FlowForce =
 export interface FlowGridField {
 	width: number;
 	height: number;
-	/** Row-major values. Velocity grids use x/y pairs; scalar grids use one value per cell. */
+	/**
+	 * Row-major values from the physical bottom row upward. Velocity grids use
+	 * x/y pairs; scalar grids use one value per cell. This preserves the public
+	 * y-up convention used by splats, sources, and the original engine.
+	 */
 	data: ArrayLike<number>;
-	/** Decode scale for normalized texture uploads. Default 1. */
+	/** Positive absolute range used to encode signed normalized texture uploads. Default 1 (1000 for velocity). */
 	scale?: number;
 	/**
 	 * Optional immutable-data revision. Increment or replace it when reusing the
@@ -159,6 +157,7 @@ export interface FlowConfig {
 	boundary?: FlowBoundary;
 	sources?: ReadonlyArray<FlowSource>;
 	outlets?: ReadonlyArray<FlowOutlet>;
+	/** Up to three fields, packed into RGB channels in declared order. */
 	scalarFields?: ReadonlyArray<FlowScalarField>;
 	forces?: ReadonlyArray<FlowForce>;
 	prescribed?: PrescribedFlowField;
@@ -357,9 +356,9 @@ export interface StickyMask {
 export interface FluidConfig {
 	/** Velocity grid resolution. Default 128. */
 	simResolution?: number;
-	/** Dye grid resolution. Default 1024 (clamped to 512 if linear filtering is unsupported). */
+	/** Dye grid resolution. Default 1024. Clamped to device and per-instance memory limits. */
 	dyeResolution?: number;
-	/** How fast dye fades. Default 1. */
+	/** How fast dye fades, in a time-based rate. Larger values fade faster. Default 1. */
 	densityDissipation?: number;
 	/**
 	 * Initial value for density dissipation, used during the first
@@ -387,10 +386,8 @@ export interface FluidConfig {
 	 *
 	 * `maccormack` uses second-order velocity advection for crisper flow and
 	 * structured scenes, but it can look angular/cubey on diffuse decorative dye.
-	 * Dye and scalar advection remain semi-Lagrangian, and devices without linear
-	 * filtering are capability-gated back to `semilagrangian`.
-	 *
-	 * Construct-only (Bucket D): `setConfig()` ignores runtime changes.
+	 * Dye and scalar advection remain semi-Lagrangian. Both WebGPU pipelines are
+	 * prepared at startup, so runtime changes are hot and preserve field state.
 	 */
 	advectionScheme?: 'semilagrangian' | 'maccormack';
 	/**
@@ -417,13 +414,13 @@ export interface FluidConfig {
 	wallFriction?: number;
 	/** Width of the obstruction-adjacent wall-friction band in simulation cells. Default 1. */
 	wallFrictionWidth?: number;
-	/** Pressure solver weight. Default 0.8. */
+	/** Previous-frame pressure retained for the first Jacobi iteration. Default 0.8. */
 	pressure?: number;
-	/** Pressure solver iterations. Default 20. */
+	/** Pressure solver iterations. `0` disables projection. Default 20. */
 	pressureIterations?: number;
 	/**
 	 * Opt-in frame-time governor. When sustained live RAF frames exceed the
-	 * internal budget, the engine sheds Bucket-A quality only: pressure
+	 * internal budget, the engine sheds pressure-solve quality only: pressure
 	 * iterations first, then solver substeps. It never auto-restores quality;
 	 * call `setConfig()` with explicit values to raise them again. Ignored by
 	 * deterministic `advance()` harness runs. Default false.
@@ -432,17 +429,17 @@ export interface FluidConfig {
 	/**
 	 * Average live-frame duration, in milliseconds, that autoPerformance aims
 	 * to stay at or below. Set approximately 33.33 for 30 Hz, 16.67 for 60 Hz,
-	 * or 8.33 for 120 Hz. Default 1000/60. Bucket A.
+	 * or 8.33 for 120 Hz. Default 1000/60.
 	 */
 	autoPerformanceTargetFrameMs?: number;
 	/**
 	 * Lower bound for autoPerformance pressure-iteration shedding.
-	 * Default 8. Bucket A.
+	 * Default 8.
 	 */
 	autoPerformanceMinPressureIterations?: number;
 	/**
 	 * Lower bound for autoPerformance substep shedding.
-	 * Default 1. Bucket A.
+	 * Default 1.
 	 */
 	autoPerformanceMinSubsteps?: number;
 	/** Vorticity confinement strength. Default 30. */
@@ -453,7 +450,7 @@ export interface FluidConfig {
 	 * Note: confinement is independently attenuated next to solid boundaries (a fix
 	 * so it no longer injects momentum into walls / fights projection), so output
 	 * near obstructions differs from prior versions regardless of this value.
-	 * Default 0. Bucket A.
+	 * Default 0.
 	 */
 	vorticityAdaptive?: number;
 	/** Splat radius (NDC units). Default 0.25. */
@@ -521,7 +518,7 @@ export interface FluidConfig {
 	 *   where the canvas is behind other content.
 	 *
 	 * When `'window'`, touch listeners are registered as passive
-	 * (scrolling is not blocked). Bucket A (hot-updatable).
+	 * (scrolling is not blocked). Hot-updatable.
 	 */
 	pointerTarget?: 'canvas' | 'window';
 	/**
@@ -537,13 +534,12 @@ export interface FluidConfig {
 	 */
 	seed?: number;
 	/**
-	 * Reject a software/SwiftShader rendering path by passing
-	 * `failIfMajorPerformanceCaveat` to the WebGL context. When `true` and only
-	 * a software renderer is available, context creation fails and the component
-	 * shows its WebGL fallback instead of animating on a slow CPU path.
+	 * Reject a software fallback adapter. When `true` and only a software
+	 * renderer is available, adapter acquisition fails and the component shows
+	 * its accessible fallback instead of animating on a slow CPU path.
 	 *
 	 * Off by default — many legitimate integrated GPUs would otherwise be
-	 * misclassified. Construct-only (consumed once at context creation;
+	 * misclassified. Construct-only (consumed once at adapter acquisition;
 	 * `setConfig` ignores it). See ADR-0041.
 	 */
 	requireHardwareAcceleration?: boolean;
@@ -557,41 +553,41 @@ export interface FluidConfig {
 	presetSplats?: ReadonlyArray<PresetSplat>;
 	/**
 	 * Automatic splat generation. Splats per second; 0 = disabled.
-	 * Default 0. Bucket A (hot-updatable).
+	 * Default 0. Hot-updatable.
 	 */
 	autoSplatRate?: number;
-	/** Number of splats emitted each automatic burst. Default 1. Bucket A. */
+	/** Number of splats emitted each automatic burst. Default 1. */
 	autoSplatCount?: number;
 	/**
 	 * Fixed color for automatic splats. Null = fresh random color for
 	 * each splat via generateColor(). Components are in 0–1 linear range;
 	 * the engine applies a 10× HDR multiplier before injecting.
-	 * Default null. Bucket A.
+	 * Default null.
 	 */
 	autoSplatColor?: RGB | null;
-	/** X velocity for automatic splats (raw, NOT scaled by splatForce). Ignored when `autoSplatSwirl` is nonzero. Default 0. Bucket A. */
+	/** X velocity for automatic splats (raw, NOT scaled by splatForce). Ignored when `autoSplatSwirl` is nonzero. Default 0. */
 	autoSplatVelocityX?: number;
-	/** Y velocity for automatic splats (raw, NOT scaled by splatForce). Negative = downward in DOM. Ignored when `autoSplatSwirl` is nonzero. Default 0. Bucket A. */
+	/** Y velocity for automatic splats (raw, NOT scaled by splatForce). Negative = downward in DOM. Ignored when `autoSplatSwirl` is nonzero. Default 0. */
 	autoSplatVelocityY?: number;
 	/**
 	 * Vertical center of the automatic splat spawn band, in 0–1
 	 * (bottom-to-top): 0 = bottom edge, 0.5 = center, 1 = top edge.
 	 * Default 0.5. Actual y positions also use `autoSplatBandHeight`.
-	 * Bucket A.
+	 *
 	 */
 	autoSplatCenterY?: number;
 	/**
 	 * Horizontal center of the automatic splat spawn band, in 0–1
 	 * (left-to-right): 0 = left edge, 0.5 = center, 1 = right edge.
 	 * Default 0.5. Actual x positions also use `autoSplatBandWidth`
-	 * unless `autoSplatEvenX` is true. Bucket A.
+	 * unless `autoSplatEvenX` is true.
 	 */
 	autoSplatCenterX?: number;
 	/**
 	 * When true, each burst uses equal x positions across the horizontal
 	 * axis instead of random x positions. The `autoSplatCount` splats
 	 * are spaced at `(i + 0.5) / count` for i in 0..count-1.
-	 * Default false. Bucket A.
+	 * Default false.
 	 */
 	autoSplatEvenX?: boolean;
 	/**
@@ -599,7 +595,7 @@ export interface FluidConfig {
 	 * container center (or canvas center if no container shape). Positive =
 	 * counter-clockwise, negative = clockwise. This replaces
 	 * `autoSplatVelocityX` / `autoSplatVelocityY`. The magnitude controls speed.
-	 * Default 0. Bucket A.
+	 * Default 0.
 	 */
 	autoSplatSwirl?: number;
 	/**
@@ -608,7 +604,7 @@ export interface FluidConfig {
 	 * to [0, 1]. Default 0.1 (±5% of canvas height). Set to 0 for a
 	 * single horizontal line or 2.0 for full-canvas coverage
 	 * (useful with container shapes where the mask discards out-of-bounds
-	 * splats naturally). Bucket A.
+	 * splats naturally).
 	 */
 	autoSplatBandHeight?: number;
 	/**
@@ -616,7 +612,7 @@ export interface FluidConfig {
 	 * `autoSplatCenterX + (random - 0.5) * autoSplatBandWidth`, clamped
 	 * to [0, 1]. Default 1.0 (full canvas width). Set near 0 for a
 	 * left/right inlet plume. Ignored when `autoSplatEvenX` is true.
-	 * Bucket A.
+	 *
 	 */
 	autoSplatBandWidth?: number;
 	/**
@@ -625,9 +621,9 @@ export interface FluidConfig {
 	 * pass, and dye is masked after advection. `null` (default) = full
 	 * rectangle with no masking.
 	 *
-	 * Changing this field at runtime triggers a mask-FBO rebuild (Bucket C)
-	 * and a display-shader keyword recompile (Bucket B). Both are cheap
-	 * (~one GPU blit + ~1 ms shader compile).
+	 * Changing this field at runtime regenerates the packed mask textures. The
+	 * solver uses one always-mask pipeline graph, so no shader recompilation or
+	 * pipeline swap is needed.
 	 *
 	 * See {@link ContainerShape} for coordinate conventions.
 	 */
@@ -644,25 +640,25 @@ export interface FluidConfig {
 	 * Glass wall thickness in UV units. For non-circle shapes, controls
 	 * how wide the refraction band is at the boundary. For circles,
 	 * boosts refraction, specular, and glow toward the rim of the
-	 * hemisphere dome. Default 0.04. Bucket A.
+	 * hemisphere dome. Default 0.04.
 	 */
 	glassThickness?: number;
 	/**
 	 * Refraction strength, 0–1. 0 = no distortion, 1 = heavy bending.
-	 * Mapped internally to IOR 1.0–2.0. Default 0.4. Bucket A.
+	 * Mapped internally to IOR 1.0–2.0. Default 0.4.
 	 */
 	glassRefraction?: number;
 	/**
 	 * Specular reflectivity (Fresnel F0), 0–1. Controls the intensity
 	 * of specular highlights on the glass surface. 0 = matte,
-	 * 1 = mirror. Default 0.12. Bucket A.
+	 * 1 = mirror. Default 0.12.
 	 */
 	glassReflectivity?: number;
 	/**
 	 * Chromatic aberration strength, 0–1. Splits refraction into
 	 * separate R/G/B channels for a prismatic rainbow fringe.
 	 * 0 = monochrome refraction, 1 = strong color separation.
-	 * Default 0.15. Bucket A.
+	 * Default 0.15.
 	 */
 	glassChromatic?: number;
 	/**
@@ -671,32 +667,32 @@ export interface FluidConfig {
 	 * Where there is no dye, the canvas shows an opaque white cover.
 	 * The display shader outputs inverted dye color `(1 - C)` which
 	 * produces iridescent fringes at reveal edges. See ADR-0027/0028.
-	 * Default false. Bucket B (keyword recompile).
+	 * Default false. Hot-updatable without recompiling pipelines.
 	 */
 	reveal?: boolean;
 	/**
 	 * Multiplier on dye intensity before the power curve. Higher values
 	 * make areas reveal more easily (less dye needed). Default 0.1.
-	 * Bucket A.
+	 *
 	 */
 	revealSensitivity?: number;
 	/**
 	 * Power exponent for the reveal alpha curve. Higher values create a
 	 * crisper edge (more binary reveal), lower values create a softer
-	 * gradient with wider fringes. Default 0.5. Bucket A.
+	 * gradient with wider fringes. Default 0.5.
 	 */
 	revealCurve?: number;
 	/**
 	 * Solid color of the reveal cover layer (visible before scratching).
 	 * RGB components in 0–1 linear range. Default `{ r: 1, g: 1, b: 1 }`
-	 * (white). Bucket A.
+	 * (white).
 	 */
 	revealCoverColor?: RGB;
 	/**
 	 * Accent color shown in the fringe zone between the solid cover and
 	 * the fully revealed content. Controls the colored gradient at reveal
 	 * edges. RGB components in 0–1 linear range. Default
-	 * `{ r: 0.05, g: 0.16, b: 0.32 }` (deep navy). Bucket A.
+	 * `{ r: 0.05, g: 0.16, b: 0.32 }` (deep navy).
 	 */
 	revealAccentColor?: RGB;
 	/**
@@ -704,24 +700,25 @@ export interface FluidConfig {
 	 * the cover color and the accent color. Creates a two-tone fringe:
 	 * cover → fringeColor → accentColor → transparent. RGB components
 	 * in 0–1 linear range. Default `{ r: 0.6, g: 0.7, b: 0.85 }`
-	 * (soft blue). Bucket A.
+	 * (soft blue).
 	 */
 	revealFringeColor?: RGB;
 	/**
 	 * Enable distortion mode. The fluid velocity field warps an underlying
 	 * image instead of rendering dye colors. Cursor movement creates
 	 * velocity splats that ripple and distort the image like liquid glass.
-	 * Mutually exclusive with `reveal`. Default false. Bucket B (keyword recompile).
+	 * Mutually exclusive with `reveal`. Default false. Hot-updatable without
+	 * recompiling pipelines.
 	 */
 	distortion?: boolean;
 	/**
 	 * How strongly the velocity field warps the image UV coordinates.
-	 * 0 = no distortion, 1 = very strong. Default 0.4. Bucket A.
+	 * 0 = no distortion, 1 = very strong. Default 0.4.
 	 */
 	distortionPower?: number;
 	/**
 	 * URL of the image to distort. The engine loads the image asynchronously
-	 * and uploads it as a WebGL texture. Changing the URL at runtime triggers
+	 * and uploads it as a GPU texture. Changing the URL at runtime triggers
 	 * a new load + texture re-upload. Required when `distortion` is true.
 	 */
 	distortionImageUrl?: string;
@@ -734,7 +731,7 @@ export interface FluidConfig {
 	/**
 	 * Scale factor for the distortion image. Values > 1 zoom out (more
 	 * image visible, less edge smearing during distortion). Values < 1
-	 * zoom in. Default 1.0. Bucket A.
+	 * zoom in. Default 1.0.
 	 */
 	distortionScale?: number;
 	/**
@@ -743,12 +740,12 @@ export interface FluidConfig {
 	 * fluid velocity field doesn't bounce at the content edges.
 	 * The image is mapped to the visible sub-region only.
 	 * Typically computed by `FluidDistortion` from a pixel `bleed` prop.
-	 * Default 0. Bucket A.
+	 * Default 0.
 	 */
 	distortionBleedX?: number;
 	/**
 	 * Vertical bleed fraction (0–0.5). See `distortionBleedX`.
-	 * Default 0. Bucket A.
+	 * Default 0.
 	 */
 	distortionBleedY?: number;
 	/**
@@ -760,7 +757,7 @@ export interface FluidConfig {
 	 *
 	 * Default `false` (closed — fluid bounces at all boundaries).
 	 * {@link FluidReveal} defaults to `true` for natural scratch behavior.
-	 * Bucket A (hot-updatable).
+	 * Hot-updatable.
 	 */
 	openBoundary?: boolean;
 	/**
@@ -769,7 +766,10 @@ export interface FluidConfig {
 	 * pressure (fluid flows around the mask), and splat strength
 	 * (more dye deposited on the mask). Composable with container
 	 * shapes, bloom, sunrays, glass. Mutually exclusive with reveal
-	 * and distortion. Default false. Triggers mask texture rebuild.
+	 * and distortion. Sticky reduces the normal time-based dissipation on mask
+	 * coverage: `stickyStrength: 1` eliminates fade on the mask while off-mask
+	 * dye follows `densityDissipation` unchanged. Default false. Triggers mask
+	 * texture rebuild.
 	 */
 	sticky?: boolean;
 	/**
@@ -782,19 +782,19 @@ export interface FluidConfig {
 	/**
 	 * How strongly dye dissipation is reduced on the mask.
 	 * 0 = no effect, 1 = dye never fades on mask (dissipation → 0).
-	 * Default 0.9. Bucket A.
+	 * Default 0.9.
 	 */
 	stickyStrength?: number;
 	/**
 	 * Artificial pressure injected on the mask to push fluid around
 	 * the shape. Creates a high-pressure zone that repels incoming
-	 * velocity. 0 = no pressure effect. Default 0.15. Bucket A.
+	 * velocity. 0 = no pressure effect. Default 0.15.
 	 */
 	stickyPressure?: number;
 	/**
 	 * Splat intensity multiplier on the mask region. 0 = no extra
 	 * amplification, higher = more dye deposited on mask.
-	 * Default 0.3. Bucket A.
+	 * Default 0.3.
 	 */
 	stickyAmplify?: number;
 	/**
@@ -815,7 +815,7 @@ export interface FluidConfig {
 	 * solid bodies read as visible objects instead of `backColor`-colored
 	 * silhouettes — e.g. a cylinder in a vortex-street scene. Uses the
 	 * anti-aliased obstruction mask, so edges stay smooth. `null` (default)
-	 * keeps the legacy silhouette behavior. Bucket B (keyword recompile).
+	 * keeps the silhouette behavior. Hot-updatable without recompiling pipelines.
 	 * See ADR-0039.
 	 */
 	obstructionColor?: RGB | null;
@@ -825,97 +825,6 @@ export interface FluidConfig {
 	 * and field-aware visualization. `undefined` preserves legacy behavior.
 	 */
 	flow?: FlowConfig | null;
-}
-
-/**
- * Internal, fully resolved configuration. Uses the original SCREAMING_CASE
- * field names so the porting from script.js stays mechanical and obvious.
- */
-export interface ResolvedConfig {
-	SIM_RESOLUTION: number;
-	DYE_RESOLUTION: number;
-	DENSITY_DISSIPATION: number;
-	INITIAL_DENSITY_DISSIPATION: number;
-	INITIAL_DENSITY_DISSIPATION_DURATION: number;
-	VELOCITY_DISSIPATION: number;
-	ADVECTION_SCHEME: 'semilagrangian' | 'maccormack';
-	MAX_TIME_STEP: number;
-	SUBSTEPS: number;
-	VISCOSITY: number;
-	VISCOSITY_ITERATIONS: number;
-	WALL_FRICTION: number;
-	WALL_FRICTION_WIDTH: number;
-	PRESSURE: number;
-	PRESSURE_ITERATIONS: number;
-	AUTO_PERFORMANCE: boolean;
-	AUTO_PERFORMANCE_TARGET_FRAME_MS: number;
-	AUTO_PERFORMANCE_MIN_PRESSURE_ITERATIONS: number;
-	AUTO_PERFORMANCE_MIN_SUBSTEPS: number;
-	CURL: number;
-	VORTICITY_ADAPTIVE: number;
-	SPLAT_RADIUS: number;
-	SPLAT_FORCE: number;
-	SHADING: boolean;
-	COLORFUL: boolean;
-	COLOR_UPDATE_SPEED: number;
-	PAUSED: boolean;
-	BACK_COLOR: RGB;
-	TRANSPARENT: boolean;
-	BLOOM: boolean;
-	BLOOM_ITERATIONS: number;
-	BLOOM_RESOLUTION: number;
-	BLOOM_INTENSITY: number;
-	BLOOM_THRESHOLD: number;
-	BLOOM_SOFT_KNEE: number;
-	SUNRAYS: boolean;
-	SUNRAYS_RESOLUTION: number;
-	SUNRAYS_WEIGHT: number;
-	INITIAL_SPLAT_MIN: number;
-	INITIAL_SPLAT_MAX: number;
-	POINTER_INPUT: boolean;
-	POINTER_TARGET: 'canvas' | 'window';
-	SPLAT_ON_HOVER: boolean;
-	SEED: number;
-	REQUIRE_HARDWARE_ACCELERATION: boolean;
-	AUTO_SPLAT_RATE: number;
-	AUTO_SPLAT_COUNT: number;
-	AUTO_SPLAT_COLOR: RGB | null;
-	AUTO_SPLAT_VELOCITY_X: number;
-	AUTO_SPLAT_VELOCITY_Y: number;
-	AUTO_SPLAT_CENTER_Y: number;
-	AUTO_SPLAT_CENTER_X: number;
-	AUTO_SPLAT_EVEN_X: boolean;
-	AUTO_SPLAT_SWIRL: number;
-	AUTO_SPLAT_BAND_HEIGHT: number;
-	AUTO_SPLAT_BAND_WIDTH: number;
-	CONTAINER_SHAPE: ContainerShape | null;
-	GLASS: boolean;
-	GLASS_THICKNESS: number;
-	GLASS_REFRACTION: number;
-	GLASS_REFLECTIVITY: number;
-	GLASS_CHROMATIC: number;
-	REVEAL: boolean;
-	REVEAL_SENSITIVITY: number;
-	REVEAL_CURVE: number;
-	REVEAL_COVER_COLOR: RGB;
-	REVEAL_ACCENT_COLOR: RGB;
-	REVEAL_FRINGE_COLOR: RGB;
-	DISTORTION: boolean;
-	DISTORTION_POWER: number;
-	DISTORTION_IMAGE_URL: string | null;
-	DISTORTION_FIT: 'cover' | 'contain';
-	DISTORTION_SCALE: number;
-	DISTORTION_BLEED_X: number;
-	DISTORTION_BLEED_Y: number;
-	OPEN_BOUNDARY: boolean;
-	STICKY: boolean;
-	STICKY_MASK: StickyMask | null;
-	STICKY_STRENGTH: number;
-	STICKY_PRESSURE: number;
-	STICKY_AMPLIFY: number;
-	OBSTRUCTIONS: ReadonlyArray<Obstruction> | null;
-	OBSTRUCTION_COLOR: RGB | null;
-	FLOW: FlowConfig | null;
 }
 
 export type PerformanceTier = 'none' | 'pressure' | 'substeps';
@@ -934,48 +843,34 @@ export interface PerformanceState {
 	readonly lastAction: PerformanceAction;
 }
 
-/** Pixel format pair returned by `getSupportedFormat`. */
-export interface SupportedFormat {
-	internalFormat: number;
-	format: number;
-}
-
-/** WebGL extension / capability info gathered at context creation. */
-export interface ExtInfo {
-	formatRGBA: SupportedFormat;
-	formatRG: SupportedFormat;
-	formatR: SupportedFormat;
-	halfFloatTexType: number;
-	supportLinearFiltering: boolean;
-	isWebGL2: boolean;
-}
-
-/** A single framebuffer object plus the texture it owns. */
-export interface FBO {
-	texture: WebGLTexture;
-	fbo: WebGLFramebuffer;
-	width: number;
-	height: number;
-	texelSizeX: number;
-	texelSizeY: number;
-	attach(id: number): number;
-}
-
-/** Read/write FBO pair used for ping-pong shader passes. */
-export interface DoubleFBO {
-	width: number;
-	height: number;
-	texelSizeX: number;
-	texelSizeY: number;
-	read: FBO;
-	write: FBO;
-	swap(): void;
-}
-
 /**
  * Imperative API exposed to parents via `bind:this`. Mirror of the
  * engine's public methods that make sense to call from outside.
  */
+export interface MaterialStatus {
+	state: 'loading' | 'ready' | 'static' | 'unavailable';
+	reason?: string;
+}
+
+/** Decorative treatments never own the surrounding control's semantics. */
+export interface MaterialTreatmentProps {
+	enabled?: boolean;
+	class?: string;
+	onStatus?: (status: MaterialStatus) => void;
+}
+export interface MaterialFoilProps extends MaterialTreatmentProps {
+	selected: boolean;
+}
+export interface MaterialEnamelProps extends MaterialTreatmentProps {
+	text: string;
+}
+export interface MaterialImageProps extends MaterialTreatmentProps {
+	src: string;
+	alt: string;
+	width: number;
+	height: number;
+}
+
 export interface FluidHandle {
 	/**
 	 * Inject a splat at the given normalized coordinates with optional
@@ -988,11 +883,11 @@ export interface FluidHandle {
 	 * @param color RGB triple in 0–1 linear range; HDR (>1) is valid
 	 */
 	splat(x: number, y: number, dx: number, dy: number, color: RGB): void;
-	/** Push N additional random splats onto the splat queue. */
+	/** Queue 0–64 additional random splats; at most 16 are consumed per frame. */
 	randomSplats(count: number): void;
 	/**
-	 * Stop the animation loop. The WebGL context stays alive but no frames
-	 * are requested. Call {@link resume} to restart. Idempotent.
+	 * Stop the animation loop. Instance resources stay alive but no frames are
+	 * requested. Call {@link resume} to restart. Idempotent.
 	 */
 	pause(): void;
 	/**

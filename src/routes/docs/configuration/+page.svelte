@@ -126,13 +126,13 @@
 			<td><code>autoPerformance</code></td>
 			<td><code>boolean</code></td>
 			<td><code>false</code></td>
-			<td>Opt-in frame-time governor. Under sustained load it lowers Bucket-A quality only: pressure iterations first, then substeps. It never auto-restores quality, and deterministic <code>advance()</code> runs ignore it.</td>
+			<td>Opt-in frame-time governor. Under sustained load it lowers pressure iterations first, then substeps. It never auto-restores quality, and deterministic internal measurement runs ignore it.</td>
 		</tr>
 		<tr>
 			<td><code>autoPerformanceTargetFrameMs</code></td>
 			<td><code>number</code></td>
 			<td><code>1000 / 60</code></td>
-			<td>Average live-frame budget used by <code>autoPerformance</code>. Use approximately <code>33.33</code>, <code>16.67</code>, or <code>8.33</code> for 30, 60, or 120 Hz targets. Bucket A.</td>
+			<td>Average live-frame budget used by <code>autoPerformance</code>. Use approximately <code>33.33</code>, <code>16.67</code>, or <code>8.33</code> for 30, 60, or 120 Hz targets. Hot-updatable.</td>
 		</tr>
 		<tr>
 			<td><code>autoPerformanceMinPressureIterations</code></td>
@@ -296,7 +296,7 @@
 			<td><code>bloomResolution</code></td>
 			<td><code>number</code></td>
 			<td><code>256</code></td>
-			<td>Bloom framebuffer resolution.</td>
+			<td>Bloom texture resolution.</td>
 		</tr>
 		<tr>
 			<td><code>bloomIntensity</code></td>
@@ -343,7 +343,7 @@
 			<td><code>sunraysResolution</code></td>
 			<td><code>number</code></td>
 			<td><code>196</code></td>
-			<td>Sunrays framebuffer resolution.</td>
+			<td>Sunrays texture resolution.</td>
 		</tr>
 		<tr>
 			<td><code>sunraysWeight</code></td>
@@ -356,7 +356,7 @@
 
 <!-- ================================================================ -->
 <h2>Initial Splats</h2>
-<p>Splats created once at engine construction. These are construct-only (Bucket D) — changing them at runtime has no effect.</p>
+<p>Splats created once at engine construction. These are construct-only — changing them at runtime has no effect.</p>
 
 <table>
 	<thead>
@@ -402,7 +402,7 @@
 			<td><code>requireHardwareAcceleration</code></td>
 			<td><code>boolean</code></td>
 			<td><code>false</code></td>
-			<td>Reject a software/SwiftShader rendering path (<code>failIfMajorPerformanceCaveat</code>). When <code>true</code> and only a software renderer exists, the component shows its <a href="{base}/docs/components#fluid">WebGL fallback</a> instead of animating on a slow CPU path. Construct-only. See ADR-0041.</td>
+			<td>Reject a software/fallback WebGPU adapter. When <code>true</code> and only a software renderer exists, the component shows its <a href="{base}/docs/components#fluid">GPU fallback</a> instead of using that adapter. Construct-only. See ADR-0041.</td>
 		</tr>
 		<tr>
 			<td><code>maxPixelRatio</code></td>
@@ -752,13 +752,13 @@
 			<td><code>obstructions</code></td>
 			<td><code>ReadonlyArray&lt;Obstruction&gt;</code></td>
 			<td><code>undefined</code></td>
-			<td>Interior obstacles the fluid flows around. Union into one combined mask; allowed region is <code>container × (1 − obstruction)</code>. Changing it rebuilds the obstruction mask texture (Bucket C) and recompiles the display shader. Mutually exclusive with <code>distortion</code>.</td>
+			<td>Interior obstacles the fluid flows around. Union into one packed mask; allowed region is <code>container × (1 − obstruction)</code>. Changing it regenerates the mask texture without replacing pipelines. Mutually exclusive with <code>distortion</code>.</td>
 		</tr>
 		<tr>
 			<td><code>obstructionColor</code></td>
 			<td><code>RGB | null</code></td>
 			<td><code>null</code></td>
-			<td>Fill color painted over obstruction footprints in the display pass, in 0–255 RGB (same convention as <code>backColor</code>). Makes solid bodies read as visible objects instead of background-colored silhouettes (e.g. the Karman cylinder). Anti-aliased edges from the rasterized mask. <code>null</code> keeps the silhouette. Presence toggles a display keyword (Bucket B); the value itself is a per-frame uniform.</td>
+			<td>Fill color painted over obstruction footprints in the display pass, in 0–255 RGB (same convention as <code>backColor</code>). Makes solid bodies read as visible objects instead of background-colored silhouettes (e.g. the Karman cylinder). Anti-aliased edges come from the rasterized mask. <code>null</code> keeps the silhouette. Hot-updatable without replacing pipelines.</td>
 		</tr>
 	</tbody>
 </table>
@@ -792,24 +792,29 @@
 
 <p>
 	Use <code>sources</code> for steady inlet lines/points/rects, <code>outlets</code> for edge sponge/drain zones,
-		<code>scalarFields</code> for temperature/ink-like quantities, and <code>forces</code> for gravity,
-		pressure-gradient body forces, or scalar-coupled buoyancy. <code>prescribed.kind: 'grid'</code> allows custom uploaded
-	flow fields. In <code>mode: 'prescribed'</code>, velocity remains prescribed and ignores
+		up to three ordered <code>scalarFields</code> packed into RGB channels for temperature/ink-like quantities,
+		and <code>forces</code> for gravity,
+		pressure-gradient body forces, or scalar-coupled buoyancy. <code>prescribed.kind: 'grid'</code> allows a custom velocity
+	grid plus one named grid for each declared scalar channel. In <code>mode: 'prescribed'</code>, velocity remains prescribed and ignores
 	source velocity and forces; use <code>'hybrid'</code> to add live velocity before projection.
 	Uploaded grid fields should be immutable or carry a bumped <code>version</code> when reused.
 </p>
 
 <!-- ================================================================ -->
-<h2>Hot-update buckets</h2>
+<h2>Runtime update ownership</h2>
 <p>
-	When props change at runtime, <code>setConfig()</code> classifies each field into one of four buckets
-	that determine how the change takes effect:
+	<code>setConfig()</code> builds only the resource groups affected by a patch. CPU validation,
+	allocation, and memory-budget failures retain the last working graph. WebGPU reports some
+	validation and out-of-memory failures asynchronously; those operations are scoped to this
+	instance and a late driver rejection surfaces the component fallback rather than contaminating
+	the shared device.
 </p>
 
-<h3>Bucket A — Hot scalars</h3>
+<h3>Hot values and pipeline selection</h3>
 <p>
-	Written directly to the internal config object and picked up on the next simulation frame.
-	Zero overhead. Most numeric props live here: <code>densityDissipation</code>,
+	Values are written to uniforms or select an already-created pipeline on the next frame.
+	This includes <code>advectionScheme</code>, feature toggles, and most numeric props:
+	<code>densityDissipation</code>,
 		<code>velocityDissipation</code>, <code>maxTimeStep</code>, <code>substeps</code>,
 		<code>viscosity</code>, <code>viscosityIterations</code>, <code>wallFriction</code>,
 		<code>wallFrictionWidth</code>, <code>pressure</code>, <code>curl</code>,
@@ -823,27 +828,31 @@
 	scalars.
 </p>
 
-<h3>Bucket B — Keyword recompile</h3>
+<h3>Isolated resource replacement</h3>
 <p>
-	Triggers a display shader recompile (~1 ms). Applies to feature toggles that change which
-	GLSL code paths are active: <code>shading</code>, <code>bloom</code>, <code>sunrays</code>,
-	<code>reveal</code>, <code>distortion</code>, and field visualization inside <code>flow</code>.
+	Bloom, sunrays, prescribed-field, distortion-image, and sticky/coverage-only mask changes replace
+	only the textures they own. The solver uses one always-mask WGSL graph with an identity texture
+	when no shape is configured, so mask toggles do not compile a second graph.
 </p>
 
-<h3>Bucket C — FBO rebuild</h3>
+<h3>Field-graph replacement</h3>
 <p>
-	Triggers framebuffer reallocation. Applies to resolution fields: <code>simResolution</code>,
-	<code>dyeResolution</code>, <code>bloomResolution</code>, <code>bloomIterations</code>,
-	and <code>sunraysResolution</code>. Also triggered by <code>containerShape</code> changes
-	(mask texture rebuild), <code>obstructions</code> changes (obstruction mask rebuild +
-	display keyword recompile), scalar-field allocation inside <code>flow</code>, and
-	<code>glass</code> toggle (scene FBO alloc/dispose).
+	Simulation/dye resolution and scalar-layout changes synchronously prepare a replacement field graph:
+	<code>simResolution</code>,
+	<code>dyeResolution</code>, and scalar-field allocation inside <code>flow</code>. A scalar-layout
+	change preserves velocity/dye/pressure but clears packed scalar values so old channels cannot be
+	reinterpreted. Geometry topology changes reset all simulation fields so newly solid cells cannot
+	retain hidden fluid. Bloom and
+	sunrays targets are isolated owners. A resize that resolves to the existing field extents
+	does not rebuild the graph. A late scoped GPU validation/OOM error fails that instance closed
+	instead of claiming rollback after asynchronous submission.
 </p>
 
-<h3>Bucket D — Construct-only</h3>
+<h3>Construct-only values</h3>
 <p>
 	Ignored by <code>setConfig()</code> after construction. These values are consumed once when the
 	engine is created: <code>seed</code>, <code>initialSplatCountMin</code>,
 	<code>initialSplatCountMax</code>, <code>initialSplatCount</code>, <code>presetSplats</code>, and
-	<code>requireHardwareAcceleration</code>, <code>maxPixelRatio</code>, and <code>advectionScheme</code>.
+	<code>requireHardwareAcceleration</code>. <code>maxPixelRatio</code> belongs to the Svelte
+	canvas-sizing wrapper rather than the engine.
 </p>

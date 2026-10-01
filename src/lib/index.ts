@@ -6,6 +6,12 @@
 export { default as Fluid } from './Fluid.svelte';
 export type { FluidProps } from './Fluid.svelte';
 
+// Experimental, composable material treatments. Native content/controls own semantics.
+export { default as MaterialFoil } from './MaterialFoil.svelte';
+export { default as MaterialEnamel } from './MaterialEnamel.svelte';
+export { default as MaterialImage } from './MaterialImage.svelte';
+export type { MaterialFoilProps, MaterialEnamelProps, MaterialImageProps, MaterialStatus } from './engine/types.js';
+
 export { default as FluidBackground } from './FluidBackground.svelte';
 export type { FluidBackgroundProps } from './FluidBackground.svelte';
 
@@ -21,13 +27,16 @@ export type { FluidStickProps } from './FluidStick.svelte';
 export { default as FluidText } from './FluidText.svelte';
 export type { FluidTextProps } from './FluidText.svelte';
 
-export { FluidEngine, type FluidEngineOptions } from './engine/FluidEngine.js';
 export {
-	isWebGLAvailable,
-	WebGLUnavailableError,
-	type WebGLUnavailableReason,
-	type GetContextOptions
-} from './engine/gl-utils.js';
+	FluidEngine,
+	type FluidEngineOptions
+} from './engine/FluidEngine.js';
+export {
+	FluidUnavailableError,
+	isFluidGpuAvailable,
+	isFluidUnavailableError,
+	type FluidUnavailableReason
+} from './engine/gpu-support.js';
 export type {
 	FluidConfig,
 	FluidHandle,
@@ -35,11 +44,7 @@ export type {
 	PerformanceState,
 	PerformanceTier,
 	PresetSplat,
-	ResolvedConfig,
 	RGB,
-	FBO,
-	DoubleFBO,
-	ExtInfo,
 	ContainerShape,
 	StickyMask,
 	Vec2,

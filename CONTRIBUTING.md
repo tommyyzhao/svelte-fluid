@@ -1,215 +1,127 @@
 # Contributing to svelte-fluid
 
-Welcome! Thanks for taking the time to contribute. This guide covers
-the toolchain, the architectural rules, the common workflows, and how
-to file useful issues.
-
-If you're considering anything more than a typo fix or a tuning
-tweak, please open a discussion or issue first so we can align on
-direction before you write code.
+Thanks for contributing. Open an issue before a broad API or rendering redesign so
+the behavior and measurement plan can be agreed before implementation.
 
 ## Prerequisites
 
-- [bun](https://bun.com) 1.3 or newer. That's it. No npm, no node, no python.
+- Bun 1.3 or newer
+- A browser/adapter with WebGPU for the hardware suite
+
+Use Bun only: no npm, pnpm, yarn, Node CLI, Python, or pip in project workflows.
 
 ## Hard rules
 
-These are non-negotiable. They exist because previous violations
-caused real bugs (see [`dev-docs/learnings/`](dev-docs/learnings/)).
+1. Use Svelte 5 runes (`$props`, `$state`, `$derived`, `$effect`, `$bindable`,
+   `untrack`), never legacy reactive syntax.
+2. Relative TypeScript imports use `.js` extensions under NodeNext resolution.
+3. Engine changes require an ADR in [`dev-docs/decisions`](dev-docs/decisions).
+4. Do not add runtime dependencies. Svelte is the only peer dependency.
+5. The framework-agnostic engine never imports Svelte; components never issue
+   WebGPU commands.
+6. Native WebGPU types stay below `src/lib/engine/webgpu/` and out of root-exported
+   declarations.
+7. Preserve transactional ownership at the JavaScript boundary: prepare resource
+   replacements off-side, publish only after synchronous success, then destroy the
+   previous owner. Scope asynchronous WebGPU validation/OOM errors and fail only the
+   affected instance closed if a late error arrives.
 
-1. **bun and uv only.** No npm, no pnpm, no yarn, no `node` invocations
-   in scripts, no `python3` / `pip`. Helper one-shots use `bun -e`.
-   See [ADR 0001](dev-docs/decisions/0001-bun-and-uv-only-tooling.md).
-2. **Svelte 5 runes only.** Use `$props`, `$state`, `$derived`,
-   `$effect`, `$bindable`, `untrack`. Never `export let`, never `$:`,
-   never Svelte 4 stores. The whole component model is built around
-   the runes API.
-3. **`.js` extensions on every relative TypeScript import.** This
-   project uses `moduleResolution: NodeNext` which requires explicit
-   extensions: write `import { X } from './foo.js'` even when `foo`
-   is `foo.ts`. The single most common contribution footgun — see
-   [`dev-docs/learnings/typescript-and-svelte5.md`](dev-docs/learnings/typescript-and-svelte5.md).
-4. **Engine changes require an ADR.** If your change touches anything
-   in `src/lib/engine/` beyond a tuning value or a comment, write a
-   new ADR in [`dev-docs/decisions/`](dev-docs/decisions/) first explaining the *why*. Use the
-   existing ADRs as a template.
-5. **No new runtime dependencies.** The peer dep on `svelte ^5` is
-   the only allowed runtime dep. Devtime additions are fine but flag
-   them in the PR.
+See [`CLAUDE.md`](CLAUDE.md) for the detailed invariants and
+[`dev-docs/architecture.md`](dev-docs/architecture.md) for the current runtime.
 
 ## Local development
 
 ```sh
 git clone <repo>
 cd svelte-fluid
-bun install            # populates node_modules + bun.lock
-bun run dev            # demo playground at http://localhost:5173
+bun install
+bun run dev
 ```
 
-The demo at `src/routes/+page.svelte` mounts ~38 instances across 8
-sections. Use it to verify any change interactively.
+The main demo is at `http://localhost:5173`; focused native-engine R&D is under
+`/examples/webgpu`.
 
 ## Repository layout
 
-```
-svelte-fluid/
-├── src/
-│   ├── lib/                       ← the publishable library (becomes dist/)
-│   │   ├── Fluid.svelte           ← thin Svelte 5 wrapper
-│   │   ├── index.ts               ← public re-exports
-│   │   └── engine/                ← framework-agnostic engine
-│   │       ├── FluidEngine.ts     ← the class
-│   │       ├── shaders.ts         ← GLSL source strings
-│   │       ├── gl-utils.ts        ← compileShader, FBO helpers, blit, ...
-│   │       ├── dithering.ts       ← inlined LDR_LLL1_0.png
-│   │       ├── rng.ts             ← mulberry32 + color helpers
-│   │       ├── pointer.ts         ← Pointer type + update helpers
-│   │       └── types.ts           ← FluidConfig, ResolvedConfig, FluidHandle, ...
-│   ├── routes/                    ← SvelteKit demo app
-│   │   ├── +layout.svelte
-│   │   ├── +page.svelte
-│   │   └── components/
-│   ├── app.html
-│   └── app.d.ts
-├── dev-docs/                      ← contributor & maintainer docs
-│   ├── architecture.md            ← system design, module boundaries
-│   ├── porting-notes.md           ← upstream symbol map
-│   ├── learnings/                 ← gotchas and lessons learned
-│   └── decisions/                 ← architectural decision records
-├── CONTRIBUTING.md                ← you are here
-├── README.md                      ← consumer-facing docs
-├── CHANGELOG.md                   ← version history
-├── LICENSE                        ← MIT
-├── package.json
-├── svelte.config.js
-├── tsconfig.json
-└── vite.config.ts
+```text
+src/lib/
+├── Fluid.svelte                 lifecycle/sizing/fallback wrapper
+├── FluidBackground.svelte      viewport and DOM exclusions
+├── FluidReveal.svelte          reveal wrapper
+├── FluidDistortion.svelte      image-distortion wrapper
+├── FluidStick.svelte           sticky-mask wrapper
+├── FluidText.svelte            text-container wrapper
+├── presets/                    public recipes
+└── engine/
+    ├── FluidEngine.ts          async controller and loss recovery
+    ├── gpu-support.ts          GPU-neutral availability/errors
+    ├── types.ts                public config and handles
+    ├── frame-scheduler.ts      shared RAF scheduler
+    ├── mask-rasterizer.ts      packed physics/visual masks
+    └── webgpu/
+        ├── NativeWebGpuFluidEngine.ts
+        ├── shaders.ts          WGSL source strings
+        ├── device-pool.ts      shared device/module/pipeline cache
+        └── resources.ts        tracked allocation helpers
 ```
 
 ## Common workflows
 
-### Add a new config field
+### Add a config field
 
-1. Add the field to `FluidConfig` in `src/lib/engine/types.ts` (camelCase).
-2. Add the field to `ResolvedConfig` in the same file (SCREAMING_CASE).
-3. Add a default value in `DEFAULTS` in `FluidEngine.ts`.
-4. Add a line in `resolveConfig` mapping the camelCase prop to the
-   SCREAMING_CASE internal name.
-5. Decide which **bucket** the field belongs to (see
-   [ADR 0005](dev-docs/decisions/0005-hot-update-buckets.md)) and update
-   `FluidEngine.setConfig` if needed.
-6. Add the prop to the destructure in `Fluid.svelte` and to the
-   `buildConfig()` return. **Do not skip this** — because `FluidProps extends
-   FluidConfig`, an unforwarded prop still type-checks but silently falls into
-   `...rest` (spread onto the `<canvas>`) and never reaches the engine. The
-   `fluid-props-forwarding.test.ts` guard fails if any `FluidConfig` field is
-   missing from `buildConfig()`.
-7. Add a row to the prop table in `README.md`.
-8. Run `bun run check` and `bun run dev`.
+1. Add the camelCase field and documentation to `engine/types.ts`.
+2. Resolve a finite/defaulted internal value in `NativeWebGpuFluidEngine.ts`.
+3. Decide its owner: hot scalar, isolated resource owner, combined field graph, or
+   construct-only input.
+4. Forward it through `Fluid.svelte`'s destructure and `buildConfig()`. The
+   forwarding guard test catches omissions.
+5. Add Node policy tests and/or real-WebGPU browser coverage.
+6. Update README, site docs, and generated agent docs.
 
-### Modify a shader
+### Modify WGSL or passes
 
-1. Edit `src/lib/engine/shaders.ts`. Each shader is a tagged template
-   string — keep the same precision qualifiers and varyings as the
-   original or things will break.
-2. Run `bun run dev` and verify the demo still renders.
-3. Read [`dev-docs/porting-notes.md`](dev-docs/porting-notes.md) before changing
-   anything if you haven't already.
+1. Edit `engine/webgpu/shaders.ts` and the native orchestration together.
+2. Keep public coordinates y-up and prescribed grids bottom-row-first.
+3. Run the Chromium browser suite; Node tests cannot compile WGSL.
+4. Inspect the canary/features routes for presentation changes and record any
+   intentional visual difference in the ADR.
 
-### Touch the engine
+### Modify resource ownership
 
-1. Read [`dev-docs/architecture.md`](dev-docs/architecture.md) and
-   [`dev-docs/porting-notes.md`](dev-docs/porting-notes.md).
-2. Make changes incrementally and run `bun run check` after each one.
-3. Verify the demo (especially the controls instance) still behaves
-   correctly across all four hot-update buckets.
-4. Verify `bun run package` produces a clean `dist/`.
+Test successful churn, rollback after allocation/upload failure, disposal back to
+the baseline live-resource count, same-extent resize, and shared-device loss across
+multiple live controllers. A callback exception must never break sibling instances
+or GPU lifecycle state.
 
-### Add a changeset to your PR
+### Changesets
 
-Releases are driven by [Changesets](https://github.com/changesets/changesets).
-When you open a PR with user-visible changes, add a changeset describing the
-change and the version impact:
-
-```sh
-bun run changeset
-```
-
-The CLI will ask:
-
-1. **Bump type** — pick `patch`, `minor`, or `major`:
-   - **patch** — bug fixes, doc fixes, internal refactors
-   - **minor** — new presets, new props, additive engine features
-   - **major** — breaking API changes (renamed props, removed exports,
-     changed default behavior in a user-visible way)
-2. **Summary** — a one-line description of the change
-
-Commit the generated `.changeset/*.md` file with your PR. Changesets from
-multiple PRs accumulate and are combined into the next release.
-
-Internal-only changes (refactors invisible to consumers, dev-doc updates,
-CI tweaks) don't need a changeset.
-
-### How releases happen
-
-Releases run automatically through `.github/workflows/release.yml`:
-
-1. When changesets are present on `main`, the workflow opens a
-   **"Version Packages"** PR that bumps `package.json`, regenerates the
-   relevant section of `CHANGELOG.md`, and removes the changeset files.
-2. Merging that PR triggers the workflow again. With no changesets left,
-   it runs `bun run release` — which calls `changeset publish` to push to
-   npm with **provenance** (verified GitHub Actions build attestation) and
-   creates a GitHub release.
-
-Do not publish manually. The initial `v0.1.0` bootstrap release is complete;
-all future releases should use the Changesets flow above so npm publishes
-include provenance.
+Run `bun run changeset` for user-visible changes. Choose patch for fixes, minor for
+additive public behavior, and major for removed API/support or changed defaults.
+Never publish manually; the release workflow publishes version PRs with provenance.
 
 ## Verification checklist
 
-Before opening a PR, run:
-
 ```sh
-bun run test        # vitest, expect all passing
-bun run test:browser # real WebGL tests in headless Playwright Chromium
-bun run check       # svelte-check, expect 0 errors 0 warnings
-bun run prepack     # svelte-package + publint
-bun run build       # builds the demo
+bun run test
+bun run check
+bun run test:browser
+bun run prepack
+bun run build
 ```
 
-CI runs the browser suite in an independent Chromium job on pull requests and
-pushes to `main`. The job installs the Playwright-managed Chromium revision from
-the lockfile, caches its browser binary, and uploads the Vitest log plus any
-Playwright result directories when it fails. It requires no repository secrets.
+Then verify in a real browser:
 
-If you touched anything in `src/lib/engine/`, also do these manual
-checks in a real browser:
+- all core components and representative presets render;
+- pointer input remains isolated across canvases;
+- same-aspect and aspect-changing resize preserve live content;
+- hot config does not allocate unless its resource owner changes;
+- device loss shows recovering UI and returns on a new shared generation;
+- console has no WebGPU validation/runtime errors;
+- repeated mount/resize/dispose returns tracked resources to baseline.
 
-- [ ] All demo instances render fluid correctly
-- [ ] Drag inside each instance — pointer input is isolated
-- [ ] Resize the browser window — every instance reinits with the
-  same initial splat pattern
-- [ ] Control panel sliders work for the playground instance
-- [ ] DevTools console has no WebGL warnings or errors
-- [ ] DevTools Memory snapshot doesn't grow after multiple resizes
+## Code style and issue reports
 
-## Code style
-
-- TypeScript, strict mode. No `any` unless strictly necessary.
-- Tabs for indentation (matches the SvelteKit scaffold).
-- Prettier handles formatting (run with `bunx prettier --write .`).
-- Comments explain *why*, not *what*. The shader code does enough
-  *what*.
-- Keep ports of `script.js` mechanical — see
-  [`dev-docs/porting-notes.md`](dev-docs/porting-notes.md) for the symbol map.
-
-## Filing issues
-
-Useful information:
-
-- Browser + version
-- Whether `gl.getExtension('OES_texture_float_linear')` returns null
-  (visible in DevTools console)
-- Approximate number of `<Fluid />` instances on the page
-- Whether the issue reproduces on the demo at localhost:5173
+Use strict TypeScript, tabs, and single quotes. Comments should explain invariants
+and tradeoffs. Useful GPU bug reports include browser/version, OS, adapter name,
+whether `navigator.gpu.requestAdapter()` succeeds, scene/config, number of live
+instances, and a reproduction route.

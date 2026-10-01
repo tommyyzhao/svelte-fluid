@@ -1,182 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { obstructionsEqual, obstructionMask } from '../container-shapes.js';
+import { obstructionMask } from '../container-shapes.js';
 import type { MaskContext } from '../container-shapes.js';
-import type { Obstruction } from '../types.js';
 
 /* ------------------------------------------------------------------ */
-/*                       obstructionsEqual                            */
-/* ------------------------------------------------------------------ */
-
-describe('obstructionsEqual', () => {
-	// --- null / undefined / empty are all the "no obstructions" state ---
-	it('both null returns true', () => {
-		expect(obstructionsEqual(null, null)).toBe(true);
-	});
-
-	it('both undefined returns true', () => {
-		expect(obstructionsEqual(undefined, undefined)).toBe(true);
-	});
-
-	it('null vs undefined returns true', () => {
-		expect(obstructionsEqual(null, undefined)).toBe(true);
-	});
-
-	it('null vs empty array returns true', () => {
-		expect(obstructionsEqual(null, [])).toBe(true);
-	});
-
-	it('undefined vs empty array returns true', () => {
-		expect(obstructionsEqual(undefined, [])).toBe(true);
-	});
-
-	it('two empty arrays return true', () => {
-		expect(obstructionsEqual([], [])).toBe(true);
-	});
-
-	// --- null/empty vs populated ---
-	it('null vs single obstruction returns false', () => {
-		expect(obstructionsEqual(null, [{ d: 'M0 0 L10 10' }])).toBe(false);
-	});
-
-	it('single obstruction vs null returns false', () => {
-		expect(obstructionsEqual([{ d: 'M0 0 L10 10' }], null)).toBe(false);
-	});
-
-	it('empty array vs single obstruction returns false', () => {
-		expect(obstructionsEqual([], [{ d: 'M0 0 L10 10' }])).toBe(false);
-	});
-
-	// --- length mismatch ---
-	it('arrays of differing length return false', () => {
-		const a: Obstruction[] = [{ d: 'M0 0' }];
-		const b: Obstruction[] = [{ d: 'M0 0' }, { d: 'M1 1' }];
-		expect(obstructionsEqual(a, b)).toBe(false);
-	});
-
-	// --- same content ---
-	it('same single path returns true', () => {
-		const a: Obstruction[] = [{ d: 'M0 0 L100 100' }];
-		const b: Obstruction[] = [{ d: 'M0 0 L100 100' }];
-		expect(obstructionsEqual(a, b)).toBe(true);
-	});
-
-	it('same reference returns true', () => {
-		const a: Obstruction[] = [{ d: 'M0 0 L100 100' }];
-		expect(obstructionsEqual(a, a)).toBe(true);
-	});
-
-	// --- field differences ---
-	it('different d returns false', () => {
-		expect(obstructionsEqual([{ d: 'M0 0' }], [{ d: 'M1 1' }])).toBe(false);
-	});
-
-	it('different text returns false', () => {
-		expect(obstructionsEqual([{ text: 'A' }], [{ text: 'B' }])).toBe(false);
-	});
-
-	it('different font returns false', () => {
-		expect(obstructionsEqual(
-			[{ text: 'A', font: 'bold 72px sans-serif' }],
-			[{ text: 'A', font: 'bold 100px sans-serif' }]
-		)).toBe(false);
-	});
-
-	it('different fillRule returns false', () => {
-		expect(obstructionsEqual(
-			[{ d: 'M0 0', fillRule: 'nonzero' }],
-			[{ d: 'M0 0', fillRule: 'evenodd' }]
-		)).toBe(false);
-	});
-
-	it('different scale returns false', () => {
-		expect(obstructionsEqual(
-			[{ d: 'M0 0', scale: 1 }],
-			[{ d: 'M0 0', scale: 2 }]
-		)).toBe(false);
-	});
-
-	it('different fit returns false', () => {
-		expect(obstructionsEqual(
-			[{ d: 'M0 0', fit: 'contain' }],
-			[{ d: 'M0 0', fit: 'fill' }]
-		)).toBe(false);
-	});
-
-	it('fit default contain equals omitted fit', () => {
-		expect(obstructionsEqual(
-			[{ d: 'M0 0' }],
-			[{ d: 'M0 0', fit: 'contain' }]
-		)).toBe(true);
-	});
-
-	it('different offset.x returns false', () => {
-		expect(obstructionsEqual(
-			[{ d: 'M0 0', offset: { x: 0.1, y: 0 } }],
-			[{ d: 'M0 0', offset: { x: 0.2, y: 0 } }]
-		)).toBe(false);
-	});
-
-	it('different offset.y returns false', () => {
-		expect(obstructionsEqual(
-			[{ d: 'M0 0', offset: { x: 0, y: 0.1 } }],
-			[{ d: 'M0 0', offset: { x: 0, y: 0.2 } }]
-		)).toBe(false);
-	});
-
-	it('different viewBox returns false', () => {
-		expect(obstructionsEqual(
-			[{ d: 'M0 0', viewBox: [0, 0, 100, 100] }],
-			[{ d: 'M0 0', viewBox: [0, 0, 200, 200] }]
-		)).toBe(false);
-	});
-
-	// --- default equivalence ---
-	it('bare {d} equals fully-defaulted form', () => {
-		const a: Obstruction[] = [{ d: 'M0 0 L100 100' }];
-		const b: Obstruction[] = [{
-			d: 'M0 0 L100 100',
-			font: '',
-			fillRule: 'nonzero',
-			scale: 1,
-			offset: { x: 0, y: 0 },
-			viewBox: [0, 0, 100, 100]
-		}];
-		expect(obstructionsEqual(a, b)).toBe(true);
-	});
-
-	it('omitted offset equals explicit {0,0}', () => {
-		expect(obstructionsEqual(
-			[{ d: 'M0 0' }],
-			[{ d: 'M0 0', offset: { x: 0, y: 0 } }]
-		)).toBe(true);
-	});
-
-	it('omitted scale equals explicit 1', () => {
-		expect(obstructionsEqual(
-			[{ d: 'M0 0' }],
-			[{ d: 'M0 0', scale: 1 }]
-		)).toBe(true);
-	});
-
-	// --- multi-element arrays ---
-	it('two-element arrays with all matching elements return true', () => {
-		const a: Obstruction[] = [{ d: 'M0 0' }, { text: 'X' }];
-		const b: Obstruction[] = [{ d: 'M0 0' }, { text: 'X' }];
-		expect(obstructionsEqual(a, b)).toBe(true);
-	});
-
-	it('two-element arrays with one differing element return false', () => {
-		const a: Obstruction[] = [{ d: 'M0 0' }, { text: 'X' }];
-		const b: Obstruction[] = [{ d: 'M0 0' }, { text: 'Y' }];
-		expect(obstructionsEqual(a, b)).toBe(false);
-	});
-
-	it('order matters: swapped elements return false', () => {
-		const a: Obstruction[] = [{ d: 'M0 0' }, { d: 'M1 1' }];
-		const b: Obstruction[] = [{ d: 'M1 1' }, { d: 'M0 0' }];
-		expect(obstructionsEqual(a, b)).toBe(false);
-	});
-});
 
 /* ------------------------------------------------------------------ */
 /*                  obstructionMask — CPU sampler                     */
@@ -268,12 +94,12 @@ describe('obstructionMask — CPU sampler', () => {
 });
 
 /* ------------------------------------------------------------------ */
-/*              combined-mask math (GLSL applyMask mirror)            */
+/*                combined-mask math (WGSL mirror)                    */
 /* ------------------------------------------------------------------ */
 
 describe('combined obstruction mask math (shader mirror)', () => {
 	/**
-	 * Mirror of the GLSL combine in applyMaskShader / glassShaderSource:
+	 * Mirror of the WGSL mask combine used throughout the solver:
 	 *   mask = clamp(containerMask, 0, 1) * (1 - obstruct)
 	 * where containerMask is the (already 0–1) container value and obstruct
 	 * is the sampled obstruction mask. allowed = container × (1 − obstruction).

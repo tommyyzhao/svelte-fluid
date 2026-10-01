@@ -14,8 +14,32 @@
 <script lang="ts" module>
 	import type { Snippet } from 'svelte';
 	import type { FluidConfig, FluidHandle, RGB } from './engine/types.js';
+	import type { FluidProps } from './Fluid.svelte';
 
-	export interface FluidRevealProps extends FluidConfig {
+	export interface FluidRevealProps
+		extends Omit<
+			FluidConfig,
+			| 'reveal'
+			| 'revealSensitivity'
+			| 'revealCurve'
+			| 'revealCoverColor'
+			| 'revealAccentColor'
+			| 'revealFringeColor'
+			| 'densityDissipation'
+			| 'initialDensityDissipation'
+			| 'initialDensityDissipationDuration'
+		>,
+			Pick<
+				FluidProps,
+				| 'fallback'
+				| 'poster'
+				| 'posterAlt'
+				| 'fallbackText'
+				| 'onReady'
+				| 'onRecovering'
+				| 'onAssetError'
+				| 'onAssetReady'
+			> {
 		/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
 		maxPixelRatio?: number | null;
 		/**
@@ -119,12 +143,19 @@
 		class: className,
 		style,
 		children,
+		fallback,
+		poster,
+		posterAlt,
+		fallbackText,
+		onReady,
+		onRecovering,
+		onAssetError,
+		onAssetReady,
 		// Reveal-friendly defaults (consumer can override).
-		// curl=0 skips vorticity passes; pressure=1.0 disables pressure
-		// relaxation for clean laminar flow (matches Ascend-Fluid reference);
-		// multiplicative dissipation (activated by reveal=true) matches
-		// the reference physics.
-		densityDissipation: densityDissipationProp,
+		// curl=0 skips vorticity passes; pressure=1.0 preserves the previous
+		// pressure field through the first inner solve for smooth laminar flow;
+		// Reveal owns its deliberately multiplicative fade control through
+		// fadeBack/fadeSpeed. It must not share Fluid's rate-per-second knob.
 		splatRadius = 0.2,
 		splatOnHover = false,
 		initialSplatCount = 0,
@@ -190,19 +221,21 @@
 	let autoRevealPrevX = 0.5;
 	let autoRevealPrevY = 0.5;
 	let userInteracted = false;
+	let fluidReady = false;
 
 	function startAutoReveal() {
-		const startTime = performance.now();
+		let startTime: number | undefined;
 		function tick(now: number) {
 			if (userInteracted) {
 				autoRevealRaf = undefined;
 				return;
 			}
 			// inner may not be bound on the first tick — keep retrying
-			if (!inner) {
+			if (!inner || !fluidReady) {
 				autoRevealRaf = requestAnimationFrame(tick);
 				return;
 			}
+			if (startTime === undefined) startTime = now;
 			const t = (now - startTime) * 0.001 * autoRevealSpeed;
 			const x = 0.5 + 0.25 * Math.cos(0.7 * t) * Math.sin(0.9 * t);
 			const y = 0.5 + 0.15 * Math.sin(1.1 * t);
@@ -227,15 +260,14 @@
 	}
 
 	// Multiplicative dissipation: 1.0 = no fade, 0.995 = slow fade.
-	// Precedence: fadeSpeed > densityDissipation prop > fadeBack default.
+	// This is intentionally isolated behind the explicitly named fadeSpeed;
+	// generic densityDissipation has rate-per-second semantics everywhere else.
 	const dissipation = $derived(
 		fadeSpeed !== undefined
 			? fadeSpeed
-			: densityDissipationProp !== undefined
-				? densityDissipationProp
-				: fadeBack
-					? 0.995
-					: 1.0
+			: fadeBack
+				? 0.995
+				: 1.0
 	);
 
 	onMount(() => {
@@ -287,6 +319,7 @@
 	<div class="svelte-fluid-reveal__canvas" bind:this={canvasWrapperEl}>
 		<Fluid
 			bind:this={inner}
+			{...fluidProps}
 			reveal={true}
 			revealSensitivity={sensitivity}
 			revealCurve={curve}
@@ -308,7 +341,20 @@
 			{backColor}
 			{lazy}
 			{autoPause}
-			{...fluidProps}
+			{fallback}
+			{poster}
+			{posterAlt}
+			{fallbackText}
+			{onAssetError}
+			{onAssetReady}
+			onReady={() => {
+				fluidReady = true;
+				onReady?.();
+			}}
+			onRecovering={() => {
+				fluidReady = false;
+				onRecovering?.();
+			}}
 		/>
 	</div>
 </div>

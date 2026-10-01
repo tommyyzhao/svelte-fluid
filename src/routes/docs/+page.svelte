@@ -22,7 +22,7 @@
 
 <svelte:head>
 	<title>Getting Started — svelte-fluid</title>
-	<meta name="description" content="Get started with svelte-fluid — WebGL fluid simulation as a Svelte 5 component." />
+	<meta name="description" content="Get started with svelte-fluid — native WebGPU fluid simulation as a Svelte 5 component." />
 </svelte:head>
 
 <h1>Getting Started</h1>
@@ -52,7 +52,7 @@ yarn add svelte-fluid</code></pre>
   &lt;Fluid /&gt;
 &lt;/div&gt;</code></pre>
 
-<p>Click and drag to create splats. The simulation runs on the GPU via WebGL, so it's fast even on mobile.</p>
+<p>Click and drag to create splats. The simulation runs through native WebGPU and shares its device and compiled WGSL graph across instances.</p>
 
 <p>For a blank scaffold, this starter config gives you an immediately visible canvas while you confirm the install:</p>
 

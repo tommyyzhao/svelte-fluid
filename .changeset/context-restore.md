@@ -2,7 +2,7 @@
 "svelte-fluid": patch
 ---
 
-Fix WebGL context restoration so every GPU resource is freshly recreated and
-the seeded random plus configured preset opening splats replay exactly once.
-Also avoid allocating the glass scene framebuffer twice during construction and
-restoration.
+Recover from WebGPU device loss through a fresh shared device lease and a
+transactionally reconstructed per-instance resource graph. Seeded random and
+configured preset opening splats replay exactly once, while the Svelte wrappers
+keep reveal/distortion content covered until recovery succeeds.

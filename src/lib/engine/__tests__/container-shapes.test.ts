@@ -1,127 +1,39 @@
 import { describe, it, expect } from 'vitest';
 import {
-	containerShapeEqual,
 	containerMask,
-	maskAreaFraction,
-	glslSmoothstep,
+	shaderSmoothstep,
 	roundedRectSDF
 } from '../container-shapes.js';
 import type { MaskContext } from '../container-shapes.js';
 import type { ContainerShape } from '../types.js';
 
 /* ------------------------------------------------------------------ */
-/*                         glslSmoothstep                             */
+/*                         shaderSmoothstep                           */
 /* ------------------------------------------------------------------ */
 
-describe('glslSmoothstep', () => {
+describe('shaderSmoothstep', () => {
 	it('returns 0 at the lower edge', () => {
-		expect(glslSmoothstep(0, 1, 0)).toBe(0);
+		expect(shaderSmoothstep(0, 1, 0)).toBe(0);
 	});
 
 	it('returns 1 at the upper edge', () => {
-		expect(glslSmoothstep(0, 1, 1)).toBe(1);
+		expect(shaderSmoothstep(0, 1, 1)).toBe(1);
 	});
 
 	it('returns 0.5 at the midpoint', () => {
-		expect(glslSmoothstep(0, 1, 0.5)).toBe(0.5);
+		expect(shaderSmoothstep(0, 1, 0.5)).toBe(0.5);
 	});
 
 	it('clamps below the lower edge', () => {
-		expect(glslSmoothstep(0, 1, -5)).toBe(0);
+		expect(shaderSmoothstep(0, 1, -5)).toBe(0);
 	});
 
 	it('clamps above the upper edge', () => {
-		expect(glslSmoothstep(0, 1, 10)).toBe(1);
+		expect(shaderSmoothstep(0, 1, 10)).toBe(1);
 	});
 });
 
 /* ------------------------------------------------------------------ */
-/*                       containerShapeEqual                          */
-/* ------------------------------------------------------------------ */
-
-describe('containerShapeEqual', () => {
-	// --- null / undefined ---
-	it('null === null', () => {
-		expect(containerShapeEqual(null, null)).toBe(true);
-	});
-
-	it('undefined === undefined', () => {
-		expect(containerShapeEqual(undefined, undefined)).toBe(true);
-	});
-
-	it('null !== circle', () => {
-		expect(containerShapeEqual(null, { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.4 })).toBe(false);
-	});
-
-	it('circle !== null', () => {
-		expect(containerShapeEqual({ type: 'circle', cx: 0.5, cy: 0.5, radius: 0.4 }, null)).toBe(false);
-	});
-
-	// --- circle ---
-	it('identical circles are equal', () => {
-		const c: ContainerShape = { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 };
-		expect(containerShapeEqual(c, { ...c })).toBe(true);
-	});
-
-	it('different circle radii are not equal', () => {
-		const a: ContainerShape = { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 };
-		const b: ContainerShape = { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.40 };
-		expect(containerShapeEqual(a, b)).toBe(false);
-	});
-
-	it('same reference is equal', () => {
-		const c: ContainerShape = { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 };
-		expect(containerShapeEqual(c, c)).toBe(true);
-	});
-
-	// --- frame ---
-	it('identical frames are equal', () => {
-		const f: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15 };
-		expect(containerShapeEqual(f, { ...f })).toBe(true);
-	});
-
-	it('different frame halfW are not equal', () => {
-		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15 };
-		const b: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.3, halfH: 0.15 };
-		expect(containerShapeEqual(a, b)).toBe(false);
-	});
-
-	it('different frame halfH are not equal', () => {
-		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15 };
-		const b: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.25 };
-		expect(containerShapeEqual(a, b)).toBe(false);
-	});
-
-	it('frame with innerCornerRadius=0 equals frame without innerCornerRadius', () => {
-		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, innerCornerRadius: 0 };
-		const b: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15 };
-		expect(containerShapeEqual(a, b)).toBe(true);
-	});
-
-	it('frames with different innerCornerRadius are not equal', () => {
-		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, innerCornerRadius: 0.05 };
-		const b: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, innerCornerRadius: 0.10 };
-		expect(containerShapeEqual(a, b)).toBe(false);
-	});
-
-	it('frames with same innerCornerRadius are equal', () => {
-		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, innerCornerRadius: 0.05 };
-		const b: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, innerCornerRadius: 0.05 };
-		expect(containerShapeEqual(a, b)).toBe(true);
-	});
-
-	// --- cross-type ---
-	it('circle !== frame', () => {
-		const circle: ContainerShape = { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.45 };
-		const frame: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.2 };
-		expect(containerShapeEqual(circle, frame)).toBe(false);
-	});
-
-	it('null !== frame', () => {
-		const frame: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.2 };
-		expect(containerShapeEqual(null, frame)).toBe(false);
-	});
-});
 
 /* ------------------------------------------------------------------ */
 /*                    containerMask — circle (regression)             */
@@ -316,34 +228,6 @@ describe('containerMask — frame with innerCornerRadius', () => {
 });
 
 /* ------------------------------------------------------------------ */
-/*               containerShapeEqual — frame outer params             */
-/* ------------------------------------------------------------------ */
-
-describe('containerShapeEqual — frame outer params', () => {
-	it('frames with default outer params equal frames without them', () => {
-		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15 };
-		const b: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, outerHalfW: 0.5, outerHalfH: 0.5, outerCornerRadius: 0 };
-		expect(containerShapeEqual(a, b)).toBe(true);
-	});
-
-	it('different outerHalfW are not equal', () => {
-		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, outerHalfW: 0.4 };
-		const b: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, outerHalfW: 0.5 };
-		expect(containerShapeEqual(a, b)).toBe(false);
-	});
-
-	it('different outerCornerRadius are not equal', () => {
-		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, outerCornerRadius: 0.05 };
-		const b: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, outerCornerRadius: 0.10 };
-		expect(containerShapeEqual(a, b)).toBe(false);
-	});
-
-	it('same outer params are equal', () => {
-		const a: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, outerHalfW: 0.4, outerHalfH: 0.35, outerCornerRadius: 0.08 };
-		const b: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.2, halfH: 0.15, outerHalfW: 0.4, outerHalfH: 0.35, outerCornerRadius: 0.08 };
-		expect(containerShapeEqual(a, b)).toBe(true);
-	});
-});
 
 /* ------------------------------------------------------------------ */
 /*               containerMask — frame with outer boundary            */
@@ -524,49 +408,6 @@ describe('roundedRectSDF', () => {
 });
 
 /* ------------------------------------------------------------------ */
-/*                containerShapeEqual — roundedRect                   */
-/* ------------------------------------------------------------------ */
-
-describe('containerShapeEqual — roundedRect', () => {
-	it('identical roundedRects are equal', () => {
-		const a: ContainerShape = { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.3, halfH: 0.2, cornerRadius: 0.05 };
-		expect(containerShapeEqual(a, { ...a })).toBe(true);
-	});
-
-	it('same reference is equal', () => {
-		const a: ContainerShape = { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.3, halfH: 0.2, cornerRadius: 0.05 };
-		expect(containerShapeEqual(a, a)).toBe(true);
-	});
-
-	it('different cornerRadius are not equal', () => {
-		const a: ContainerShape = { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.3, halfH: 0.2, cornerRadius: 0.05 };
-		const b: ContainerShape = { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.3, halfH: 0.2, cornerRadius: 0.10 };
-		expect(containerShapeEqual(a, b)).toBe(false);
-	});
-
-	it('different halfW are not equal', () => {
-		const a: ContainerShape = { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.3, halfH: 0.2, cornerRadius: 0.05 };
-		const b: ContainerShape = { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.4, halfH: 0.2, cornerRadius: 0.05 };
-		expect(containerShapeEqual(a, b)).toBe(false);
-	});
-
-	it('roundedRect !== circle', () => {
-		const rr: ContainerShape = { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.3, halfH: 0.2, cornerRadius: 0.05 };
-		const c: ContainerShape = { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.4 };
-		expect(containerShapeEqual(rr, c)).toBe(false);
-	});
-
-	it('roundedRect !== frame', () => {
-		const rr: ContainerShape = { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.3, halfH: 0.2, cornerRadius: 0.05 };
-		const f: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.3, halfH: 0.2 };
-		expect(containerShapeEqual(rr, f)).toBe(false);
-	});
-
-	it('null !== roundedRect', () => {
-		const rr: ContainerShape = { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.3, halfH: 0.2, cornerRadius: 0.05 };
-		expect(containerShapeEqual(null, rr)).toBe(false);
-	});
-});
 
 /* ------------------------------------------------------------------ */
 /*                  containerMask — roundedRect                       */
@@ -608,50 +449,6 @@ describe('containerMask — roundedRect', () => {
 });
 
 /* ------------------------------------------------------------------ */
-/*                  containerShapeEqual — annulus                      */
-/* ------------------------------------------------------------------ */
-
-describe('containerShapeEqual — annulus', () => {
-	const a: ContainerShape = { type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.4 };
-
-	it('identical annuli are equal', () => {
-		const b: ContainerShape = { type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.4 };
-		expect(containerShapeEqual(a, b)).toBe(true);
-	});
-
-	it('same reference is equal', () => {
-		expect(containerShapeEqual(a, a)).toBe(true);
-	});
-
-	it('different innerRadius ⇒ not equal', () => {
-		const b: ContainerShape = { type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.2, outerRadius: 0.4 };
-		expect(containerShapeEqual(a, b)).toBe(false);
-	});
-
-	it('different outerRadius ⇒ not equal', () => {
-		const b: ContainerShape = { type: 'annulus', cx: 0.5, cy: 0.5, innerRadius: 0.15, outerRadius: 0.45 };
-		expect(containerShapeEqual(a, b)).toBe(false);
-	});
-
-	it('different cx ⇒ not equal', () => {
-		const b: ContainerShape = { type: 'annulus', cx: 0.6, cy: 0.5, innerRadius: 0.15, outerRadius: 0.4 };
-		expect(containerShapeEqual(a, b)).toBe(false);
-	});
-
-	it('annulus !== circle', () => {
-		const c: ContainerShape = { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.4 };
-		expect(containerShapeEqual(a, c)).toBe(false);
-	});
-
-	it('annulus !== frame', () => {
-		const f: ContainerShape = { type: 'frame', cx: 0.5, cy: 0.5, halfW: 0.25, halfH: 0.25 };
-		expect(containerShapeEqual(a, f)).toBe(false);
-	});
-
-	it('null !== annulus', () => {
-		expect(containerShapeEqual(null, a)).toBe(false);
-	});
-});
 
 /* ------------------------------------------------------------------ */
 /*                  containerMask — annulus                            */
@@ -740,70 +537,6 @@ describe('containerMask — annulus edge cases', () => {
 });
 
 /* ------------------------------------------------------------------ */
-/*                  containerShapeEqual — svgPath                     */
-/* ------------------------------------------------------------------ */
-
-describe('containerShapeEqual — svgPath', () => {
-	const base: ContainerShape = { type: 'svgPath', d: 'M0,0 L100,0 L100,100 L0,100 Z' };
-
-	it('identical svgPaths are equal', () => {
-		expect(containerShapeEqual(base, { ...base })).toBe(true);
-	});
-
-	it('same reference is equal', () => {
-		expect(containerShapeEqual(base, base)).toBe(true);
-	});
-
-	it('different d strings are not equal', () => {
-		const other: ContainerShape = { type: 'svgPath', d: 'M10,10 L90,10 L90,90 L10,90 Z' };
-		expect(containerShapeEqual(base, other)).toBe(false);
-	});
-
-	it('different fillRule values are not equal', () => {
-		const a: ContainerShape = { type: 'svgPath', d: base.d, fillRule: 'nonzero' };
-		const b: ContainerShape = { type: 'svgPath', d: base.d, fillRule: 'evenodd' };
-		expect(containerShapeEqual(a, b)).toBe(false);
-	});
-
-	it('default fillRule equals explicit nonzero', () => {
-		const a: ContainerShape = { type: 'svgPath', d: base.d };
-		const b: ContainerShape = { type: 'svgPath', d: base.d, fillRule: 'nonzero' };
-		expect(containerShapeEqual(a, b)).toBe(true);
-	});
-
-	it('different viewBox values are not equal', () => {
-		const a: ContainerShape = { type: 'svgPath', d: base.d, viewBox: [0, 0, 100, 100] };
-		const b: ContainerShape = { type: 'svgPath', d: base.d, viewBox: [0, 0, 200, 200] };
-		expect(containerShapeEqual(a, b)).toBe(false);
-	});
-
-	it('default viewBox equals explicit [0,0,100,100]', () => {
-		const a: ContainerShape = { type: 'svgPath', d: base.d };
-		const b: ContainerShape = { type: 'svgPath', d: base.d, viewBox: [0, 0, 100, 100] };
-		expect(containerShapeEqual(a, b)).toBe(true);
-	});
-
-	it('different maskResolution values are not equal', () => {
-		const a: ContainerShape = { type: 'svgPath', d: base.d, maskResolution: 256 };
-		const b: ContainerShape = { type: 'svgPath', d: base.d, maskResolution: 512 };
-		expect(containerShapeEqual(a, b)).toBe(false);
-	});
-
-	it('default maskResolution equals explicit 512', () => {
-		const a: ContainerShape = { type: 'svgPath', d: base.d };
-		const b: ContainerShape = { type: 'svgPath', d: base.d, maskResolution: 512 };
-		expect(containerShapeEqual(a, b)).toBe(true);
-	});
-
-	it('svgPath !== circle', () => {
-		const c: ContainerShape = { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.4 };
-		expect(containerShapeEqual(base, c)).toBe(false);
-	});
-
-	it('null !== svgPath', () => {
-		expect(containerShapeEqual(null, base)).toBe(false);
-	});
-});
 
 /* ------------------------------------------------------------------ */
 /*                  containerMask — svgPath                           */
@@ -847,33 +580,3 @@ describe('containerMask — svgPath', () => {
 });
 
 /* ------------------------------------------------------------------ */
-/*                  maskAreaFraction                                   */
-/* ------------------------------------------------------------------ */
-
-describe('maskAreaFraction', () => {
-	it('returns 1.0 for fully filled mask', () => {
-		const data = new Uint8Array(16).fill(255);
-		expect(maskAreaFraction({ data, width: 4, height: 4 })).toBe(1.0);
-	});
-
-	it('returns 0.0 for fully empty mask', () => {
-		const data = new Uint8Array(16).fill(0);
-		expect(maskAreaFraction({ data, width: 4, height: 4 })).toBe(0.0);
-	});
-
-	it('returns 0.25 for quarter-filled mask', () => {
-		const data = new Uint8Array(16).fill(0);
-		data[0] = 255; data[1] = 255; data[4] = 255; data[5] = 255;
-		expect(maskAreaFraction({ data, width: 4, height: 4 })).toBe(0.25);
-	});
-
-	it('threshold is 127 (values at 127 are excluded)', () => {
-		const data = new Uint8Array(4).fill(127);
-		expect(maskAreaFraction({ data, width: 2, height: 2 })).toBe(0.0);
-	});
-
-	it('threshold is 127 (values at 128 are included)', () => {
-		const data = new Uint8Array(4).fill(128);
-		expect(maskAreaFraction({ data, width: 2, height: 2 })).toBe(1.0);
-	});
-});

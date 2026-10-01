@@ -8,7 +8,7 @@
 	<title>Flow & obstructions — svelte-fluid</title>
 	<meta
 		name="description"
-		content="Solver-native flow scenes routing around obstructions — airfoil, maze, and channel geometries — alongside the flow-scene presets built on svelte-fluid's WebGL Navier-Stokes engine."
+		content="Solver-native WebGPU flow scenes routing around obstructions — airfoil, maze, and channel geometries — alongside svelte-fluid's flow-scene presets."
 	/>
 </svelte:head>
 
@@ -17,7 +17,7 @@
 	<p class="intro">
 		Solver-native flow scenes where the simulation routes around obstructions — an airfoil, a maze,
 		a Venturi channel, and a bluff-body wake — rendered alongside the flow-scene presets. Each scene
-		is driven directly by the WebGL Navier-Stokes engine, so the dye tracers and recirculation
+		is driven directly by the native WebGPU Navier-Stokes engine, so the dye tracers and recirculation
 		emerge from the solver rather than from scripted motion. Scenes activate lazily as they enter the
 		viewport.
 	</p>

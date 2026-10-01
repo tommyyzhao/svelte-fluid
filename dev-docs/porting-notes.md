@@ -1,5 +1,9 @@
 # Porting notes
 
+> Historical note: this maps the original implementation to the now-deleted
+> WebGL production port. The current native WebGPU architecture is documented in
+> [`architecture.md`](./architecture.md) and ADR-0068.
+
 This document maps the original `WebGL-Fluid-Simulation/script.js`
 (1645 lines, vanilla JS, single global canvas) onto the refactored
 class/module structure under `src/lib/`. It also calls out every

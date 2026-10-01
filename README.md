@@ -22,8 +22,8 @@ Most fluid packages are vanilla JS with a Svelte wrapper bolted on.
 This one is built for Svelte 5 from the ground up:
 
 - **True component API** — `<Fluid />` with 70+ typed props, live reactive updates, and full cleanup on unmount
-- **Multiple independent instances** per page — no shared GL state
-- **State-preserving resize** — live dye and velocity survive layout changes without shader recompilation
+- **Many independent canvases on one shared WebGPU device** — warm WGSL pipelines, isolated fields and input
+- **State-preserving resize** — live dye and velocity survive layout changes without pipeline recompilation
 - **14 example presets** — reference configurations showing the range of what's possible
 - **5 container shapes** — circle, frame, roundedRect, annulus, and arbitrary SVG paths / text via mask texture
 - **Glass post-processing** — refraction, specular highlights, and chromatic aberration on any container shape
@@ -110,20 +110,95 @@ start with a slightly brighter starter config:
 <Fluid bind:this={ref} />
 ```
 
+## Experimental material treatments
+
+On the R&D branch, three small treatments compose with your own HTML. They are
+not replacements for links, buttons, headings, or application state. No new
+runtime dependencies; no change to the fluid solver.
+
+```svelte
+<script lang="ts">
+  import { MaterialEnamel, MaterialFoil, MaterialImage } from 'svelte-fluid';
+  let dark = $state(false);
+</script>
+
+<h1><MaterialEnamel text="Made to be felt." /></h1>
+
+<button type="button" role="switch" aria-label="Dark appearance"
+  aria-checked={dark} onclick={() => dark = !dark}>
+  <MaterialFoil selected={dark} />
+  Dark appearance: {dark ? 'On' : 'Off'}
+</button>
+
+<a href="/journal/arles">
+  <MaterialImage src="/arles.jpg" alt="Sunlit arches in Arles"
+    width={3803} height={3162} />
+</a>
+```
+
+Your application applies the selected theme. Foil observes the boolean; it never
+toggles it. The entire enclosing button/link owns input, focus and activation.
+Canvases do not capture pointers or cancel scrolling. Enamel keeps the actual
+text and a stationary outline; image motion never hides the source or gates a link.
+
+| Treatment | Required props | Intended role |
+| --- | --- | --- |
+| `MaterialEnamel` | `text: string` | Molded enamel on short display text. Inherits font, color and wrapping from its parent. |
+| `MaterialFoil` | `selected: boolean` | A 6rem × 3rem decorative snap mechanism inside an existing binary control. |
+| `MaterialImage` | `src`, `alt`, positive `width`, `height` | Local retained distortion over an explicit image. Dimensions reserve its aspect ratio. Cross-origin sources require CORS. |
+
+All three accept `enabled` (default `true`), `class`, and
+`onStatus(status: MaterialStatus)`. Status is `loading`, `ready`, `static`, or
+`unavailable`, with an optional `reason`. `bind:this` exposes `retry()`; show local
+recovery when it is useful. Callback exceptions are isolated. `enabled={false}`
+releases resources and retains the ordinary text/image/vector finish.
+
+Reduced motion uses still finishes and immediate selected-state changes.
+Forced colors uses native content and a vector foil. Initialization/asset/device
+failure cannot disable the host control. Text/image content exists before startup.
+No endless ambient animation: resting, hidden and offscreen treatments stop drawing.
+
+Presentation uses actual fractional CSS dimensions × DPR, including 3×, without
+a quality cap. Model density is independent. Sources, mips, profiles and local
+outputs have explicit native-size limits; unsupported sizes retain plain content
+instead of being silently blurred. Large original images still cost memory.
+
+Current enamel support is **plain, horizontal, untransformed display text** (up
+to 2048 UTF-16 code units), not arbitrary styled DOM capture. Font/text/reflow
+changes rebuild its relief; DPR-only updates preserve the physical fields and
+color-only updates do not allocate GPU resources. New geometry resets transient
+deformation. Use `retry()` after external stylesheet changes that do not change
+observed geometry/classes; native text remains authoritative.
+
+These are illustrative material models, not calibrated metal/liquid physics.
+The image uses bounded invertible coordinate maps, not a full fluid solve.
+Phone energy/thermal performance and broad assistive-technology coverage are
+not yet established. The simplified composition at `/lab/interfaces/library`
+uses only the foil appearance switch; **Plain** comparison is in Study notes.
+The enamel and image treatments remain available separately, not stacked on that page.
+
 ## Browser compatibility
 
-- **WebGL 1** (with linear filtering) and **WebGL 2** both work
-- Tested on Chrome 120+, Firefox 121+, Safari 17+
-- **Mobile:** works on iOS Safari 16+ and Chrome Android, with `lazy={true}`
-  strongly recommended on dense pages
-- **Linear filtering fallback:** when `OES_texture_float_linear` is unavailable,
-  the engine drops shading, bloom, sunrays and clamps `dyeResolution` ≤ 512 —
-  see `FluidEngine.initContext()`
+svelte-fluid requires WebGPU in a secure context (`https:` or localhost) and a
+usable adapter. Current Chromium-family browsers and Safari 26+ provide WebGPU;
+Firefox availability still depends on release/platform. Capability—not user-agent
+version—is the contract:
+
+```ts
+import { isFluidGpuAvailable } from 'svelte-fluid';
+
+if (await isFluidGpuAvailable()) {
+  // mount the interactive experience
+}
+```
+
+`<Fluid>` degrades without crashing: provide a `fallback` snippet or `poster`, or
+it renders an accessible `backColor` fill. Set `requireHardwareAcceleration` to
+reject a software/fallback adapter. There is no WebGL backend.
 
 ## Props
 
-All props are optional. CamelCase wraps the original SCREAMING_CASE
-config from the upstream project.
+All props are optional and use camelCase.
 
 | Prop | Type | Default | Notes |
 | --- | --- | --- | --- |
@@ -131,8 +206,8 @@ config from the upstream project.
 | `height` | `number` | — | CSS px. Omit to fill parent. |
 | `maxPixelRatio` | `number \| null` | `2` | cap physical DPR; pass `null` for native DPR |
 | `seed` | `number` | random | 32-bit uint; deterministic initial splats |
-| `simResolution` | `number` | `128` | velocity grid; **rebuilds FBOs** |
-| `dyeResolution` | `number` | `1024` | dye grid; **rebuilds FBOs** |
+| `simResolution` | `number` | `128` | velocity grid; guarded field-graph rebuild |
+| `dyeResolution` | `number` | `1024` | dye grid; guarded field-graph rebuild |
 | `densityDissipation` | `number` | `1` | hot; **steady-state** value |
 | `initialDensityDissipation` | `number` | (= `densityDissipation`) | hot; ramp start (see [burn-in pattern](#burn-in-density-dissipation)) |
 | `initialDensityDissipationDuration` | `number` | `0` | seconds; duration of the linear ramp |
@@ -144,30 +219,30 @@ config from the upstream project.
 | `curl` | `number` | `30` | vorticity confinement; hot |
 | `splatRadius` | `number` | `0.25` | hot |
 | `splatForce` | `number` | `6000` | hot |
-| `shading` | `boolean` | `true` | **shader recompile** |
+| `shading` | `boolean` | `true` | hot presentation toggle |
 | `colorful` | `boolean` | `true` | hot; rotate pointer/touch splat colors over time |
 | `colorUpdateSpeed` | `number` | `10` | hot; pointer/touch color rotation rate |
 | `paused` | `boolean` | `false` | hot |
 | `backColor` | `{r,g,b}` | `{0,0,0}` | 0–255 RGB; hot |
 | `transparent` | `boolean` | `false` | hot |
-| `bloom` | `boolean` | `true` | **shader recompile** |
-| `bloomIterations` | `number` | `8` | **rebuilds FBOs** |
-| `bloomResolution` | `number` | `256` | **rebuilds FBOs** |
+| `bloom` | `boolean` | `true` | allocates/releases bloom targets |
+| `bloomIterations` | `number` | `8` | hot pass count |
+| `bloomResolution` | `number` | `256` | rebuilds bloom targets |
 | `bloomIntensity` | `number` | `0.8` | hot |
 | `bloomThreshold` | `number` | `0.6` | hot |
 | `bloomSoftKnee` | `number` | `0.7` | hot |
-| `sunrays` | `boolean` | `true` | **shader recompile** |
-| `sunraysResolution` | `number` | `196` | **rebuilds FBOs** |
+| `sunrays` | `boolean` | `true` | allocates/releases sunrays target |
+| `sunraysResolution` | `number` | `196` | rebuilds sunrays target |
 | `sunraysWeight` | `number` | `1` | hot |
 | `initialSplatCount` | `number` | — | exact count for the first frame |
 | `initialSplatCountMin` | `number` | `5` | min of random range |
 | `initialSplatCountMax` | `number` | `25` | max of random range |
-| `autoSplatRate` | `number` | `0` | automatic burst rate in splats/sec; 0 = disabled (Bucket A) |
-| `autoSplatCount` | `number` | `1` | number of splats emitted each burst (Bucket A) |
-| `autoSplatColor` | `{r,g,b}` | `null` | fixed color for automatic splats; null = fresh random color per splat (Bucket A) |
-| `autoSplatVelocityX` | `number` | `0` | x velocity for automatic splats; ignored when `autoSplatSwirl` is nonzero (Bucket A) |
-| `autoSplatVelocityY` | `number` | `0` | y velocity for automatic splats; negative moves downward in DOM space (Bucket A) |
-| `autoSplatCenterY` | `number` | `0.5` | vertical center of the spawn band: 0 = bottom, 0.5 = center, 1 = top (Bucket A) |
+| `autoSplatRate` | `number` | `0` | automatic burst rate in splats/sec; 0 = disabled |
+| `autoSplatCount` | `number` | `1` | number of splats emitted each burst |
+| `autoSplatColor` | `{r,g,b}` | `null` | fixed color for automatic splats; null = fresh random color per splat |
+| `autoSplatVelocityX` | `number` | `0` | x velocity for automatic splats; ignored when `autoSplatSwirl` is nonzero |
+| `autoSplatVelocityY` | `number` | `0` | y velocity for automatic splats; negative moves downward in DOM space |
+| `autoSplatCenterY` | `number` | `0.5` | vertical center of the spawn band: 0 = bottom, 0.5 = center, 1 = top |
 | `autoSplatEvenX` | `boolean` | `false` | within each burst, use equal x positions instead of random x positions |
 | `autoSplatSwirl` | `number` | `0` | orbital velocity around the container/canvas center; positive = CCW |
 | `autoSplatBandHeight` | `number` | `0.1` | height of the spawn band; 0 = single line, 0.1 = ±5%, 2.0 = full canvas |
@@ -405,28 +480,34 @@ For a local bounded canvas, use `<Fluid />` with a parent size or fixed
 
 ## Resize behavior
 
-On resize, the engine keeps its WebGL context, programs, dye, and velocity in
-place. Aspect changes resample the persistent fields; same-aspect changes only
-resize canvas-sized presentation resources. Physical DPR is capped at 2 by
-default; pass `maxPixelRatio={null}` to use native DPR.
+On resize, the engine keeps its WebGPU device and compiled pipelines. When field
+extents change it builds replacements off-side and resamples live dye, velocity,
+and pressure. Synchronous validation/allocation failures retain the old graph;
+asynchronous driver validation or OOM failures are scoped to that instance and
+surface its fallback. CSS/DPR changes whose computed extents stay the same only
+reconfigure the canvas. Physical DPR is capped at 2 by default; pass
+`maxPixelRatio={null}` to use native DPR.
+
+Structural config/resize bursts are coalesced behind at most one in-flight GPU
+transition. Scalar channel-order changes preserve velocity, dye, and pressure but
+clear scalar state so existing values cannot silently acquire new meanings.
 
 ## Multiple instances
 
-Each `<Fluid />` owns its own WebGL context, framebuffers, RAF loop,
-listeners, and pointer state. Browsers cap simultaneous WebGL contexts at 8–16 per tab.
+All `<Fluid />` instances share one `GPUDevice`, exact-source WGSL module/pipeline
+cache, and RAF scheduler. Each canvas retains independent textures, uniforms,
+listeners, pointer state, and simulation state.
 
-For pages with more than ~6 simultaneous instances, pass `lazy={true}`
-on each one. The component will then defer engine creation until the
-container enters the viewport (with a 200px lookahead) and tear it
-down when it leaves, keeping the live context count bounded:
+For dense pages, pass `lazy={true}`. The component defers its per-instance field
+allocation until viewport entry and releases those fields when it leaves; the
+shared device and compiled graph stay warm:
 
 ```svelte
 <LavaLamp lazy />
 <Plasma lazy />
 ```
 
-The ~100–500ms shader recompile happens off-screen while the user is
-still scrolling, so it lands before they get there.
+`autoPause` is lighter: it stops work while keeping that instance's fields alive.
 
 ## Programmatic engine
 
@@ -443,6 +524,8 @@ const engine = new FluidEngine({
   canvas,
   config: { curl: 20, bloom: false, seed: 42 }
 });
+
+await engine.ready;
 
 // later…
 engine.splat(0.5, 0.5, 100, 0, { r: 1, g: 0.5, b: 0 });
@@ -471,8 +554,9 @@ changes.
 
 ## Acknowledgments
 
-Built on [PavelDoGreat/WebGL-Fluid-Simulation](https://github.com/PavelDoGreat/WebGL-Fluid-Simulation),
-Pavel Dobryakov's iconic 2017 fluid sim. Shaders reused unchanged; both MIT-licensed.
+Derived from [PavelDoGreat/WebGL-Fluid-Simulation](https://github.com/PavelDoGreat/WebGL-Fluid-Simulation),
+Pavel Dobryakov's iconic 2017 fluid sim. The equations and visual intent were
+ported to a native WGSL/WebGPU engine; both works are MIT-licensed.
 
 The reveal and distortion effects were inspired by
 [Ksenia Kondrashova's](https://codepen.io/ksenia-k) creative WebGL

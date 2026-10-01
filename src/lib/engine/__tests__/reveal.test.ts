@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
+import { NATIVE_WEBGPU_SHADERS } from '../webgpu/shaders.js';
 
 /* ------------------------------------------------------------------ */
 /*                     Reveal alpha curve math                         */
 /* ------------------------------------------------------------------ */
 
 describe('reveal alpha curve (shader math mirror)', () => {
-	// Mirror of the GLSL: clamp(pow(clamp(a * sensitivity, 0, 1), curve), 0, 1)
+	// Mirror of the WGSL: clamp(pow(clamp(a * sensitivity, 0, 1), curve), 0, 1)
 	function revealAmount(a: number, sensitivity: number, curve: number): number {
 		return Math.min(1, Math.max(0, Math.pow(Math.min(1, Math.max(0, a * sensitivity)), curve)));
 	}
@@ -45,7 +46,7 @@ describe('reveal alpha curve (shader math mirror)', () => {
 	});
 
 	it('display output uses inverted dye color for iridescent fringe', () => {
-		// GLSL: gl_FragColor = vec4(1.0 - c, alpha)
+		// WGSL display output is vec4f((1.0 - c) * alpha, alpha).
 		// At the fringe, low dye → inverted color is near-white
 		const dyeR = 0.1, dyeG = 0.08, dyeB = 0.05;
 		expect(1.0 - dyeR).toBeCloseTo(0.9, 5);
@@ -62,6 +63,10 @@ describe('reveal alpha curve (shader math mirror)', () => {
 		const fringe = { r: 1 - dye.r, g: 1 - dye.g, b: 1 - dye.b };
 		expect(fringe.b).toBeGreaterThan(fringe.g);
 		expect(fringe.g).toBeGreaterThan(fringe.r);
+	});
+
+	it('premultiplies reveal RGB for the configured canvas alpha mode', () => {
+		expect(NATIVE_WEBGPU_SHADERS.display).toContain('return vec4f(color * reveal_alpha, reveal_alpha)');
 	});
 });
 

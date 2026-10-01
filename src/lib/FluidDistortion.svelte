@@ -14,14 +14,36 @@
 
 <script lang="ts" module>
 	import type { Snippet } from 'svelte';
-	import type { FluidConfig, FluidHandle, PresetSplat, RGB } from './engine/types.js';
+	import type { FluidConfig, FluidHandle, RGB } from './engine/types.js';
+	import type { FluidProps } from './Fluid.svelte';
 
-	export interface FluidDistortionProps extends FluidConfig {
+	export interface FluidDistortionProps
+		extends Omit<
+			FluidConfig,
+			| 'distortion'
+			| 'distortionPower'
+			| 'distortionImageUrl'
+			| 'distortionFit'
+			| 'distortionScale'
+			| 'distortionBleedX'
+			| 'distortionBleedY'
+		>,
+			Pick<
+				FluidProps,
+				| 'fallback'
+				| 'poster'
+				| 'posterAlt'
+				| 'fallbackText'
+				| 'onReady'
+				| 'onRecovering'
+				| 'onAssetError'
+				| 'onAssetReady'
+			> {
 		/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
 		maxPixelRatio?: number | null;
 		/**
 		 * URL of the image to distort. Required.
-		 * The image is loaded asynchronously and uploaded as a WebGL texture.
+		 * The image is loaded asynchronously and uploaded as a WebGPU texture.
 		 */
 		src: string;
 		/**
@@ -105,7 +127,9 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
 	import Fluid from './Fluid.svelte';
+	import { createDistortionPresetSplats } from './engine/distortion-splats.js';
 	import { DISABLED_PERFORMANCE_STATE } from './engine/performance-governor.js';
+	import { randomSeed } from './engine/rng.js';
 
 	let {
 		src,
@@ -124,10 +148,18 @@
 		class: className,
 		style,
 		children,
+		fallback,
+		poster = src,
+		posterAlt,
+		fallbackText,
+		onReady,
+		onRecovering,
+		onAssetError,
+		onAssetReady,
 		// Distortion-friendly defaults — larger splats and no pressure
 		// retention produce smooth, blobby distortion like the reference.
-		// initialDensityDissipation holds dye at full intensity during
-		// the chaos phase, then ramps down to the steady-state dissipation.
+		// The opening phase uses a lower ordinary fade rate, then ramps to the
+		// steady-state rate once the initial impulses have spread out.
 		densityDissipation: densityDissipationProp = 0.98,
 		initialDensityDissipation = 0.5,
 		initialDensityDissipationDuration = 2,
@@ -142,11 +174,13 @@
 		pressure = 0,
 		pointerInput = false,
 		backColor = { r: 0, g: 0, b: 0 },
+		seed: seedProp,
 		...fluidProps
 	}: FluidDistortionProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
 	let canvasWrapperEl: HTMLDivElement | undefined = $state(undefined);
+	let fluidReady = false;
 
 	// ---- Bleed: extend canvas beyond visible area ----
 	let containerW = $state(0);
@@ -157,25 +191,11 @@
 	let bleedFracY = $derived(containerH > 0 ? bleed / (containerH + 2 * bleed) : 0);
 
 	// ---- Initial chaos splats (construct-only) ----
-	// Large, fast splats that saturate the canvas with distortion on load.
-	// The initialDensityDissipation ramp burns them off over ~2 seconds.
-	const stableInitialSplats: PresetSplat[] | undefined = untrack(() => {
-		const n = initialSplats;
-		if (n <= 0) return undefined;
-		const splats: PresetSplat[] = [];
-		for (let i = 0; i < n; i++) {
-			const angle = Math.random() * Math.PI * 2;
-			const speed = 4000 + Math.random() * 4000;
-			splats.push({
-				x: Math.random(),
-				y: Math.random(),
-				dx: Math.cos(angle) * speed,
-				dy: Math.sin(angle) * speed,
-				color: { r: 0.15, g: 0, b: 0 }
-			});
-		}
-		return splats;
-	});
+	// Use the public seed for both Fluid's random splats and this wrapper's
+	// hand-tuned opening impulses; otherwise a seeded distortion was not
+	// reproducible even though the base component was.
+	const stableSeed = untrack(() => (seedProp ?? randomSeed()) >>> 0);
+	const stableInitialSplats = untrack(() => createDistortionPresetSplats(stableSeed, initialSplats));
 
 	// ---- Pointer-driven distortion splats ----
 	// Pixel-based velocity to match Ascend-Fluid reference (see FluidReveal).
@@ -186,7 +206,7 @@
 
 	function handlePointerMove(e: PointerEvent) {
 		const rect = canvasWrapperEl?.getBoundingClientRect();
-		if (!rect || !inner) return;
+		if (!rect || !inner || !fluidReady) return;
 		const x = (e.clientX - rect.left) / rect.width;
 		const y = 1.0 - (e.clientY - rect.top) / rect.height;
 		if (prevClientX < 0) {
@@ -216,19 +236,23 @@
 	let userInteracted = false;
 
 	function startAutoDistort() {
-		const startTime = performance.now();
+		let elapsed = 0;
+		let previousReadyFrame: number | undefined;
 		function tick(now: number) {
 			if (userInteracted) {
 				autoDistortRaf = undefined;
 				return;
 			}
-			if (!inner) {
+			if (!inner || !fluidReady) {
+				previousReadyFrame = undefined;
 				autoDistortRaf = requestAnimationFrame(tick);
 				return;
 			}
-			const t = (now - startTime) * 0.001 * autoDistortSpeed;
-			const x = 0.5 + 0.25 * Math.sin(0.002 * (now - startTime) - Math.PI);
-			const y = 0.5 + 0.1 * Math.sin(0.005 * (now - startTime)) * Math.cos(0.002 * (now - startTime));
+			if (previousReadyFrame !== undefined) elapsed += now - previousReadyFrame;
+			previousReadyFrame = now;
+			const t = elapsed * 0.001 * autoDistortSpeed;
+			const x = 0.5 + 0.25 * Math.sin(2 * t - Math.PI);
+			const y = 0.5 + 0.1 * Math.sin(5 * t) * Math.cos(2 * t);
 			const dx = 800 * (x - autoDistortPrevX);
 			const dy = 800 * (y - autoDistortPrevY);
 			autoDistortPrevX = x;
@@ -303,6 +327,8 @@
 	>
 		<Fluid
 			bind:this={inner}
+			{...fluidProps}
+			seed={stableSeed}
 			distortion={true}
 			distortionPower={strength}
 			distortionImageUrl={src}
@@ -327,7 +353,20 @@
 			{backColor}
 			{lazy}
 			{autoPause}
-			{...fluidProps}
+			{fallback}
+			{poster}
+			{posterAlt}
+			{fallbackText}
+			{onAssetError}
+			{onAssetReady}
+			onReady={() => {
+				fluidReady = true;
+				onReady?.();
+			}}
+			onRecovering={() => {
+				fluidReady = false;
+				onRecovering?.();
+			}}
 		/>
 	</div>
 </div>

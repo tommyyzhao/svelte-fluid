@@ -1,7 +1,7 @@
 /**
  * Tests for pause/resume state machine logic.
  *
- * FluidEngine requires a real WebGL context, so we can't unit-test it
+ * FluidEngine requires a real WebGPU device, so we can't unit-test it
  * directly in Node. Instead we test the state transition invariants by
  * verifying the public interface contract that the component layer relies on.
  *
@@ -10,7 +10,7 @@
  * - resume() restarts the RAF loop; isPaused becomes false
  * - Both are idempotent
  * - A disposed engine ignores pause/resume
- * - Context loss prevents resume until restored
+ * - Device loss prevents resume until reconstruction finishes
  *
  * We test the container-shapes module and the FluidHandle interface shape
  * to ensure backwards compatibility.

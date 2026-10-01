@@ -49,21 +49,3 @@ export function cssQualityPolicy(
 	}
 	return policy;
 }
-
-/** Preserve aspect while fitting a requested drawing buffer inside GL limits. */
-export function fitDrawingBufferSize(
-	width: number,
-	height: number,
-	maxWidth: number,
-	maxHeight: number
-): { width: number; height: number } {
-	const requestedWidth = Math.max(1, Math.floor(width));
-	const requestedHeight = Math.max(1, Math.floor(height));
-	const widthLimit = Number.isFinite(maxWidth) && maxWidth > 0 ? Math.floor(maxWidth) : requestedWidth;
-	const heightLimit = Number.isFinite(maxHeight) && maxHeight > 0 ? Math.floor(maxHeight) : requestedHeight;
-	const scale = Math.min(1, widthLimit / requestedWidth, heightLimit / requestedHeight);
-	return {
-		width: Math.max(1, Math.floor(requestedWidth * scale)),
-		height: Math.max(1, Math.floor(requestedHeight * scale))
-	};
-}

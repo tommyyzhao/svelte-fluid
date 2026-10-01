@@ -2,11 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
 	canvasPixelSize,
 	cssQualityPolicy,
-	fitDrawingBufferSize,
 	resolvePixelRatio
 } from '../resolution.js';
-import { getResolution } from '../gl-utils.js';
-import type { GL } from '../gl-utils.js';
 import fluidSrc from '../../Fluid.svelte?raw';
 
 describe('component pixel ratio and CSS quality policy', () => {
@@ -32,14 +29,4 @@ describe('component pixel ratio and CSS quality policy', () => {
 		expect(fluidSrc).toContain('canvasPixelSize(cssW, cssH, window.devicePixelRatio || 1, stableMaxPixelRatio)');
 	});
 
-	it('fits drawing buffers and texture grids within GL limits while preserving aspect', () => {
-		expect(fitDrawingBufferSize(8000, 4000, 4096, 4096)).toEqual({ width: 4096, height: 2048 });
-		const gl = {
-			drawingBufferWidth: 8000,
-			drawingBufferHeight: 4000,
-			MAX_TEXTURE_SIZE: 0x0d33,
-			getParameter: () => 4096
-		} as unknown as GL;
-		expect(getResolution(gl, 3000)).toEqual({ width: 4096, height: 2048 });
-	});
 });

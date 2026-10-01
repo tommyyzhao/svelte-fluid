@@ -1,108 +1,177 @@
 # svelte-fluid — Agent Instructions
 
-## Identity
-
-WebGL Navier-Stokes fluid simulation as a Svelte 5 component library.
-MIT licensed, derived from PavelDoGreat/WebGL-Fluid-Simulation.
-Repo: github.com/tommyyzhao/svelte-fluid
+Native WebGPU incompressible-fluid simulation for Svelte 5. MIT licensed and
+derived from Pavel Dobryakov's WebGL-Fluid-Simulation, but the production runtime
+is WGSL/WebGPU only.
 
 ## Commands
 
+Use Bun, never npm, pnpm, or yarn.
+
 ```sh
-bun install              # install deps
-bun run dev              # dev server at localhost:5173
-bun run test             # vitest (full node suite)
-bun run check            # svelte-check (0 errors expected)
-bun run prepack          # svelte-package + publint (must pass before publish)
-bun run build            # full demo site build
+bun install
+bun run dev
+bun run test
+bun run test:browser
+bun run check
+bun run build
+bun run prepack
 ```
 
-Always run `bun run test && bun run check` after any code change.
-Run `bun run prepack` before committing to verify publint.
+Before completion run `bun run test && bun run check`. Run the hardware browser
+suite for engine or rendering changes, and `bun run prepack` for public/package
+changes.
 
-## Architecture invariants — never break these
+Hardware tests must use ordinary WebGPU/WGSL validation, not
+`--enable-unsafe-webgpu`. If bundled headless Chromium has no adapter, use a
+hardware-capable installed browser via `VITEST_CHROME_PATH=/path/to/Chrome
+bun run test:browser` (on this Mac, the executable is
+`/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`). Missing GPU
+support is an explicit environment failure, not a reason to silently skip or
+enable experimental shader syntax.
 
-1. **Engine never imports Svelte.** `FluidEngine` is framework-agnostic.
-2. **No module-level mutable GL state.** Each engine instance owns its own context, buffers, programs, FBOs.
-3. **gl-utils.ts is stateless.** Every helper takes `gl` as first arg.
-4. **shaders.ts is GL-free.** Raw GLSL strings only; compilation happens in the engine.
-5. **The Svelte component never touches WebGL directly.** It hands the canvas to the engine.
-6. **dispose() does NOT call loseContext().** All resources freed explicitly via gl.delete* calls. The context object is left intact for lazy rebuild.
+## Task tracking
 
-## setConfig 4-bucket system
+Use this repo's isolated Beads tracker for actionable tasks, ideas, and todos.
+Read [dev-docs/task-tracking.md](dev-docs/task-tracking.md) before tracker writes.
+Run `bd context --json` first: require this repo's `.beads`, embedded mode,
+database `svelte_fluid`, and project ID `f2af7687-07d3-4e2b-8fc6-82fde87a0db8`.
+Use `bd ready`, `bd create`, `bd update --claim`, and `bd close`; serialize writes.
+Never use a global/shared tracker, external repo routing, federation, sync remotes,
+or dependencies on other projects. Do not reinitialize or change global settings.
+The old `.ralph/prd.json` is historical, not the current task source of truth.
 
-When props change at runtime, `engine.setConfig()` classifies each field:
+If local `memory/` exists, start at [memory/README.md](memory/README.md) for the
+dated session handoff. It is Git-ignored local context, not a second tracker;
+verify current work against Beads. Do not stage or commit it.
 
-- **Bucket A** (hot scalars): written to `this.config.X`, picked up next frame.
-- **Bucket B** (keyword recompile): `shading`, `bloom`, `sunrays`, `reveal`, `distortion`, `obstructionColor` presence → `updateKeywords()` recompiles the display shader.
-- **Bucket C** (owned FBO transition): `simResolution`, `dyeResolution`, `bloomResolution`, `bloomIterations`, `sunraysResolution` → transition only the owning simulation, dye/scalar, bloom, or sunrays group.
-- **Bucket D** (construct-only): `seed`, `initialSplatCount*`, `presetSplats`, `requireHardwareAcceleration` → ignored after construction.
+## Architecture invariants
 
-When adding a new prop, decide which bucket it belongs to and wire it accordingly. See [ADR 0005](dev-docs/decisions/0005-hot-update-buckets.md) for rationale.
+1. `src/lib/engine/` is framework agnostic and never imports Svelte.
+2. `Fluid.svelte` owns DOM lifecycle, sizing, visibility, and accessible fallback;
+   it never issues WebGPU commands directly.
+3. `FluidEngine.ts` is the stable asynchronous controller. It queues startup
+   inputs, reconstructs after device loss, and delegates simulation to
+   `webgpu/NativeWebGpuFluidEngine.ts`.
+4. One shared `GPUDevice`, shader-module cache, and pipeline cache serve all live
+   canvases. Each instance owns only its fields, masks, uniforms, bind groups,
+   input state, and frame subscription.
+5. There is one production backend and one always-mask-capable WGSL graph. A 1×1
+   all-fluid identity texture handles scenes without geometry. Do not add backend
+   selectors or mask/no-mask pipeline permutations without measured evidence and
+   an ADR.
+6. Persistent resource changes build candidates off-side and preflight explicit
+   memory limits. Synchronous failures retain the last working graph. Because the
+   public update API is synchronous while WebGPU validation/OOM reporting is
+   asynchronous, every resource transition must use per-instance GPU error scopes;
+   a late driver rejection is terminal for that instance and must surface fallback
+   UI instead of poisoning the shared device.
+7. Public declarations must be GPU-type-neutral. `GPUDevice`, `GPUTexture`, and
+   other `@webgpu/types` names may appear only below `engine/webgpu/`, never in a
+   root-exported type signature.
+8. The package has zero runtime dependencies. Svelte is a peer dependency.
 
-Special triggers beyond the 4 buckets:
-- `containerShape` with `type: 'svgPath'` → mask texture rebuild
-- `glass` boolean → sceneFBO alloc/dispose via `initGlassFramebuffer()`
-- `sticky`/`stickyMask` → sticky mask texture rebuild
-- `distortionImageUrl` → async image load
+## Important files
 
-## Container shapes — adding a new one
+```text
+src/lib/
+├── Fluid.svelte                    DOM/lifecycle wrapper
+├── FluidBackground.svelte          viewport wrapper + exclusion zones
+├── FluidReveal.svelte              dye-driven reveal
+├── FluidDistortion.svelte          image distortion
+├── FluidStick.svelte               sticky-mask wrapper
+├── FluidText.svelte                text-container wrapper
+├── presets/                        opinionated public recipes
+└── engine/
+    ├── FluidEngine.ts              async public controller/recovery boundary
+    ├── gpu-support.ts              GPU-neutral public availability/types
+    ├── types.ts                    public configuration and handle types
+    ├── frame-scheduler.ts           shared RAF scheduler
+    ├── mask-rasterizer.ts           canonical packed mask construction
+    ├── flow-policy.ts               flow semantics and palettes
+    └── webgpu/
+        ├── NativeWebGpuFluidEngine.ts  render/solver/resource orchestration
+        ├── shaders.ts                  raw WGSL strings
+        ├── device-pool.ts              shared device/module/pipeline ownership
+        └── resources.ts                tracked texture/buffer helpers
+```
 
-Two approaches coexist: **analytical** (SDF in GLSL + TypeScript mirror) and **mask texture** (svgPath, rasterized via OffscreenCanvas). For a new analytical shape:
+## Coordinate and simulation contracts
 
-1. Add the variant to `ContainerShape` union in `types.ts`
-2. Add GLSL SDF in `shaders.ts` (inside `containerSDF` function)
-3. Add TypeScript SDF mirror in `container-shapes.ts`
-4. Update `containerShapeEqual` for the new variant
-5. Update `resolveConfig` in `FluidEngine.ts`
+- Public normalized coordinates are x left→right and y bottom→top.
+- Prescribed grids are row-major, bottom row first. Reverse rows at the WebGPU
+  upload boundary; do not leak WebGPU's top-left texture convention into the API.
+- DOM pointer coordinates are converted once at the boundary.
+- Simulation velocity is `rg16float`; dye/scalars are `rgba16float`; pressure,
+  divergence, and curl are `r16float`.
+- Geometry physics uses a simulation-resolution packed canonical mask. Visual/dye
+  masking uses a separate coverage texture when higher fidelity is requested.
+- A config value of `undefined` means “not supplied”; it must not overwrite a
+  previously resolved hot value or reappear as a default after recovery.
+- `pressureIterations: 0` disables projection. `pressure` controls warm-start
+  retention in the first pressure iteration; do not conflate the two controls.
 
-See [ADR 0024](dev-docs/decisions/0024-svg-path-container-shape.md) for the mask texture approach.
+## Changes and tests
 
-## Conventions
+- Use tabs and single quotes. Import TypeScript modules with `.js` extensions.
+- Keep public component props in `engine/types.ts`; do not create a second config
+  vocabulary in the Svelte layer.
+- Hot scalar changes should not allocate. Resolution/field-owner changes preserve
+  state. Same-aspect CSS/DPR resize should reconfigure the swap chain without
+  rebuilding unchanged fields.
+- Consumer callbacks are untrusted: isolate exceptions so they cannot break GPU
+  startup, recovery, or sibling instances.
+- Pure policy/raster/resource ownership belongs in Node tests. Shader compilation,
+  readback, device loss, visual envelopes, and lifecycle belong in the Playwright
+  Chromium browser project.
+- Engine architecture decisions require an ADR in `dev-docs/decisions/` and an
+  entry in its README index. Historical WebGL ADRs remain historical; do not edit
+  them to pretend they described WebGPU.
 
-- Bun only (no npm/yarn for dev). `.npmrc` has `engine-strict=true`.
-- Svelte 5 runes only (no Svelte 4 syntax).
-- `.js` extensions in all TypeScript imports.
-- Engine *decisions* (new algorithm, changed field semantics, stencil/scheme change, lifecycle change) require an ADR in `dev-docs/decisions/`. Mechanical edits (renames, count fixes, one-line guards) are exempt. ADR numbers are claimed at write time (next free = `ls dev-docs/decisions`), never pre-reserved in a plan.
-- No new *runtime* dependencies — the `dependencies` map (currently empty; only `dist` ships). devDependencies for test/dev/build infra are unrestricted (`publint`/`prepack` guard `dist`).
-- Tabs, Prettier formatting.
-- Comments explain "why", not "what".
+## Current R&D surfaces
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributing guide, including
-workflows for adding config fields, modifying shaders, and publishing releases.
+- `/examples/webgpu/canary` — subjective production-engine canary
+- `/examples/webgpu/features` — public-component feature coverage
+- `/examples/webgpu/replacement` — migration decisions and measured evidence
 
-## Docs routes (canonical)
+Keep routes thin: they must exercise the production engine, not a route-local
+solver or copied shader implementation.
 
-The `/docs` site routes are the **canonical documentation**. When you change
-the public API (props, types, components, presets), update the corresponding
-route as part of the same change — not as a follow-up.
+Explicit private R&D exception: `/lab/liquids` and `/lab/interfaces` use isolated
+models in `src/experiments/liquid`, under ADRs 0070–0077. They do not define or
+export the production API. Preserve native semantics and fallback; describe
+illustrative material models honestly rather than claiming calibrated physics.
 
-| Route | Content |
-|-------|---------|
-| `src/routes/docs/+page.svelte` | Getting Started |
-| `src/routes/docs/components/+page.svelte` | All 6 components with props and examples |
-| `src/routes/docs/configuration/+page.svelte` | Full FluidConfig prop reference (70+ props) |
-| `src/routes/docs/shapes/+page.svelte` | ContainerShape variants and fields |
-| `src/routes/docs/presets/+page.svelte` | All 14 presets (registry-driven tables via `PresetReference`) |
-| `src/routes/docs/api/+page.svelte` | FluidHandle imperative API, RGB, PresetSplat |
-| `src/routes/for-agents/+page.svelte` | "For Agents" hub linking the generated agent docs |
-| `src/routes/agent-docs.ts` | Generates `/llms.txt`, `/llms-full.txt`, `/SKILL.md` from the preset registry |
+Private R&D is native-pixel only: use fractional CSS dimensions × actual DPR,
+including 3×, for presentation and visual source textures. No Economy mode or
+silent DPI cap. Keep model density independent; reject unsupported native sizes
+with visible fallback and account for extra render attachments during resize.
 
-## Further reading (internal)
+Private R&D is a physics-led creative visual/UI studio, not an image editor or
+generic widget gallery. Admit a study for a distinctive visible material, optical,
+transport or geometric behavior—not for implementing an ordinary workflow with
+GPU decoration. No mask editors, before/after tools, annotated documents, reorder
+pockets, relationship diagrams or allocation dashboards without a genuinely new
+brief. Renderer diagnostics are evidence inside a study, not additional ideas.
+Small illustrative models are valid; finished design-system integration and
+calibrated physics are not prerequisites. Passing tests or closing Beads does not
+establish creative merit. Preserve the user's positively reviewed material work;
+retire rejected variants and their exclusive machinery instead of maintaining a
+permanent showcase of failed ideas. See the
+[studio-pruning record](dev-docs/plans/2026-09-13-studio-pruning.md).
 
-| Resource | What's there |
-|----------|-------------|
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Hard rules, local setup, workflows, verification checklist, code style |
-| [`dev-docs/architecture.md`](dev-docs/architecture.md) | System design, module boundaries, ownership diagram, public API surface |
-| [`dev-docs/porting-notes.md`](dev-docs/porting-notes.md) | Upstream `script.js` symbol map — read before modifying the engine |
-| [`dev-docs/decisions/`](dev-docs/decisions/) | ADRs documenting every major design choice |
-| [`dev-docs/learnings/`](dev-docs/learnings/) | Gotchas with symptom/cause/fix — check before debugging |
-
-## Session workflow
-
-- Start: use the `resume-fluid-session` skill or run `/resume-fluid-session`.
-- End: use the `end-fluid-session` skill, the resume skill's end workflow, or run
-  `/end-fluid-session`.
-- Session memories live in `.agents/memories/fluid-sessions/` as local-only,
-  timestamped files. Do not overwrite prior memories; keep `.claude/handoff.md`
-  as a legacy read-only fallback.
+Library promotion is a separate, stricter gate: demonstrate a useful design role
+at its intended size with native semantics and a convincing simpler baseline.
+See the [material-library proposal](dev-docs/plans/2026-09-14-material-design-library.md)
+and accepted ADR 0078. `MaterialEnamel`, `MaterialFoil` and `MaterialImage` are the
+first experimental exports. The initial all-three composition was rejected as
+cheap; `/lab/interfaces/library` now uses only a borderless foil appearance
+switch with still typography and photography. Do not reintroduce permanent
+button chrome around the spring or stack effects merely to demonstrate exports.
+Keyboard focus rings and the full native hit area remain required. Their shared
+models live under `engine/webgpu/materials/`; old lab paths re-export them. Use
+the shared device pool/frame scheduler, scoped candidate cleanup and native DPR.
+Keep other proposed families out until independently adapted and reviewed.
+A library-scope cut is not itself a completed lab-source deletion, and a proposed
+treatment family is not an approved public API. Integration checks/runbook:
+[`dev-docs/plans/2026-09-14-material-library-integration.md`](dev-docs/plans/2026-09-14-material-library-integration.md).
