@@ -201,8 +201,8 @@
 				autoRevealRaf = undefined;
 				return;
 			}
-			// inner may not be bound on the first tick — keep retrying
-			if (!inner) {
+			// inner may not be bound on the first tick, or the engine paused offscreen — keep retrying
+			if (!inner || inner.handle.isPaused) {
 				autoRevealRaf = requestAnimationFrame(tick);
 				return;
 			}

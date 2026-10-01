@@ -172,7 +172,8 @@
 				autoAnimateRaf = undefined;
 				return;
 			}
-			if (!inner) {
+			// Wait for the engine, and while it is paused offscreen
+			if (!inner || inner.handle.isPaused) {
 				autoAnimateRaf = requestAnimationFrame(tick);
 				return;
 			}
