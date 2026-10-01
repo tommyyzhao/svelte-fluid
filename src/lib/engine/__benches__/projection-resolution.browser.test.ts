@@ -30,11 +30,14 @@ interface ProjectionBands {
 	solidFaceFluxMax: MetricBand;
 }
 
-// Measured on Chromium/ANGLE Metal. These retain cross-renderer headroom while
+// Measured on Chromium/ANGLE Metal. 96's lower divergence/flux floors were
+// relaxed after Chrome 154 (2026-10) measured rms 0.48, max 4.3, flux max 4.5:
+// tighter projection, in line with 64/128. Upper bounds still reject leaks.
+// These retain cross-renderer headroom while
 // still rejecting dead fields, projection jumps, and order-of-magnitude leaks.
 const BANDS: Record<(typeof RESOLUTIONS)[number], ProjectionBands> = {
 	64: { regime: 'paired', divergenceRms: [0.3, 0.8], divergenceMax: [3, 10], energy: [12, 30], gridScaleEnergy: [0.025, 0.08], peakVelocity: [80, 200], solidFaceFluxMean: [0.1, 0.6], solidFaceFluxMax: [0.8, 4] },
-	96: { regime: 'paired', divergenceRms: [0.5, 1.4], divergenceMax: [12, 36], energy: [14, 33], gridScaleEnergy: [0.012, 0.05], peakVelocity: [100, 260], solidFaceFluxMean: [0.3, 1.5], solidFaceFluxMax: [4, 18] },
+	96: { regime: 'paired', divergenceRms: [0.3, 1.4], divergenceMax: [2.5, 36], energy: [14, 33], gridScaleEnergy: [0.012, 0.05], peakVelocity: [100, 260], solidFaceFluxMean: [0.3, 1.5], solidFaceFluxMax: [1.5, 18] },
 	128: { regime: 'paired', divergenceRms: [0.35, 1], divergenceMax: [2, 8], energy: [15, 36], gridScaleEnergy: [0.008, 0.04], peakVelocity: [120, 300], solidFaceFluxMean: [0.05, 0.35], solidFaceFluxMax: [0.5, 3] },
 	192: { regime: 'paired', divergenceRms: [0.35, 1.1], divergenceMax: [2, 8], energy: [17, 40], gridScaleEnergy: [0.004, 0.025], peakVelocity: [140, 350], solidFaceFluxMean: [0.008, 0.1], solidFaceFluxMax: [0.08, 0.7] },
 	256: { regime: 'single', divergenceRms: [0.4, 1.2], divergenceMax: [2.5, 9], energy: [19, 44], gridScaleEnergy: [0.001, 0.015], peakVelocity: [160, 400], solidFaceFluxMean: [0.004, 0.06], solidFaceFluxMax: [0.04, 0.4] }
