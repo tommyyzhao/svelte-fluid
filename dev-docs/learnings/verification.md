@@ -111,3 +111,15 @@ handy:
    promise rejections.
 7. DevTools → Performance → record 10s — should be steady at the
    monitor's refresh rate.
+
+## Opening splats are rejection-sampled; unseeded tests flake
+
+`multipleSplats` draws a position, re-rolls up to 10 times while it falls
+outside the container/obstruction masks, then silently skips the splat. Masks
+are evaluated at the *current* aspect. A circle container at a 2:1 canvas is
+narrow, so roughly 1 in 25 seeds places zero opening splats and
+`readField('velocity')` is exactly 0. This is by design, not an engine bug.
+`seed` defaults to `randomSeed()`, so any test asserting non-zero field energy
+after an opening/restore replay with a masked container must pin `seed`
+(see `resize.browser.test.ts` "defers GL work safely while the context is
+lost"; seeds 28 and 36 fail it, seed 1 passes).
