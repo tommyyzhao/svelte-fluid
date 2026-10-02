@@ -1071,9 +1071,10 @@ export interface FluidProps
 	/** Inline style applied to the wrapper container. */
 	style?: string;
 	/**
-	 * Maximum physical pixels per CSS pixel. Default `2`, limiting GPU
-	 * allocation on DPR 3+ displays without changing CSS-based quality tiers.
-	 * Pass `null` to use the device's native DPR. Construct-only.
+	 * Maximum physical pixels per CSS pixel. Default `null`: the device's
+	 * native DPR, so edges stay crisp on DPR 3 displays. Pass `2` to cap
+	 * physical pixels (and canvas-sized GPU work) on DPR 3+ screens. CSS-based
+	 * quality tiers are unchanged either way. Construct-only.
 	 */
 	maxPixelRatio?: number | null;
 	/**
@@ -1159,7 +1160,7 @@ export interface FluidProps
 export interface FluidBackgroundProps
 	extends FluidConfig,
 		Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
-	/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
+	/** Maximum physical pixels per CSS pixel. Default null (native DPR); pass 2 to cap. */
 	maxPixelRatio?: number | null;
 	/**
 	 * CSS selector for elements within the content slot to exclude
@@ -1183,7 +1184,7 @@ export interface FluidBackgroundProps
 export interface FluidDistortionProps
 	extends FluidConfig,
 		Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
-	/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
+	/** Maximum physical pixels per CSS pixel. Default null (native DPR); pass 2 to cap. */
 	maxPixelRatio?: number | null;
 	/**
 	 * URL of the image to distort. Required.
@@ -1270,7 +1271,7 @@ export interface FluidDistortionProps
 export interface FluidRevealProps
 	extends FluidConfig,
 		Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
-	/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
+	/** Maximum physical pixels per CSS pixel. Default null (native DPR); pass 2 to cap. */
 	maxPixelRatio?: number | null;
 	/**
 	 * How easily areas reveal. Multiplier on dye intensity before
@@ -1356,7 +1357,7 @@ export interface FluidRevealProps
 export interface FluidStickProps
 	extends FluidConfig,
 		Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
-	/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
+	/** Maximum physical pixels per CSS pixel. Default null (native DPR); pass 2 to cap. */
 	maxPixelRatio?: number | null;
 	/** Text to render as the sticky mask. `d` takes precedence if both are set. */
 	text?: string;
@@ -1424,7 +1425,7 @@ export interface FluidStickProps
 export interface FluidTextProps
 	extends FluidConfig,
 		Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
-	/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
+	/** Maximum physical pixels per CSS pixel. Default null (native DPR); pass 2 to cap. */
 	maxPixelRatio?: number | null;
 	/** The text to render as fluid-filled letterforms. */
 	text: string;

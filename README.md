@@ -151,7 +151,7 @@ config from the upstream project.
 | --- | --- | --- | --- |
 | `width` | `number` | — | CSS px. Omit to fill parent. |
 | `height` | `number` | — | CSS px. Omit to fill parent. |
-| `maxPixelRatio` | `number \| null` | `2` | cap physical DPR; pass `null` for native DPR |
+| `maxPixelRatio` | `number \| null` | `null` | native DPR; pass a number (e.g. `2`) to cap physical DPR |
 | `seed` | `number` | random | 32-bit uint; deterministic initial splats |
 | `simResolution` | `number` | `128` | velocity grid; **rebuilds FBOs** |
 | `dyeResolution` | `number` | `1024` | dye grid; **rebuilds FBOs** |
@@ -429,8 +429,9 @@ For a local bounded canvas, use `<Fluid />` with a parent size or fixed
 
 On resize, the engine keeps its WebGL context, programs, dye, and velocity in
 place. Aspect changes resample the persistent fields; same-aspect changes only
-resize canvas-sized presentation resources. Physical DPR is capped at 2 by
-default; pass `maxPixelRatio={null}` to use native DPR.
+resize canvas-sized presentation resources. Rendering uses the native device
+pixel ratio by default; pass `maxPixelRatio={2}` to cap physical pixels on DPR 3+
+screens.
 
 ## Multiple instances
 

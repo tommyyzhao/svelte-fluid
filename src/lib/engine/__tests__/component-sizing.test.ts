@@ -20,17 +20,19 @@ describe('component pixel ratio and CSS quality policy', () => {
 		expect(policies[0]).toEqual({ suppressPost: true, bloomIterations: 5, pressureIterations: 10 });
 	});
 
-	it('caps DPR 3 at 2 by default and null opts into native DPR', () => {
-		expect(resolvePixelRatio(3)).toBe(2);
-		expect(canvasPixelSize(320, 180, 3)).toEqual({ width: 640, height: 360, pixelRatio: 2 });
+	it('uses native DPR by default and caps only when asked', () => {
+		expect(resolvePixelRatio(3)).toBe(3);
+		expect(canvasPixelSize(320, 180, 3)).toEqual({ width: 960, height: 540, pixelRatio: 3 });
 		expect(canvasPixelSize(320, 180, 3, null)).toEqual({ width: 960, height: 540, pixelRatio: 3 });
+		expect(canvasPixelSize(320, 180, 3, 2)).toEqual({ width: 640, height: 360, pixelRatio: 2 });
+		expect(resolvePixelRatio(1.5, 2)).toBe(1.5);
 		expect(resolvePixelRatio(Number.NaN)).toBe(1);
-		expect(resolvePixelRatio(3, 0)).toBe(2);
+		expect(resolvePixelRatio(3, 0)).toBe(3);
 	});
 
 	it('declares and consumes the public component prop instead of leaking it to canvas attributes', () => {
 		expect(typesSrc).toContain('maxPixelRatio?: number | null');
-		expect(fluidSrc).toContain('maxPixelRatio = 2');
+		expect(fluidSrc).toContain('maxPixelRatio = null');
 		expect(fluidSrc).toContain('const stableMaxPixelRatio = untrack(() => maxPixelRatio)');
 		expect(fluidSrc).toContain('canvasPixelSize(cssW, cssH, window.devicePixelRatio || 1, stableMaxPixelRatio)');
 	});

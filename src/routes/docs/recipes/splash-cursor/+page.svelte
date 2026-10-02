@@ -93,7 +93,7 @@ ${SCRIPT_CLOSE}
 	</li>
 	<li>
 		<strong>Cost.</strong> One fixed canvas at the viewport size. <code>bloom</code> and <code>sunrays</code>
-		are off to keep it cheap; <code>maxPixelRatio</code> defaults to 2.
+		are off to keep it cheap. It renders at native DPR; pass <code>maxPixelRatio=&#123;2&#125;</code> to cap it.
 	</li>
 </ul>
 

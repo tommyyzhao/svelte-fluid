@@ -1,16 +1,18 @@
-export const DEFAULT_MAX_PIXEL_RATIO = 2;
+/**
+ * `null` = native DPR. Measured under the 2 ms frame budget for every preset at
+ * a full 1440x900 viewport on DPR 3 (dev-docs/benchmarks/gpu-budget.md).
+ */
+export const DEFAULT_MAX_PIXEL_RATIO: number | null = null;
 
-/** Resolve a finite physical-pixel scale. `null` explicitly opts into native DPR. */
+/** Resolve a finite physical-pixel scale. `null`, the default, uses native DPR. */
 export function resolvePixelRatio(
 	devicePixelRatio: number,
 	maxPixelRatio: number | null | undefined = DEFAULT_MAX_PIXEL_RATIO
 ): number {
 	const native = Number.isFinite(devicePixelRatio) && devicePixelRatio > 0 ? devicePixelRatio : 1;
-	if (maxPixelRatio === null) return native;
-	const cap = Number.isFinite(maxPixelRatio) && (maxPixelRatio ?? 0) > 0
-		? (maxPixelRatio as number)
-		: DEFAULT_MAX_PIXEL_RATIO;
-	return Math.min(native, cap);
+	// Invalid caps (0, negative, NaN) fall back to the default: native.
+	if (maxPixelRatio == null || !Number.isFinite(maxPixelRatio) || maxPixelRatio <= 0) return native;
+	return Math.min(native, maxPixelRatio);
 }
 
 export function canvasPixelSize(
