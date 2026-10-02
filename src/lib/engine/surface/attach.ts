@@ -47,14 +47,13 @@ export function attachSurface(
 	canvas: HTMLCanvasElement,
 	box: HTMLElement,
 	measure: () => SurfaceConfig,
-	onLive: (live: boolean) => void,
-	seedOverride?: number
+	onLive: (live: boolean) => void
 ): SurfaceBinding | null {
 	let engine: SurfaceEngine;
 	try {
 		engine = new SurfaceEngine({
 			canvas,
-			seed: seedOverride ?? seed++,
+			seed: seed++,
 			config: measure(),
 			onFrameError: () => {
 				onLive(false);

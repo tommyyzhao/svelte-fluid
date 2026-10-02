@@ -12,7 +12,6 @@ import {
 	MAX_QUEUED_IMPULSES,
 	RIPPLE_THROTTLE,
 	admitRipple,
-	ambientWaves,
 	climbHeight,
 	dragProximity,
 	enqueueImpulse,
@@ -187,7 +186,7 @@ describe('files: picking, isolation and announcement', () => {
 	});
 });
 
-describe('caustics input caps and determinism', () => {
+describe('caustics input caps and optics', () => {
 	it('throttles pointer ripples by time and travel', () => {
 		const gate = { t: -Infinity, x: -Infinity, y: -Infinity };
 		let admitted = 0;
@@ -209,17 +208,14 @@ describe('caustics input caps and determinism', () => {
 		expect(q).toHaveLength(MAX_QUEUED_IMPULSES);
 	});
 
-	it('ambient waves are deterministic per seed and spread in direction', () => {
-		expect(ambientWaves(5)).toEqual(ambientWaves(5));
-		expect(ambientWaves(5)).not.toEqual(ambientWaves(6));
-		const w = ambientWaves(1);
-		const angles = w.map((x) => Math.atan2(x.ky, x.kx));
-		for (let i = 0; i < angles.length; i++)
-			for (let j = i + 1; j < angles.length; j++) {
-				const d = Math.abs(Math.sin(angles[i] - angles[j]));
-				// No two trains parallel: crests cross into a net.
-				expect(d).toBeGreaterThan(0.05);
-			}
-		for (const x of w) expect(x.amplitude).toBeLessThan(1);
+	it('the overlay intensity is the regularized area ratio, not a contour stroke', () => {
+		expect(shaderSrc).toContain('float I = min(inversesqrt(J * J + eps * eps), 12.0);');
+		expect(shaderSrc).not.toContain('fwidth(detO)');
+		// No ambient trains: at rest the field is flat, so the overlay is blank.
+		expect(shaderSrc).not.toContain('uWaves');
+		// The lit region's boundary is C¹ (no hinge), and the edge fade comes from the
+		// analytic rect, not the SDF (whose straight sides are missing for a full-canvas rect).
+		expect(shaderSrc).toContain('x = x * x / (x + 0.25);');
+		expect(shaderSrc).toContain('float fade = ramp.x * ramp.y * ramp.z * ramp.w;');
 	});
 });

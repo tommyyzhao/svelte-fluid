@@ -265,30 +265,3 @@ export function admitRipple(gate: RippleGate, now: number, x: number, y: number)
 	gate.y = y;
 	return true;
 }
-
-/** One ambient wave train: wave vector (rad/CSS px), amplitude (CSS px), phase speed (CSS px/s), phase. */
-export interface AmbientWave {
-	kx: number;
-	ky: number;
-	amplitude: number;
-	speed: number;
-	phase: number;
-}
-
-/** Seeded ambient trains for the caustics overlay: spread directions, 60–130 px wavelengths. */
-export function ambientWaves(seed: number, count = 6): AmbientWave[] {
-	let a = seed >>> 0;
-	const rng = () => {
-		a = (a + 0x6d2b79f5) | 0;
-		let t = Math.imul(a ^ (a >>> 15), 1 | a);
-		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-	};
-	const base = rng() * Math.PI;
-	return Array.from({ length: count }, (_, i) => {
-		// Golden-angle spacing: no two trains run parallel, so crests cross into a net.
-		const angle = base + i * 2.399963 + (rng() - 0.5) * 0.3;
-		const k = (2 * Math.PI) / (60 + 70 * rng());
-		return { kx: k * Math.cos(angle), ky: k * Math.sin(angle), amplitude: 0.5 + 0.25 * rng(), speed: 10 + 8 * rng(), phase: 2 * Math.PI * rng() };
-	});
-}

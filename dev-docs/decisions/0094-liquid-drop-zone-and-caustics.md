@@ -64,3 +64,79 @@ segmented behaviour are unchanged.
   at DPR 2 (native) and 0.58 ms at DPR 3. Budget 2 ms.
 - The drop zone cannot see a drag's files before the drop (browser privacy),
   so the climb responds to any file drag. `accept` filtering happens on drop.
+
+## Amendment: LiquidCaustics (2026-10-02)
+
+**Decision.**
+
+- **Component.** `LiquidCaustics` wraps arbitrary content. A canvas sits
+  above it with `pointer-events: none` and `aria-hidden`. The `OVERLAY`
+  composite draws only a premultiplied tint × k. Dark tones use
+  `mix-blend-mode: screen` (cool white, adds light, never darkens); light
+  tones use source-over toward a deep blue. Content is never resampled: text
+  is not displaced or blurred, stays selectable, and zoom works. In forced
+  colors the canvas is hidden. Props: `tone`, `intensity`.
+- **Interaction only.** Caustics appear only as ripples from where you act:
+  - pointer moves, throttled (≥ 60 ms and ≥ 10 px of travel) into the
+    bounded 16-impulse queue at strength 1.1;
+  - `focusin`, one ripple at strength 1.5 at the focused descendant.
+
+  Each ripple spreads and fades over about 1 s (wave decay 0.45 s). At rest
+  the field is flat, so the overlay is blank. Once the settle frame has
+  cleared it, the engine renders nothing and schedules nothing until the
+  next ripple.
+- **Intensity is the area ratio**, I = 1/|J| with J = det(I + s·H) and
+  s = 400 px × (1 − 1/n). H is the smoothed wave Hessian (ADR-0091). The fold
+  singularity is regularized by the sun's angular size: I = 1/√(J² + ε²) with
+  ε = |∇J| × 0.6 CSS px, never less than one pixel's change of J. So lines
+  taper and dim where J crosses zero steeply, and widen and brighten where it
+  crosses slowly and at cusps. No contour threshold and no fixed-width
+  stroke.
+  - Dark tone: x = max(I − 1, 0), eased as x²/(x + 0.25) so the edge of the
+    lit region is C¹, then tone-mapped as x/(x + 2.5).
+  - Light tone: light cannot be added to near-white, so only the defocused
+    trough of a ripple shades, 0.7 · smoothstep(0, 0.8, 1 − I).
+- **Edge fade** is a smooth product of four `smoothstep` ramps (28 px) on the
+  analytic rect.
+- **Contrast.** The 4.5:1 proof and clamp above are unchanged, and the shader
+  clamps the dithered k to the cap. A browser readback over the text through
+  a pointer ripple asserts the drawn k never exceeds the cap.
+- **Reduced motion.** No ripples and nothing drawn: the content alone.
+  The effect carries no information, so the unchanged content is the still
+  final state.
+- **Fallback.** Without WebGL2, offscreen or in forced colors: plain
+  content.
+- **Rejected.**
+  - Ambient waves (seeded wave trains always running). They read as
+    smudges or dirty glass, worst on the light tone. They broke "zero frames
+    while idle". And they exposed the hard-edge bug below.
+  - Thresholding the fold contour into a fixed-width line. It read as a
+    uniform "doodle" net.
+  - Mapping the capped ratio straight to strength. It read as grey blobs.
+
+**The straight cut-offs, and the guard.** The rejected build showed hard
+vertical and horizontal edges. Cause: the edge fade came from the JFA SDF,
+but the overlay's rect is the whole canvas, so its coverage mask has no edge
+along the straight sides. The SDF measured distance to the corner arcs only.
+Light therefore ran at full strength into the canvas's straight edges, a cut
+measured at 35–53 luma codes (dark) and 13–19 (light). A secondary hinge,
+max(I − 1, 0) with a slope jump at I = 1, turned a straight crest into a
+crease. The fade now uses the rect, and the knee is C¹.
+
+A browser test runs ripples at the centre, near an edge and in a corner on
+both tones. It requires that no row or column boundary carries a straight
+step above 2 codes: the median one-pixel spike along 120 CSS px, or the step
+from page to canvas edge. Dither alone is ±1 LSB, so a 2-code straight line
+is the smallest that can stand out of it. The shipped build measures 0 at
+the canvas edge and ≤ 0.29 inside. A self-check confirms the metric passes
+a soft ring and catches a 3-code cut.
+
+**Consequences.**
+
+- GPU per instance, 720×400 busy (impulse every frame): 0.33 ms at DPR 2
+  (native), 0.40 ms at DPR 3. Budget 2 ms. Zero at rest.
+- The overlay is feedback, not decoration. A page that never receives a
+  pointer move or focus shows no caustics.
+- The proof covers body text in the block's own `color` over its measured
+  background. Descendants with other colours or backgrounds are not measured;
+  a gradient background warns once (ADR-0086).

@@ -27,7 +27,6 @@ import {
 	REFRACT_GAIN,
 	REFRACTION_CAP_CSS,
 	WAVE,
-	ambientWaves,
 	assignDefined,
 	climbSpread,
 	dampingFor,
@@ -37,7 +36,7 @@ import {
 	substepsPerFrame,
 	surfaceGrid
 } from './wave.js';
-import type { AmbientWave, Impulse } from './wave.js';
+import type { Impulse } from './wave.js';
 
 /** DOM CSS px rectangle relative to the canvas's top-left. */
 export interface SurfaceRect {
@@ -115,10 +114,10 @@ const RING = { gap: 2, width: 2 };
 const MAX_LABELS = 8;
 /** Drop-zone climb follows its target with this time constant, s. */
 const CLIMB_TAU = 0.12;
-/** Overlay: light-path depth (caustic focus), glint gain, edge fade (CSS px), grid cell floor (CSS px). */
-const OVERLAY = { depth: 750, glint: 1, fade: 28, cell: 2 };
+/** Overlay: light-path depth (CSS px), sun blur (CSS px), edge fade (CSS px), grid cell floor (CSS px). */
+const OVERLAY = { depth: 400, blur: 0.6, fade: 28, cell: 2 };
 /** Pointer and focus ripples on the overlay are gentle; a drop is a full press. */
-export const OVERLAY_RIPPLE = 0.4;
+export const OVERLAY_RIPPLE = 1.1;
 
 function rectEqual(a: SurfaceRect | null, b: SurfaceRect | null): boolean {
 	return a === b || (!!a && !!b && a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height);
@@ -158,8 +157,12 @@ export class SurfaceEngine implements GlHostInstance {
 	private frames = 0;
 	/** Eased drop-zone climb strength and the pointer it leans toward (GL CSS px). */
 	private climb = { at: 0, x: 0, y: 0 };
-	private waves: AmbientWave[] = [];
-	private time = 0;
+	/**
+	 * Caustics overlay: the field is flat and the canvas blank. A flat overlay draws
+	 * nothing, so nothing is rendered or scheduled until the next ripple. False until
+	 * the first frame has cleared the canvas.
+	 */
+	private quiet = false;
 	/** The smoothed curvature no longer matches the field. */
 	private curvStale = true;
 
@@ -167,7 +170,6 @@ export class SurfaceEngine implements GlHostInstance {
 		this.canvas = options.canvas;
 		this.config = assignDefined({ ...DEFAULTS }, options.config ?? {});
 		this.rng = mulberry32(options.seed ?? 1);
-		this.waves = ambientWaves(options.seed ?? 1);
 		// The opening lens is placed, not sloshed in.
 		this.retargetLens(this.config.lens, true);
 		this.host = acquireGlHost(this);
@@ -232,6 +234,7 @@ export class SurfaceEngine implements GlHostInstance {
 			sigma: Math.max(PRESS.sigma * (0.9 + 0.2 * this.rng()), 2 * this.cell)
 		});
 		if (!queued) return;
+		this.quiet = false;
 		this.energy += PRESS.amplitude * s;
 		this.invalidate();
 	}
@@ -247,8 +250,9 @@ export class SurfaceEngine implements GlHostInstance {
 	 * the last. Resolves once the frame is on the visible canvas.
 	 */
 	advance(frames = 1): Promise<void> {
-		for (let i = 0; i < frames; i++) this.tick(1 / 60);
-		return this.host && !this.lost ? this.host.present(this) : Promise.resolve();
+		let drawn = false;
+		for (let i = 0; i < frames; i++) drawn = this.tick(1 / 60) || drawn;
+		return drawn && this.host && !this.lost ? this.host.present(this) : Promise.resolve();
 	}
 
 	/** @internal Bench hook: draw `frames` busy frames (with impulses) without presenting. */
@@ -256,6 +260,7 @@ export class SurfaceEngine implements GlHostInstance {
 		for (let i = 0; i < frames; i++) {
 			this.impulses.push({ x: this.cssWidth * this.rng(), y: this.cssHeight * this.rng(), amplitude: 0.2, sigma: 4 });
 			this.energy = 1;
+			this.quiet = false;
 			this.tick(1 / 60);
 		}
 	}
@@ -369,12 +374,7 @@ export class SurfaceEngine implements GlHostInstance {
 	}
 
 	private animating(): boolean {
-		return this.energy > SETTLED_PX || this.impulses.length > 0 || this.lensMoving() || this.climbMoving() || this.ambient();
-	}
-
-	/** Ambient trains run while visible; under reduced motion they freeze at their seeded phase. */
-	private ambient(): boolean {
-		return this.config.control === 'overlay' && !this.config.reducedMotion;
+		return this.energy > SETTLED_PX || this.impulses.length > 0 || this.lensMoving() || this.climbMoving();
 	}
 
 	/** Proximity 0–1 of the dragged pointer to the zone (1 on or inside it). */
@@ -411,8 +411,7 @@ export class SurfaceEngine implements GlHostInstance {
 	private onFrame = (now: number): void => {
 		const dt = this.last ? Math.min((now - this.last) / 1000, 1 / 20) : 1 / 60;
 		this.last = now;
-		this.tick(dt);
-		if (this.host && !this.lost) void this.host.present(this);
+		if (this.tick(dt) && this.host && !this.lost) void this.host.present(this);
 		this.schedule();
 	};
 
@@ -428,10 +427,15 @@ export class SurfaceEngine implements GlHostInstance {
 		this.stepPending = true;
 	}
 
-	/** One frame: lens spring, fixed 60 Hz physics, optics. */
-	private tick(dt: number, render = true): void {
+	/** One frame: lens spring, fixed 60 Hz physics, optics. Returns whether it drew. */
+	private tick(dt: number, render = true): boolean {
 		const host = this.host;
-		if (!host || this.lost || this.failed) return;
+		if (!host || this.lost || this.failed) return false;
+		if (this.config.control === 'overlay' && this.quiet) {
+			// Flat field, blank canvas (the settle frame cleared it): no GL work at all.
+			this.dirty = false;
+			return false;
+		}
 		let substeps = 0;
 		const n = substepsPerFrame(SPEED, this.cell);
 		if (!this.config.reducedMotion) {
@@ -451,9 +455,8 @@ export class SurfaceEngine implements GlHostInstance {
 			}
 		}
 		this.easeClimb(dt);
-		if (this.ambient()) this.time += dt;
 		// No field dynamics left (the settle frame already wrote the equilibrium): the
-		// climb and ambient trains are analytic in the composite, so skip the step.
+		// climb is analytic in the composite, so skip the step.
 		if (this.energy === 0 && !this.impulses.length && !this.lensMoving()) substeps = 0;
 		if (this.stepPending || this.impulses.length) substeps = Math.max(substeps, 1);
 		const still = this.config.reducedMotion || this.relaxPending;
@@ -467,6 +470,9 @@ export class SurfaceEngine implements GlHostInstance {
 		this.stepPending = false;
 		this.dirty = false;
 		this.frames++;
+		// The settle frame (or the first) has drawn the flat field: blank from here on.
+		if (this.config.control === 'overlay' && this.energy === 0 && !this.impulses.length) this.quiet = true;
+		return true;
 	}
 
 	private easeClimb(dt: number): void {
@@ -643,14 +649,8 @@ export class SurfaceEngine implements GlHostInstance {
 		gl.uniform4f(u.uClimb, this.climb.x, this.climb.y, this.climb.at, climbSpread(rect.width, rect.height));
 		gl.uniform3f(u.uClimbShape, CLIMB.rise, CLIMB.length, CLIMB.floor);
 		const strength = overlay ? Math.min(1, Math.max(0, this.config.overlay)) : 0;
-		gl.uniform4f(u.uOverlay, OVERLAY.depth, strength, OVERLAY.glint, OVERLAY.fade);
+		gl.uniform4f(u.uOverlay, OVERLAY.depth, strength, OVERLAY.blur, OVERLAY.fade);
 		gl.uniform3fv(u.uOverlayTint, CAUSTICS[this.config.tone].tint);
-		const waves = overlay ? this.waves : [];
-		gl.uniform1i(u.uWaveCount, waves.length);
-		if (waves.length) {
-			const k = (w: AmbientWave) => Math.hypot(w.kx, w.ky);
-			gl.uniform4fv(u['uWaves[0]'], waves.flatMap((w) => [w.kx, w.ky, w.amplitude, w.phase - k(w) * w.speed * this.time]));
-		}
 		host.blit(target);
 	}
 }
