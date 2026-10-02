@@ -174,6 +174,8 @@ config from the upstream project.
 | `paused` | `boolean` | `false` | hot |
 | `backColor` | `{r,g,b}` | `{0,0,0}` | 0–255 RGB; hot |
 | `transparent` | `boolean` | `false` | hot |
+| `minContrast` | `number` | `0` | WCAG contrast floor vs `contrastColor`; hot (on/off recompiles shader) |
+| `contrastColor` | `{r,g,b} \| null` | `null` | 0–255 reference colour; no reference, no correction; hot |
 | `bloom` | `boolean` | `true` | **shader recompile** |
 | `bloomIterations` | `number` | `8` | **rebuilds FBOs** |
 | `bloomResolution` | `number` | `256` | **rebuilds FBOs** |

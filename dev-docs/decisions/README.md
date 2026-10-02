@@ -73,6 +73,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0087](./0087-optical-depth-lighting.md)                       | Lighting from optical-depth dye geometry; opt-in specular/refraction  | Accepted |
 | [0088](./0088-shared-gl-host-for-model-engines.md)             | Shared WebGL2 host for model engines                                  | Accepted |
 | [0089](./0089-native-dpr-default.md)                           | Native DPR by default, measured by synced throughput                  | Accepted |
+| [0086](./0086-text-contrast-floor.md)                          | Opt-in WCAG contrast floor in the display pass; FluidText default 3:1 | Accepted |
 
 ## How to add a new ADR
 

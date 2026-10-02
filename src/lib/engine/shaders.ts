@@ -285,6 +285,20 @@ export const displayShaderSource = `
     uniform vec3 uFlowScalarColor;
 #endif
 
+#ifdef CONTRAST_FLOOR
+    // x: +1 lifts failing pixels up to luminance y, -1 drops them down to y; z/w: luminance
+    // <= z or >= w already passes against the reference and is left alone (ADR-0086).
+    uniform vec4 uContrastFloor;
+    // Reference colour (0-1): the page behind a transparent canvas, or the text colour.
+    uniform vec3 uContrastRef;
+#endif
+
+#ifdef CONTRAST_OUTLINE
+    // Halo colour (display sRGB, clears minContrast vs the page) and its width in target pixels (ADR-0086).
+    uniform vec3 uOutlineColor;
+    uniform float uOutlinePx;
+#endif
+
 #ifdef REVEAL
     uniform float uRevealSensitivity;
     uniform float uRevealCurve;
@@ -315,6 +329,25 @@ ${DYE_GEOMETRY_GLSL}
 #endif
 #ifdef REFRACTION
     uniform float uRefraction;
+#endif
+
+#ifdef CONTRAST_FLOOR
+    // Linear-light WCAG luminance correction; mirrored by applyContrastFloor in contrast.ts.
+    vec3 contrastLift (vec3 lin) {
+        float l = dot(lin, vec3(0.2126, 0.7152, 0.0722));
+        if (l <= uContrastFloor.z || l >= uContrastFloor.w) return lin;
+        if (uContrastFloor.x > 0.0) {
+            float peak = max(lin.r, max(lin.g, lin.b));
+            // Keep hue by brightening first; mix toward white for the rest.
+            float k = (l > 1e-5 && peak > 1e-5) ? min(uContrastFloor.y / l, 1.0 / peak) : 1.0;
+            lin *= k;
+            l = dot(lin, vec3(0.2126, 0.7152, 0.0722));
+            lin += (vec3(1.0) - lin) * clamp((uContrastFloor.y - l) / max(1.0 - l, 1e-4), 0.0, 1.0);
+        } else {
+            lin *= uContrastFloor.y / l;
+        }
+        return lin;
+    }
 #endif
 
     // ±1 LSB blue noise (64² LDR_LLL1 texture), shared by every output mode.
@@ -470,6 +503,9 @@ ${DYE_GEOMETRY_GLSL}
         }
     #endif
 
+    #ifdef CONTRAST_OUTLINE
+        float contMask = cmask;
+    #endif
     #ifdef OBSTRUCTION_MASK
         // Interior obstructions cut out of the visible region too, so the
         // display matches the masked physics. Orthogonal to CONTAINER_MASK.
@@ -647,6 +683,59 @@ ${DYE_GEOMETRY_GLSL}
             outAlpha = 1.0;
         }
         outAlpha = min(outAlpha, 1.0);
+    #ifdef CONTRAST_FLOOR
+        {
+            // Pixels whose composite over the reference misses minContrast become
+            // opaque corrected colour; passing pixels are untouched (ADR-0086).
+            vec3 comp = clamp(display + uContrastRef * (1.0 - outAlpha), 0.0, 1.0);
+            vec3 fixedComp = linearToSrgb(contrastLift(srgbToLinear(comp)));
+            vec3 delta = abs(fixedComp - comp);
+            float need = smoothstep(0.0, 0.02, max(delta.r, max(delta.g, delta.b)));
+            // Transparent canvas: undyed pixels are the page itself (nothing to correct),
+            // and the fix covers only where the dye is shown. Opaque canvas: the
+            // composite already includes the back colour.
+            float cover = uCompositeBackground > 0.5 ? 1.0 : cmask;
+            if (uCompositeBackground < 0.5) need *= smoothstep(0.0, 0.02, outAlpha);
+            display = mix(display, fixedComp * cover, need);
+            outAlpha = mix(outAlpha, cover, need);
+        }
+    #endif
+    #ifdef CONTRAST_OUTLINE
+        {
+            // Thin halo just outside the glyph boundary (ADR-0086). The band follows the
+            // container boundary only: contMask is the pre-obstruction coverage, so glyph
+            // interiors and obstruction holes inside them get no halo and stay bit-identical.
+            float band;
+        #ifdef MASK_SDF
+            band = pixelCoverage(texture2D(uContainerSdf, vec2(vUv.x, 1.0 - vUv.y)).r * uSdfScale.x - uOutlinePx);
+        #else
+            // WebGL1 / no jump flood: widest coverage among taps on two rings around the pixel.
+            band = 0.0;
+            vec2 mUv = vec2(vUv.x, 1.0 - vUv.y);
+            for (int i = 0; i < 8; i++) {
+                float ang = 0.78539816 * float(i);
+                vec2 dir = vec2(cos(ang), sin(ang)) * texelSize;
+                band = max(band, texture2D(uContainerMaskTexture, mUv + dir * uOutlinePx).r);
+                band = max(band, texture2D(uContainerMaskTexture, mUv + dir * (0.5 * uOutlinePx)).r);
+            }
+        #endif
+        #ifndef MASK_SDF
+            // The bilinear mask ramp is wider than a pixel; steepen it so the core is solid.
+            band = clamp(band * 2.0, 0.0, 1.0);
+        #endif
+            float halo = band * (1.0 - contMask);
+        #ifdef OBSTRUCTION_MASK
+            halo *= 1.0 - obCoverage;
+        #endif
+            if (uCompositeBackground > 0.5) {
+                // Opaque canvas: replace the composite, never add to it.
+                display = mix(display, uOutlineColor, halo);
+            } else {
+                display += uOutlineColor * halo;
+                outAlpha = min(outAlpha + halo, 1.0);
+            }
+        }
+    #endif
     #ifdef OBSTRUCTION_FILL
         display = mix(display, uObstructionFillColor, obCoverage);
         outAlpha = max(outAlpha, obCoverage);

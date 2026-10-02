@@ -119,8 +119,14 @@ ${SCRIPT_CLOSE}
 		<tr><td><code>excludePad</code></td><td><code>number</code></td><td><code>4</code></td><td>Padding around exclusion zones in CSS px.</td></tr>
 		<tr><td><code>class</code></td><td><code>string</code></td><td>—</td><td>Class on wrapper div.</td></tr>
 		<tr><td><code>style</code></td><td><code>string</code></td><td>—</td><td>Inline style on wrapper div.</td></tr>
+		<tr><td><code>minContrast</code></td><td><code>number</code></td><td><code>0</code> (off)</td><td>WCAG ratio the fluid must keep against <code>contrastColor</code>. Use <code>4.5</code> for body text.</td></tr>
+		<tr><td><code>contrastColor</code></td><td><code>RGB</code></td><td>content's computed text colour</td><td>Text colour (0–255) to guarantee contrast against. Set it when text colours vary or change at runtime.</td></tr>
 	</tbody>
 </table>
+
+<div class="callout">
+	<strong>Contrast:</strong> Off by default so the 0.8.0 look is unchanged. With <code>minContrast={'{'}4.5{'}'}</code> every fluid pixel is lightened or darkened (hue kept) until it meets AA against the text colour; pixels that already pass are untouched. Glass presets are excluded because reflections composite after this pass. The text colour is read once on mount; pass <code>contrastColor</code> for theme switches or per-section colours (ADR-0086).
+</div>
 
 <p>Defaults to <code>pointerTarget='window'</code> and <code>splatOnHover=true</code>. All <a href="{base}/docs/configuration">FluidConfig</a> props are accepted.</p>
 
@@ -161,6 +167,10 @@ ${SCRIPT_CLOSE}
 
 <div class="callout">
 	<strong>Note:</strong> The canvas sits on top of children for alpha compositing. Interactive elements (links, buttons) inside the slot will not receive pointer events.
+</div>
+
+<div class="callout">
+	<strong>Contrast:</strong> Revealed content is your own DOM, so its contrast is the text colour you choose against the page behind it. Fully revealed pixels (cover alpha under 0.1) keep at least 80% of that contrast (measured, 5th percentile). The cover and its fringe are a deliberate partial state and are <em>not</em> AA-guaranteed: do not put essential text only reachable through a half-revealed cover. Reduced-motion users get the content with no cover. Pick <code>coverColor</code> and text colour as a pair with at least 4.5:1 (ADR-0086).
 </div>
 
 <!-- ============================================================ -->
@@ -253,7 +263,13 @@ ${SCRIPT_CLOSE}
 		<tr><td><code>font</code></td><td><code>string</code></td><td><code>'bold 100px "Helvetica Neue", Arial, sans-serif'</code></td><td>CSS font string for mask rasterization.</td></tr>
 		<tr><td><code>maskResolution</code></td><td><code>number</code></td><td><code>512</code></td><td>Mask rasterization resolution.</td></tr>
 		<tr><td><code>height</code></td><td><code>number</code></td><td>—</td><td>Fixed height in CSS px.</td></tr>
+		<tr><td><code>minContrast</code></td><td><code>number</code></td><td><code>3</code></td><td>WCAG ratio the glyph outline keeps against the page. <code>3</code> = AA large text; use <code>4.5</code> for small text, <code>1</code> to disable (0.8.0 look).</td></tr>
+		<tr><td><code>contrastColor</code></td><td><code>RGB</code></td><td>nearest opaque ancestor background</td><td>Page colour (0–255) to guarantee contrast against. Measured once on mount; set it for gradients, images or theme switches.</td></tr>
 	</tbody>
 </table>
+
+<div class="callout">
+	<strong>Contrast:</strong> The canvas is transparent, so dim dye was indistinguishable from the page (measured 1.0:1 on every preset). A thin ~1.5 CSS px outline supplies at least 3:1 contrast against the page (WCAG halo technique); interior dye stays bit-identical. The existing jump-flood SDF keeps the band anti-aliased at native DPR. WebGL1 builds the same outline from the coverage mask. Page colour is measured on mount (any CSS colour syntax, alpha composited); consumer responsibility: page backgrounds that are images or gradients need an explicit <code>contrastColor</code> (ADR-0086).
+</div>
 
 <p>Also accepts <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, <code>fallback</code>, <code>poster</code>, <code>posterAlt</code>, <code>fallbackText</code>, <code>onReady</code>, <code>onError</code>, and all <a href="{base}/docs/configuration">FluidConfig</a> props. Defaults to <code>transparent=true</code>.</p>

@@ -1,4 +1,5 @@
-import { writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, defineProject } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
@@ -24,7 +25,8 @@ const browserProject = defineProject({
 			SVELTE_FLUID_SHOTS_DPRS: process.env.SVELTE_FLUID_SHOTS_DPRS ?? '',
 			SVELTE_FLUID_SHOTS_CSS: process.env.SVELTE_FLUID_SHOTS_CSS ?? '',
 			SVELTE_FLUID_SHOTS_EXTRA: process.env.SVELTE_FLUID_SHOTS_EXTRA ?? '',
-			SVELTE_FLUID_SHOTS_DYE: process.env.SVELTE_FLUID_SHOTS_DYE ?? ''
+			SVELTE_FLUID_SHOTS_DYE: process.env.SVELTE_FLUID_SHOTS_DYE ?? '',
+			SVELTE_FLUID_CONTRAST_TAG: process.env.SVELTE_FLUID_CONTRAST_TAG ?? ''
 		},
 		// The bench files each create real WebGL contexts and run sustained GPU
 		// workloads. Running files in parallel makes their wall-clock timing
@@ -52,7 +54,13 @@ const browserProject = defineProject({
 				// Built-in writeFile is confined to the project root; the GPU bench
 				// writes its JSON to an arbitrary path (default /tmp).
 				async writeBenchJson(_ctx: unknown, path: string, content: string) {
+					await mkdir(dirname(path), { recursive: true });
 					await writeFile(path, content);
+				},
+				// Evidence frames (PNG) from the contrast measurement; base64 payload.
+				async writeBenchBase64(_ctx: unknown, path: string, base64: string) {
+					await mkdir(dirname(path), { recursive: true });
+					await writeFile(path, Buffer.from(base64, 'base64'));
 				}
 			}
 		}

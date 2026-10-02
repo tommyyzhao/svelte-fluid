@@ -9,6 +9,11 @@
   outputs alpha < 1, browser compositing shows the content below.
 
   See ADR-0027 for design rationale.
+
+  Contrast: the children are plain DOM, so their contrast is the consumer's
+  text colour vs the page. Fully revealed pixels (cover alpha < 0.1) keep >= 80%
+  of it (measured). The cover/fringe is a deliberate partial state and is not
+  AA-guaranteed; reduced motion drops the cover entirely (ADR-0086).
 -->
 
 <script lang="ts" module>
