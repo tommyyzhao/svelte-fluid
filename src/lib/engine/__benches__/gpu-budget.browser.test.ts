@@ -20,6 +20,11 @@ const DPRS = [1, 2, 3] as const;
 const WARMUP = 40;
 const SAMPLES = 90;
 const OUT = import.meta.env.SVELTE_FLUID_GPU_BENCH_OUT || '/tmp/svelte-fluid-gpu-budget.json';
+// Comma-separated preset ids, e.g. 'Karman,(default)'; empty = all.
+const ONLY = String(import.meta.env.SVELTE_FLUID_GPU_BENCH_PRESETS || '')
+	.split(',')
+	.map((s) => s.trim())
+	.filter(Boolean);
 
 interface Row {
 	preset: string;
@@ -163,10 +168,11 @@ async function flush(): Promise<void> {
 }
 
 describe('GPU budget (measurement only)', () => {
-	const cases: [string, FluidConfig][] = [
+	const all: [string, FluidConfig][] = [
 		['(default)', {}],
 		...PRESETS.map((p): [string, FluidConfig] => [p.id, p.config as FluidConfig])
 	];
+	const cases = all.filter(([name]) => !ONLY.length || ONLY.includes(name));
 
 	for (const dpr of DPRS) {
 		it(`DPR ${dpr}`, { timeout: 600_000 }, async () => {
