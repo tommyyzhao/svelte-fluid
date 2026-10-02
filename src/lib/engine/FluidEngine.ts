@@ -3301,6 +3301,8 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	/** Mark the paused presentation as stale without changing RAF ownership. */
 	private invalidateRender(): void {
 		this.renderDirty = true;
+		// Async invalidations (distortion image load, mask raster) must reach a settled canvas.
+		this.wake();
 	}
 
 	/** Pending input may write GL state even while simulation stepping is paused. */
