@@ -24,7 +24,7 @@
 	import { notifyHost } from './engine/notify-host.js';
 	import { DISABLED_PERFORMANCE_STATE } from './engine/performance-governor.js';
 	import { randomSeed } from './engine/rng.js';
-	import { prefersReducedMotion } from './engine/reduced-motion.js';
+	import { prefersReducedMotion, watchReducedMotion } from './engine/reduced-motion.js';
 
 	let {
 		src,
@@ -87,9 +87,10 @@
 	// The initialDensityDissipation ramp burns them off over ~2 seconds.
 	const stableSeed = untrack(() => (seedProp ?? randomSeed()) >>> 0);
 	const stableInitialSplats = untrack(() => createDistortionPresetSplats(stableSeed, initialSplats));
-	// Reduced motion freezes the sim, so the chaos splats would stay on screen as a
+	// Reduced motion shows a still, so the chaos splats would stay on screen as a
 	// permanent warp; start undistorted instead.
-	const stableInitialSplatsFinal = prefersReducedMotion() ? undefined : stableInitialSplats;
+	let reduced = $state(prefersReducedMotion());
+	const stableInitialSplatsFinal = untrack(() => (reduced ? undefined : stableInitialSplats));
 
 	// ---- Pointer-driven distortion splats ----
 	// Pixel-based velocity to match Ascend-Fluid reference (see FluidReveal).
@@ -100,7 +101,7 @@
 
 	function handlePointerMove(e: PointerEvent) {
 		const rect = canvasWrapperEl?.getBoundingClientRect();
-		if (!rect || !inner || !fluidReady) return;
+		if (!rect || !inner || !fluidReady || reduced) return;
 		const x = (e.clientX - rect.left) / rect.width;
 		const y = 1.0 - (e.clientY - rect.top) / rect.height;
 		if (prevClientX < 0) {
@@ -169,8 +170,18 @@
 		}
 	}
 
+	// Live reduced-motion toggle (ADR 0085).
+	$effect(() => {
+		if (!autoDistort || reduced) return;
+		startAutoDistort();
+		return () => {
+			if (autoDistortRaf != null) cancelAnimationFrame(autoDistortRaf);
+			autoDistortRaf = undefined;
+		};
+	});
+
 	onMount(() => {
-		if (autoDistort && !prefersReducedMotion()) startAutoDistort();
+		const stopReduced = watchReducedMotion((v) => (reduced = v));
 
 		const wrapper = canvasWrapperEl;
 		if (wrapper) {
@@ -181,6 +192,7 @@
 		}
 
 		return () => {
+			stopReduced();
 			if (autoDistortRaf != null) cancelAnimationFrame(autoDistortRaf);
 			if (wrapper) {
 				wrapper.removeEventListener('pointermove', handlePointerMove);

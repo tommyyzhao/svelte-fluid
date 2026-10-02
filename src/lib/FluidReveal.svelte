@@ -157,9 +157,19 @@
 					: 1.0
 	);
 
+	// Live reduced-motion toggle: the cover is hidden and auto-reveal stops while
+	// reduced (ADR 0085); both come back when the preference clears.
+	$effect(() => {
+		if (!autoReveal || reduced) return;
+		startAutoReveal();
+		return () => {
+			if (autoRevealRaf != null) cancelAnimationFrame(autoRevealRaf);
+			autoRevealRaf = undefined;
+		};
+	});
+
 	onMount(() => {
 		const stopReduced = watchReducedMotion((v) => (reduced = v));
-		if (autoReveal && !reduced) startAutoReveal();
 
 		const wrapper = canvasWrapperEl;
 		if (wrapper) {

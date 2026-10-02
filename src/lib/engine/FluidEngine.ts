@@ -96,6 +96,7 @@ import { fitDrawingBufferSize } from './resolution.js';
 import { flowCanDriveSolver } from './solver-activity.js';
 import { blurMaskData } from './sticky-blur.js';
 import { subscribeFrame } from './frame-scheduler.js';
+import { notifyHost } from './notify-host.js';
 import { JumpFlood, supportsJumpFlood } from './jump-flood.js';
 import {
 	MAX_COALESCED_PER_EVENT,
@@ -616,7 +617,17 @@ export interface FluidEngineOptions {
 	 * keeps the readback harness able to A/B schemes without mutating scene config.
 	 */
 	advectionScheme?: 'semilagrangian' | 'maccormack';
+	/**
+	 * @internal Called once when the shared frame scheduler evicts this engine
+	 * because a frame threw. The engine stays stopped (no retry loop); the host
+	 * decides how to surface it (ADR 0085).
+	 */
+	onFrameError?: (error: unknown) => void;
 }
+
+/** Fixed opening-settle length for the reduced-motion still frame (ADR 0085). */
+const STILL_STEPS = 60;
+const STILL_DT = 1 / 60;
 
 export class FluidEngine implements FluidHandle {
 	// --- Owned references ---
@@ -767,6 +778,9 @@ export class FluidEngine implements FluidHandle {
 	private flowOutletBatchTo = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
 	private flowOutletBatchWidth = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
 	private autoStart = true;
+	/** True after settleStill() until resume(): no RAF; a context restore re-settles once. */
+	private still = false;
+	private readonly onFrameError?: (error: unknown) => void;
 	private benchmarkInstrument = false;
 	private benchmarkForceCpu = false;
 	private performanceEmaMs = 0;
@@ -809,6 +823,7 @@ export class FluidEngine implements FluidHandle {
 			this.config.ADVECTION_SCHEME = opts.advectionScheme;
 		}
 		this.autoStart = opts.autoStart ?? true;
+		this.onFrameError = opts.onFrameError;
 		this.deterministicMode = !this.autoStart;
 		this.normalizedBackColor = normalizeColor(this.config.BACK_COLOR);
 		this.rng = mulberry32(this.config.SEED);
@@ -930,9 +945,50 @@ export class FluidEngine implements FluidHandle {
 
 	/** Restart the animation loop after a pause. Idempotent. */
 	resume(): void {
-		if (this.rafRunning || this.disposed || this.contextLost) return;
+		if (this.rafRunning || this.disposed || this.contextLost || this.still) return;
 		this.lastUpdateTime = performance.now();
 		this.startRaf();
+	}
+
+	/**
+	 * @internal Reduced-motion still (ADR 0085): stop the loop, advance a fixed
+	 * number of steps at a fixed dt so the opening splats resolve into a finished
+	 * frame, render once, and stay stopped. resume() leaves the still.
+	 */
+	settleStill(): void {
+		if (this.disposed) return;
+		this.stopRaf();
+		this.resetPerformanceGovernor();
+		this.still = true;
+		if (this.contextLost) return;
+		this.settleSteps();
+		this.renderOnce();
+	}
+
+	/** @internal Leave the still and restart the loop. */
+	endStill(): void {
+		if (!this.still) return;
+		this.still = false;
+		this.resume();
+	}
+
+	/** Fixed-dt settle; the density ramp follows sim time, not the page clock. */
+	private settleSteps(): void {
+		const deterministic = this.deterministicMode;
+		this.deterministicMode = true;
+		this.simTime = 0;
+		try {
+			this.advance(STILL_STEPS, STILL_DT);
+		} finally {
+			this.deterministicMode = deterministic;
+		}
+	}
+
+	/** @internal Present a stale frame while the loop is stopped (resize/config change in a still). */
+	renderOnce(): void {
+		if (this.disposed || this.contextLost || this.rafRunning || !this.renderDirty) return;
+		this.renderCore(null);
+		this.renderDirty = false;
 	}
 
 	/**
@@ -978,6 +1034,7 @@ export class FluidEngine implements FluidHandle {
 			// must follow both same-aspect scale changes and aspect changes.
 			this.initGlassFramebuffer();
 		});
+		if (this.still) this.renderOnce();
 		return true;
 	}
 
@@ -1234,6 +1291,7 @@ export class FluidEngine implements FluidHandle {
 			}
 		}
 		if (configChanged) this.invalidateRender();
+		if (this.still) this.renderOnce();
 	}
 
 	/* ---------------------------------------------------------------------- */
@@ -1245,9 +1303,10 @@ export class FluidEngine implements FluidHandle {
 		this.rafRunning = true;
 		// The scheduler evicts a throwing tick so siblings keep rendering; mirror
 		// that here so isPaused reports the stopped loop and resume() can retry.
-		this.stopFrames = subscribeFrame(this.tick, () => {
+		this.stopFrames = subscribeFrame(this.tick, (error) => {
 			this.stopFrames = null;
 			this.rafRunning = false;
+			notifyHost(this.onFrameError, 'onFrameError', error);
 		});
 	}
 
@@ -1300,7 +1359,10 @@ export class FluidEngine implements FluidHandle {
 		if (this.config.POINTER_INPUT && !this.pointerListenersInstalled) {
 			this.installPointerListeners();
 		}
-		if (this.autoStart) {
+		if (this.still) {
+			this.settleSteps();
+			this.renderOnce();
+		} else if (this.autoStart) {
 			this.startRaf();
 		}
 	}
