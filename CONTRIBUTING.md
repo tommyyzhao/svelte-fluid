@@ -184,6 +184,12 @@ pushes to `main`. The job installs the Playwright-managed Chromium revision from
 the lockfile, caches its browser binary, and uploads the Vitest log plus any
 Playwright result directories when it fails. It requires no repository secrets.
 
+If your change can move pixels (shaders, display pass, lighting, surfaces,
+presets), also follow the before/after procedure in
+[`dev-docs/learnings/visual-review.md`](dev-docs/learnings/visual-review.md):
+shots at DPR 2 and 3, a side-by-side, a pixel MAE table for presets and
+contact sheets for components.
+
 If you touched anything in `src/lib/engine/`, also do these manual
 checks in a real browser:
 

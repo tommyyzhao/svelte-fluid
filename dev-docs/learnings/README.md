@@ -10,6 +10,7 @@ doesn't have to rediscover them.
 | [`typescript-and-svelte5.md`](./typescript-and-svelte5.md) | TS node16 module resolution, Svelte 5 runes pitfalls |
 | [`webgl-refactoring.md`](./webgl-refactoring.md) | Refactoring a global-state WebGL script into a class |
 | [`verification.md`](./verification.md) | What worked for catching bugs early |
+| [`visual-review.md`](./visual-review.md) | Required before/after procedure for rendering changes (DPR 2/3 shots, MAE table, contact sheets) |
 | [`presets.md`](./presets.md) | Timing race in post-mount splat injection, HDR splat colors |
 | [`webgl-memory.md`](./webgl-memory.md) | WebGL context limits, disposal, memory management |
 | [`async-texture-errors.md`](./async-texture-errors.md) | Async-loaded WebGL textures must handle `onerror` |
