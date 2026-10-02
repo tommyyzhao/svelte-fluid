@@ -4317,7 +4317,9 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 				const octx = this.getObstructionCtx();
 				const rejected = (xx: number, yy: number) =>
 					(shape ? containerMask(shape, xx, yy, aspect, mc) < 0.5 : false) || obstructionMask(xx, yy, octx) >= 0.5;
-				let attempts = 10;
+				// Opening splats run once, so afford more tries than per-frame auto
+				// splats: 10 dropped the only splat for ~4% of seeds in small shapes.
+				let attempts = 64;
 				while (attempts > 0 && rejected(x, y)) {
 					x = this.rng();
 					y = this.rng();
