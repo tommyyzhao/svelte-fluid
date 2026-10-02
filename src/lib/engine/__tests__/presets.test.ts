@@ -213,14 +213,11 @@ describe('flow-sensitive obstruction demos', () => {
 });
 
 describe('Toroidal rename', () => {
-	it('index.ts exports Toroidal and keeps the deprecated ToroidalTempest alias', async () => {
+	it('index.ts exports Toroidal and no longer exports the ToroidalTempest alias', async () => {
 		const index = (await import('../../index.js?raw' as string)) as unknown as { default: string };
 		expect(index.default).toContain(
 			"export { default as Toroidal, type ToroidalProps } from './presets/Toroidal.svelte';"
 		);
-		expect(index.default).toContain('@deprecated');
-		expect(index.default).toContain(
-			"export { default as ToroidalTempest, type ToroidalProps as ToroidalTempestProps } from './presets/Toroidal.svelte';"
-		);
+		expect(index.default).not.toContain('ToroidalTempest');
 	});
 });

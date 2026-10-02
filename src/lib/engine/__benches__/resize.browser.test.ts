@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FluidEngine } from '../FluidEngine.js';
-import type { DoubleFBO, FBO, FluidConfig } from '../types.js';
+import type { FluidConfig } from '../types.js';
+import type { DoubleFBO, FBO } from '../internal-types.js';
 import { fieldEnergy, hasNonFinite } from './reducers.js';
 
 const CONTEXT_ATTRIBUTES: WebGLContextAttributes = {

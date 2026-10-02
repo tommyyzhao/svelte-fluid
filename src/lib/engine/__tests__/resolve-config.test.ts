@@ -10,7 +10,8 @@
  */
 import { describe, it, expect } from 'vitest';
 import { resolveConfig, DEFAULTS } from '../FluidEngine.js';
-import type { FluidConfig, ResolvedConfig } from '../types.js';
+import type { FluidConfig } from '../types.js';
+import type { ResolvedConfig } from '../internal-types.js';
 
 describe('resolveConfig', () => {
 	it('returns defaults when input is undefined', () => {

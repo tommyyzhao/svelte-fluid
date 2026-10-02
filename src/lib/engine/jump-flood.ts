@@ -11,7 +11,7 @@
 
 import { compileShader, createDoubleFBO, createFBO, disposeDoubleFBO, disposeFBO, makeProgram } from './gl-utils.js';
 import type { BlitFn, GL, ProgramWrap } from './gl-utils.js';
-import type { DoubleFBO, ExtInfo, FBO } from './types.js';
+import type { DoubleFBO, ExtInfo, FBO } from './internal-types.js';
 import { jumpFloodDistanceShader, jumpFloodSeedShader, jumpFloodStepShader } from './shaders.js';
 
 /** Seed sentinel: any |x| above SEED_EMPTY / 2 means "no seed yet". */
