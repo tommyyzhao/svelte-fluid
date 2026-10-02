@@ -1,3 +1,4 @@
+import { writeFile } from 'node:fs/promises';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, defineProject } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
@@ -7,7 +8,13 @@ const browserProject = defineProject({
 	test: {
 		name: 'browser',
 		include: ['src/**/*.browser.test.ts'],
-		exclude: ['dist/**', '.svelte-kit/**'],
+		exclude: [
+			'dist/**',
+			'.svelte-kit/**',
+			// Slow measurement-only bench: opt in with SVELTE_FLUID_GPU_BENCH=1.
+			...(process.env.SVELTE_FLUID_GPU_BENCH ? [] : ['**/gpu-budget.browser.test.ts'])
+		],
+		env: { SVELTE_FLUID_GPU_BENCH_OUT: process.env.SVELTE_FLUID_GPU_BENCH_OUT ?? '' },
 		// The bench files each create real WebGL contexts and run sustained GPU
 		// workloads. Running files in parallel makes their wall-clock timing
 		// depend on shared GPU contention and can trip otherwise healthy test
@@ -29,7 +36,14 @@ const browserProject = defineProject({
 					? { launchOptions: { executablePath: process.env.VITEST_CHROME_PATH } }
 					: {}
 			),
-			instances: [{ browser: 'chromium' }]
+			instances: [{ browser: 'chromium' }],
+			commands: {
+				// Built-in writeFile is confined to the project root; the GPU bench
+				// writes its JSON to an arbitrary path (default /tmp).
+				async writeBenchJson(_ctx: unknown, path: string, content: string) {
+					await writeFile(path, content);
+				}
+			}
 		}
 	}
 });
