@@ -77,6 +77,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0090](./0090-pigment-model.md)                                | Pigment model: 12-band Kubelka–Munk, wet-to-deposited transfer, paper height | Accepted |
 | [0091](./0091-height-field-surface.md)                         | Height-field surface: damped wave stencil, Fresnel and studio environment, area-ratio caustics | Accepted |
 | [0092](./0092-liquid-controls.md)                              | Liquid controls: native elements, label contrast budget, still states | Accepted |
+| [0094](./0094-liquid-drop-zone-and-caustics.md)                | Liquid drop zone: native file input, four-wall analytic climb          | Accepted |
 
 ## How to add a new ADR
 

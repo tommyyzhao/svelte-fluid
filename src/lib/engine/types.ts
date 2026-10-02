@@ -1563,3 +1563,31 @@ export interface LiquidSegmentedProps {
 	/** Class applied to the `<fieldset>`. */
 	class?: string;
 }
+
+/* ------------------------------------------------------------------------ */
+/*               Liquid drop zone (height-field surface, ADR-0094)           */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * A `<label>` around a visually hidden native `<input type="file">`: keyboard,
+ * touch and pen use the browser's picker. Other attributes go to the `<label>`.
+ */
+export interface LiquidDropZoneProps extends Omit<import('svelte/elements').HTMLLabelAttributes, 'children'> {
+	/** Native `accept` list; dropped files are filtered by it too. */
+	accept?: string;
+	/** Allow more than one file. Default `false` (a drop keeps the first match). */
+	multiple?: boolean;
+	/** Visible text; `children` replaces it. */
+	label?: string;
+	children?: Snippet;
+	/** Picked or dropped files (never empty). Exceptions are caught and logged. */
+	onfiles?: (files: File[]) => void;
+	/** Polite live-region text for a result. Default `'2 files selected'`. */
+	announce?: (files: File[]) => string;
+	/** Palette. Default `'auto'`. */
+	tone?: LiquidTone;
+	disabled?: boolean;
+	/** Native input `name`, for form submission. */
+	name?: string;
+}
+

@@ -101,10 +101,10 @@ export function waveEnergy(height: Float64Array, previous: Float64Array, width: 
 }
 
 /** Square grid covering a `width`×`height` CSS px canvas at ≥ SURFACE_CELL_CSS per cell. */
-export function surfaceGrid(width: number, height: number): { cols: number; rows: number; cell: number } {
+export function surfaceGrid(width: number, height: number, minCell = SURFACE_CELL_CSS): { cols: number; rows: number; cell: number } {
 	const w = Math.max(1, width);
 	const h = Math.max(1, height);
-	const cell = Math.max(SURFACE_CELL_CSS, Math.max(w, h) / SURFACE_MAX_CELLS);
+	const cell = Math.max(minCell, Math.max(w, h) / SURFACE_MAX_CELLS);
 	return { cols: Math.max(2, Math.ceil(w / cell)), rows: Math.max(2, Math.ceil(h / cell)), cell };
 }
 
@@ -181,4 +181,114 @@ export function assignDefined<T extends object>(target: T, patch: Partial<T>): T
 		if (value !== undefined) target[key] = value as T[keyof T];
 	}
 	return target;
+}
+
+/**
+ * Signed distance (CSS px, negative inside) from (x, y) to a rounded rect, the
+ * CPU twin of the shader's sdRoundRect. The drop zone's proximity uses it: the
+ * JFA SDF only covers the canvas, the dragged pointer may be anywhere.
+ */
+export function roundRectDistance(x: number, y: number, rect: { x: number; y: number; width: number; height: number }, radius: number): number {
+	const bx = rect.width / 2;
+	const by = rect.height / 2;
+	const r = Math.max(0, Math.min(radius, bx, by));
+	const qx = Math.abs(x - rect.x - bx) - bx + r;
+	const qy = Math.abs(y - rect.y - by) - by + r;
+	return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r;
+}
+
+/** Drop-zone wall climb (ADR-0094), CSS px. Mirrored by the climb block in the composite shader. */
+export const CLIMB = { rise: 9, length: 18, floor: 0.15, reach: 220 };
+
+/**
+ * Drag proximity 0–1 from the pointer's distance (CSS px) outside the zone:
+ * 1 on or inside it, smoothstep to 0 at `CLIMB.reach`.
+ */
+export function dragProximity(distance: number): number {
+	if (!Number.isFinite(distance)) return 0;
+	const t = Math.min(1, Math.max(0, 1 - distance / CLIMB.reach));
+	return t * t * (3 - 2 * t);
+}
+
+/**
+ * Drop-zone climb height (CSS px) at (x, y) inside `rect` (CPU mirror of the
+ * composite's climb block; any consistent y axis). A sum over the four walls of
+ * `rise · strength · (floor + (1 − floor)·N) · exp(−d/length)`, where d is the
+ * distance to that wall and N a Gaussian (sigma `spread`) of the distance from
+ * the pointer to the wall point beside (x, y): the wall nearest the pointer
+ * climbs highest.
+ */
+export function climbHeight(
+	x: number,
+	y: number,
+	rect: { x: number; y: number; width: number; height: number },
+	pointer: { x: number; y: number },
+	strength: number,
+	spread: number
+): number {
+	const s2 = spread * spread;
+	const walls: [number, number, number][] = [
+		// distance to wall, along-wall offset to the pointer, pointer offset from the wall
+		[x - rect.x, y - pointer.y, pointer.x - rect.x],
+		[rect.x + rect.width - x, y - pointer.y, rect.x + rect.width - pointer.x],
+		[y - rect.y, x - pointer.x, pointer.y - rect.y],
+		[rect.y + rect.height - y, x - pointer.x, rect.y + rect.height - pointer.y]
+	];
+	let h = 0;
+	for (const [d, a, b] of walls) {
+		const n = Math.exp(-(a * a + b * b) / (2 * s2));
+		h += CLIMB.rise * strength * (CLIMB.floor + (1 - CLIMB.floor) * n) * Math.exp(-Math.max(d, 0) / CLIMB.length);
+	}
+	return h;
+}
+
+/** Along-wall reach of the climb for a `width`×`height` zone, CSS px. */
+export function climbSpread(width: number, height: number): number {
+	return Math.max(24, 0.3 * Math.min(width, height) + 0.12 * Math.max(width, height));
+}
+
+/** Pointer ripples: at most one per `interval` ms, and only after `distance` CSS px of travel. */
+export const RIPPLE_THROTTLE = { interval: 60, distance: 10 };
+
+export interface RippleGate {
+	t: number;
+	x: number;
+	y: number;
+}
+
+/** Whether a pointer ripple at (x, y) at `now` ms passes the throttle; updates `gate` when it does. */
+export function admitRipple(gate: RippleGate, now: number, x: number, y: number): boolean {
+	if (![now, x, y].every(Number.isFinite)) return false;
+	if (now - gate.t < RIPPLE_THROTTLE.interval || Math.hypot(x - gate.x, y - gate.y) < RIPPLE_THROTTLE.distance) return false;
+	gate.t = now;
+	gate.x = x;
+	gate.y = y;
+	return true;
+}
+
+/** One ambient wave train: wave vector (rad/CSS px), amplitude (CSS px), phase speed (CSS px/s), phase. */
+export interface AmbientWave {
+	kx: number;
+	ky: number;
+	amplitude: number;
+	speed: number;
+	phase: number;
+}
+
+/** Seeded ambient trains for the caustics overlay: spread directions, 60–130 px wavelengths. */
+export function ambientWaves(seed: number, count = 6): AmbientWave[] {
+	let a = seed >>> 0;
+	const rng = () => {
+		a = (a + 0x6d2b79f5) | 0;
+		let t = Math.imul(a ^ (a >>> 15), 1 | a);
+		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+	};
+	const base = rng() * Math.PI;
+	return Array.from({ length: count }, (_, i) => {
+		// Golden-angle spacing: no two trains run parallel, so crests cross into a net.
+		const angle = base + i * 2.399963 + (rng() - 0.5) * 0.3;
+		const k = (2 * Math.PI) / (60 + 70 * rng());
+		return { kx: k * Math.cos(angle), ky: k * Math.sin(angle), amplitude: 0.5 + 0.25 * rng(), speed: 10 + 8 * rng(), phase: 2 * Math.PI * rng() };
+	});
 }
