@@ -11,109 +11,11 @@
 -->
 
 <script lang="ts" module>
-	import type { Snippet } from 'svelte';
-	import type { HTMLCanvasAttributes } from 'svelte/elements';
-	import type { FluidConfig } from './engine/types.js';
-	import type { WebGLUnavailableReason } from './engine/gl-utils.js';
-
-	/** Public props for the `<Fluid />` component. */
-	export interface FluidProps
-		extends Omit<HTMLCanvasAttributes, 'width' | 'height'>,
-			FluidConfig {
-		/** Optional fixed width in CSS pixels. Omit to fill the parent container. */
-		width?: number;
-		/** Optional fixed height in CSS pixels. Omit to fill the parent container. */
-		height?: number;
-		/** Class applied to the wrapper container. */
-		class?: string;
-		/** Inline style applied to the wrapper container. */
-		style?: string;
-		/**
-		 * Maximum physical pixels per CSS pixel. Default `2`, limiting GPU
-		 * allocation on DPR 3+ displays without changing CSS-based quality tiers.
-		 * Pass `null` to use the device's native DPR. Construct-only.
-		 */
-		maxPixelRatio?: number | null;
-		/**
-		 * Defer engine creation until the container enters the viewport,
-		 * and tear it down when it leaves. Frees the WebGL context for
-		 * other instances on dense pages, at the cost of a shader-recompile
-		 * pause when scrolled back into view. Default `false` (immediate
-		 * instantiation) so the library default matches naive usage.
-		 *
-		 * Recommended `true` for any page with more than ~6 simultaneous
-		 * `<Fluid />` instances. Browsers cap WebGL contexts at 8–16 per
-		 * tab, so dense layouts hit the ceiling otherwise.
-		 *
-		 * The IntersectionObserver uses `rootMargin: 50px` so the engine
-		 * comes alive shortly before it would be visible, hiding the
-		 * recompile pause behind the user's scroll momentum while
-		 * minimizing simultaneous context creation.
-		 */
-		lazy?: boolean;
-		/**
-		 * Automatically pause the animation loop when the canvas is not
-		 * visible — either scrolled out of the viewport or on a hidden
-		 * browser tab. Resumes when visibility is restored. Default `true`.
-		 *
-		 * This is lighter than `lazy`: the WebGL context stays alive (no
-		 * recompile pause on resume) but the RAF loop stops, freeing CPU
-		 * and GPU cycles. When both `lazy` and `autoPause` are set, `lazy`
-		 * takes precedence for scroll visibility (full teardown), while
-		 * `autoPause` still handles tab-level visibility (Page Visibility API).
-		 */
-		autoPause?: boolean;
-		/**
-		 * Custom UI rendered when WebGL is permanently unavailable (no WebGL,
-		 * or no half-float texture support). Receives the typed failure
-		 * `reason`. Takes precedence over {@link poster}. Transient failures
-		 * (e.g. hitting the browser's live-context limit) do NOT trigger it —
-		 * those stay blank and retry on the next reconcile — EXCEPT in `reveal`
-		 * mode, where any failure (including transient) surfaces the fallback,
-		 * because the transparent reveal canvas would otherwise expose the
-		 * covered content. See ADR-0041.
-		 */
-		fallback?: Snippet<[{ reason: WebGLUnavailableReason }]>;
-		/**
-		 * Static image shown (object-fit: cover) when WebGL is permanently
-		 * unavailable and no {@link fallback} snippet is provided. A graceful
-		 * still of what the animation would have rendered.
-		 */
-		poster?: string;
-		/**
-		 * Alt text for the {@link poster} image. Defaults to `''` (decorative) —
-		 * the poster is a graceful still of a decorative visual, so it is not
-		 * announced unless you describe it. Set this when the poster conveys
-		 * meaning a screen-reader user needs.
-		 */
-		posterAlt?: string;
-		/**
-		 * Visually-hidden message for the default fallback, discoverable (not
-		 * announced) by assistive tech when WebGL is permanently unavailable. It
-		 * is rendered for the `backColor`-fill fallback AND alongside a
-		 * {@link poster} (since the dead canvas is `aria-hidden`), but NOT for a
-		 * custom {@link fallback} snippet (which owns its own semantics). Set `''`
-		 * to suppress for a purely decorative instance. Default: "This animation
-		 * requires WebGL, which isn't available in your browser."
-		 */
-		fallbackText?: string;
-		/**
-		 * Called after the engine is constructed and its first frame is
-		 * scheduled. Fires again whenever a `lazy` instance rebuilds its engine.
-		 * A throwing callback is caught and logged.
-		 */
-		onReady?: () => void;
-		/**
-		 * Called when engine construction fails — a {@link WebGLUnavailableError}
-		 * (check `.reason`) or any other initialization error such as a shader
-		 * compile failure. Also fires for transient failures that the component
-		 * retries. A throwing callback is caught and logged.
-		 */
-		onError?: (error: Error) => void;
-	}
+	export type { FluidProps } from './engine/types.js';
 </script>
 
 <script lang="ts">
+	import type { FluidProps, FluidHandle } from './engine/types.js';
 	import { onMount, untrack } from 'svelte';
 	import {
 		applyCssQualityPolicy,
@@ -122,11 +24,10 @@
 		type PolicyField
 	} from './engine/resolution.js';
 	import { DEFAULTS, FluidEngine } from './engine/FluidEngine.js';
-	import { WebGLUnavailableError } from './engine/gl-utils.js';
+	import { WebGLUnavailableError, type WebGLUnavailableReason } from './engine/gl-utils.js';
 	import { notifyHost } from './engine/notify-host.js';
 	import { DISABLED_PERFORMANCE_STATE } from './engine/performance-governor.js';
 	import { randomSeed } from './engine/rng.js';
-	import type { FluidHandle } from './engine/types.js';
 
 	let {
 		width,

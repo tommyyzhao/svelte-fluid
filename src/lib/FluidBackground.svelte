@@ -16,40 +16,14 @@
 -->
 
 <script lang="ts" module>
-	import type { Snippet } from 'svelte';
-	import type { FluidConfig, FluidHandle } from './engine/types.js';
-	import type { FluidProps } from './Fluid.svelte';
-
-	export interface FluidBackgroundProps
-		extends FluidConfig,
-			Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
-		/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
-		maxPixelRatio?: number | null;
-		/**
-		 * CSS selector for elements within the content slot to exclude
-		 * from the fluid. Matched elements become "holes" — the fluid
-		 * pools around them. Queried on scroll, resize, and DOM mutation.
-		 * Example: `".card, .sidebar"`
-		 */
-		exclude?: string;
-		/** Border radius of exclusion zones in CSS px. Default 16. */
-		excludeRadius?: number;
-		/** Padding around exclusion zones in CSS px. Default 4. */
-		excludePad?: number;
-		/** Class applied to the outer wrapper div. */
-		class?: string;
-		/** Inline style applied to the outer wrapper div. */
-		style?: string;
-		/** Page content rendered above the fluid canvas. */
-		children?: Snippet;
-	}
+	export type { FluidBackgroundProps } from './engine/types.js';
 </script>
 
 <script lang="ts">
+	import type { FluidBackgroundProps, FluidHandle, ContainerShape } from './engine/types.js';
 	import { onMount } from 'svelte';
 	import Fluid from './Fluid.svelte';
 	import { DISABLED_PERFORMANCE_STATE } from './engine/performance-governor.js';
-	import type { ContainerShape } from './engine/types.js';
 
 	let {
 		exclude: excludeSelector,

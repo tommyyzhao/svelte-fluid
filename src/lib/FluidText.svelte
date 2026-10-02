@@ -8,40 +8,13 @@
 -->
 
 <script lang="ts" module>
-	import type { FluidConfig, FluidHandle } from './engine/types.js';
-	import type { FluidProps } from './Fluid.svelte';
-
-	export interface FluidTextProps
-		extends FluidConfig,
-			Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
-		/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
-		maxPixelRatio?: number | null;
-		/** The text to render as fluid-filled letterforms. */
-		text: string;
-		/**
-		 * CSS font string for the mask rasterization.
-		 * Default `'bold 100px "Helvetica Neue", Arial, sans-serif'`.
-		 */
-		font?: string;
-		/** Mask rasterization resolution. Default 512. */
-		maskResolution?: number;
-		/** Optional fixed height in CSS pixels. */
-		height?: number;
-		/** Defer engine creation until visible. Default false. */
-		lazy?: boolean;
-		/** Auto-pause when not visible. Default true. */
-		autoPause?: boolean;
-		/** Class applied to the outer wrapper. */
-		class?: string;
-		/** Inline style applied to the outer wrapper. */
-		style?: string;
-	}
+	export type { FluidTextProps } from './engine/types.js';
 </script>
 
 <script lang="ts">
+	import type { FluidTextProps, FluidHandle, ContainerShape } from './engine/types.js';
 	import Fluid from './Fluid.svelte';
 	import { DISABLED_PERFORMANCE_STATE } from './engine/performance-governor.js';
-	import type { ContainerShape } from './engine/types.js';
 
 	let {
 		text,

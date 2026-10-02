@@ -12,98 +12,11 @@
 -->
 
 <script lang="ts" module>
-	import type { Snippet } from 'svelte';
-	import type { FluidConfig, FluidHandle, RGB } from './engine/types.js';
-	import type { FluidProps } from './Fluid.svelte';
-
-	export interface FluidRevealProps
-		extends FluidConfig,
-			Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
-		/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
-		maxPixelRatio?: number | null;
-		/**
-		 * How easily areas reveal. Multiplier on dye intensity before
-		 * the power curve. Higher = less dye needed. Default 0.1.
-		 */
-		sensitivity?: number;
-		/**
-		 * Power exponent for the reveal alpha curve. Higher values create
-		 * a crisper edge (more binary), lower values create a softer
-		 * gradient with wider fringes. Default 0.5.
-		 */
-		curve?: number;
-		/**
-		 * Solid color of the reveal cover layer (visible before scratching).
-		 * RGB components in 0–1 linear range. Default white `{ r: 1, g: 1, b: 1 }`.
-		 */
-		coverColor?: RGB;
-		/**
-		 * Accent color of the reveal fringe (visible at scratch edges).
-		 * RGB components in 0–1 linear range. Default blue `{ r: 0.2, g: 0.35, b: 0.7 }`.
-		 */
-		accentColor?: RGB;
-		/**
-		 * Fringe color at the outer edge of the reveal boundary, between
-		 * cover and accent. Creates a two-tone fringe. RGB components in
-		 * 0–1 linear range. Default soft blue `{ r: 0.6, g: 0.7, b: 0.85 }`.
-		 */
-		fringeColor?: RGB;
-		/**
-		 * Whether revealed areas gradually fade back to covered.
-		 * `true` → multiplicative dissipation 0.995 (slow fade-back).
-		 * `false` → multiplicative dissipation 1.0 (permanent reveal).
-		 * Overridden by `fadeSpeed` if both are provided.
-		 * Default `true`.
-		 */
-		fadeBack?: boolean;
-		/**
-		 * Explicit density dissipation value (multiplicative).
-		 * 1.0 = permanent reveal, 0.99 = slow fade-back, 0.9 = fast fade.
-		 * Takes precedence over `fadeBack` when provided.
-		 */
-		fadeSpeed?: number;
-		/**
-		 * Enable automatic Lissajous curve animation before user interaction.
-		 * The animation injects dye along a smooth path, gradually revealing
-		 * content. Stops on the first pointer/touch event. Default `false`.
-		 */
-		autoReveal?: boolean;
-		/**
-		 * Speed multiplier for the auto-reveal animation. Higher values
-		 * make the Lissajous curve trace faster. Default `1.0`.
-		 */
-		autoRevealSpeed?: number;
-		/** Optional fixed width in CSS pixels. Omit to fill the parent container. */
-		width?: number;
-		/** Optional fixed height in CSS pixels. Omit to fill the parent container. */
-		height?: number;
-		/**
-		 * Defer engine creation until the container enters the viewport.
-		 * Recommended on pages with many instances. Default `false`.
-		 */
-		lazy?: boolean;
-		/**
-		 * Automatically pause when not visible. Default `true`.
-		 */
-		autoPause?: boolean;
-		/** Class applied to the outer wrapper div. */
-		class?: string;
-		/** Inline style applied to the outer wrapper div. */
-		style?: string;
-		/**
-		 * Content rendered behind the fluid mask, revealed by interaction.
-		 *
-		 * **Note:** The canvas sits on top of the content for alpha compositing.
-		 * Interactive elements (links, buttons) inside children will not receive
-		 * pointer events because the canvas layer intercepts them. Use FluidReveal
-		 * for visual/decorative content. For interactive content, set
-		 * `pointerInput={false}` and drive splats manually via `handle.splat()`.
-		 */
-		children?: Snippet;
-	}
+	export type { FluidRevealProps } from './engine/types.js';
 </script>
 
 <script lang="ts">
+	import type { FluidRevealProps, FluidHandle, RGB } from './engine/types.js';
 	import { onMount } from 'svelte';
 	import Fluid from './Fluid.svelte';
 	import { DISABLED_PERFORMANCE_STATE } from './engine/performance-governor.js';
