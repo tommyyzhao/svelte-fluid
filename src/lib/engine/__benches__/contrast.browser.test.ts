@@ -11,7 +11,7 @@ import { commands } from 'vitest/browser';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import FluidText from '../../FluidText.svelte';
 import { cssColorToRgb, measurePageColor, resetCssColorWarnings } from '../css-color.js';
-import { FluidEngine } from '../FluidEngine.js';
+import { FluidEngine, _setContextTier } from '../FluidEngine.js';
 import { PRESETS } from '../../presets/registry.js';
 import { contrastRatio, percentile, relativeLuminance } from '../contrast.js';
 import { generateColor, mulberry32 } from '../rng.js';
@@ -36,6 +36,10 @@ const WHITE: RGB = { r: 255, g: 255, b: 255 };
 
 /** Force the no-jump-flood path: the engine falls back to a WebGL1 context. */
 function noWebGL2(canvas: HTMLCanvasElement): void {
+	// A shared-tier engine would ignore the canvas patch; engines choose their
+	// tier synchronously in the constructor, so reset the hook once that has run.
+	_setContextTier(false);
+	queueMicrotask(() => _setContextTier('auto'));
 	const get = canvas.getContext.bind(canvas) as (type: string, ...a: unknown[]) => unknown;
 	(canvas as unknown as { getContext: unknown }).getContext = (t: string, ...a: unknown[]) => (t === 'webgl2' ? null : get(t, ...a));
 }

@@ -77,7 +77,8 @@ import {
 	makeProgram,
 	resizeDoubleFBO,
 	scaleByPixelRatio,
-	wrap
+	wrap,
+	WebGLUnavailableError
 } from './gl-utils.js';
 import { type DitheringTexture, createDitheringTexture } from './dithering.js';
 import {
@@ -97,6 +98,8 @@ import { flowCanDriveSolver } from './solver-activity.js';
 import { blurMaskData } from './sticky-blur.js';
 import { subscribeFrame } from './frame-scheduler.js';
 import { notifyHost } from './notify-host.js';
+import { acquireGlHost, releaseGlHost } from './gl-host.js';
+import type { GlHost, GlHostInstance } from './gl-host.js';
 import { JumpFlood, supportsJumpFlood } from './jump-flood.js';
 import {
 	MAX_COALESCED_PER_EVENT,
@@ -132,6 +135,39 @@ import {
 } from './engine-profiler.js';
 import { OUTLINE_CSS_PX, contrastFloorFor, outlineColorFor } from './contrast.js';
 import { adaptiveVorticityWeight, vorticityNormalizationScale } from './vorticity-normalization.js';
+
+/**
+ * Context tiers (ADR-0093). A new WebGL2 engine gets its own context while
+ * fewer than OWN_CONTEXT_LIMIT engines hold one; later ones share the
+ * gl-host context. Own contexts present by a zero-copy swap, while shared
+ * ones pay a snapshot copy (+0.45 ms at DPR 2, +0.7 ms at DPR 3 per frame).
+ * 8 leaves headroom under Chrome's ~16-context cap for the model-engine host
+ * and third-party WebGL. This is a page-wide slot count, not GL state.
+ * ponytail: fixed K. Upgrade path: adapt K to measured headroom, or drop
+ * tiers if transferToImageBitmap is proven crash-free on current Chrome
+ * (ADR-0088), making shared present zero-copy.
+ */
+const OWN_CONTEXT_LIMIT = 8;
+let ownContextEngines = 0;
+/**
+ * A canvas keeps the tier of its first engine: once it is a 'bitmaprenderer'
+ * it can never take a WebGL context, and an own canvas already holds one. Only
+ * a canvas's first engine consults the count, so a rebuilt own canvas may push
+ * the count past OWN_CONTEXT_LIMIT; it holds that context anyway.
+ */
+const canvasTiers = new WeakMap<HTMLCanvasElement, 'own' | 'shared'>();
+type ContextTier = 'auto' | 'shared' | 'own';
+let forcedTier: ContextTier = 'auto';
+
+/** @internal Test hook: force the next engines' tier (`true` = shared, `false` = own). */
+export function _setContextTier(tier: ContextTier | boolean): void {
+	forcedTier = tier === true ? 'shared' : tier === false ? 'own' : tier;
+}
+
+/** @internal Live engines holding their own context (tests). */
+export function _ownContextEngines(): number {
+	return ownContextEngines;
+}
 
 const FLOW_SOURCE_BATCH_SIZE = 4;
 const FLOW_OUTLET_BATCH_SIZE = 4;
@@ -645,6 +681,20 @@ export class FluidEngine implements FluidHandle {
 	private canvas: HTMLCanvasElement;
 	private gl!: GL;
 	private ext!: ExtInfo;
+	/**
+	 * Shared WebGL2 host (ADR-0082/0093): one hidden context and program cache
+	 * for every instance. Null on the per-canvas path (WebGL1, a canvas that
+	 * already holds another context, or requireHardwareAcceleration).
+	 */
+	private host: GlHost | null = null;
+	private readonly hostInstance: GlHostInstance;
+	/** >0 while inside host.run(); nested entry points must not reset its state. */
+	private glDepth = 0;
+	/** Holds one of the OWN_CONTEXT_LIMIT own-context slots until dispose. */
+	private ownSlot = false;
+	private lastPresent: Promise<void> = Promise.resolve();
+	/** A shared-host transition failed: terminal for this instance only. */
+	private failed = false;
 	private config: ResolvedConfig;
 	private rng: Rng;
 	// Bucket-D input is retained as an immutable value snapshot solely so a
@@ -828,6 +878,11 @@ export class FluidEngine implements FluidHandle {
 
 	constructor(opts: FluidEngineOptions) {
 		this.canvas = opts.canvas;
+		this.hostInstance = {
+			canvas: this.canvas,
+			onContextLost: () => this.handleContextLost(),
+			onContextRestored: () => this.handleContextRestored()
+		};
 		const seed = opts.config?.seed ?? randomSeed();
 		this.config = resolveConfig({ ...opts.config, seed }, DEFAULTS);
 		this.resetPerformanceGovernor();
@@ -846,55 +901,188 @@ export class FluidEngine implements FluidHandle {
 		this.normalizedBackColor = normalizeColor(this.config.BACK_COLOR);
 		this.rng = mulberry32(this.config.SEED);
 
-		// initContext() throws BEFORE a context is acquired (getContext → null),
-		// so it needs no cleanup. Everything after it runs against a live GL
-		// context and can still throw (e.g. a shader-compile failure, ADR-0008);
-		// if it does, release the context slot we already hold so a failed
-		// construction doesn't orphan a GL context, then re-throw.
+		// Any construction failure (a context that cannot be created, a
+		// shader-compile failure per ADR-0008, a GL error) releases the context
+		// slot or host registration already held, then re-throws.
 		const contextStart = this.benchmarkInstrument ? performance.now() : 0;
-		this.initContext();
-		this.initBenchmarkProfiler();
-		this.profiler?.recordLifecycle('contextCreate', performance.now() - contextStart);
 		try {
-			this.profileLifecycle('shaderCompile', () => this.compileShaders());
-			this.profileLifecycle('programLink', () => this.initBuffersAndPrograms());
-			this.profileLifecycle('initialAllocation', () => {
-				this.ditheringTexture = createDitheringTexture(this.gl, () => this.invalidateRender());
-				this.initDistortionFallback();
-				this.updateKeywords();
-				this.initDyeFramebuffers('fresh');
-				this.initSimulationFramebuffers('fresh');
-				this.initPostprocessFramebuffers('fresh');
-				this.initMaskTexture();
-				this.initStickyMaskTexture();
-				this.initObstructionMaskTexture();
-				this.initSolidMaskTexture();
-				this.initSolidDerivedTextures();
-				this.initPrescribedGridTextures();
-				this.initGlassFramebuffer();
-			});
-			if (this.config.DISTORTION_IMAGE_URL) {
-				this.loadDistortionImage(this.config.DISTORTION_IMAGE_URL);
+			this.acquireContext();
+			this.initBenchmarkProfiler();
+			this.profiler?.recordLifecycle('contextCreate', performance.now() - contextStart);
+			// A shared context lost before this instance could allocate: stay
+			// registered and build everything in the host's restore fan-out, like
+			// an own context lost after construction.
+			if (!this.contextLost) {
+				this.withGl(() => {
+					this.clearGlErrors();
+					this.profileLifecycle('shaderCompile', () => this.compileShaders());
+					this.profileLifecycle('programLink', () => this.initBuffersAndPrograms());
+					this.profileLifecycle('initialAllocation', () => this.allocateResources());
+					this.checkGlErrors('construction');
+					if (this.config.DISTORTION_IMAGE_URL) {
+						this.loadDistortionImage(this.config.DISTORTION_IMAGE_URL);
+					}
+					this.replayOpeningScene();
+				});
 			}
-			this.replayOpeningScene();
 
 			if (this.config.POINTER_INPUT) {
 				this.installPointerListeners();
 			}
 
-			this.canvas.addEventListener('webglcontextlost', this.onContextLost);
-			this.canvas.addEventListener('webglcontextrestored', this.onContextRestored);
+			// The shared host fans loss/restore out itself (hostInstance).
+			if (!this.host) {
+				this.canvas.addEventListener('webglcontextlost', this.onContextLost);
+				this.canvas.addEventListener('webglcontextrestored', this.onContextRestored);
+			}
 
-			if (this.autoStart) {
+			if (this.autoStart && !this.contextLost) {
 				this.startRaf();
 			}
 		} catch (err) {
 			// Unlike dispose() (which deliberately keeps the context for lazy
 			// rebuild — invariant #6), a construction failure has no instance to
-			// rebuild, so free the GPU context slot before propagating.
-			this.gl.getExtension('WEBGL_lose_context')?.loseContext();
+			// rebuild, so free the GPU context slot before propagating. A shared
+			// context is only released: siblings may still be using it.
+			if (this.host) {
+				releaseGlHost(this.hostInstance);
+				this.host = null;
+			} else {
+				this.releaseOwnSlot();
+				this.gl?.getExtension('WEBGL_lose_context')?.loseContext();
+			}
 			throw err;
 		}
+	}
+
+	/** Every GL resource group, freshly allocated (construction and restore). */
+	private allocateResources(): void {
+		this.ditheringTexture = createDitheringTexture(
+			this.gl,
+			() => this.invalidateRender(),
+			(upload) => void this.withGl(upload)
+		);
+		this.initDistortionFallback();
+		this.updateKeywords();
+		// After a context loss every group takes its fresh path: preserve/resize
+		// would retain dead same-sized handles.
+		this.initDyeFramebuffers('fresh');
+		this.initSimulationFramebuffers('fresh');
+		this.initPostprocessFramebuffers('fresh');
+		this.initMaskTexture();
+		this.initStickyMaskTexture();
+		this.initObstructionMaskTexture();
+		this.initSolidMaskTexture();
+		this.initSolidDerivedTextures();
+		this.initPrescribedGridTextures();
+		this.initGlassFramebuffer();
+	}
+
+	/**
+	 * Run GL work for this instance. On the shared host this goes through
+	 * host.run(), which sizes the hidden drawing buffer to this canvas and
+	 * resets framebuffer, viewport, blend, program and VAO, so nothing a sibling
+	 * left behind is observable. Nested calls run inline. Returns undefined
+	 * (without running) while the shared context is lost.
+	 */
+	private withGl<T>(fn: () => T): T | undefined {
+		// After dispose a shared engine has no host scope: never touch the context.
+		if (this.disposed) return undefined;
+		const host = this.host;
+		if (!host || this.glDepth > 0) return fn();
+		let out: T | undefined;
+		this.glDepth++;
+		try {
+			host.run(this.hostInstance, (gl) => {
+				// host.run() resets FBO/viewport/blend/program/VAO. createFBO() clears
+				// with the current clear colour, which a sibling (e.g. a pigment
+				// engine) may have changed: restore the per-canvas default.
+				gl.clearColor(0, 0, 0, 1);
+				out = fn();
+			});
+		} finally {
+			this.glDepth--;
+		}
+		return out;
+	}
+
+	/**
+	 * Per-instance GL error scope for resource transitions on the shared
+	 * context: drain errors first so a sibling's are never blamed on us.
+	 * Per-canvas engines keep their historical behaviour (no getError stall).
+	 */
+	private clearGlErrors(): void {
+		if (!this.host) return;
+		const gl = this.gl;
+		for (let i = 0; i < 16 && gl.getError() !== gl.NO_ERROR; i++);
+	}
+
+	private checkGlErrors(phase: string): void {
+		if (!this.host) return;
+		const gl = this.gl;
+		const error = gl.getError();
+		if (error === gl.NO_ERROR || error === gl.CONTEXT_LOST_WEBGL) return;
+		this.clearGlErrors();
+		throw new Error(`svelte-fluid: GL error 0x${error.toString(16)} during ${phase}`);
+	}
+
+	/**
+	 * A resource transition failed on the shared context. Only this instance
+	 * stops; the host decides how to surface it (Fluid shows the terminal
+	 * render-failed fallback and disposes us, freeing only our fields).
+	 */
+	private failTransition(error: unknown): void {
+		this.failed = true;
+		this.stopRaf();
+		notifyHost(this.onFrameError, 'onFrameError', error);
+	}
+
+	/** Run a resource transition; on the shared host a GL error fails only this instance. */
+	private transition(phase: string, fn: () => void): void {
+		if (!this.host) {
+			fn();
+			return;
+		}
+		try {
+			this.withGl(() => {
+				this.clearGlErrors();
+				fn();
+				this.checkGlErrors(phase);
+			});
+		} catch (error) {
+			this.failTransition(error);
+		}
+	}
+
+	/** Snapshot the shared drawing buffer to this canvas; call right after a screen render. */
+	private present(): void {
+		if (this.host) this.lastPresent = this.host.present(this.hostInstance);
+	}
+
+	/**
+	 * This instance's drawing-buffer size. On the shared host the hidden
+	 * surface is resized per instance inside run(), so the visible canvas
+	 * (sized by initContext/resize) is the source of truth, not whichever
+	 * instance last sized the shared buffer.
+	 */
+	private bufferWidth(): number {
+		// Inside run() the shared surface is sized to this canvas; its drawing
+		// buffer is the truth if the browser had to clamp it.
+		return this.host && this.glDepth === 0 ? Math.max(1, this.canvas.width) : this.gl.drawingBufferWidth;
+	}
+
+	private bufferHeight(): number {
+		return this.host && this.glDepth === 0 ? Math.max(1, this.canvas.height) : this.gl.drawingBufferHeight;
+	}
+
+	/** @internal True when this instance renders through the shared WebGL2 host. */
+	get sharedContext(): boolean {
+		return this.host !== null;
+	}
+
+	/** @internal Resolves once the latest shared-host frame is on the visible canvas. */
+	presented(): Promise<void> {
+		return this.lastPresent;
 	}
 
 	/**
@@ -939,18 +1127,21 @@ export class FluidEngine implements FluidHandle {
 	/* ---------------------------------------------------------------------- */
 
 	splat(x: number, y: number, dx: number, dy: number, color: RGB): void {
-		if (this.contextLost || !isFiniteSplat(x, y, dx, dy, color)) return;
+		if (this.disposed || this.contextLost || this.failed || !isFiniteSplat(x, y, dx, dy, color)) return;
 		// Conservatively activate even for a numerically zero splat. Proving a
 		// caller's future values are zero is not worth a false-idle solver.
 		this.solverMayContainContent = true;
 		const radius = this.config.SPLAT_RADIUS / 100.0;
-		this.splatTo(this.velocity, x, y, { r: dx, g: dy, b: 0 }, radius, 0);
-		this.dyeMayContainContent = true;
-		this.splatTo(this.dye, x, y, color, radius, this.config.STICKY ? this.config.STICKY_AMPLIFY : 0);
+		this.withGl(() => {
+			this.splatTo(this.velocity, x, y, { r: dx, g: dy, b: 0 }, radius, 0);
+			this.dyeMayContainContent = true;
+			this.splatTo(this.dye, x, y, color, radius, this.config.STICKY ? this.config.STICKY_AMPLIFY : 0);
+		});
 		this.invalidateRender();
 	}
 
 	randomSplats(count: number): void {
+		if (this.disposed) return;
 		this.pendingRandomSplats = enqueueRandomSplats(this.pendingRandomSplats, count);
 	}
 
@@ -963,7 +1154,7 @@ export class FluidEngine implements FluidHandle {
 
 	/** Restart the animation loop after a pause. Idempotent. */
 	resume(): void {
-		if (this.rafRunning || this.disposed || this.contextLost || this.still) return;
+		if (this.rafRunning || this.disposed || this.contextLost || this.still || this.failed) return;
 		this.lastUpdateTime = performance.now();
 		this.startRaf();
 	}
@@ -978,9 +1169,11 @@ export class FluidEngine implements FluidHandle {
 		this.stopRaf();
 		this.resetPerformanceGovernor();
 		this.still = true;
-		if (this.contextLost) return;
-		this.settleSteps();
-		this.renderOnce();
+		if (this.contextLost || this.failed) return;
+		this.withGl(() => {
+			this.settleSteps();
+			this.renderOnce();
+		});
 	}
 
 	/** @internal Leave the still and restart the loop. */
@@ -1004,7 +1197,7 @@ export class FluidEngine implements FluidHandle {
 
 	/** @internal Present a stale frame while the loop is stopped (resize/config change in a still). */
 	renderOnce(): void {
-		if (this.disposed || this.contextLost || this.rafRunning || !this.renderDirty) return;
+		if (this.disposed || this.contextLost || this.failed || this.rafRunning || !this.renderDirty) return;
 		this.renderCore(null);
 		this.renderDirty = false;
 	}
@@ -1036,7 +1229,7 @@ export class FluidEngine implements FluidHandle {
 		if (this.contextLost) return true;
 
 		const aspectChanged = oldWidth * nextHeight !== nextWidth * oldHeight;
-		this.profileLifecycle('resize', () => {
+		this.transition('resize', () => this.profileLifecycle('resize', () => {
 			if (aspectChanged) {
 				// getResolution() and every rasterized mask are aspect-driven. Preserve
 				// persistent fields while rebuilding transient and derived resources.
@@ -1051,7 +1244,7 @@ export class FluidEngine implements FluidHandle {
 			// Glass renders through an RGBA8 buffer at physical canvas size, so it
 			// must follow both same-aspect scale changes and aspect changes.
 			this.initGlassFramebuffer();
-		});
+		}));
 		if (this.still) this.renderOnce();
 		return true;
 	}
@@ -1064,21 +1257,23 @@ export class FluidEngine implements FluidHandle {
 	 * loop while keeping the timebase deterministic.
 	 */
 	advance(steps: number, dt: number): void {
-		if (this.disposed || this.contextLost) return;
+		if (this.disposed || this.contextLost || this.failed) return;
 		if (!Number.isFinite(steps) || steps <= 0 || dt <= 0) return;
 		const count = Math.max(0, Math.floor(steps));
-		for (let i = 0; i < count; i++) {
-			if (!this.profiler) {
-				this.step(dt);
-				continue;
+		this.withGl(() => {
+			for (let i = 0; i < count; i++) {
+				if (!this.profiler) {
+					this.step(dt);
+					continue;
+				}
+				this.profiler.beginFrame();
+				try {
+					this.profileGroup('solver', () => this.step(dt));
+				} finally {
+					this.profiler.endFrame();
+				}
 			}
-			this.profiler.beginFrame();
-			try {
-				this.profileGroup('solver', () => this.step(dt));
-			} finally {
-				this.profiler.endFrame();
-			}
-		}
+		});
 		this.invalidateRender();
 	}
 
@@ -1093,6 +1288,12 @@ export class FluidEngine implements FluidHandle {
 		if (this.disposed || this.contextLost) {
 			throw new Error('svelte-fluid: cannot readField while context is unavailable');
 		}
+		const result = this.withGl(() => this.readFieldInner(field, options));
+		if (!result) throw new Error('svelte-fluid: cannot readField while context is unavailable');
+		return result;
+	}
+
+	private readFieldInner(field: ReadField, options: ReadFieldOptions): ReadFieldResult {
 
 		let spec: { fbo: FBO; components: 1 | 2 | 3 | 4 };
 		if (field === 'velocity') spec = { fbo: this.velocity.read, components: 2 };
@@ -1222,7 +1423,7 @@ export class FluidEngine implements FluidHandle {
 	 *       path at construction/context initialization.
 	 */
 	setConfig(patch: FluidConfig): void {
-		if (this.disposed || this.contextLost) return;
+		if (this.disposed || this.contextLost || this.failed) return;
 		const next = resolveConfig(patch, this.config);
 		next.ADVECTION_SCHEME = this.config.ADVECTION_SCHEME;
 		const a = this.config;
@@ -1270,8 +1471,11 @@ export class FluidEngine implements FluidHandle {
 
 		// Programs and the display keyword variant are prepared before config is
 		// committed. A compile/link failure leaves the old config and resources live.
-		this.ensureProgramsFor(b);
-		const preparedDisplayVariant = this.displayMaterial.prepareKeywords(this.displayKeywords(b));
+		const preparedDisplayVariant = this.withGl(() => {
+			this.ensureProgramsFor(b);
+			return this.displayMaterial.prepareKeywords(this.displayKeywords(b));
+		});
+		if (preparedDisplayVariant === undefined) return;
 		this.config = b;
 		if (performanceResetChanged) this.resetPerformanceGovernor();
 		if (a.BACK_COLOR !== b.BACK_COLOR) {
@@ -1302,7 +1506,7 @@ export class FluidEngine implements FluidHandle {
 			shapeChanged || obstructionsChanged || openBoundaryChanged || flowChanged || glassChanged ||
 			kwChanged || revealChanged || distortionChanged || obstructionColorChanged ||
 			stickyChanged || stickyMaskChanged || distortionImageChanged;
-		if (resourceChanged) this.profileLifecycle('reconfigure', applyResourceChanges);
+		if (resourceChanged) this.transition('reconfigure', () => this.profileLifecycle('reconfigure', applyResourceChanges));
 		if (pointerInputChanged || pointerTargetChanged) {
 			// Reinstall listeners when input toggles or target changes
 			this.removePointerListeners();
@@ -1337,52 +1541,51 @@ export class FluidEngine implements FluidHandle {
 		this.rafRunning = false;
 	}
 
-	private handleContextLost(e: Event): void {
-		e.preventDefault(); // Signals to the browser we intend to restore
+	private handleContextLost(e?: Event): void {
+		e?.preventDefault(); // Signals to the browser we intend to restore
 		this.contextLost = true;
 		this.profiler?.rejectContextLost();
 		this.stopRaf();
 	}
 
 	private handleContextRestored(): void {
+		if (this.disposed || this.failed) return;
 		const restoreStart = this.benchmarkInstrument ? performance.now() : 0;
 		this.contextLost = false;
 		this.disposeBenchmarkProfiler();
 		this.invalidateLostContextHandles();
-		// Full reinit — the GL state is wiped on context loss.
-		this.initContext();
-		this.initBenchmarkProfiler();
-		this.profileLifecycle('shaderCompile', () => this.compileShaders());
-		this.profileLifecycle('programLink', () => this.initBuffersAndPrograms());
-		this.profileLifecycle('initialAllocation', () => {
-			this.ditheringTexture = createDitheringTexture(this.gl, () => this.invalidateRender());
-			this.initDistortionFallback();
-			this.updateKeywords();
-			// Context loss invalidates every WebGL object. Every group takes its fresh
-			// path here; preserve/resize would retain dead same-sized handles.
-			this.initDyeFramebuffers('fresh');
-			this.initSimulationFramebuffers('fresh');
-			this.initPostprocessFramebuffers('fresh');
-			this.initMaskTexture();
-			this.initStickyMaskTexture();
-			this.initObstructionMaskTexture();
-			this.initSolidMaskTexture();
-			this.initSolidDerivedTextures();
-			this.initPrescribedGridTextures();
-			this.initGlassFramebuffer();
-		});
-		// Re-load distortion image (GL texture was lost with context)
-		if (this.config.DISTORTION_IMAGE_URL) {
-			this.loadDistortionImage(this.config.DISTORTION_IMAGE_URL);
+		// Full reinit — the GL state is wiped on context loss. The shared host
+		// fans restore out to its instances one after another, so a failure here
+		// stops only this instance (ADR-0085 render-failed), never its siblings.
+		try {
+			this.initContext();
+			this.initBenchmarkProfiler();
+			this.withGl(() => {
+				this.clearGlErrors();
+				this.profileLifecycle('shaderCompile', () => this.compileShaders());
+				this.profileLifecycle('programLink', () => this.initBuffersAndPrograms());
+				this.profileLifecycle('initialAllocation', () => this.allocateResources());
+				this.checkGlErrors('context restore');
+				// Re-load distortion image (GL texture was lost with context)
+				if (this.config.DISTORTION_IMAGE_URL) {
+					this.loadDistortionImage(this.config.DISTORTION_IMAGE_URL);
+				}
+				this.replayOpeningScene();
+			});
+		} catch (error) {
+			if (!this.host) throw error;
+			this.failTransition(error);
+			return;
 		}
-		this.replayOpeningScene();
 		this.profiler?.recordLifecycle('contextRestore', performance.now() - restoreStart);
 		if (this.config.POINTER_INPUT && !this.pointerListenersInstalled) {
 			this.installPointerListeners();
 		}
 		if (this.still) {
-			this.settleSteps();
-			this.renderOnce();
+			this.withGl(() => {
+				this.settleSteps();
+				this.renderOnce();
+			});
 		} else if (this.autoStart) {
 			this.startRaf();
 		}
@@ -1396,7 +1599,8 @@ export class FluidEngine implements FluidHandle {
 	private invalidateLostContextHandles(): void {
 		this.resetOptionalProgramHandles();
 		this.blurVertexShader = undefined!;
-		this.ditheringTexture.dispose();
+		// Absent when the engine was built against an already-lost shared context.
+		this.ditheringTexture?.dispose();
 		this.distortionTexture = null;
 		this.distortionLoadedUrl = null;
 		this.distortionTextureW = 0;
@@ -1456,8 +1660,12 @@ export class FluidEngine implements FluidHandle {
 		this.stopRaf();
 		this.disposeBenchmarkProfiler();
 
-		this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
-		this.canvas.removeEventListener('webglcontextrestored', this.onContextRestored);
+		if (!this.host) {
+			this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
+			this.canvas.removeEventListener('webglcontextrestored', this.onContextRestored);
+		}
+		// A lazy scroll-out frees the slot; scroll-in re-acquires through the same rule.
+		this.releaseOwnSlot();
 
 		if (this.pointerListenersInstalled) {
 			this.removePointerListeners();
@@ -1589,8 +1797,17 @@ export class FluidEngine implements FluidHandle {
 			this.applyMaskProgram,
 			this.glassProgram
 		].filter((program): program is ProgramWrap => program != null);
+		this.displayMaterial?.dispose();
+		if (this.host) {
+			// Programs and the quad belong to the shared cache; this instance owned
+			// only the fields freed above. The last release frees the context slot
+			// (ADR-0088); never lose a context siblings still use.
+			this.resetOptionalProgramHandles();
+			releaseGlHost(this.hostInstance);
+			this.host = null;
+			return;
+		}
 		for (const p of programs) gl.deleteProgram(p.program);
-		this.displayMaterial.dispose();
 
 		// Shaders
 		gl.deleteShader(this.baseVertexShader);
@@ -1607,10 +1824,60 @@ export class FluidEngine implements FluidHandle {
 	/*                              Initialization                            */
 	/* ---------------------------------------------------------------------- */
 
+	/**
+	 * Choose the GL surface once per engine. WebGL2 instances share one hidden
+	 * context (ADR-0082 option A); WebGL1, a canvas already bound to another
+	 * context, and requireHardwareAcceleration (the shared context cannot carry
+	 * failIfMajorPerformanceCaveat per instance) keep a context per canvas.
+	 * Capability-driven: there is no public backend option.
+	 */
+	private acquireContext(): void {
+		const previous = canvasTiers.get(this.canvas);
+		const shared = previous
+			? previous === 'shared'
+			: forcedTier === 'shared' || (forcedTier === 'auto' && ownContextEngines >= OWN_CONTEXT_LIMIT);
+		if (shared && !this.config.REQUIRE_HARDWARE_ACCELERATION) {
+			try {
+				this.host = acquireGlHost(this.hostInstance);
+			} catch (error) {
+				// No WebGL2 (or no bitmaprenderer): fall through to the per-canvas path,
+				// which classifies the failure. Anything else is a real bug.
+				if (!(error instanceof WebGLUnavailableError) && !/bitmaprenderer/.test(String(error))) throw error;
+				this.host = null;
+			}
+		}
+		// Recorded at once: the canvas is now a bitmaprenderer for good.
+		if (this.host) canvasTiers.set(this.canvas, 'shared');
+		if (this.host?.gl.isContextLost()) {
+			this.gl = this.host.gl;
+			this.ext = this.host.ext;
+			this.contextLost = true;
+		} else {
+			this.initContext();
+		}
+		if (!this.host) {
+			canvasTiers.set(this.canvas, 'own');
+			this.ownSlot = true;
+			ownContextEngines++;
+		}
+	}
+
+	private releaseOwnSlot(): void {
+		if (!this.ownSlot) return;
+		this.ownSlot = false;
+		ownContextEngines--;
+	}
+
 	private initContext(): void {
-		const { gl, ext } = getWebGLContext(this.canvas, {
-			requireHardwareAcceleration: this.config.REQUIRE_HARDWARE_ACCELERATION
-		});
+		let gl: GL;
+		let ext: ExtInfo;
+		if (this.host) {
+			({ gl, ext } = this.host);
+		} else {
+			({ gl, ext } = getWebGLContext(this.canvas, {
+				requireHardwareAcceleration: this.config.REQUIRE_HARDWARE_ACCELERATION
+			}));
+		}
 		this.gl = gl;
 		this.ext = ext;
 		const viewport = gl.getParameter(gl.MAX_VIEWPORT_DIMS) as Int32Array | number[];
@@ -1620,8 +1887,10 @@ export class FluidEngine implements FluidHandle {
 			Number(viewport[0]),
 			Number(viewport[1])
 		);
-		this.canvas.width = fitted.width;
-		this.canvas.height = fitted.height;
+		// Assigning even an unchanged size clears a canvas (on the shared path it
+		// would blank the presented bitmap), so only write a real change.
+		if (this.canvas.width !== fitted.width) this.canvas.width = fitted.width;
+		if (this.canvas.height !== fitted.height) this.canvas.height = fitted.height;
 
 		// Mobile / non-linear-filtering fallback. Only relax features if the
 		// hardware can't support them — never override an explicit user opt-in.
@@ -1681,13 +1950,13 @@ export class FluidEngine implements FluidHandle {
 			renderer: String(debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)),
 			vendor: String(debug ? gl.getParameter(debug.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.VENDOR)),
 			devicePixelRatio: typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1,
-			effectivePixelRatioX: cssWidth > 0 ? gl.drawingBufferWidth / cssWidth : 0,
-			effectivePixelRatioY: cssHeight > 0 ? gl.drawingBufferHeight / cssHeight : 0,
+			effectivePixelRatioX: cssWidth > 0 ? this.bufferWidth() / cssWidth : 0,
+			effectivePixelRatioY: cssHeight > 0 ? this.bufferHeight() / cssHeight : 0,
 			cssWidth,
 			cssHeight,
-			drawingBufferWidth: gl.drawingBufferWidth,
-			drawingBufferHeight: gl.drawingBufferHeight,
-			canvasPixels: gl.drawingBufferWidth * gl.drawingBufferHeight,
+			drawingBufferWidth: this.bufferWidth(),
+			drawingBufferHeight: this.bufferHeight(),
+			canvasPixels: this.bufferWidth() * this.bufferHeight(),
 			simWidth: this.velocity.width,
 			simHeight: this.velocity.height,
 			dyeWidth: this.dye.width,
@@ -1742,7 +2011,7 @@ export class FluidEngine implements FluidHandle {
 			const scalar = Object.values(prescribed.scalars ?? {})[0];
 			byteTexture(this.prescribedScalarTexture, scalar?.width ?? 0, scalar?.height ?? 0, 4);
 		}
-		return { estimatedTextureBytes: bytes, canvasPixels: gl.drawingBufferWidth * gl.drawingBufferHeight };
+		return { estimatedTextureBytes: bytes, canvasPixels: this.bufferWidth() * this.bufferHeight() };
 	}
 
 	private compileShaders(): void {
@@ -1752,10 +2021,12 @@ export class FluidEngine implements FluidHandle {
 		this._fragmentShadersByName = {};
 		this.blurVertexShader = undefined!;
 		this.resetOptionalProgramHandles();
+		this.useMacCormack = this.config.ADVECTION_SCHEME === 'maccormack' && this.ext.supportLinearFiltering;
+		// Shared host: programs are compiled and linked once per page by its cache.
+		if (this.host) return;
 
 		const gl = this.gl;
 		this.baseVertexShader = compileShader(gl, gl.VERTEX_SHADER, S.baseVertexShader);
-		this.useMacCormack = this.config.ADVECTION_SCHEME === 'maccormack' && this.ext.supportLinearFiltering;
 
 		const selected = this.selectedOptionalPrograms(this.config);
 		if (selected.has('blur')) {
@@ -1772,13 +2043,21 @@ export class FluidEngine implements FluidHandle {
 
 	private initBuffersAndPrograms(): void {
 		const gl = this.gl;
+		const host = this.host;
 
-		this.vertexBuffer = gl.createBuffer()!;
-		this.indexBuffer = gl.createBuffer()!;
-		const rawBlit = createBlit(gl, this.vertexBuffer, this.indexBuffer);
+		let rawBlit: BlitFn;
+		if (host) {
+			// The host quad VAO is rebound on every blit, so attribute 0 never
+			// depends on what a sibling (or a model engine) left bound.
+			rawBlit = (target, clear) => host.blit(target, clear);
+		} else {
+			this.vertexBuffer = gl.createBuffer()!;
+			this.indexBuffer = gl.createBuffer()!;
+			rawBlit = createBlit(gl, this.vertexBuffer, this.indexBuffer);
+		}
 		if (this.profiler) {
 			this.blit = (target, clear) => {
-				const pixels = target ? target.width * target.height : gl.drawingBufferWidth * gl.drawingBufferHeight;
+				const pixels = target ? target.width * target.height : this.bufferWidth() * this.bufferHeight();
 				this.profiler?.recordDraw(pixels);
 				rawBlit(target, clear);
 			};
@@ -1793,7 +2072,9 @@ export class FluidEngine implements FluidHandle {
 
 		// On restore, Material still owns stale handles from the lost context.
 		if (this.displayMaterial) this.displayMaterial.dispose();
-		this.displayMaterial = new Material(gl, this.baseVertexShader, S.displayShaderSource);
+		this.displayMaterial = host
+			? new Material(gl, (keywords) => host.program('fluid:display', S.baseVertexShader, S.displayShaderSource, keywords), S.displayShaderSource)
+			: new Material(gl, this.baseVertexShader, S.displayShaderSource);
 
 		// 1x1 black fallback for sticky mask (prevents undefined sampler reads)
 		if (this.stickyFallbackTexture) gl.deleteTexture(this.stickyFallbackTexture);
@@ -1839,6 +2120,10 @@ export class FluidEngine implements FluidHandle {
 	private ensureProgramsFor(config: ResolvedConfig): void {
 		for (const name of this.selectedOptionalPrograms(config)) {
 			if (this.optionalProgram(name)) continue;
+			if (this.host) {
+				this.assignProgram(name, this.profileLifecycle('programLink', () => this.cachedProgram(name)));
+				continue;
+			}
 			let fragment!: WebGLShader;
 			this.profileLifecycle('shaderCompile', () => {
 				if (name === 'blur' && !this.blurVertexShader) {
@@ -1894,7 +2179,15 @@ export class FluidEngine implements FluidHandle {
 		}
 	}
 
+	/** Program from the shared host cache; keyed by engine pass name plus defines. */
+	private cachedProgram(name: EngineProgramName): ProgramWrap {
+		const vertex = name === 'blur' ? S.blurVertexShader : S.baseVertexShader;
+		const defines = name === 'advection' && !this.ext.supportLinearFiltering ? ['MANUAL_FILTERING'] : undefined;
+		return this.host!.program(`fluid:${name}`, vertex, this.fragmentSource(name), defines);
+	}
+
 	private linkCompiledProgram(name: EngineProgramName): ProgramWrap {
+		if (this.host) return this.cachedProgram(name);
 		const fragment = this._fragmentShadersByName[name];
 		if (!fragment) throw new Error(`svelte-fluid: selected shader ${name} was not compiled`);
 		const vertex = name === 'blur' ? this.blurVertexShader : this.baseVertexShader;
@@ -1969,7 +2262,7 @@ export class FluidEngine implements FluidHandle {
 	/** Owns persistent dye plus the optional dye-resolution scalar field. */
 	private initDyeFramebuffers(mode: ResourceInitMode): void {
 		const gl = this.gl;
-		const dyeRes = getResolution(gl, this.config.DYE_RESOLUTION);
+		const dyeRes = getResolution(gl, this.config.DYE_RESOLUTION, this.bufferWidth(), this.bufferHeight());
 		const texType = this.ext.halfFloatTexType;
 		const rgba = this.ext.formatRGBA;
 		const filtering = this.ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST;
@@ -1999,7 +2292,7 @@ export class FluidEngine implements FluidHandle {
 	private syncScalarFramebuffer(mode: ResourceInitMode): void {
 		const gl = this.gl;
 		if (this.needsScalarFBO()) {
-			const dyeRes = getResolution(gl, this.config.DYE_RESOLUTION);
+			const dyeRes = getResolution(gl, this.config.DYE_RESOLUTION, this.bufferWidth(), this.bufferHeight());
 			const texType = this.ext.halfFloatTexType;
 			const rgba = this.ext.formatRGBA;
 			const filtering = this.ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST;
@@ -2036,7 +2329,7 @@ export class FluidEngine implements FluidHandle {
 	/** Owns the persistent velocity field and all transient solver targets. */
 	private initSimulationFramebuffers(mode: ResourceInitMode): void {
 		const gl = this.gl;
-		const simRes = getResolution(gl, this.config.SIM_RESOLUTION);
+		const simRes = getResolution(gl, this.config.SIM_RESOLUTION, this.bufferWidth(), this.bufferHeight());
 		const texType = this.ext.halfFloatTexType;
 		const rg = this.ext.formatRG;
 		const r = this.ext.formatR;
@@ -2103,7 +2396,7 @@ export class FluidEngine implements FluidHandle {
 			this.bloomFramebuffers = [];
 			return;
 		}
-		const res = getResolution(gl, this.config.BLOOM_RESOLUTION);
+		const res = getResolution(gl, this.config.BLOOM_RESOLUTION, this.bufferWidth(), this.bufferHeight());
 		const texType = this.ext.halfFloatTexType;
 		const rgba = this.ext.formatRGBA;
 		const filtering = this.ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST;
@@ -2140,7 +2433,7 @@ export class FluidEngine implements FluidHandle {
 			this.sunraysTemp = null;
 			return;
 		}
-		const res = getResolution(gl, this.config.SUNRAYS_RESOLUTION);
+		const res = getResolution(gl, this.config.SUNRAYS_RESOLUTION, this.bufferWidth(), this.bufferHeight());
 		const texType = this.ext.halfFloatTexType;
 		const r = this.ext.formatR;
 		const filtering = this.ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST;
@@ -2176,8 +2469,8 @@ export class FluidEngine implements FluidHandle {
 		if (!this.config.GLASS || !this.config.CONTAINER_SHAPE) return;
 		this.sceneFBO = createFBO(
 			gl,
-			gl.drawingBufferWidth,
-			gl.drawingBufferHeight,
+			this.bufferWidth(),
+			this.bufferHeight(),
 			gl.RGBA,
 			gl.RGBA,
 			gl.UNSIGNED_BYTE,
@@ -2233,6 +2526,30 @@ export class FluidEngine implements FluidHandle {
 			if (this.config.DISTORTION_IMAGE_URL !== url) return;
 
 			try {
+				this.withGl(() => this.uploadDistortionImage(gl, image, url));
+			} catch {
+				// Context lost between check and GL calls — silently ignore
+			}
+		};
+		image.onerror = () => {
+			if (this.disposed || this.contextLost) return;
+			if (this.config.DISTORTION_IMAGE_URL !== url) return;
+			this.withGl(() => {
+				if (this.distortionTexture) {
+					gl.deleteTexture(this.distortionTexture);
+					this.distortionTexture = null;
+					this.distortionTextureW = 0;
+					this.distortionTextureH = 0;
+				}
+				this.distortionLoadedUrl = null;
+				this.initDistortionFallback();
+			});
+			this.invalidateRender();
+		};
+		image.src = url;
+	}
+
+	private uploadDistortionImage(gl: GL, image: HTMLImageElement, url: string): void {
 				if (!this.distortionTexture) {
 					this.distortionTexture = gl.createTexture()!;
 				}
@@ -2247,24 +2564,6 @@ export class FluidEngine implements FluidHandle {
 				this.distortionTextureW = image.naturalWidth;
 				this.distortionTextureH = image.naturalHeight;
 				this.invalidateRender();
-			} catch {
-				// Context lost between check and GL calls — silently ignore
-			}
-		};
-		image.onerror = () => {
-			if (this.disposed || this.contextLost) return;
-			if (this.config.DISTORTION_IMAGE_URL !== url) return;
-			if (this.distortionTexture) {
-				gl.deleteTexture(this.distortionTexture);
-				this.distortionTexture = null;
-				this.distortionTextureW = 0;
-				this.distortionTextureH = 0;
-			}
-			this.distortionLoadedUrl = null;
-			this.initDistortionFallback();
-			this.invalidateRender();
-		};
-		image.src = url;
 	}
 
 	/**
@@ -2296,7 +2595,7 @@ export class FluidEngine implements FluidHandle {
 		// Rasterize at the canvas aspect ratio so the mask maps 1:1 to UV
 		// space. This avoids the vertical squish that would occur if a
 		// square mask were stretched over a non-square canvas.
-		const aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
+		const aspect = this.bufferWidth() / this.bufferHeight();
 		const maskW = aspect >= 1 ? baseDim : Math.round(baseDim * aspect);
 		const maskH = aspect >= 1 ? Math.round(baseDim / aspect) : baseDim;
 
@@ -2380,7 +2679,13 @@ export class FluidEngine implements FluidHandle {
 	 */
 	private buildMaskSdf(source: WebGLTexture, w: number, h: number, previous: FBO | null): FBO | null {
 		if (!supportsJumpFlood(this.ext)) return null;
-		this.jumpFlood ??= new JumpFlood(this.gl, this.ext, this.baseVertexShader, this.blit);
+		const host = this.host;
+		this.jumpFlood ??= new JumpFlood(
+			this.gl,
+			this.ext,
+			host ? (name, fragment) => host.program(name, S.baseVertexShader, fragment) : this.baseVertexShader,
+			this.blit
+		);
 		return this.jumpFlood.build(source, w, h, previous);
 	}
 
@@ -2422,7 +2727,7 @@ export class FluidEngine implements FluidHandle {
 		// Use the same base resolution + aspect-corrected dims as the
 		// container mask so obstruction UVs line up with the canvas.
 		const baseDim = 512;
-		const aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
+		const aspect = this.bufferWidth() / this.bufferHeight();
 		const maskW = aspect >= 1 ? baseDim : Math.round(baseDim * aspect);
 		const maskH = aspect >= 1 ? Math.round(baseDim / aspect) : baseDim;
 
@@ -2540,7 +2845,7 @@ export class FluidEngine implements FluidHandle {
 		}
 
 		const baseDim = Math.max(shape?.type === 'svgPath' ? (shape.maskResolution ?? 512) : 512, hasObstruction ? 512 : 0);
-		const aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
+		const aspect = this.bufferWidth() / this.bufferHeight();
 		const maskW = aspect >= 1 ? baseDim : Math.round(baseDim * aspect);
 		const maskH = aspect >= 1 ? Math.round(baseDim / aspect) : baseDim;
 		const containerCtx = this.getMaskCtx();
@@ -2759,7 +3064,7 @@ export class FluidEngine implements FluidHandle {
 		const [vx, vy, vw, vh] = mask.viewBox ?? [0, 0, 100, 100];
 		const fillRule = mask.fillRule ?? 'nonzero';
 
-		const aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
+		const aspect = this.bufferWidth() / this.bufferHeight();
 		const maskW = aspect >= 1 ? baseDim : Math.round(baseDim * aspect);
 		const maskH = aspect >= 1 ? Math.round(baseDim / aspect) : baseDim;
 
@@ -2857,11 +3162,11 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		// Obstruction uniforms apply on every path (analytical, svgPath, and
 		// the no-container case). Bound on unit 2 — free in this pass.
 		gl.uniform1f(this.applyMaskProgram.uniforms.uHasObstruction, hasObstruction ? 1.0 : 0.0);
-		if (hasObstruction) {
-			gl.activeTexture(gl.TEXTURE2);
-			gl.bindTexture(gl.TEXTURE_2D, this.obstructionMaskTexture);
-			gl.uniform1i(this.applyMaskProgram.uniforms.uObstructionMask, 2);
-		}
+		// Always bind: the program may be shared, so a sibling's sampler unit must
+		// never be left pointing at one of this instance's render targets.
+		gl.activeTexture(gl.TEXTURE2);
+		gl.bindTexture(gl.TEXTURE_2D, this.obstructionMaskTexture ?? this.stickyFallbackTexture);
+		gl.uniform1i(this.applyMaskProgram.uniforms.uObstructionMask, 2);
 
 		if (!shape) {
 			// No container: uShapeType has no matching branch so mask stays 1.0,
@@ -2889,10 +3194,10 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		if (shape.type === 'circle') {
 			gl.uniform1i(this.applyMaskProgram.uniforms.uShapeType, 0);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uRadius, shape.radius);
-			gl.uniform1f(this.applyMaskProgram.uniforms.uAspect, gl.drawingBufferWidth / gl.drawingBufferHeight);
+			gl.uniform1f(this.applyMaskProgram.uniforms.uAspect, this.bufferWidth() / this.bufferHeight());
 		} else if (shape.type === 'frame') {
 			gl.uniform1i(this.applyMaskProgram.uniforms.uShapeType, 1);
-			gl.uniform1f(this.applyMaskProgram.uniforms.uAspect, gl.drawingBufferWidth / gl.drawingBufferHeight);
+			gl.uniform1f(this.applyMaskProgram.uniforms.uAspect, this.bufferWidth() / this.bufferHeight());
 			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfW, shape.halfW);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfH, shape.halfH);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uInnerCornerRadius, shape.innerCornerRadius ?? 0);
@@ -2901,7 +3206,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			gl.uniform1f(this.applyMaskProgram.uniforms.uOuterCornerRadius, shape.outerCornerRadius ?? 0);
 		} else if (shape.type === 'roundedRect') {
 			gl.uniform1i(this.applyMaskProgram.uniforms.uShapeType, 2);
-			gl.uniform1f(this.applyMaskProgram.uniforms.uAspect, gl.drawingBufferWidth / gl.drawingBufferHeight);
+			gl.uniform1f(this.applyMaskProgram.uniforms.uAspect, this.bufferWidth() / this.bufferHeight());
 			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfW, shape.halfW);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uHalfH, shape.halfH);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uInnerCornerRadius, shape.cornerRadius);
@@ -2909,7 +3214,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			gl.uniform1i(this.applyMaskProgram.uniforms.uShapeType, 3);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uRadius, shape.outerRadius);
 			gl.uniform1f(this.applyMaskProgram.uniforms.uInnerRadius, shape.innerRadius);
-			gl.uniform1f(this.applyMaskProgram.uniforms.uAspect, gl.drawingBufferWidth / gl.drawingBufferHeight);
+			gl.uniform1f(this.applyMaskProgram.uniforms.uAspect, this.bufferWidth() / this.bufferHeight());
 		}
 
 		this.blit(target.write);
@@ -2985,7 +3290,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	}
 
 	private update(): void {
-		if (this.disposed || this.contextLost || !this.rafRunning) return;
+		if (this.disposed || this.contextLost || this.failed || !this.rafRunning) return;
 		const dt = this.calcDeltaTime();
 		if (this.config.PAUSED && !this.renderDirty && !this.hasPendingFrameInput()) {
 			// Keep pointer colors and the timebase current, but submit no GL work and
@@ -2994,24 +3299,26 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			return;
 		}
 
-		if (this.profiler) {
-			this.profiler.beginFrame();
-			try {
-				this.profileGroup('solver', () => this.simulateFrame(dt));
+		this.withGl(() => {
+			if (this.profiler) {
+				this.profiler.beginFrame();
+				try {
+					this.profileGroup('solver', () => this.simulateFrame(dt));
+					if (!this.config.PAUSED || this.renderDirty) {
+						this.renderProfiled(null);
+						this.renderDirty = false;
+					}
+				} finally {
+					this.profiler.endFrame();
+				}
+			} else {
+				this.simulateFrame(dt);
 				if (!this.config.PAUSED || this.renderDirty) {
-					this.renderProfiled(null);
+					this.renderCore(null);
 					this.renderDirty = false;
 				}
-			} finally {
-				this.profiler.endFrame();
 			}
-		} else {
-			this.simulateFrame(dt);
-			if (!this.config.PAUSED || this.renderDirty) {
-				this.renderCore(null);
-				this.renderDirty = false;
-			}
-		}
+		});
 	}
 
 	private simulateFrame(dt: number): void {
@@ -3147,7 +3454,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		}
 		const hdr = this.hdrMultiplier();
 		const shape = this.config.CONTAINER_SHAPE;
-		const aspect = this.gl.drawingBufferWidth / this.gl.drawingBufferHeight;
+		const aspect = this.bufferWidth() / this.bufferHeight();
 		// Re-jitter interval each iteration so back-to-back splats don't
 		// all subtract the same value. Wide 0.3–2.0× range gives organic
 		// timing — occasional quick double-drips and long pauses.
@@ -3837,7 +4144,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 
 		gl.uniform1f(uniforms.uCx, shape.cx);
 		gl.uniform1f(uniforms.uCy, shape.cy);
-		const aspect = gl.drawingBufferWidth / gl.drawingBufferHeight;
+		const aspect = this.bufferWidth() / this.bufferHeight();
 		if (shape.type === 'circle') {
 			gl.uniform1i(uniforms.uShapeType, 0);
 			gl.uniform1f(uniforms.uRadius, shape.radius);
@@ -4065,6 +4372,13 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	}
 
 	private renderProfiled(target: FBO | null): void {
+		this.withGl(() => {
+			this.renderProfiledInner(target);
+			if (target === null) this.present();
+		});
+	}
+
+	private renderProfiledInner(target: FBO | null): void {
 		const gl = this.gl;
 		const hasDyeContent = this.shouldSimulateDye();
 		if (this.config.BLOOM && hasDyeContent) {
@@ -4096,7 +4410,15 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		if (useGlass) this.profileGroup('glass', () => this.drawGlass(target));
 	}
 
+	/** Render, then present to the visible canvas when drawing to the screen. */
 	private renderCore(target: FBO | null): void {
+		this.withGl(() => {
+			this.renderCoreInner(target);
+			if (target === null) this.present();
+		});
+	}
+
+	private renderCoreInner(target: FBO | null): void {
 		const gl = this.gl;
 
 		const hasDyeContent = this.shouldSimulateDye();
@@ -4145,7 +4467,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		const gl = this.gl;
 		if (target == null) {
 			gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-			gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+			gl.viewport(0, 0, this.bufferWidth(), this.bufferHeight());
 		} else {
 			gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
 			gl.viewport(0, 0, target.width, target.height);
@@ -4161,8 +4483,8 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 
 	private drawDisplay(target: FBO | null, backgroundColor: RGB | null = null): void {
 		const gl = this.gl;
-		const width = target == null ? gl.drawingBufferWidth : target.width;
-		const height = target == null ? gl.drawingBufferHeight : target.height;
+		const width = target == null ? this.bufferWidth() : target.width;
+		const height = target == null ? this.bufferHeight() : target.height;
 
 		this.displayMaterial.bind();
 		gl.uniform2f(this.displayMaterial.uniforms.texelSize, 1.0 / width, 1.0 / height);
@@ -4345,8 +4667,8 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	/** Glass post-processing: reads sceneFBO, applies refraction + specular, writes to target. */
 	private drawGlass(target: FBO | null): void {
 		const gl = this.gl;
-		const width = target == null ? gl.drawingBufferWidth : target.width;
-		const height = target == null ? gl.drawingBufferHeight : target.height;
+		const width = target == null ? this.bufferWidth() : target.width;
+		const height = target == null ? this.bufferHeight() : target.height;
 
 		gl.disable(gl.BLEND);
 		this.glassProgram.bind();
@@ -4485,7 +4807,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		if (!shape) return 10.0;
 		// Radii are height-normalized, so circular areas in UV space must be
 		// divided by the aspect ratio to account for the non-square UV domain.
-		const aspect = this.gl.drawingBufferWidth / this.gl.drawingBufferHeight;
+		const aspect = this.bufferWidth() / this.bufferHeight();
 		// Approximate area fraction of the container vs full canvas
 		let areaFraction = 1.0;
 		if (shape.type === 'circle') {
@@ -4508,7 +4830,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	private multipleSplats(amount: number): void {
 		const hdr = this.hdrMultiplier();
 		const shape = this.config.CONTAINER_SHAPE;
-		const aspect = this.gl.drawingBufferWidth / this.gl.drawingBufferHeight;
+		const aspect = this.bufferWidth() / this.bufferHeight();
 		for (let i = 0; i < amount; i++) {
 			const color = generateColor(this.rng);
 			color.r *= hdr;

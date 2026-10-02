@@ -118,7 +118,12 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 6. `new FluidEngine({ canvas, config: buildConfig() })` runs:
    1. Resolve config from camelCase props into SCREAMING_CASE `ResolvedConfig`.
    2. Create RNG from `config.SEED`.
-   3. `getWebGLContext` → store `gl`, `ext`. Apply non-linear-filtering fallback.
+   3. Pick a context tier (ADR 0093): `getWebGLContext` on the canvas while
+      fewer than 8 engines own one (always for WebGL1 /
+      `requireHardwareAcceleration`), else the shared WebGL2 host
+      (`gl-host.ts`) → store `gl`, `ext`. Apply non-linear-filtering fallback. Host programs come from
+      the shared cache; all later shared-tier GL work runs inside `host.run()`
+      and screen renders end with `host.present()`.
    4. Compile all shader stages (2 vertex + 18 fragment).
    5. Create vertex/index buffers + `blit` closure.
    6. Link all 18 programs + display `Material`.
@@ -171,7 +176,8 @@ Context loss destroys every GL object even though JavaScript can still hold its
 wrapper. Restoration therefore abandons stale framebuffer/texture handles
 without deleting them, recompiles programs, allocates all framebuffer groups
 afresh, rebuilds textures, and calls `replayOpeningScene()`. It never uses the
-normal same-size resize path.
+normal same-size resize path. For shared-tier engines the loss and restore events
+fan out from `gl-host.ts` to every instance; each restores in turn.
 Random and configured preset splats return exactly once, with the burn-in clock
 restarted; user-painted state is intentionally not preserved. See ADR
 [`0053`](./decisions/0053-context-restore-recreates-resources.md).
@@ -244,13 +250,17 @@ the simulation fields have necessarily been reset.
 
 ## Trade-offs and known limitations
 
-- **WebGL context limit.** Browsers cap simultaneous contexts at ~8–16 per tab.
-  Beyond that the oldest context is silently lost. Mitigated by three layers:
-  `autoPause` (default on, stops RAF when off-screen), `lazy` (full teardown on
-  scroll-out with `loseContext()` to release the context slot, restored via
-  `WEBGL_lose_context.restoreContext()` + `webglcontextrestored` event on
-  rebuild), and context loss/restore handlers (automatic reinit). See ADR
-  [`0019`](./decisions/0019-auto-pause-and-context-loss-recovery.md).
+- **Context tiers.** The first 8 live WebGL2 engines own a context; later
+  ones share one hidden context and program cache (`gl-host.ts`, ADR
+  [`0093`](./decisions/0093-fluid-engine-on-shared-gl-host.md)), so the
+  browser's ~16-context cap no longer blanks canvases. Shared-tier instances
+  pay a present copy (+0.45 ms at DPR 2, +0.7 ms at DPR 3 per frame), and one
+  shared loss pauses all of them; the host restores them one after another. A
+  GL error during a shared instance's resource transition fails only that
+  instance (`render-failed`). Own-tier, WebGL1 and `requireHardwareAcceleration`
+  instances keep the per-canvas path, where `lazy` still releases the slot with
+  `loseContext()` (ADR
+  [`0019`](./decisions/0019-auto-pause-and-context-loss-recovery.md)).
 - **No live state preservation across resize.** Resizing means brand-new fluid;
   the old simulation state is gone. The seed makes the *initial* splats stable
   but any user-painted state is lost. (See ADR

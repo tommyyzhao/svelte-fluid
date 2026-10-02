@@ -30,7 +30,12 @@ export interface DitheringTexture {
  *
  * Ported from script.js:1128-1158, with the URL replaced by a base64 data URL.
  */
-export function createDitheringTexture(gl: GL, onReady?: () => void): DitheringTexture {
+export function createDitheringTexture(
+	gl: GL,
+	onReady?: () => void,
+	/** Runs the async upload; a shared context needs it inside the owner's GL scope. */
+	run: (upload: () => void) => void = (upload) => upload()
+): DitheringTexture {
 	const texture = gl.createTexture();
 	if (!texture) throw new Error('svelte-fluid: gl.createTexture returned null');
 
@@ -73,11 +78,13 @@ export function createDitheringTexture(gl: GL, onReady?: () => void): DitheringT
 		// The context may already be lost and using it would cause errors.
 		if (disposed) return;
 		try {
-			obj.width = image.width;
-			obj.height = image.height;
-			gl.bindTexture(gl.TEXTURE_2D, texture);
-			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
-			onReady?.();
+			run(() => {
+				obj.width = image.width;
+				obj.height = image.height;
+				gl.bindTexture(gl.TEXTURE_2D, texture);
+				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+				onReady?.();
+			});
 		} catch {
 			// Context was lost between the disposed check and the GL calls.
 			// The contextrestored handler will recreate the texture.

@@ -23,11 +23,11 @@ Run `bun run prepack` before committing to verify publint.
 ## Architecture invariants — never break these
 
 1. **Engine never imports Svelte.** `FluidEngine` is framework-agnostic.
-2. **Module-level mutable GL state lives only in `gl-host.ts` for model engines** (ADR 0088): one context, program cache and shared quad. Models own their fields/FBOs/textures and bind all state they read. `FluidEngine` still owns its own context, buffers, programs and FBOs.
+2. **Module-level mutable GL state lives only in `gl-host.ts`** (ADRs 0088, 0093): one WebGL2 context, program cache and shared quad for model engines and shared-tier `FluidEngine`s. A new `FluidEngine` owns its context while fewer than 8 do (`OWN_CONTEXT_LIMIT`, a slot count, not GL state); later ones go shared. The tier belongs to the canvas: every later engine on it (lazy rebuild) keeps its first tier. A shared-tier engine owns its fields/FBOs/textures/uniforms, does all GL work inside `host.run()`, and binds every piece of state it reads; never assume state a sibling left. WebGL1 / `requireHardwareAcceleration` engines always own their context.
 3. **gl-utils.ts is stateless.** Every helper takes `gl` as first arg.
 4. **shaders.ts is GL-free.** Raw GLSL strings only; compilation happens in the engine.
 5. **The Svelte component never touches WebGL directly.** It hands the canvas to the engine.
-6. **Engine dispose() does NOT call loseContext().** All resources freed explicitly via gl.delete* calls. The context object is left intact for lazy rebuild. Narrow exception (ADR 0088): the final shared-host release or failed host construction frees its unowned context slot; never lose a still-shared context.
+6. **Engine dispose() does NOT call loseContext().** All resources freed explicitly via gl.delete* calls. A shared-tier `FluidEngine` frees only its fields and releases its host reference (cached programs stay); its `lazy` scroll-out is dispose-and-release, not loseContext. Own-tier dispose frees its context slot count; `lazy` on own-tier still releases the context with loseContext in `Fluid.svelte`. Narrow exception (ADR 0088): the final shared-host release or failed host construction frees its unowned context slot; never lose a still-shared context.
 
 ## setConfig 4-bucket system
 

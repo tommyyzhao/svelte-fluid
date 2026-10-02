@@ -1,6 +1,6 @@
 /*
- * One hidden WebGL2 context shared by second-generation model engines
- * (ADR-0088). This is the only module-level GL state in the library: the
+ * One hidden WebGL2 context shared by model engines and every WebGL2
+ * FluidEngine (ADR-0088, ADR-0093). This is the only module-level GL state in the library: the
  * context, a program cache and one fullscreen-quad VAO. Instances own their
  * fields and a visible 'bitmaprenderer' canvas; every render goes through
  * run(), so no instance can depend on state a sibling left behind. Frames come
@@ -26,8 +26,8 @@ export interface GlHost {
 	readonly gl: WebGL2RenderingContext;
 	readonly ext: ExtInfo;
 	/**
-	 * Cached program. `name` identifies vertex+fragment; `defines` are part of
-	 * the key. The position attribute must sit at location 0 (the only
+	 * Cached program, keyed by `name`, `defines` and the exact vertex and
+	 * fragment sources (so an edited shader never reuses a stale program). The position attribute must sit at location 0 (the only
 	 * attribute, or `layout(location = 0)`). The cache owns the program, and
 	 * siblings share it, so set every uniform and texture binding you read.
 	 */
@@ -127,7 +127,8 @@ class Host implements GlHost {
 	program(name: string, vertex: string, fragment: string, defines?: string[]): ProgramWrap {
 		if (!this.quad || this.gl.isContextLost()) throw new Error('svelte-fluid: gl-host context is lost or released');
 		const keywords = [...new Set(defines)].sort();
-		const key = JSON.stringify([name, keywords]);
+		// Source ids keep an edited shader (HMR) from reusing a stale program.
+		const key = JSON.stringify([name, keywords, sourceId(vertex), sourceId(fragment)]);
 		let wrap = this.programs.get(key);
 		if (wrap) return wrap;
 		const gl = this.gl;
@@ -180,7 +181,9 @@ class Host implements GlHost {
 		// (ADR-0088). createImageBitmap snapshots the drawing buffer now and
 		// resolves later; a newer present or a release drops the stale bitmap.
 		const seq = ++presenter.seq;
-		return createImageBitmap(this.surface).then(
+		// Surface and canvas are both sRGB: the default colour-space conversion
+		// only costs a full-frame pass (measured ~1.3 ms at 1600×1000, ADR-0093).
+		return createImageBitmap(this.surface, { colorSpaceConversion: 'none' }).then(
 			(bitmap) => {
 				if (presenter.seq !== seq || this.instances.get(instance) !== presenter || this.gl.isContextLost()) {
 					bitmap.close();
@@ -245,14 +248,31 @@ class Host implements GlHost {
 
 let host: Host | null = null;
 
+/** Exact (collision-free) small id per distinct source; V8 caches string hashes. */
+const sourceIds = new Map<string, number>();
+function sourceId(source: string): number {
+	let id = sourceIds.get(source);
+	if (id === undefined) sourceIds.set(source, (id = sourceIds.size));
+	return id;
+}
+
 /** Register `instance` on the shared host, creating the context on first use. */
 export function acquireGlHost(instance: GlHostInstance): GlHost {
 	if (host?.instances.has(instance)) return host;
+	// Create the host before claiming the canvas: a canvas locked to
+	// 'bitmaprenderer' can no longer fall back to its own WebGL1 context.
+	const created = !host;
+	const current = (host ??= new Host());
 	const ctx = instance.canvas.getContext('bitmaprenderer');
-	if (!ctx) throw new Error('svelte-fluid: canvas has no bitmaprenderer context (already used for another context type?)');
-	host ??= new Host();
-	host.instances.set(instance, { ctx, seq: 0 });
-	return host;
+	if (!ctx) {
+		if (created) {
+			current.dispose();
+			host = null;
+		}
+		throw new Error('svelte-fluid: canvas has no bitmaprenderer context (already used for another context type?)');
+	}
+	current.instances.set(instance, { ctx, seq: 0 });
+	return current;
 }
 
 /** Unregister `instance`; the last release disposes the context and cache. */

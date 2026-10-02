@@ -367,7 +367,10 @@
 	function teardown() {
 		// For lazy instances, grab the lose-context extension while the
 		// context is still alive so we can release the slot afterward.
-		if (stableLazy && canvasEl && !savedLoseExt) {
+		// A shared-context engine (WebGL2, ADR-0093) frees its fields and host
+		// reference in dispose(); never lose a context siblings still use, and
+		// never create a WebGL context on a canvas that has none.
+		if (stableLazy && canvasEl && engine && !engine.sharedContext && !savedLoseExt) {
 			const gl =
 				(canvasEl.getContext('webgl2') as WebGL2RenderingContext | null) ??
 				(canvasEl.getContext('webgl') as WebGLRenderingContext | null);
@@ -525,7 +528,8 @@
 			const physicalHeight = size.height;
 			try {
 				engine.resize(physicalWidth, physicalHeight);
-				engine.setConfig(buildCanvasConfig(cssW, cssH, canvasEl.width, canvasEl.height));
+				// A failed shared-context transition tears the engine down (render-failed).
+				if (engine) engine.setConfig(buildCanvasConfig(cssW, cssH, canvasEl.width, canvasEl.height));
 				rebuildingAfterResizeFailure = false;
 			} catch (err) {
 				// A resize failure can leave an uncertain GL resource set. Rebuild

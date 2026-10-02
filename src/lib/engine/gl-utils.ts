@@ -371,15 +371,23 @@ export class Material {
 	activeProgram: WebGLProgram | null = null;
 	uniforms: Record<string, WebGLUniformLocation | null> = {};
 
+	/**
+	 * `vertexShader` may instead be a factory over a shared program cache
+	 * (gl-host, ADR-0082): the cache owns every variant and dispose() deletes none.
+	 */
 	constructor(
 		private gl: GL,
-		private vertexShader: WebGLShader,
+		private vertexShader: WebGLShader | ((keywords: string[]) => ProgramWrap),
 		private fragmentShaderSource: string
 	) {}
 
 	prepareKeywords(keywords: string[]): string {
 		const hash = [...keywords].sort().join(',');
 		if (this.programs.has(hash)) return hash;
+		if (typeof this.vertexShader === 'function') {
+			this.programs.set(hash, this.vertexShader(keywords));
+			return hash;
+		}
 
 		const fragmentShader = compileShader(
 			this.gl,
@@ -416,6 +424,7 @@ export class Material {
 	}
 
 	dispose(): void {
+		if (typeof this.vertexShader === 'function') this.programs.clear();
 		for (const [hash, p] of this.programs) {
 			const fs = this.fragmentShaders.get(hash);
 			if (fs) {
@@ -632,8 +641,13 @@ export function createBlit(gl: GL, vertexBuffer: WebGLBuffer, indexBuffer: WebGL
 /* -------------------------------------------------------------------------- */
 
 /** Compute the simulation grid resolution for a given target dimension. */
-export function getResolution(gl: GL, resolution: number): { width: number; height: number } {
-	let aspectRatio = gl.drawingBufferWidth / gl.drawingBufferHeight;
+export function getResolution(
+	gl: GL,
+	resolution: number,
+	bufferWidth = gl.drawingBufferWidth,
+	bufferHeight = gl.drawingBufferHeight
+): { width: number; height: number } {
+	let aspectRatio = bufferWidth / bufferHeight;
 	if (aspectRatio < 1) aspectRatio = 1.0 / aspectRatio;
 
 	let min = Math.max(1, Math.round(resolution));
@@ -645,7 +659,7 @@ export function getResolution(gl: GL, resolution: number): { width: number; heig
 		max = Math.floor(textureLimit);
 	}
 
-	return gl.drawingBufferWidth > gl.drawingBufferHeight
+	return bufferWidth > bufferHeight
 		? { width: max, height: min }
 		: { width: min, height: max };
 }
