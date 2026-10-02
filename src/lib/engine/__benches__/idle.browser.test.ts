@@ -1,7 +1,7 @@
 import { mount, unmount } from 'svelte';
 import { afterEach, describe, expect, it } from 'vitest';
 import FluidReveal from '../../FluidReveal.svelte';
-import { FluidEngine } from '../FluidEngine.js';
+import { FluidEngine, _setContextTier } from '../FluidEngine.js';
 import { activeFrameSubscribers } from '../frame-scheduler.js';
 import type { FluidConfig } from '../types.js';
 
@@ -133,6 +133,67 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		console.info(`[idle] wake parity max |dye diff| = ${diff.toExponential(3)}`);
 		expect(diff).toBeLessThan(0.02);
 	}, 60_000);
+
+	it.each(['own', 'shared'] as const)('GPU max probe equals full readback maxima (%s tier)', (tier) => {
+		_setContextTier(tier);
+		try {
+		// Odd, non-multiple-of-8 sizes exercise partial reduction tiles.
+		const e = engine({ simResolution: 61, dyeResolution: 203 }, false);
+		e.splat(0.13, 0.91, 900, -400, { r: 0.2, g: 1.7, b: 0.4 });
+		e.splat(0.97, 0.04, -300, 1200, { r: 0.05, g: 0.1, b: 2.3 });
+		const probe = e as unknown as {
+			withGl<T>(fn: () => T): T;
+			settleReduce(src: unknown, chain: unknown[], r: number, g: number, b: number): { fbo: WebGLFramebuffer };
+			gl: WebGL2RenderingContext;
+			settleVelocityChain: unknown[];
+			settleDyeChain: unknown[];
+			velocity: { read: unknown };
+			dye: { read: unknown };
+		};
+		const cpuMax = (data: Float32Array) => data.reduce((m, x) => Math.max(m, Math.abs(x)), 0);
+		const v = cpuMax(e.readField('velocity').data);
+		const d = cpuMax(e.readField('dye', { components: 3 }).data);
+		const reduced = (src: unknown, chain: unknown[], r: number, g: number, b: number) =>
+			probe.withGl(() => {
+				const out = new Float32Array(4);
+				probe.gl.bindFramebuffer(probe.gl.FRAMEBUFFER, probe.settleReduce(src, chain, r, g, b).fbo);
+				probe.gl.readPixels(0, 0, 1, 1, probe.gl.RGBA, probe.gl.FLOAT, out);
+				return out[0];
+			});
+		const gv = reduced(probe.velocity.read, probe.settleVelocityChain, 1, 1, 0);
+		const gd = reduced(probe.dye.read, probe.settleDyeChain, 1, 1, 1);
+		expect(v).toBeGreaterThan(1);
+		expect(d).toBeGreaterThan(0.5);
+		// Inputs are already half floats; the R16F chain re-rounds once (2^-11 relative).
+		expect(Math.abs(gv - v)).toBeLessThanOrEqual(v * 2 ** -10);
+		expect(Math.abs(gd - d)).toBeLessThanOrEqual(d * 2 ** -10);
+		} finally {
+			_setContextTier('auto');
+		}
+	});
+
+	it('drops an async quiet probe after new splat or config input', async () => {
+		const e = engine({}, false);
+		const probe = e as unknown as {
+			issueSettleProbe(): void;
+			pollSettleProbe(): boolean | null;
+			settleProbe: unknown;
+			settleCheckCount: number;
+		};
+		// Empty fields: any accepted quiet verdict would be a stale false-idle.
+		for (const input of [
+			() => e.splat(0.5, 0.5, 300, 0, { r: 1, g: 0.2, b: 0.1 }),
+			() => e.setConfig({ densityDissipation: 0.1 })
+		]) {
+			probe.issueSettleProbe();
+			input();
+			await until(() => {
+				expect(probe.pollSettleProbe()).toBeNull();
+				return probe.settleProbe === null;
+			}, 5_000);
+			expect(probe.settleCheckCount).toBe(0);
+		}
+	});
 
 	it('FluidReveal auto-reveal is not deadlocked by settling', async () => {
 		const el = document.createElement('div');

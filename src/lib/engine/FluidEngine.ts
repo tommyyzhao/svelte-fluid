@@ -182,7 +182,8 @@ const CORE_PROGRAM_NAMES = [
 	'wallFriction',
 	'pressure',
 	'pressureJacobi2',
-	'gradientSubtract'
+	'gradientSubtract',
+	'settleMax'
 ] as const;
 
 const OPTIONAL_PROGRAM_NAMES = [
@@ -729,6 +730,7 @@ export class FluidEngine implements FluidHandle {
 	private pressureProgram!: ProgramWrap;
 	private pressureJacobi2Program!: ProgramWrap;
 	private gradientSubtractProgram!: ProgramWrap;
+	private settleMaxProgram!: ProgramWrap;
 	private flowSourceProgram!: ProgramWrap;
 	private flowOutletProgram!: ProgramWrap;
 	private flowForceProgram!: ProgramWrap;
@@ -794,6 +796,15 @@ export class FluidEngine implements FluidHandle {
 	private velocitySource!: FBO;
 	private divergence!: FBO;
 	private curlFBO!: FBO;
+	/** ADR 0099 max-pool chains (8x per pass down to 1x1), rebuilt when the field size changes. */
+	private settleVelocityChain: FBO[] = [];
+	private settleDyeChain: FBO[] = [];
+	/** Async probe readback: 2 RGBA float pixels (velocity max, dye max). */
+	private settlePbo: WebGLBuffer | null = null;
+	private settleProbe: { sync: WebGLSync; epoch: number } | null = null;
+	/** Changed fields or eligibility invalidate any probe already in flight. */
+	private settleEpoch = 0;
+	private settlePixels = new Float32Array(8);
 	private pressure!: DoubleFBO;
 	private scalar: DoubleFBO | null = null;
 	private bloom: FBO | null = null;
@@ -1133,6 +1144,7 @@ export class FluidEngine implements FluidHandle {
 		// Conservatively activate even for a numerically zero splat. Proving a
 		// caller's future values are zero is not worth a false-idle solver.
 		this.wake();
+		this.settleEpoch++;
 		this.solverMayContainContent = true;
 		const radius = this.config.SPLAT_RADIUS / 100.0;
 		this.withGl(() => {
@@ -1151,6 +1163,7 @@ export class FluidEngine implements FluidHandle {
 
 	/** Stop the animation loop. The GL context stays alive. Idempotent. */
 	pause(): void {
+		this.settleEpoch++;
 		// Explicit pause wins over a settled state.
 		this.settled = false;
 		if (!this.rafRunning || this.disposed) return;
@@ -1160,6 +1173,7 @@ export class FluidEngine implements FluidHandle {
 
 	/** Restart the animation loop after a pause. Idempotent. */
 	resume(): void {
+		this.settleEpoch++;
 		this.settled = false;
 		this.settleFrames = 0;
 		this.settleQuietChecks = 0;
@@ -1232,6 +1246,7 @@ export class FluidEngine implements FluidHandle {
 		const oldHeight = this.canvas.height;
 		if (oldWidth === nextWidth && oldHeight === nextHeight) return false;
 
+		this.settleEpoch++;
 		this.canvas.width = nextWidth;
 		this.canvas.height = nextHeight;
 		this.invalidateRender();
@@ -1492,6 +1507,7 @@ export class FluidEngine implements FluidHandle {
 		});
 		if (preparedDisplayVariant === undefined) return;
 		this.config = b;
+		this.settleEpoch++;
 		this.wake();
 		if (performanceResetChanged) this.resetPerformanceGovernor();
 		if (a.BACK_COLOR !== b.BACK_COLOR) {
@@ -1653,6 +1669,10 @@ export class FluidEngine implements FluidHandle {
 		this.sunrays = null;
 		this.sunraysTemp = null;
 		this.sceneFBO = null;
+		this.settleVelocityChain = [];
+		this.settleDyeChain = [];
+		this.settlePbo = null;
+		this.settleProbe = null;
 	}
 
 	/** Rebuild the configured deterministic opening after construction/restore. */
@@ -1698,6 +1718,13 @@ export class FluidEngine implements FluidHandle {
 		disposeFBO(gl, this.velocitySource);
 		disposeFBO(gl, this.divergence);
 		disposeFBO(gl, this.curlFBO);
+		for (const fbo of [...this.settleVelocityChain, ...this.settleDyeChain]) disposeFBO(gl, fbo);
+		this.settleVelocityChain = [];
+		this.settleDyeChain = [];
+		if (this.settleProbe) (gl as WebGL2RenderingContext).deleteSync(this.settleProbe.sync);
+		if (this.settlePbo) gl.deleteBuffer(this.settlePbo);
+		this.settleProbe = null;
+		this.settlePbo = null;
 		disposeDoubleFBO(gl, this.pressure);
 		if (this.scalar) {
 			disposeDoubleFBO(gl, this.scalar);
@@ -1809,6 +1836,7 @@ export class FluidEngine implements FluidHandle {
 			this.pressureProgram,
 			this.pressureJacobi2Program,
 			this.gradientSubtractProgram,
+			this.settleMaxProgram,
 			this.flowSourceProgram,
 			this.flowOutletProgram,
 			this.flowForceProgram,
@@ -2189,6 +2217,7 @@ export class FluidEngine implements FluidHandle {
 			case 'pressure': return S.pressureShader;
 			case 'pressureJacobi2': return S.pressureJacobi2Shader;
 			case 'gradientSubtract': return S.gradientSubtractShader;
+			case 'settleMax': return S.settleMaxShader;
 			case 'flowSource': return S.flowSourceShader;
 			case 'flowOutlet': return S.flowOutletShader;
 			case 'flowForce': return S.flowForceShader;
@@ -2253,6 +2282,7 @@ export class FluidEngine implements FluidHandle {
 			case 'pressure': this.pressureProgram = program; break;
 			case 'pressureJacobi2': this.pressureJacobi2Program = program; break;
 			case 'gradientSubtract': this.gradientSubtractProgram = program; break;
+			case 'settleMax': this.settleMaxProgram = program; break;
 			case 'flowSource': this.flowSourceProgram = program; break;
 			case 'flowOutlet': this.flowOutletProgram = program; break;
 			case 'flowForce': this.flowForceProgram = program; break;
@@ -3325,7 +3355,10 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 
 	/**
 	 * ADR 0099: stop the loop once velocity and dye are provably invisible.
-	 * Runs after the frame is presented, so the last frame is on screen.
+	 * Runs after the frame is presented, so the last frame is on screen. The
+	 * quiet probe is a GPU max-reduction read back asynchronously: issued every
+	 * SETTLE_CHECK_INTERVAL frames, consumed on a later frame once its fence
+	 * signals, so the check never stalls the pipeline.
 	 */
 	private trackSettle(): void {
 		if (
@@ -3334,41 +3367,115 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		) {
 			this.settleFrames = 0;
 			this.settleQuietChecks = 0;
+			// Drivers and pointers write fields without splat(); an in-flight probe missed that.
+			this.settleEpoch++;
 			return;
 		}
-		if (++this.settleFrames % SETTLE_CHECK_INTERVAL !== 0) return;
-		if (!this.fieldsAreQuiet()) {
-			this.settleQuietChecks = 0;
+		const quiet = this.pollSettleProbe();
+		if (quiet === false) this.settleQuietChecks = 0;
+		else if (quiet === true && ++this.settleQuietChecks >= SETTLE_CHECKS) {
+			this.settled = true;
+			this.stopRaf();
+			this.resetPerformanceGovernor();
 			return;
 		}
-		if (++this.settleQuietChecks < SETTLE_CHECKS) return;
-		this.settled = true;
-		this.stopRaf();
-		this.resetPerformanceGovernor();
+		if (++this.settleFrames % SETTLE_CHECK_INTERVAL === 0 && !this.settleProbe) this.issueSettleProbe();
 	}
 
 	private settleCheckMs = 0;
 	private settleCheckCount = 0;
 
-	/** @internal Mean ms per quiet check (benchmark observability). */
+	/** @internal Quiet checks completed and CPU ms spent issuing/polling them (benchmark observability). */
 	get settleCheckStats(): { checks: number; totalMs: number } {
 		return { checks: this.settleCheckCount, totalMs: this.settleCheckMs };
 	}
 
-	private fieldsAreQuiet(): boolean {
+	/** Reduce velocity and dye to one pixel each and queue their async readback. */
+	private issueSettleProbe(): void {
 		const t0 = performance.now();
-		const quiet = this.withGl(() => {
-			const v = this.readFieldInner('velocity', {}).data;
-			let maxV = 0;
-			for (let i = 0; i < v.length; i++) maxV = Math.max(maxV, Math.abs(v[i]));
-			const d = this.readFieldInner('dye', { components: 3 }).data;
-			let maxD = 0;
-			for (let i = 0; i < d.length; i++) maxD = Math.max(maxD, Math.abs(d[i]));
-			return isQuiet(maxV, maxD, this.config.DENSITY_DISSIPATION);
+		this.withGl(() => {
+			// Only a float readback carries the thresholds; without it never settle.
+			if (!this.ext.isWebGL2 || this.gl.getExtension('EXT_color_buffer_float') === null) return;
+			const gl = this.gl as WebGL2RenderingContext;
+			const v = this.settleReduce(this.velocity.read, this.settleVelocityChain, 1, 1, 0);
+			const d = this.settleReduce(this.dye.read, this.settleDyeChain, 1, 1, 1);
+			if (!this.settlePbo) {
+				this.settlePbo = gl.createBuffer();
+				if (!this.settlePbo) return; // Allocation failure cannot prove quietness.
+				gl.bindBuffer(gl.PIXEL_PACK_BUFFER, this.settlePbo);
+				gl.bufferData(gl.PIXEL_PACK_BUFFER, this.settlePixels.byteLength, gl.STREAM_READ);
+			}
+			gl.bindBuffer(gl.PIXEL_PACK_BUFFER, this.settlePbo);
+			gl.bindFramebuffer(gl.FRAMEBUFFER, v.fbo);
+			gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.FLOAT, 0);
+			gl.bindFramebuffer(gl.FRAMEBUFFER, d.fbo);
+			gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.FLOAT, 16);
+			// Every other readPixels in the engine targets client memory.
+			gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+			gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+			const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+			if (sync) this.settleProbe = { sync, epoch: this.settleEpoch };
+			gl.flush();
 		});
 		this.settleCheckMs += performance.now() - t0;
-		this.settleCheckCount++;
-		return quiet === true;
+	}
+
+	/** Quiet verdict of a finished probe; null while none is ready (or it went stale). */
+	private pollSettleProbe(): boolean | null {
+		const probe = this.settleProbe;
+		if (!probe) return null;
+		const t0 = performance.now();
+		const result = this.withGl(() => {
+			const gl = this.gl as WebGL2RenderingContext;
+			if (gl.getSyncParameter(probe.sync, gl.SYNC_STATUS) !== gl.SIGNALED) return null;
+			gl.deleteSync(probe.sync);
+			this.settleProbe = null;
+			// Field/config changes since issue invalidate the old quietness verdict.
+			if (probe.epoch !== this.settleEpoch) {
+				this.settleQuietChecks = 0;
+				return null;
+			}
+			gl.bindBuffer(gl.PIXEL_PACK_BUFFER, this.settlePbo);
+			gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, this.settlePixels);
+			gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+			this.settleCheckCount++;
+			return isQuiet(this.settlePixels[0], this.settlePixels[4], this.config.DENSITY_DISSIPATION);
+		});
+		this.settleCheckMs += performance.now() - t0;
+		return result ?? null;
+	}
+
+	/**
+	 * Max |channel| of `src` over the masked channels, max-pooled 8x per pass
+	 * into a 1x1 R16F target (returned). Binds every piece of state it reads
+	 * (shared tier).
+	 */
+	private settleReduce(src: FBO, chain: FBO[], r: number, g: number, b: number): FBO {
+		const gl = this.gl;
+		const w0 = Math.ceil(src.width / 8);
+		const h0 = Math.ceil(src.height / 8);
+		if (chain[0]?.width !== w0 || chain[0]?.height !== h0) {
+			for (const fbo of chain) disposeFBO(gl, fbo);
+			chain.length = 0;
+			const fmt = this.ext.formatR;
+			for (let w = w0, h = h0; ; w = Math.ceil(w / 8), h = Math.ceil(h / 8)) {
+				chain.push(createFBO(gl, w, h, fmt.internalFormat, fmt.format, this.ext.halfFloatTexType, gl.NEAREST));
+				if (w === 1 && h === 1) break;
+			}
+		}
+		const program = this.settleMaxProgram;
+		gl.disable(gl.BLEND);
+		program.bind();
+		let source = src;
+		for (let i = 0; i < chain.length; i++) {
+			gl.uniform1i(program.uniforms.uSource, source.attach(0));
+			gl.uniform2f(program.uniforms.uSourceTexel, source.texelSizeX, source.texelSizeY);
+			if (i === 0) gl.uniform4f(program.uniforms.uChannels, r, g, b, 0);
+			else if (i === 1) gl.uniform4f(program.uniforms.uChannels, 1, 0, 0, 0);
+			this.blit(chain[i]);
+			source = chain[i];
+		}
+		return source;
 	}
 
 	private update(): void {

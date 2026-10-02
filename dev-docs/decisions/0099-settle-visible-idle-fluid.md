@@ -53,3 +53,36 @@ forever. Goal: zero frames rendered while idle.
   wall-clock dt sequence, and the first dt after a wake is clamped. Measured
   max |dye| difference 0.01 one second after the same splat.
 - Supersedes the "detecting decay is not worth it" stance of ADR 0063.
+
+## Amendment (2026-10-02): GPU max probe, asynchronous readback
+
+The full-field readback was too expensive at real sizes. Measured on HEAD
+`db8d41a` (Apple M1 Max, hardware Chrome, 1440x900 CSS, DPR 1-3, dye
+1638x1024): 19-37 ms per check, max 45 ms. That is a dropped frame every
+half second, and 0.6-1.6 ms/frame amortized over the 30-frame interval.
+
+Replacement, same `isQuiet` semantics (max |velocity|, max dye over rgb):
+
+1. `settleMaxShader` (shaders.ts, a core program, so it uses the existing
+   compile and shared-host program cache) max-pools |channel| over an 8x8
+   tile per pass into an R16F target. A chain of passes (1638x1024 dye: 205x128,
+   26x16, 4x2, 1x1) reduces each field to one pixel. Chains are per instance
+   and rebuilt when the field size changes. The pass binds its program,
+   texture, uniforms and blend state (shared tier).
+2. Both 1-pixel results go into a 32-byte `PIXEL_PACK_BUFFER`, followed by
+   `fenceSync`. Later frames poll the fence (`getSyncParameter`, no wait) and
+   read the buffer with `getBufferSubData` once it signals. The check never
+   stalls the pipeline. One probe is in flight at a time.
+3. Staleness: a probe is dropped if a `splat()` happened after it was issued,
+   if the config, size or pause state changed,
+   or if any frame in between was ineligible (driver, pointer, pending
+   input, pause). Such frames write the fields outside `splat()`.
+4. Without `EXT_color_buffer_float` (or on WebGL1) no probe is issued and the
+   engine never settles. The old path fell back to a byte read that could
+   only see dye.
+
+Settling now takes at least the time until the probe's fence signals, about
+one frame. Time to settle is otherwise unchanged. A browser test checks that
+the probe's maxima equal a full `readField` maximum on a splatted field with
+odd sizes, to half-float precision. Measured cost is in
+`dev-docs/benchmarks/gpu-budget.md`.

@@ -16,6 +16,7 @@ import { FluidEngine } from '../FluidEngine.js';
 import { createTimerQueryAdapter } from '../engine-profiler.js';
 import { cssQualityPolicy } from '../resolution.js';
 import { PRESETS } from '../../presets/registry.js';
+import { SETTLE_CHECK_INTERVAL } from '../settle.js';
 import type { FluidConfig } from '../types.js';
 
 // Override e.g. SVELTE_FLUID_GPU_BENCH_CSS=1440x900 for a full-viewport check.
@@ -42,6 +43,13 @@ interface Row {
 	worstBatchMs: number;
 	passMs: Record<string, number>;
 	timerQueryMedianMs: number;
+	/** ADR 0099 probe, main-thread ms (issue + poll), queue drained first: median / max. */
+	settleCheckMs: number;
+	settleCheckMaxMs: number;
+	/** Probe GPU reduction + readback, drained (includes ~0.1 ms drain round trip): median. */
+	settleCheckGpuMs: number;
+	/** Per-frame ms of SETTLE_CHECK_INTERVAL-frame batches whose last frame issues and reads the probe. */
+	settleBatchMs: number;
 	canvas: string;
 }
 
@@ -107,6 +115,9 @@ async function measure(preset: string, base: FluidConfig, dpr: number): Promise<
 	const batches: number[] = [];
 	const passMs: Partial<Record<Pass, number>> = {};
 	let timerQueryMedianMs = NaN;
+	const checks: number[] = [];
+	const checkGpu: number[] = [];
+	const settleBatches: number[] = [];
 	try {
 		const gl = (engine as unknown as { gl: WebGL2RenderingContext }).gl;
 		const dbg = gl.getExtension('WEBGL_debug_renderer_info');
@@ -133,6 +144,43 @@ async function measure(preset: string, base: FluidConfig, dpr: number): Promise<
 		for (let i = 0; i < WARMUP; i++) frame(engine);
 		for (const pass of PASSES) delete stubs[pass];
 		for (let i = 0; i < BATCHES; i++) batches.push(batch(BATCH_FRAMES));
+		// ADR 0099 quiet probe. The live loop issues it once per SETTLE_CHECK_INTERVAL
+		// frames after present and polls its fence on later frames; autoStart:false
+		// never does, so drive both halves directly.
+		const probe = engine as unknown as { issueSettleProbe(): void; pollSettleProbe(): boolean | null };
+		// WebGL updates sync status only between tasks, so yield before polling.
+		const poll = async () => {
+			for (let spin = 0; spin < 100; spin++) {
+				await tick();
+				const t0 = performance.now();
+				const quiet = probe.pollSettleProbe();
+				const ms = performance.now() - t0;
+				if (quiet !== null) return ms;
+			}
+			throw new Error('settle probe never signalled');
+		};
+		// First probe allocates the reduction chains and readback buffer; not steady state.
+		probe.issueSettleProbe();
+		await poll();
+		for (let i = 0; i < 2 * BATCHES; i++) {
+			frame(engine);
+			drain();
+			const t0 = performance.now();
+			probe.issueSettleProbe();
+			const t1 = performance.now();
+			drain();
+			checkGpu.push(performance.now() - t1);
+			checks.push(t1 - t0 + (await poll()));
+		}
+		for (let i = 0; i < BATCHES; i++) {
+			drain();
+			const t0 = performance.now();
+			for (let f = 0; f < SETTLE_CHECK_INTERVAL; f++) frame(engine);
+			probe.issueSettleProbe();
+			drain();
+			settleBatches.push((performance.now() - t0) / SETTLE_CHECK_INTERVAL);
+			await poll();
+		}
 		// Per pass: replay it alone, back to back, with its captured arguments.
 		// Stubbing a pass out of the frame instead lets the GPU drop clocks and
 		// gives deltas of the wrong sign; a saturated replay keeps them up.
@@ -187,6 +235,10 @@ async function measure(preset: string, base: FluidConfig, dpr: number): Promise<
 		worstBatchMs: Math.max(...batches),
 		passMs,
 		timerQueryMedianMs,
+		settleCheckMs: quantile(checks, 0.5),
+		settleCheckMaxMs: Math.max(...checks),
+		settleCheckGpuMs: quantile(checkGpu, 0.5),
+		settleBatchMs: quantile(settleBatches, 0.5),
 		canvas: `${w}x${h}`
 	};
 }
@@ -221,13 +273,15 @@ describe('GPU budget (measurement only)', () => {
 		const names = [...new Set(rows.map((r) => r.preset))];
 		const cell = (n: string, d: number) => {
 			const r = rows.find((x) => x.preset === n && x.dpr === d);
-			return r ? `${r.medianMs.toFixed(2)}/${r.worstBatchMs.toFixed(2)} q${r.timerQueryMedianMs.toFixed(1)}` : '-';
+			return r
+				? `${r.medianMs.toFixed(2)}/${r.worstBatchMs.toFixed(2)} s${r.settleBatchMs.toFixed(2)} c${r.settleCheckMs.toFixed(2)}/${r.settleCheckMaxMs.toFixed(2)} g${r.settleCheckGpuMs.toFixed(2)}`
+				: '-';
 		};
 		const lines = [
-			`GPU budget [synced throughput] ${adapter} @ ${CSS_W}x${CSS_H} css, median/worst batch ms, q=per-frame timer query (unreliable)`,
-			'preset'.padEnd(16) + DPRS.map((d) => `DPR${d}`.padStart(19)).join('')
+			`GPU budget [synced throughput] ${adapter} @ ${CSS_W}x${CSS_H} css, median/worst batch ms, s=per-frame with 1-in-${SETTLE_CHECK_INTERVAL} settle probe, c=probe CPU median/max, g=probe GPU`,
+			'preset'.padEnd(16) + DPRS.map((d) => `DPR${d}`.padStart(46)).join('')
 		];
-		for (const n of names) lines.push(n.padEnd(16) + DPRS.map((d) => cell(n, d).padStart(19)).join(''));
+		for (const n of names) lines.push(n.padEnd(16) + DPRS.map((d) => cell(n, d).padStart(46)).join(''));
 		console.log(lines.join('\n'));
 		console.log(`results: ${OUT}`);
 	});

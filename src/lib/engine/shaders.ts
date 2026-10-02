@@ -76,6 +76,32 @@ export const copyShader = `
     }
 `;
 
+/**
+ * ADR 0099 settle probe: each output pixel is the max |channel| (masked by
+ * uChannels) over an 8x8 source tile. Texel-centre samples are exact under
+ * LINEAR filtering, and CLAMP_TO_EDGE repeats edge texels, which cannot raise a max.
+ */
+export const settleMaxShader = `
+    precision highp float;
+    precision highp sampler2D;
+
+    uniform sampler2D uSource;
+    uniform vec2 uSourceTexel;
+    uniform vec4 uChannels;
+
+    void main () {
+        vec2 base = (floor(gl_FragCoord.xy) * 8.0 + 0.5) * uSourceTexel;
+        float m = 0.0;
+        for (int y = 0; y < 8; y++) {
+            for (int x = 0; x < 8; x++) {
+                vec4 v = abs(texture2D(uSource, base + vec2(float(x), float(y)) * uSourceTexel)) * uChannels;
+                m = max(m, max(max(v.r, v.g), max(v.b, v.a)));
+            }
+        }
+        gl_FragColor = vec4(m, 0.0, 0.0, 1.0);
+    }
+`;
+
 export const clearShader = `
     precision mediump float;
     precision mediump sampler2D;
