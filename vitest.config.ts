@@ -15,7 +15,7 @@ const browserProject = defineProject({
 			// Slow measurement-only bench: opt in with SVELTE_FLUID_GPU_BENCH=1.
 			...(process.env.SVELTE_FLUID_GPU_BENCH
 				? []
-				: ['**/gpu-budget.browser.test.ts', '**/dpr-shots.browser.test.ts', '**/surface-shots.browser.test.ts', '**/surface-gpu.browser.test.ts', '**/dropzone-shots.browser.test.ts', '**/dropzone-gpu.browser.test.ts', '**/shared-present.browser.test.ts'])
+				: ['**/gpu-budget.browser.test.ts', '**/dpr-shots.browser.test.ts', '**/surface-shots.browser.test.ts', '**/surface-gpu.browser.test.ts', '**/dropzone-shots.browser.test.ts', '**/dropzone-gpu.browser.test.ts', '**/foil-shots.browser.test.ts','**/shared-present.browser.test.ts'])
 		],
 		env: {
 			SVELTE_FLUID_GPU_BENCH_OUT: process.env.SVELTE_FLUID_GPU_BENCH_OUT ?? '',

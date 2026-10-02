@@ -1591,3 +1591,24 @@ export interface LiquidDropZoneProps extends Omit<import('svelte/elements').HTML
 	name?: string;
 }
 
+/* ------------------------------------------------------------------------ */
+/*                      Foil switch (snap foil, ADR-0096)                    */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * A native `<button type="button" role="switch">` whose state is drawn as a
+ * bistable metal arch (arched = off, bowed = on). The label is `children`;
+ * other button attributes are forwarded.
+ */
+export interface FoilSwitchProps extends Omit<HTMLButtonAttributes, 'type' | 'role' | 'aria-checked' | 'onchange' | 'children'> {
+	/** On/off (`bind:checked`). Default `false`. */
+	checked?: boolean;
+	/** Palette for the focus ring and vector fallback. Default `'auto'`. */
+	tone?: LiquidTone;
+	disabled?: boolean;
+	/** Called with the new state after a user toggle. Exceptions are caught and logged. */
+	onchange?: (checked: boolean) => void;
+	/** Visible label, part of the switch's accessible name. */
+	children?: Snippet;
+}
+
