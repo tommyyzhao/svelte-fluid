@@ -91,6 +91,22 @@ spawn sampling are unchanged. There is no public API or prop change.
 - Analytic shapes no longer have a fixed-UV soft edge. Glass and `applyMask`
   keep theirs because they are physics/refraction, not display AA.
 
+## Allowed non-JFA edges
+
+"One primitive" means every mask-derived edge uses the JFA SDF. Mask-derived
+shapes (SVG paths, text, element masks, resist regions) must use it. These
+edges are exempt because the JFA is the wrong tool or adds nothing:
+
+- **Analytic container shapes** (circle, rect, frame, annulus and the like):
+  already exact SDFs; they only gain pixel-width AA (see Decision).
+- **LiquidDropZone four-wall climb** ([ADR 0094](./0094-liquid-drop-zone-and-caustics.md)):
+  the JFA's SDF has a crease on each corner's medial axis, which pinches the
+  highlight; the C-infinity four-wall sum is smooth there.
+- **FoilSwitch arch** ([ADR 0096](./0096-foil-switch.md)): an analytic
+  parabolic beam, not a mask; nothing to rasterise or flood.
+- **CSS focus outlines** on a rectangle or pill the browser already outlines:
+  the native outline is the accessible, forced-colors-aware choice.
+
 ## Rejected alternatives
 
 - **CPU EDT (Felzenszwalb) at upload:** costs about 20–40 ms of main-thread
