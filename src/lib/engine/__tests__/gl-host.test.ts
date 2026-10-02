@@ -136,12 +136,26 @@ describe('gl-host (ADR-0088)', () => {
 		releaseGlHost(a);
 	});
 
+	it('leaves no host behind when the first canvas cannot take a bitmaprenderer', async () => {
+		const { acquireGlHost, releaseGlHost, calls, surfaces, instance } = await setup();
+		const taken = { ...instance(), canvas: { width: 4, height: 3, getContext: () => null } as unknown as HTMLCanvasElement };
+		expect(() => acquireGlHost(taken)).toThrow(/bitmaprenderer/);
+		// The host was created first (so a WebGL1 fallback never sees a locked
+		// canvas) and must be torn down again, freeing its context slot.
+		expect(calls.loseContext).toHaveLength(1);
+		const a = instance();
+		expect(acquireGlHost(a)).toBeTruthy();
+		expect(surfaces).toHaveLength(2);
+		releaseGlHost(a);
+	});
+
 	it('keys the program cache on name plus defines', async () => {
 		const { acquireGlHost, releaseGlHost, calls, instance } = await setup();
 		const a = instance();
 		const host = acquireGlHost(a);
 		const p = host.program('quad', 'vs', 'fs');
-		expect(host.program('quad', 'vs', 'other source ignored')).toBe(p);
+		// Edited source (HMR) is a new program, never a stale cached one.
+		expect(host.program('quad', 'vs', 'edited fs')).not.toBe(p);
 		const q = host.program('quad', 'vs', 'fs', ['SHADING']);
 		expect(q).not.toBe(p);
 		expect(host.program('quad', 'vs', 'fs', ['SHADING'])).toBe(q);
@@ -149,7 +163,7 @@ describe('gl-host (ADR-0088)', () => {
 		expect(host.program('quad', 'vs', 'fs', ['BLOOM', 'SHADING', 'BLOOM'])).toBe(variant);
 		// Delimiters in the caller name cannot collide with a keyword suffix.
 		expect(host.program('quad#SHADING', 'vs', 'fs')).not.toBe(q);
-		expect(calls.linkProgram).toHaveLength(4);
+		expect(calls.linkProgram).toHaveLength(5);
 		releaseGlHost(a);
 	});
 

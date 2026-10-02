@@ -4,7 +4,7 @@ import { acquireGlHost, releaseGlHost } from '../gl-host.js';
 import type { GlHost, GlHostInstance } from '../gl-host.js';
 import { createBlit, getWebGLContext, compileShader, disposeFBO } from '../gl-utils.js';
 import { JumpFlood } from '../jump-flood.js';
-import { baseVertexShader } from '../shaders.js';
+import { baseVertexShader, jumpFloodSeedShader } from '../shaders.js';
 import type { FBO } from '../types.js';
 
 const VERTEX = `#version 300 es
@@ -260,7 +260,7 @@ describe('gl-host (ADR-0088)', () => {
 			disposeFBO(hgl, sdf);
 			hgl.deleteTexture(source);
 			// The cache still owns the programs after the JumpFlood is gone.
-			expect(host.program('jfa-seed', baseVertexShader, '')).toBeTruthy();
+			expect(hgl.isProgram(host.program('jfa-seed', baseVertexShader, jumpFloodSeedShader).program)).toBe(true);
 		});
 		expect(actual).toHaveLength(size * size);
 		expect(actual[64 * size + 64]).toBeLessThan(-30);

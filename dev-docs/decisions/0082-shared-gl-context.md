@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-10-02). Partially accepted for model engines by [ADR 0088](./0088-shared-gl-host-for-model-engines.md); FluidEngine migration remains proposed.
+Accepted (2026-10-02). Model engines: [ADR 0088](./0088-shared-gl-host-for-model-engines.md). `FluidEngine`: accepted as a hybrid by [ADR 0093](./0093-fluid-engine-on-shared-gl-host.md) (own contexts for the first 8, shared host past that).
 
 ## Context
 
@@ -195,3 +195,15 @@ cache at the first mount.
   other, so the state-leak browser test is mandatory.
 - Rejected: B (it breaks DOM layering, clipping and transforms) and C alone
   (it cannot beat the 16-context cap).
+
+## Implementation
+
+`FluidEngine` shipped as a hybrid in [ADR 0093](./0093-fluid-engine-on-shared-gl-host.md).
+The first 8 live engines keep their own context, and later ones share the
+host. Reason: the shared `createImageBitmap` present costs +0.45/+0.7 ms per
+instance at DPR 2/3, and the frame savings measured above did not reproduce.
+WebGL1 and `requireHardwareAcceleration` always keep their own context.
+Presentation uses `createImageBitmap` only (ADR 0088). There is no size
+sorting. GL errors are scoped per resource transition, so a failure stops
+only its instance. All seven canvas-as-surface assumptions are resolved in
+0093.
