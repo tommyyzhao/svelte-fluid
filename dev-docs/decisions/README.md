@@ -69,6 +69,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0082](./0082-shared-gl-context.md)                            | One shared WebGL context and program cache for all instances          | Proposed |
 | [0083](./0083-pointer-events-input.md)                         | Pointer Events input, capture, and deliberate touch-action            | Accepted |
 | [0084](./0084-jump-flood-mask-sdf.md)                          | GPU jump-flood SDF for pixel-width mask edges                         | Accepted |
+| [0085](./0085-reduced-motion-still-and-frame-failure.md)       | Reduced-motion still frame and terminal frame-failure fallback        | Accepted |
 
 ## How to add a new ADR
 

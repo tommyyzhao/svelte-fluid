@@ -222,6 +222,7 @@
 	let cssW = $state(0);
 	let cssH = $state(0);
 
+	// buildConfig: a still frame has no loop to consume pointer input (ADR 0085).
 	function buildConfig() {
 		return {
 			simResolution,
@@ -250,7 +251,7 @@
 			shading,
 			colorful,
 			colorUpdateSpeed,
-			paused: reduced ? true : paused,
+			paused,
 			backColor,
 			transparent,
 			toneMapping,
@@ -305,7 +306,7 @@
 			stickyStrength,
 			stickyPressure,
 			stickyAmplify,
-			pointerInput,
+			pointerInput: reduced ? false : pointerInput,
 			pointerTarget,
 			splatOnHover,
 			requireHardwareAcceleration: stableRequireHW,
@@ -383,6 +384,19 @@
 		}
 	}
 
+	/**
+	 * The shared scheduler evicted this engine because a frame threw. Surface the
+	 * fallback and report once; no retry (ADR 0085). Stale evictions (the engine
+	 * was already replaced) are ignored.
+	 */
+	function handleFrameError(source: FluidEngine, cause: unknown) {
+		if (engine !== source) return;
+		const error = cause instanceof Error ? cause : new Error(String(cause));
+		lastError = new WebGLUnavailableError('render-failed', error.message);
+		teardown();
+		notifyHost(onError, 'onError', error);
+	}
+
 	function instantiate() {
 		if (!canvasEl || cssW === 0 || cssH === 0 || !isVisible) return;
 		if (pendingRestore) return;
@@ -391,7 +405,13 @@
 		// resize/scroll reconcile. The fallback overlay already fills the resized
 		// container. Transient context-limit still retries (failureReason is null,
 		// or 'context-limit' when reveal masked it).
-		if (failureReason === 'no-webgl' || failureReason === 'no-float-textures') return;
+		// `render-failed` is terminal by design: no retry loop (ADR 0085).
+		if (
+			failureReason === 'no-webgl' ||
+			failureReason === 'no-float-textures' ||
+			failureReason === 'render-failed'
+		)
+			return;
 
 		// If the context was lost by a previous lazy teardown, restore it
 		// before creating a new engine. restoreContext() is async — wait
@@ -420,8 +440,15 @@
 		const cfg = buildCanvasConfig(cssW, cssH, canvasEl.width, canvasEl.height);
 
 		try {
-			engine = new FluidEngine({ canvas: canvasEl, config: cfg });
+			const created: FluidEngine = new FluidEngine({
+				canvas: canvasEl,
+				config: cfg,
+				onFrameError: (cause) => handleFrameError(created, cause)
+			});
+			engine = created;
 			lastError = null;
+			// Reduced motion: settle the opening into a finished still, no RAF.
+			if (reduced) created.settleStill();
 			// `autoPause` must hold for a tab that is already hidden: the engine
 			// starts its RAF loop in the constructor, so stop it again here. The
 			// visibilitychange handler resumes it.
@@ -585,6 +612,16 @@
 			pendingRestore = false;
 			teardown();
 		};
+	});
+
+	// Live reduced-motion toggle: still <-> animate without rebuilding the engine.
+	$effect(() => {
+		const r = reduced;
+		untrack(() => {
+			if (!engine) return;
+			if (r) engine.settleStill();
+			else engine.endStill();
+		});
 	});
 
 	/**

@@ -1113,7 +1113,9 @@ export interface FluidProps
 	 * those stay blank and retry on the next reconcile — EXCEPT in `reveal`
 	 * mode, where any failure (including transient) surfaces the fallback,
 	 * because the transparent reveal canvas would otherwise expose the
-	 * covered content. See ADR-0041.
+	 * covered content. See ADR-0041. A frame that throws at runtime evicts the
+	 * engine and surfaces this fallback with reason `render-failed` (and one
+	 * `onError` call); it is not retried. See ADR-0085.
 	 */
 	fallback?: Snippet<[{ reason: WebGLUnavailableReason }]>;
 	/**

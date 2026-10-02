@@ -20,7 +20,7 @@
 	import { onMount } from 'svelte';
 	import Fluid from './Fluid.svelte';
 	import { DISABLED_PERFORMANCE_STATE } from './engine/performance-governor.js';
-	import { prefersReducedMotion } from './engine/reduced-motion.js';
+	import { prefersReducedMotion, watchReducedMotion } from './engine/reduced-motion.js';
 
 	let {
 		text,
@@ -71,6 +71,7 @@
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
 	let containerW = $state(0);
 	let containerH = $state(0);
+	let reduced = $state(prefersReducedMotion());
 
 	let stickyMask = $derived.by((): StickyMask => ({
 		text,
@@ -135,12 +136,17 @@
 		autoAnimateRaf = requestAnimationFrame(tick);
 	}
 
-	onMount(() => {
-		if (autoAnimate && !prefersReducedMotion()) startAutoAnimate();
+	// Live reduced-motion toggle (ADR 0085).
+	$effect(() => {
+		if (!autoAnimate || reduced) return;
+		startAutoAnimate();
 		return () => {
 			if (autoAnimateRaf != null) cancelAnimationFrame(autoAnimateRaf);
+			autoAnimateRaf = undefined;
 		};
 	});
+
+	onMount(() => watchReducedMotion((v) => (reduced = v)));
 
 	export const handle: FluidHandle = {
 		splat: (x, y, dx, dy, color) => inner?.handle.splat(x, y, dx, dy, color),

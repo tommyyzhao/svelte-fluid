@@ -28,8 +28,14 @@ export interface ProgramWrap {
  * distinguish a **permanent** failure (no WebGL / no float textures → show a
  * fallback) from a **transient** one (`context-limit`: the page hit the
  * browser's live-context cap → stay blank and retry on the next reconcile).
+ * `render-failed` is permanent: a frame threw and the engine was evicted from
+ * the shared scheduler (ADR 0085).
  */
-export type WebGLUnavailableReason = 'no-webgl' | 'no-float-textures' | 'context-limit';
+export type WebGLUnavailableReason =
+	| 'no-webgl'
+	| 'no-float-textures'
+	| 'context-limit'
+	| 'render-failed';
 
 /**
  * Thrown by {@link getWebGLContext} when a usable context cannot be created.
