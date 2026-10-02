@@ -13,7 +13,7 @@
 ${SCRIPT_CLOSE}
 
 <InkPaper paper="#f4ecdc" pigments={['#2549a8', '#e7b112']} brush={{ size: 28 }} style="height: 260px; padding: 1.5rem">
-  <h3>Field notes</h3>
+  <h3 data-ink-resist>Field notes</h3>
   <button data-ink-resist data-ink-wick="0">Keep dry</button>
 </InkPaper>`;
 	const BTN_EXAMPLE = `${SCRIPT_OPEN}
@@ -348,8 +348,8 @@ ${SCRIPT_CLOSE}
 
 <div class="example">
 	<InkPaper paper="#f4ecdc" pigments={['#2549a8', '#e7b112']} brush={{ size: 28 }} style="height: 240px; padding: 1.5rem; border-radius: 12px; color: #1d1a14">
-		<h3 style="margin: 0 0 0.5rem; color: inherit">Field notes</h3>
-		<p style="margin: 0 0 1rem; max-width: 28rem; color: inherit">Drag across the paper to lay colour. Pigment mixes subtractively and dries into the grain.</p>
+		<h3 data-ink-resist style="margin: 0 0 0.5rem; color: inherit; width: fit-content">Field notes</h3>
+		<p data-ink-resist style="margin: 0 0 1rem; max-width: 28rem; width: fit-content; color: inherit">Drag across the paper to lay colour. Pigment mixes subtractively and dries into the grain.</p>
 		<button data-ink-resist data-ink-wick="0" style="padding: 0.5rem 1rem; border: 1px solid #1d1a14; border-radius: 8px; background: #fffaf0; color: #1d1a14; font: inherit; cursor: pointer">Keep this dry</button>
 	</InkPaper>
 </div>
