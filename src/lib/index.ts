@@ -15,6 +15,20 @@ export { default as FluidStick } from './FluidStick.svelte';
 
 export { default as FluidText } from './FluidText.svelte';
 
+// Interface primitives on the shared WebGL2 host (ADR-0088/0093). Without
+// WebGL2 each falls back to a plain native control.
+export { default as InkPaper } from './InkPaper.svelte';
+
+export { default as LiquidButton } from './LiquidButton.svelte';
+
+export { default as LiquidSegmented } from './LiquidSegmented.svelte';
+
+export { default as LiquidDropZone } from './LiquidDropZone.svelte';
+
+export { default as LiquidCaustics } from './LiquidCaustics.svelte';
+
+export { default as FoilSwitch } from './FoilSwitch.svelte';
+
 export { FluidEngine, type FluidEngineOptions } from './engine/FluidEngine.js';
 export {
 	isWebGLAvailable,
@@ -54,7 +68,16 @@ export type {
 	FluidRevealProps,
 	FluidDistortionProps,
 	FluidStickProps,
-	FluidTextProps
+	FluidTextProps,
+	InkBrush,
+	InkPaperProps,
+	LiquidTone,
+	LiquidButtonProps,
+	LiquidSegmentedOption,
+	LiquidSegmentedProps,
+	LiquidDropZoneProps,
+	LiquidCausticsProps,
+	FoilSwitchProps
 } from './engine/types.js';
 export { mulberry32, randomSeed, generateColor, HSVtoRGB, normalizeColor, type Rng } from './engine/rng.js';
 

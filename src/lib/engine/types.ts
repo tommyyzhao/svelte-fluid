@@ -1492,7 +1492,7 @@ export interface FluidTextProps
 }
 
 /* ---------------------------------------------------------------------------
- * InkPaper (ADR-0090): pigment on paper. Not root-exported yet.
+ * InkPaper (ADR-0090): pigment on paper.
  * ------------------------------------------------------------------------- */
 
 /** Brush for {@link InkPaperProps.brush}. Omitted fields keep their current value. */
