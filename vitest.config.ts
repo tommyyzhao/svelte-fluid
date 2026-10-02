@@ -61,6 +61,17 @@ const browserProject = defineProject({
 					await mkdir(dirname(path), { recursive: true });
 					await writeFile(path, content);
 				},
+				// Real mouse drag with intermediate moves (userEvent.dragAndDrop sends
+				// none); coordinates are relative to the test iframe viewport.
+				async dragMouse(ctx: { page: any; frame: () => Promise<any> }, x0: number, y0: number, x1: number, y1: number) {
+					const frame = await ctx.frame();
+					const offset = await (await frame.frameElement()).boundingBox();
+					const { mouse } = ctx.page;
+					await mouse.move(offset.x + x0, offset.y + y0);
+					await mouse.down();
+					await mouse.move(offset.x + x1, offset.y + y1, { steps: 24 });
+					await mouse.up();
+				},
 				// Evidence frames (PNG) from the contrast measurement; base64 payload.
 				async writeBenchBase64(_ctx: unknown, path: string, base64: string) {
 					await mkdir(dirname(path), { recursive: true });
