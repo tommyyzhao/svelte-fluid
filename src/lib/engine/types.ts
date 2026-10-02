@@ -1608,7 +1608,7 @@ export type KarmanProps = Pick<
 /**
  * A native `<span>` whose text is shaded as soft, molded enamel; a press
  * dents it and it relaxes. Put it inside your heading: the heading supplies
- * the role. Other attributes go to the `<span>`. Not root-exported yet.
+ * the role. Other attributes go to the `<span>`.
  */
 export interface EnamelTextProps extends Omit<import('svelte/elements').HTMLAttributes<HTMLSpanElement>, 'children' | 'color'> {
 	/** Display text: short, plain (one line or a few wrapped lines). */

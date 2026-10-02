@@ -29,6 +29,8 @@ export { default as LiquidCaustics } from './LiquidCaustics.svelte';
 
 export { default as FoilSwitch } from './FoilSwitch.svelte';
 
+export { default as EnamelText } from './EnamelText.svelte';
+
 export { FluidEngine, type FluidEngineOptions } from './engine/FluidEngine.js';
 export {
 	isWebGLAvailable,
@@ -73,7 +75,8 @@ export type {
 	LiquidSegmentedProps,
 	LiquidDropZoneProps,
 	LiquidCausticsProps,
-	FoilSwitchProps
+	FoilSwitchProps,
+	EnamelTextProps
 } from './engine/types.js';
 export { mulberry32, randomSeed, generateColor, HSVtoRGB, normalizeColor, type Rng } from './engine/rng.js';
 
