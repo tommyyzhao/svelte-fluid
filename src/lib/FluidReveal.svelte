@@ -20,6 +20,7 @@
 	import { onMount } from 'svelte';
 	import Fluid from './Fluid.svelte';
 	import { DISABLED_PERFORMANCE_STATE } from './engine/performance-governor.js';
+	import { prefersReducedMotion, watchReducedMotion } from './engine/reduced-motion.js';
 
 	let {
 		sensitivity = 0.1,
@@ -61,6 +62,8 @@
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
 	let canvasWrapperEl: HTMLDivElement | undefined = $state(undefined);
+	// Reduced motion: drop the cover canvas so the content is shown still, in full.
+	let reduced = $state(prefersReducedMotion());
 
 	// ---- Pointer-driven reveal splats ----
 	// The display shader blends coverColor → accentColor based on dye
@@ -155,7 +158,8 @@
 	);
 
 	onMount(() => {
-		if (autoReveal) startAutoReveal();
+		const stopReduced = watchReducedMotion((v) => (reduced = v));
+		if (autoReveal && !reduced) startAutoReveal();
 
 		const wrapper = canvasWrapperEl;
 		if (wrapper) {
@@ -168,6 +172,7 @@
 		}
 
 		return () => {
+			stopReduced();
 			if (autoRevealRaf != null) cancelAnimationFrame(autoRevealRaf);
 			if (wrapper) {
 				wrapper.removeEventListener('pointermove', handlePointerMove);
@@ -200,7 +205,7 @@
 	<div class="svelte-fluid-reveal__content">
 		{@render children?.()}
 	</div>
-	<div class="svelte-fluid-reveal__canvas" bind:this={canvasWrapperEl}>
+	<div class="svelte-fluid-reveal__canvas" class:reduced bind:this={canvasWrapperEl}>
 		<Fluid
 			bind:this={inner}
 			reveal={true}
@@ -247,5 +252,9 @@
 		inset: 0;
 		z-index: 1;
 		pointer-events: auto;
+	}
+	/* prefers-reduced-motion: no cover, so nothing is hidden or intercepted. */
+	.svelte-fluid-reveal__canvas.reduced {
+		display: none;
 	}
 </style>
