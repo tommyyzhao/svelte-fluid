@@ -66,6 +66,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0079](./0079-bound-imperative-input.md)                       | Bound imperative input and reject non-finite values                   | Accepted |
 | [0080](./0080-shared-frame-scheduler.md)                       | One shared animation frame for all engines                            | Accepted |
 | [0081](./0081-linear-display-pipeline.md)                      | Display pipeline: opt-in tone mapping, exact backColor, dithering     | Accepted |
+| [0082](./0082-shared-gl-context.md)                            | One shared WebGL context and program cache for all instances          | Proposed |
 
 ## How to add a new ADR
 
