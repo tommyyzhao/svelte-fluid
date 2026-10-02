@@ -15,7 +15,7 @@ const browserProject = defineProject({
 			// Slow measurement-only bench: opt in with SVELTE_FLUID_GPU_BENCH=1.
 			...(process.env.SVELTE_FLUID_GPU_BENCH
 				? []
-				: ['**/gpu-budget.browser.test.ts', '**/dpr-shots.browser.test.ts'])
+				: ['**/gpu-budget.browser.test.ts', '**/dpr-shots.browser.test.ts', '**/surface-shots.browser.test.ts', '**/surface-gpu.browser.test.ts'])
 		],
 		env: {
 			SVELTE_FLUID_GPU_BENCH_OUT: process.env.SVELTE_FLUID_GPU_BENCH_OUT ?? '',
@@ -46,7 +46,11 @@ const browserProject = defineProject({
 			// VITEST_CHROME_PATH selects a hardware-capable installed Chrome.
 			provider: playwright(
 				process.env.VITEST_CHROME_PATH
-					? { launchOptions: { executablePath: process.env.VITEST_CHROME_PATH } }
+					? {
+							launchOptions: { executablePath: process.env.VITEST_CHROME_PATH },
+							// Opt-in DPR for native-DPR captures and GPU benches.
+							...(process.env.SVELTE_FLUID_DPR ? { contextOptions: { deviceScaleFactor: Number(process.env.SVELTE_FLUID_DPR) } } : {})
+						}
 					: {}
 			),
 			instances: [{ browser: 'chromium' }],
