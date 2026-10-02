@@ -12,7 +12,7 @@
  */
 import { commands } from 'vitest/browser';
 import { afterAll, describe, expect, it } from 'vitest';
-import { FluidEngine } from '../FluidEngine.js';
+import { FluidEngine, _setContextTier } from '../FluidEngine.js';
 import { createTimerQueryAdapter } from '../engine-profiler.js';
 import { cssQualityPolicy } from '../resolution.js';
 import { PRESETS } from '../../presets/registry.js';
@@ -51,11 +51,15 @@ interface Row {
 	/** Per-frame ms of SETTLE_CHECK_INTERVAL-frame batches whose last frame issues and reads the probe. */
 	settleBatchMs: number;
 	canvas: string;
+	tier: string;
+	probeEveryFrameMs: number;
+	probeOverheadMs: number;
 }
 
 type Harness = { rafRunning: boolean; lastUpdateTime: number; update(): void };
 
 const rows: Row[] = [];
+const SHARED = import.meta.env.SVELTE_FLUID_GPU_BENCH_TIER === 'shared';
 let adapter = 'unknown';
 
 const quantile = (v: number[], q: number): number => {
@@ -110,13 +114,17 @@ async function measure(preset: string, base: FluidConfig, dpr: number): Promise<
 	const canvas = document.createElement('canvas');
 	canvas.width = w;
 	canvas.height = h;
+	_setContextTier(SHARED ? 'shared' : 'own');
 	const engine = new FluidEngine({ canvas, autoStart: false, config: componentConfig(base, w, h) });
+	_setContextTier('auto');
 	const stubs = engine as unknown as Record<string, unknown>;
 	const batches: number[] = [];
 	const passMs: Partial<Record<Pass, number>> = {};
 	let timerQueryMedianMs = NaN;
 	const checks: number[] = [];
 	const checkGpu: number[] = [];
+	const probeFrames: number[] = [];
+	const probeDeltas: number[] = [];
 	const settleBatches: number[] = [];
 	try {
 		const gl = (engine as unknown as { gl: WebGL2RenderingContext }).gl;
@@ -181,6 +189,34 @@ async function measure(preset: string, base: FluidConfig, dpr: number): Promise<
 			settleBatches.push((performance.now() - t0) / SETTLE_CHECK_INTERVAL);
 			await poll();
 		}
+		// Paired busy throughput: enqueue the same reduction + PBO readback every
+		// frame, do not wait/poll in the measured span. Delta against ordinary
+		// frames isolates probe workload without adding CPU readback latency twice.
+		const eachProbe = () => {
+			probe.issueSettleProbe();
+			(engine as unknown as { withGl(fn: () => void): void; settleProbe: { sync: WebGLSync } | null }).withGl(() => {
+				const p = engine as unknown as { settleProbe: { sync: WebGLSync } | null };
+				if (p.settleProbe) gl.deleteSync(p.settleProbe.sync);
+				p.settleProbe = null;
+			});
+		};
+		const probeBatch = () => {
+			drain();
+			const t0 = performance.now();
+			for (let i = 0; i < BATCH_FRAMES; i++) { frame(engine); eachProbe(); }
+			drain();
+			return (performance.now() - t0) / BATCH_FRAMES;
+		};
+		batch(BATCH_FRAMES);
+		probeBatch();
+		for (let i = 0; i < BATCHES; i++) {
+			// Alternate ordering to limit clock/thermal drift.
+			let ordinary: number, checked: number;
+			if (i % 2) { checked = probeBatch(); ordinary = batch(BATCH_FRAMES); }
+			else { ordinary = batch(BATCH_FRAMES); checked = probeBatch(); }
+			probeFrames.push(checked);
+			probeDeltas.push(checked - ordinary);
+		}
 		// Per pass: replay it alone, back to back, with its captured arguments.
 		// Stubbing a pass out of the frame instead lets the GPU drop clocks and
 		// gives deltas of the wrong sign; a saturated replay keeps them up.
@@ -190,7 +226,7 @@ async function measure(preset: string, base: FluidConfig, dpr: number): Promise<
 				drain();
 				const t0 = performance.now();
 				for (let i = 0; i < PASS_REPEATS; i++) {
-					fn(...a);
+					(engine as unknown as { withGl(fn: () => void): void }).withGl(() => fn(...a));
 					// End the render pass, as the next frame's solver would. Without
 					// this, Apple's tiler culls the overwritten opaque draws (HSR).
 					gl.flush();
@@ -239,7 +275,10 @@ async function measure(preset: string, base: FluidConfig, dpr: number): Promise<
 		settleCheckMaxMs: Math.max(...checks),
 		settleCheckGpuMs: quantile(checkGpu, 0.5),
 		settleBatchMs: quantile(settleBatches, 0.5),
-		canvas: `${w}x${h}`
+		canvas: `${w}x${h}`,
+		tier: SHARED ? 'shared' : 'own',
+		probeEveryFrameMs: quantile(probeFrames, 0.5),
+		probeOverheadMs: quantile(probeDeltas, 0.5)
 	};
 }
 
