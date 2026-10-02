@@ -1,5 +1,120 @@
 # Changelog
 
+## 0.8.0
+
+### Minor Changes
+
+- [`0b1a131`](https://github.com/tommyyzhao/svelte-fluid/commit/0b1a1315a9c538a4ae01c90ccdd660e9bd4b926a) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Add `maxPixelRatio` to `<Fluid>` and wrapper component props. Physical canvas
+  DPR now defaults to a maximum of 2 to reduce high-DPR framebuffer memory and
+  fill rate; pass `maxPixelRatio={null}` to retain native device DPR. Small-canvas
+  quality tiers now depend on CSS size rather than physical DPR, so the same
+  layout selects consistent effects and iteration defaults across displays.
+
+- [`7b9cdd2`](https://github.com/tommyyzhao/svelte-fluid/commit/7b9cdd2d0f5b72068239d741202a258f106fadde) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Component lifecycle and quality-policy fixes.
+
+  - `<Fluid>` gains `onReady` (engine constructed, first frame scheduled) and
+    `onError` (engine construction failed; receives the `WebGLUnavailableError`
+    or other init error). Consumer callbacks that throw are caught and logged
+    instead of breaking startup.
+  - `fallback`, `poster`, `posterAlt`, `fallbackText`, `onReady` and `onError` are
+    now typed and forwarded by `FluidBackground`, `FluidDistortion`, `FluidReveal`,
+    `FluidStick` and `FluidText`. `FluidDistortion` defaults `poster` to `src`.
+  - Fix: bloom, sunrays, `bloomIterations` and `pressureIterations` no longer stay
+    forced off/reduced after a small canvas grows past the 600 CSS px threshold.
+  - `FluidDistortion`: opening splats are seeded from `seed` (reproducible, capped
+    at 64); `autoDistort` waits for the engine, no longer jumps after pause/resume,
+    and now honours `autoDistortSpeed`.
+  - `autoPause` now keeps a `<Fluid>` created in an already-hidden tab paused until
+    the tab becomes visible.
+
+- [`caf6fdc`](https://github.com/tommyyzhao/svelte-fluid/commit/caf6fdcc5d4a8ae4620ae4dc5ef8077c939b8007) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Engine robustness:
+
+  - `randomSplats(count)` is bounded: at most 64 random splats are retained and
+    16 run per frame, so large or repeated requests spread over a few frames
+    instead of stalling one. `initialSplatCount*` clamp to 0–64 and
+    `autoSplatCount` to 0–16.
+  - `splat()` calls with `NaN`/`Infinity` arguments, and non-finite numeric or
+    color props, are ignored with a single `console.warn` instead of corrupting
+    the simulation. Previous prop values are kept.
+  - All Fluid instances on a page now share one `requestAnimationFrame`. If one
+    instance throws during a frame it is stopped (`isPaused` becomes `true`,
+    one `console.error`) while other instances keep rendering.
+  - Sticky-mask `blur` is now O(pixels) with at most three passes and a radius
+    cap of 64. Radii up to 6 (including FluidStick's default) produce identical
+    masks; larger radii are visually equivalent and no longer freeze the page.
+  - Flow sources with `rate: 0` or zero payload, zero-vector or zero-strength
+    forces, and empty prescribed grids no longer keep an otherwise empty scene's
+    solver awake.
+  - `FBO`, `DoubleFBO`, `ExtInfo` and `ResolvedConfig` type exports are
+    deprecated; they will be removed from the public API in 1.0.
+
+- [`e771df8`](https://github.com/tommyyzhao/svelte-fluid/commit/e771df86a39293423b58d1b5b4faef1bc9908a27) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Opt-in frame-time governor (`autoPerformance`).
+
+  New `autoPerformance` config field (default `false`). When enabled, an EMA of
+  real RAF frame time drives a hysteretic quality shed above the explicit
+  `autoPerformanceTargetFrameMs` budget (default `1000 / 60`) under sustained load:
+  pressure iterations first, then solver substeps, bounded by
+  `autoPerformanceMinPressureIterations` (default 8) and
+  `autoPerformanceMinSubsteps` (default 1). It never auto-restores quality once
+  shed — call `setConfig()` explicitly to raise it again — and it is ignored
+  during deterministic `advance()` harness runs, so seeded/readback tests stay
+  byte-identical regardless of this setting.
+
+  Requested pressure iterations and substeps remain distinct from the governor's
+  effective shed values. As a result, shedding substeps no longer reduces the
+  accepted wall-clock simulation delta and cannot slow simulation time.
+
+  New pull-based `FluidHandle.getPerformanceState(): PerformanceState` (mirrors
+  `isPaused`; no events). New exported types `PerformanceState`,
+  `PerformanceTier`, `PerformanceAction`.
+
+- [`e771df8`](https://github.com/tommyyzhao/svelte-fluid/commit/e771df86a39293423b58d1b5b4faef1bc9908a27) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Public `advectionScheme` config field.
+
+  Promotes the previously-internal MacCormack velocity advection switch to a
+  public, construct-only `FluidConfig` field:
+  `advectionScheme?: 'semilagrangian' | 'maccormack'` (default `'semilagrangian'`).
+  `'maccormack'` gives crisper second-order velocity advection for flow/structured
+  scenes, but can look angular or "cubey" on diffuse decorative dye, so it is
+  opt-in and unset by every built-in preset. Devices without linear-filtering
+  support are capability-gated back to `'semilagrangian'` automatically. This is
+  a construct-only (Bucket D) field — `setConfig()` ignores runtime changes to it.
+
+  No built-in preset changes behavior: every preset still resolves to
+  `'semilagrangian'`, confirmed by a registry invariant test.
+
+  Near physical solids and open edges, MacCormack now conservatively falls back
+  to first-order advection whenever either departure path or its limiter stencil
+  could cross a blocked cell. This prevents the correction pass from increasing
+  thin-wall leakage relative to semi-Lagrangian advection.
+
+- [`ed33820`](https://github.com/tommyyzhao/svelte-fluid/commit/ed33820330158a1e20ecf0cd9c161b4d5e6866fe) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Resolution-normalized `viscosity` and `curl` (Phase 5).
+
+  `viscosity` and `curl` are now interpreted with a resolution-anchored gauge so a
+  given value produces the same look across `simResolution` values. At the default
+  `simResolution` (128) behavior is unchanged. **If you set a non-default
+  `simResolution` and tuned `viscosity`/`curl`, the effective diffusion/confinement
+  will change** (that is the point — it is now resolution-invariant); re-check those
+  values. The 4 built-in flow presets were re-tuned to preserve their look.
+
+  Also: vorticity confinement is now attenuated next to solid boundaries so it no
+  longer injects momentum into walls and fight the pressure projection — near-wall
+  vorticity around obstructions/container shapes is slightly reduced versus prior
+  versions, independent of the new optional `vorticityAdaptive` knob (0 = off).
+
+  The `vorticityAdaptive` threshold band now uses the same reference-resolution
+  gauge. Equivalent vortices therefore enter its low/transition/high regions at
+  the same physical strength from `simResolution` 64 through 256; resolution 128
+  remains unchanged.
+
+### Patch Changes
+
+- [`f053120`](https://github.com/tommyyzhao/svelte-fluid/commit/f05312034ddd4b0f13f0afbec22b31b3a5056498) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Fix WebGL context restoration so every GPU resource is freshly recreated and
+  the seeded random plus configured preset opening splats replay exactly once.
+  Also avoid allocating the glass scene framebuffer twice during construction and
+  restoration.
+
+- [`555308f`](https://github.com/tommyyzhao/svelte-fluid/commit/555308f97bbf35aaaa1433e8c4d421661b3b3a4a) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Refresh npm description and keywords (cursor, splash, splash-cursor).
+
 ## 0.7.0
 
 ### Minor Changes
