@@ -183,6 +183,17 @@ describe('LiquidCaustics', () => {
 		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 3000 });
 	});
 
+	it('a throwing forwarded onpointermove still ripples and is logged once', async () => {
+		const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const { root } = caustics('dark', { onpointermove: () => { throw new Error('consumer'); } });
+		await frames(4);
+		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 3000 });
+		const r = root.getBoundingClientRect();
+		root.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: r.left + 100, clientY: r.top + 200 }));
+		expect(activeFrameSubscribers()).toBeGreaterThan(0);
+		expect(err).toHaveBeenCalledOnce();
+	});
+
 	it('reduced motion: one still frame, no loop, no ripples', async () => {
 		stubReducedMotion();
 		const { root } = caustics('dark');

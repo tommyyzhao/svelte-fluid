@@ -336,6 +336,21 @@ describe('LiquidButton', () => {
 		expect(activeFrameSubscribers()).toBeGreaterThan(0);
 	});
 
+	it('throwing forwarded handlers still ripple and are logged once each', async () => {
+		const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const boom = () => { throw new Error('consumer'); };
+		const b = button({ onpointerdown: boom, onkeydown: boom });
+		await frames(3);
+		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 4000 });
+		b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, clientX: 20, clientY: 20 }));
+		expect(activeFrameSubscribers()).toBeGreaterThan(0);
+		expect(err).toHaveBeenCalledTimes(1);
+		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 4000 });
+		b.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }));
+		expect(activeFrameSubscribers()).toBeGreaterThan(0);
+		expect(err).toHaveBeenCalledTimes(2);
+	});
+
 	it('shows the plain native button when the shared host is unavailable', async () => {
 		vi.spyOn(console, 'warn').mockImplementation(() => {});
 		vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);

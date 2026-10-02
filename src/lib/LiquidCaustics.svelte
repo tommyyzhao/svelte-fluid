@@ -11,6 +11,7 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { notifyHost } from './engine/notify-host.js';
 	import { cssColorToRgb, measurePageColor } from './engine/css-color.js';
 	import { attachSurface, rectIn, resolveTone } from './engine/surface/attach.js';
 	import type { SurfaceBinding } from './engine/surface/attach.js';
@@ -73,14 +74,14 @@
 	class="liquid-caustics {className}"
 	class:live
 	onpointermove={(e) => {
-		onpointermove?.(e);
 		ripple(e.clientX, e.clientY);
+		notifyHost(onpointermove, 'onpointermove', e);
 	}}
 	onfocusin={(e) => {
-		onfocusin?.(e);
 		const t = (e.target as Element).getBoundingClientRect();
 		// One impulse, not a stroke's several: the strongest press.
 		ripple(t.left + t.width / 2, t.top + t.height / 2, 1.5);
+		notifyHost(onfocusin, 'onfocusin', e);
 	}}
 	{...rest}
 >

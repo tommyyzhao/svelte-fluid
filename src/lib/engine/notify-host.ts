@@ -4,7 +4,7 @@
  * instances. Returns whether the callback completed.
  */
 export function notifyHost<A extends unknown[]>(
-	callback: ((...args: A) => void) | undefined,
+	callback: ((...args: A) => void) | null | undefined,
 	name: string,
 	...args: A
 ): boolean {
