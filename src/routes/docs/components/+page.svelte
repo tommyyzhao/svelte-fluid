@@ -109,6 +109,8 @@ ${SCRIPT_CLOSE}
 
 <p>The core component. Renders a WebGL fluid simulation on a canvas that fills its parent container.</p>
 
+<p><strong>Input:</strong> Mouse, touch and pen drag stroke dye and velocity into the canvas (<code>pointerInput</code>, on by default); mouse and pen hover splat with <code>splatOnHover</code>; pen pressure scales force. Keyboard has no interactive role: the canvas is decorative (<code>aria-hidden</code>) and the content stays fully keyboard-operable.</p>
+
 <pre><code>{SCRIPT_OPEN}
   import {'{'} Fluid {'}'} from 'svelte-fluid';
   import type {'{'} FluidHandle {'}'} from 'svelte-fluid';
@@ -158,6 +160,8 @@ ${SCRIPT_CLOSE}
 
 <p>Full-viewport fluid behind page content. Use this as a page or screen wrapper; the canvas stays fixed to the viewport and your content is stacked above it.</p>
 
+<p><strong>Input:</strong> Pointer events are read from the window, so mouse, touch and pen movement over the page stirs the fluid while the canvas never intercepts clicks or touch scrolling. Keyboard has no interactive role: the canvas is decorative (<code>aria-hidden</code>) and the content stays fully keyboard-operable.</p>
+
 <pre><code>{SCRIPT_OPEN}
   import {'{'} FluidBackground {'}'} from 'svelte-fluid';
 {SCRIPT_CLOSE}
@@ -197,6 +201,8 @@ ${SCRIPT_CLOSE}
 <h2 id="fluidreveal">&lt;FluidReveal&gt;</h2>
 
 <p>The fluid acts as a reveal mask — cursor movement uncovers content behind a solid cover. Great for scratch-to-reveal effects and interactive hero sections.</p>
+
+<p><strong>Input:</strong> Mouse, touch and pen movement over the wrapper uncovers content; touch is forced harder than mouse; the first pointer or touch interaction stops auto-reveal. Keyboard has no interactive role: the canvas is decorative (<code>aria-hidden</code>) and the content stays fully keyboard-operable.</p>
 
 <pre><code>{SCRIPT_OPEN}
   import {'{'} FluidReveal {'}'} from 'svelte-fluid';
@@ -241,6 +247,8 @@ ${SCRIPT_CLOSE}
 
 <p>The fluid velocity field warps an underlying image like liquid glass. Move your cursor to create ripples.</p>
 
+<p><strong>Input:</strong> Mouse, touch and pen movement over the wrapper ripples the image; the first pointer or touch interaction stops auto-distortion. Keyboard has no interactive role: the canvas is decorative (<code>aria-hidden</code>) and the content stays fully keyboard-operable.</p>
+
 <pre><code>{SCRIPT_OPEN}
   import {'{'} FluidDistortion {'}'} from 'svelte-fluid';
 {SCRIPT_CLOSE}
@@ -268,6 +276,8 @@ ${SCRIPT_CLOSE}
 <h2 id="fluidstick">&lt;FluidStick&gt;</h2>
 
 <p>Dye clings to text or SVG paths. The mask makes dye last longer on the shape, while a small pressure push moves fluid around it.</p>
+
+<p><strong>Input:</strong> Mouse, touch and pen drag and hover deposit dye on the canvas; the first pointer activity stops auto-animation. Keyboard has no interactive role: the canvas is decorative (<code>aria-hidden</code>) and the content stays fully keyboard-operable.</p>
 
 <pre><code>{SCRIPT_OPEN}
   import {'{'} FluidStick {'}'} from 'svelte-fluid';
@@ -305,6 +315,8 @@ ${SCRIPT_CLOSE}
 <h2 id="fluidtext">&lt;FluidText&gt;</h2>
 
 <p>Fluid confined inside text. Wraps <code>&lt;Fluid&gt;</code> with an <code>svgPath</code> container shape in text mode. Automatically measures the text so the font keeps a consistent visual height regardless of length.</p>
+
+<p><strong>Input:</strong> Inherits <code>&lt;Fluid&gt;</code> pointer input: mouse, touch and pen drag stroke the fluid inside the letterforms, and hover splats with <code>splatOnHover</code>. The wrapper is <code>role="img"</code> with the text as its label. Keyboard has no interactive role: the canvas is decorative (<code>aria-hidden</code>) and the content stays fully keyboard-operable.</p>
 
 <pre><code>{SCRIPT_OPEN}
   import {'{'} FluidText {'}'} from 'svelte-fluid';

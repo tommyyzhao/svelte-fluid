@@ -51,3 +51,7 @@ compatibility mouse events, a drag that left the canvas stopped splatting, and
   never blocked, and a scroll gesture cancels the pointer (`pointercancel`).
 - A touch drag on an interactive canvas still cannot scroll the page; consumers
   wanting scroll should use `pointerTarget="window"` or `pointerInput={false}`.
+
+## Keyboard
+
+Decorative fluid primitives (`Fluid`, `FluidBackground`, `FluidReveal`, `FluidDistortion`, `FluidStick`, `FluidText`) are pointer-only by design: the canvas is decorative (`aria-hidden`) and the content around it stays fully keyboard-operable, so keyboard input has no interactive role there. Interactive primitives own a keyboard path through native elements: `LiquidButton` (`<button>`), `LiquidSegmented` (radio group), `LiquidDropZone` (file input), `FoilSwitch` (`<button role="switch">`) and `InkPaper` (focusing a `data-ink-wick` descendant blooms pigment). This is documented per component on the components docs page.
