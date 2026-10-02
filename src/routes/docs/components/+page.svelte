@@ -1,8 +1,66 @@
 <script lang="ts">
 	import { base } from '$app/paths';
+	import { FoilSwitch, LiquidButton, LiquidCaustics, LiquidDropZone, LiquidSegmented, InkPaper } from '$lib/index.js';
+
+	let segmented = $state('week');
+	let foilOn = $state(false);
+	let dropped = $state('none yet');
 
 	const SCRIPT_OPEN = '<' + 'script lang="ts">';
 	const SCRIPT_CLOSE = '</' + 'script>';
+	const INK_EXAMPLE = `${SCRIPT_OPEN}
+  import { InkPaper } from 'svelte-fluid';
+${SCRIPT_CLOSE}
+
+<InkPaper paper="#f4ecdc" pigments={['#2549a8', '#e7b112']} brush={{ size: 28 }} style="height: 260px; padding: 1.5rem">
+  <h3>Field notes</h3>
+  <button data-ink-resist data-ink-wick="0">Keep dry</button>
+</InkPaper>`;
+	const BTN_EXAMPLE = `${SCRIPT_OPEN}
+  import { LiquidButton } from 'svelte-fluid';
+${SCRIPT_CLOSE}
+
+<LiquidButton tone="auto" onclick={save}>Save changes</LiquidButton>`;
+	const SEG_EXAMPLE = `${SCRIPT_OPEN}
+  import { LiquidSegmented } from 'svelte-fluid';
+  let range = $state('week');
+${SCRIPT_CLOSE}
+
+<LiquidSegmented
+  name="range"
+  legend="Time range"
+  options={[
+    { value: 'day', label: 'Day' },
+    { value: 'week', label: 'Week' },
+    { value: 'month', label: 'Month' }
+  ]}
+  bind:value={range}
+/>`;
+	const DROP_EXAMPLE = `${SCRIPT_OPEN}
+  import { LiquidDropZone } from 'svelte-fluid';
+${SCRIPT_CLOSE}
+
+<LiquidDropZone
+  accept="image/*"
+  multiple
+  label="Choose images or drop them here"
+  onfiles={(files) => upload(files)}
+  announce={(files) => files.length + ' images ready'}
+/>`;
+	const CAU_EXAMPLE = `${SCRIPT_OPEN}
+  import { LiquidCaustics } from 'svelte-fluid';
+${SCRIPT_CLOSE}
+
+<LiquidCaustics tone="dark" intensity={0.75} style="padding: 1.5rem; background: #14181f; color: #e8ecf4">
+  <h3>Tide tables</h3>
+  <p>Move the pointer or tab into the block.</p>
+</LiquidCaustics>`;
+	const FOIL_EXAMPLE = `${SCRIPT_OPEN}
+  import { FoilSwitch } from 'svelte-fluid';
+  let notifications = $state(false);
+${SCRIPT_CLOSE}
+
+<FoilSwitch bind:checked={notifications} onchange={(on) => save(on)}>Notifications</FoilSwitch>`;
 	const BACKGROUND_COMPOSITION_EXAMPLE = `${SCRIPT_OPEN}
   import { FluidBackground } from 'svelte-fluid';
 ${SCRIPT_CLOSE}
@@ -35,11 +93,16 @@ ${SCRIPT_CLOSE}
 
 <svelte:head>
 	<title>Components — svelte-fluid</title>
-	<meta name="description" content="All six svelte-fluid components — Fluid, FluidBackground, FluidReveal, FluidDistortion, FluidStick, FluidText." />
+	<meta name="description" content="All twelve svelte-fluid components — the six fluid components plus InkPaper, LiquidButton, LiquidSegmented, LiquidDropZone, LiquidCaustics and FoilSwitch." />
 </svelte:head>
 
 <h1>Components</h1>
-<p class="subtitle">Six components for different use cases. Each one wraps the same WebGL engine with a different interface.</p>
+<p class="subtitle">Twelve components. Six wrap the fluid engine; six are interface primitives on a shared WebGL2 context.</p>
+
+<ul class="component-index">
+	<li>Fluid: <a href="#fluid">Fluid</a>, <a href="#fluidbackground">FluidBackground</a>, <a href="#fluidreveal">FluidReveal</a>, <a href="#fluiddistortion">FluidDistortion</a>, <a href="#fluidstick">FluidStick</a>, <a href="#fluidtext">FluidText</a></li>
+	<li>Interface primitives: <a href="#inkpaper">InkPaper</a>, <a href="#liquidbutton">LiquidButton</a>, <a href="#liquidsegmented">LiquidSegmented</a>, <a href="#liquiddropzone">LiquidDropZone</a>, <a href="#liquidcaustics">LiquidCaustics</a>, <a href="#foilswitch">FoilSwitch</a></li>
+</ul>
 
 <!-- ============================================================ -->
 <h2 id="fluid">&lt;Fluid&gt;</h2>
@@ -273,3 +336,217 @@ ${SCRIPT_CLOSE}
 </div>
 
 <p>Also accepts <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, <code>fallback</code>, <code>poster</code>, <code>posterAlt</code>, <code>fallbackText</code>, <code>onReady</code>, <code>onError</code>, and all <a href="{base}/docs/configuration">FluidConfig</a> props. Defaults to <code>transparent=true</code>.</p>
+
+<h2 id="interface-primitives">Interface primitives</h2>
+
+<p>Six components for interactive UI rather than backgrounds. Each is a real native element (button, radio group, file input, switch or <code>div</code>) with a decorative WebGL2 surface behind or over it. They share one WebGL2 context per page (ADR-0088/0093), so a dense page does not hit the browser's context cap. Without WebGL2 each renders a plain, fully styled native control that behaves identically. They are not <code>&lt;Fluid&gt;</code> wrappers and take no <code>FluidConfig</code> props.</p>
+
+<!-- ============================================================ -->
+<h2 id="inkpaper">&lt;InkPaper&gt;</h2>
+
+<p>A paper-textured panel that takes watercolour from pointer, touch and pen strokes, for editorial and note-taking surfaces.</p>
+
+<div class="example">
+	<InkPaper paper="#f4ecdc" pigments={['#2549a8', '#e7b112']} brush={{ size: 28 }} style="height: 240px; padding: 1.5rem; border-radius: 12px; color: #1d1a14">
+		<h3 style="margin: 0 0 0.5rem; color: inherit">Field notes</h3>
+		<p style="margin: 0 0 1rem; max-width: 28rem; color: inherit">Drag across the paper to lay colour. Pigment mixes subtractively and dries into the grain.</p>
+		<button data-ink-resist data-ink-wick="0" style="padding: 0.5rem 1rem; border: 1px solid #1d1a14; border-radius: 8px; background: #fffaf0; color: #1d1a14; font: inherit; cursor: pointer">Keep this dry</button>
+	</InkPaper>
+</div>
+
+<pre><code>{INK_EXAMPLE}</code></pre>
+
+<table>
+	<thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+	<tbody>
+		<tr><td><code>paper</code></td><td><code>string</code></td><td><code>#f4ecdc</code></td><td>Paper colour, any CSS colour (normalised to opaque sRGB). Also the fallback background.</td></tr>
+		<tr><td><code>pigments</code></td><td><code>string[]</code></td><td>4 built-in colours</td><td>Up to four <code>#rgb</code>/<code>#rrggbb</code> pigments, mixed subtractively. Invalid entries are dropped.</td></tr>
+		<tr><td><code>brush</code></td><td><code>InkBrush</code></td><td><code>&#123; size: 23, water: 1, pigment: null &#125;</code></td><td><code>size</code> in CSS px (2–120), <code>water</code> relative load (0.1–3), <code>pigment</code> index or <code>null</code> to rotate after each pause. Omitted fields keep their value.</td></tr>
+		<tr><td><code>seed</code></td><td><code>number</code></td><td><code>1</code></td><td>Seeds the paper grain and opening wash.</td></tr>
+		<tr><td><code>children</code></td><td><code>Snippet</code></td><td>—</td><td>Content above the paper. Descendants with <code>data-ink-resist</code> stay dry; focusing or hovering a <code>data-ink-wick</code> descendant blooms pigment (an integer value picks the pigment).</td></tr>
+		<tr><td><code>...rest</code></td><td><code>HTMLAttributes&lt;HTMLDivElement&gt;</code></td><td>—</td><td>All other <code>div</code> attributes are forwarded.</td></tr>
+	</tbody>
+</table>
+
+<div class="callout">
+	<strong>Input:</strong> mouse, touch and pen strokes paint (pen pressure scales the brush). Vertical touch drags still scroll the page. Keyboard: the paper takes no input; focusing a <code>data-ink-wick</code> control blooms pigment around it, and your children keep their own native keyboard behaviour.<br>
+	<strong>Reduced motion:</strong> no painting and no animation; the paper settles to one finished still.<br>
+	<strong>Contrast:</strong> children are your own DOM drawn above the paper, so text contrast is the colour you choose against <code>paper</code>. Pigment never covers a <code>data-ink-resist</code> box. Keep body text at 4.5:1 against the paper and the darkest pigment mix.<br>
+	<strong>No WebGL2:</strong> the <code>div</code> is a flat <code>paper</code> colour and every child works. Shares one WebGL2 context per page with the other interface primitives (ADR-0088/0093), so many on one page do not hit the context cap.
+</div>
+
+<!-- ============================================================ -->
+<h2 id="liquidbutton">&lt;LiquidButton&gt;</h2>
+
+<p>A button for primary actions, with a lit liquid surface that ripples when pressed.</p>
+
+<div class="example">
+	<LiquidButton>Save changes</LiquidButton>
+</div>
+
+<pre><code>{BTN_EXAMPLE}</code></pre>
+
+<table>
+	<thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+	<tbody>
+		<tr><td><code>tone</code></td><td><code>'light' | 'dark' | 'auto'</code></td><td><code>'auto'</code></td><td>Palette. <code>'auto'</code> measures the page colour behind the control once per change.</td></tr>
+		<tr><td><code>type</code></td><td><code>'button' | 'submit' | 'reset'</code></td><td><code>'button'</code></td><td>Native button type.</td></tr>
+		<tr><td><code>children</code></td><td><code>Snippet</code></td><td>—</td><td>Label, drawn by the DOM above the liquid.</td></tr>
+		<tr><td><code>...rest</code></td><td><code>HTMLButtonAttributes</code></td><td>—</td><td>Every native attribute and handler (<code>onclick</code>, <code>disabled</code>, <code>aria-*</code>) is forwarded to the <code>&lt;button&gt;</code>.</td></tr>
+		<tr><td><code>class</code></td><td><code>string</code></td><td>—</td><td>Class on the root element.</td></tr>
+	</tbody>
+</table>
+
+<div class="callout">
+	<strong>Input:</strong> a real <code>&lt;button&gt;</code>. Click, tap, pen, Enter and Space all activate it and send one ripple (pen pressure scales it). The focus ring appears on <code>:focus-visible</code> and follows the shape. Minimum height 2.75rem.<br>
+	<strong>Reduced motion:</strong> presses add no ripple; the surface is drawn once as a still.<br>
+	<strong>Contrast:</strong> the label rides above the liquid; light added under it is clamped so the label keeps at least 4.5:1 in both tones (ADR-0092).<br>
+	<strong>No WebGL2 / forced colours:</strong> a gradient-filled native button with a native outline; under <code>forced-colors</code> it uses system colours. Shares one WebGL2 context per page with the other interface primitives (ADR-0088/0093), so many on one page do not hit the context cap.
+</div>
+
+<!-- ============================================================ -->
+<h2 id="liquidsegmented">&lt;LiquidSegmented&gt;</h2>
+
+<p>A single-choice selector (time range, view mode) where the selected option sits on a liquid lens that sloshes across on change.</p>
+
+<div class="example">
+	<LiquidSegmented name="docs-range" legend="Time range" options={[{ value: 'day', label: 'Day' }, { value: 'week', label: 'Week' }, { value: 'month', label: 'Month' }]} bind:value={segmented} />
+	<p class="example-out">Selected: <code>{segmented}</code></p>
+</div>
+
+<pre><code>{SEG_EXAMPLE}</code></pre>
+
+<table>
+	<thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+	<tbody>
+		<tr><td><code>options</code></td><td><code>&#123; value: string; label: string &#125;[]</code></td><td>—</td><td><strong>Required.</strong> The choices.</td></tr>
+		<tr><td><code>value</code></td><td><code>string</code></td><td>—</td><td>Selected value; <code>bind:value</code>.</td></tr>
+		<tr><td><code>name</code></td><td><code>string</code></td><td>—</td><td><strong>Required.</strong> Radio group name; unique on the page.</td></tr>
+		<tr><td><code>legend</code></td><td><code>string</code></td><td>—</td><td><strong>Required.</strong> Visible group label (<code>&lt;legend&gt;</code>).</td></tr>
+		<tr><td><code>tone</code></td><td><code>'light' | 'dark' | 'auto'</code></td><td><code>'auto'</code></td><td>Palette. <code>'auto'</code> measures the page colour behind the control once per change.</td></tr>
+		<tr><td><code>disabled</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Disable the group.</td></tr>
+		<tr><td><code>class</code></td><td><code>string</code></td><td>—</td><td>Class on the <code>&lt;fieldset&gt;</code>.</td></tr>
+	</tbody>
+</table>
+
+<div class="callout">
+	<strong>Input:</strong> a <code>&lt;fieldset&gt;</code> of native radios. Tab enters the group, arrow keys move and select, and it submits in forms; click, tap and pen select an option. Focus is shown by a ring around the selected option.<br>
+	<strong>Reduced motion:</strong> the lens snaps to the selection with no slosh.<br>
+	<strong>Contrast:</strong> labels keep at least 4.5:1 against the surface in both tones (ADR-0092).<br>
+	<strong>No WebGL2 / forced colours:</strong> a plain styled segmented control with a checked tint; system colours under <code>forced-colors</code>. Shares one WebGL2 context per page with the other interface primitives (ADR-0088/0093), so many on one page do not hit the context cap.
+</div>
+
+<!-- ============================================================ -->
+<h2 id="liquiddropzone">&lt;LiquidDropZone&gt;</h2>
+
+<p>A file picker that doubles as a drop target, for uploads: the zone raises a meniscus toward the pointer as a file is dragged in.</p>
+
+<div class="example">
+	<LiquidDropZone accept="image/*" multiple label="Choose images or drop them here" onfiles={(files) => (dropped = files.map((f) => f.name).join(', '))} announce={(files) => files.length + (files.length === 1 ? ' image ready' : ' images ready')} />
+	<p class="example-out">Last pick: {dropped}</p>
+</div>
+
+<pre><code>{DROP_EXAMPLE}</code></pre>
+
+<table>
+	<thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+	<tbody>
+		<tr><td><code>accept</code></td><td><code>string</code></td><td>—</td><td>Native <code>accept</code> list; dropped files are filtered by it too.</td></tr>
+		<tr><td><code>multiple</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Allow several files; otherwise a drop keeps the first match.</td></tr>
+		<tr><td><code>label</code></td><td><code>string</code></td><td><code>'Choose a file or drop it here'</code></td><td>Visible text; <code>children</code> replaces it.</td></tr>
+		<tr><td><code>children</code></td><td><code>Snippet</code></td><td>—</td><td>Custom content instead of <code>label</code>.</td></tr>
+		<tr><td><code>onfiles</code></td><td><code>(files: File[]) =&gt; void</code></td><td>—</td><td>Picked or dropped files (never empty). Exceptions are caught and logged.</td></tr>
+		<tr><td><code>announce</code></td><td><code>(files: File[]) =&gt; string</code></td><td>count message</td><td>Polite live-region text for a result.</td></tr>
+		<tr><td><code>tone</code></td><td><code>'light' | 'dark' | 'auto'</code></td><td><code>'auto'</code></td><td>Palette. <code>'auto'</code> measures the page colour behind the control once per change.</td></tr>
+		<tr><td><code>disabled</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Disable the zone.</td></tr>
+		<tr><td><code>name</code></td><td><code>string</code></td><td>—</td><td>Native input <code>name</code>, for form submission.</td></tr>
+		<tr><td><code>...rest</code></td><td><code>HTMLLabelAttributes</code></td><td>—</td><td>Other attributes go to the <code>&lt;label&gt;</code>.</td></tr>
+	</tbody>
+</table>
+
+<div class="callout">
+	<strong>Input:</strong> a <code>&lt;label&gt;</code> around a visually hidden but focusable <code>&lt;input type="file"&gt;</code>. Click, tap, pen, Enter and Space open the browser's picker; drag and drop works with a mouse or pen. Results are announced in a polite live region.<br>
+	<strong>Reduced motion:</strong> the meniscus snaps to its target and drops send no ripple.<br>
+	<strong>Contrast:</strong> the label keeps at least 4.5:1 in both tones (ADR-0094).<br>
+	<strong>No WebGL2 / forced colours:</strong> a plain styled native control; system colours under <code>forced-colors</code>. Shares one WebGL2 context per page with the other interface primitives (ADR-0088/0093), so many on one page do not hit the context cap.
+</div>
+
+<!-- ============================================================ -->
+<h2 id="liquidcaustics">&lt;LiquidCaustics&gt;</h2>
+
+<p>A wrapper that lays caustic light over live content where the user acts, for emphasis on cards and callouts.</p>
+
+<div class="example">
+	<LiquidCaustics tone="dark" intensity={0.75} style="padding: 1.5rem; border-radius: 12px; background: #14181f; color: #e8ecf4">
+		<h3 style="margin: 0 0 0.5rem; color: inherit">Tide tables</h3>
+		<p style="margin: 0 0 0.5rem; max-width: 28rem; color: inherit">Move the pointer over this block, or tab into it, to send a ripple of light across the text. The text stays selectable and crisp.</p>
+		<a href="#liquidcaustics" style="color: #a4bce6">A focusable link</a>
+	</LiquidCaustics>
+</div>
+
+<pre><code>{CAU_EXAMPLE}</code></pre>
+
+<table>
+	<thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+	<tbody>
+		<tr><td><code>tone</code></td><td><code>'light' | 'dark' | 'auto'</code></td><td><code>'auto'</code></td><td>Palette. <code>'auto'</code> measures the page colour behind the control once per change.</td></tr>
+		<tr><td><code>intensity</code></td><td><code>number</code></td><td><code>0.75</code></td><td>Strength 0–1. Always clamped so body text keeps at least 4.5:1 against its measured background.</td></tr>
+		<tr><td><code>children</code></td><td><code>Snippet</code></td><td>—</td><td>The live content. It is never resampled.</td></tr>
+		<tr><td><code>...rest</code></td><td><code>HTMLAttributes&lt;HTMLDivElement&gt;</code></td><td>—</td><td>All other <code>div</code> attributes are forwarded.</td></tr>
+	</tbody>
+</table>
+
+<div class="callout">
+	<strong>Input:</strong> pointer moves and focus send a ripple that spreads and fades over about a second. At rest nothing is drawn or scheduled. The overlay ignores pointer events, so the content stays fully interactive, selectable and zoomable.<br>
+	<strong>Reduced motion:</strong> no ripples and nothing drawn; the content alone.<br>
+	<strong>Contrast:</strong> dark tone adds light, light tone adds soft shade, and the peak is clamped so the block's <code>color</code> keeps at least 4.5:1 against its background (ADR-0094).<br>
+	<strong>No WebGL2 / forced colours:</strong> the content alone. Shares one WebGL2 context per page with the other interface primitives (ADR-0088/0093), so many on one page do not hit the context cap.
+</div>
+
+<!-- ============================================================ -->
+<h2 id="foilswitch">&lt;FoilSwitch&gt;</h2>
+
+<p>An on/off switch for settings, drawn as a metal arch that snaps between two stable states (arched is off, bowed is on).</p>
+
+<div class="example">
+	<FoilSwitch bind:checked={foilOn} style="color: #e8ecf4">Notifications</FoilSwitch>
+	<p class="example-out">State: <code>{foilOn ? 'on' : 'off'}</code></p>
+</div>
+
+<pre><code>{FOIL_EXAMPLE}</code></pre>
+
+<table>
+	<thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+	<tbody>
+		<tr><td><code>checked</code></td><td><code>boolean</code></td><td><code>false</code></td><td>On/off; <code>bind:checked</code>.</td></tr>
+		<tr><td><code>onchange</code></td><td><code>(checked: boolean) =&gt; void</code></td><td>—</td><td>Called with the new state after a user toggle. Exceptions are caught and logged.</td></tr>
+		<tr><td><code>tone</code></td><td><code>'light' | 'dark' | 'auto'</code></td><td><code>'auto'</code></td><td>Palette for the focus ring and vector fallback.</td></tr>
+		<tr><td><code>disabled</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Disable the switch.</td></tr>
+		<tr><td><code>children</code></td><td><code>Snippet</code></td><td>—</td><td>Visible label; part of the accessible name.</td></tr>
+		<tr><td><code>...rest</code></td><td><code>HTMLButtonAttributes</code></td><td>—</td><td>Other button attributes are forwarded. <code>type</code>, <code>role</code> and <code>aria-checked</code> are fixed.</td></tr>
+	</tbody>
+</table>
+
+<div class="callout">
+	<strong>Input:</strong> a native <code>&lt;button type="button" role="switch"&gt;</code> with <code>aria-checked</code>. Click, tap, pen, Space and Enter toggle it; the state flips immediately, before <code>onchange</code>. The hit area is at least 48&times;48 CSS px and there is no border or chrome. The focus ring shows on <code>:focus-visible</code>.<br>
+	<strong>Reduced motion:</strong> the arch is drawn in its final state with no snap animation.<br>
+	<strong>Contrast:</strong> the arch carries the state, so the metal is clamped to at least 3:1 against the page in both tones (WCAG 1.4.11, ADR-0096).<br>
+	<strong>No WebGL2 / forced colours:</strong> an SVG arch of the same shape shows the state, in <code>ButtonText</code> under <code>forced-colors</code>. Shares one WebGL2 context per page with the other interface primitives (ADR-0088/0093), so many on one page do not hit the context cap.
+</div>
+
+<style>
+	.example {
+		margin: 1rem 0;
+		padding: 1.25rem;
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: 12px;
+		background: #151823;
+	}
+	.example-out {
+		margin: 0.75rem 0 0;
+		font-size: 0.85rem;
+	}
+	.component-index {
+		line-height: 1.8;
+	}
+</style>

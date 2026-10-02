@@ -107,7 +107,7 @@ yarn add svelte-fluid</code></pre>
 
 <h2>Beyond the basics</h2>
 
-<p>svelte-fluid ships six component variants for different use cases:</p>
+<p>svelte-fluid ships six fluid components and six interface primitives:</p>
 
 <table>
 	<thead>
@@ -140,6 +140,30 @@ yarn add svelte-fluid</code></pre>
 		<tr>
 			<td><code><a href="{base}/docs/components#fluidtext">&lt;FluidText&gt;</a></code></td>
 			<td>Fluid confined inside text letterforms.</td>
+		</tr>
+		<tr>
+			<td><code><a href="{base}/docs/components#inkpaper">&lt;InkPaper&gt;</a></code></td>
+			<td>Paper that takes watercolour from pointer, touch and pen strokes.</td>
+		</tr>
+		<tr>
+			<td><code><a href="{base}/docs/components#liquidbutton">&lt;LiquidButton&gt;</a></code></td>
+			<td>Native button with a lit liquid surface that ripples on press.</td>
+		</tr>
+		<tr>
+			<td><code><a href="{base}/docs/components#liquidsegmented">&lt;LiquidSegmented&gt;</a></code></td>
+			<td>Native radio group; the selected option sits on a liquid lens.</td>
+		</tr>
+		<tr>
+			<td><code><a href="{base}/docs/components#liquiddropzone">&lt;LiquidDropZone&gt;</a></code></td>
+			<td>Native file picker and drop target with a meniscus along its edge.</td>
+		</tr>
+		<tr>
+			<td><code><a href="{base}/docs/components#liquidcaustics">&lt;LiquidCaustics&gt;</a></code></td>
+			<td>Caustic light over live content where the user acts.</td>
+		</tr>
+		<tr>
+			<td><code><a href="{base}/docs/components#foilswitch">&lt;FoilSwitch&gt;</a></code></td>
+			<td>Native switch drawn as a bistable metal arch.</td>
 		</tr>
 	</tbody>
 </table>
