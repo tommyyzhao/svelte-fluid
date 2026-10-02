@@ -105,7 +105,7 @@ describe('flow visualization precedence', () => {
 	it('composites opaque backgrounds in the display shader instead of a separate full-screen pass', () => {
 		expect(shadersSrc).toContain('uniform vec3 uBackColor;');
 		expect(shadersSrc).toContain('uniform float uCompositeBackground;');
-		expect(shadersSrc).toContain('c + uBackColor * (1.0 - a)');
+		expect(shadersSrc).toContain('display += uBackColor * (1.0 - outAlpha)');
 		expect(engineSrc).toContain('this.drawDisplay(displayTarget, this.config.TRANSPARENT ? null : this.normalizedBackColor);');
 		expect(engineSrc).not.toContain('this.drawColor(displayTarget, this.normalizedBackColor);');
 		expect(engineSrc).not.toContain('private colorProgram');

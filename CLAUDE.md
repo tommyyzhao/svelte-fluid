@@ -34,7 +34,7 @@ Run `bun run prepack` before committing to verify publint.
 When props change at runtime, `engine.setConfig()` classifies each field:
 
 - **Bucket A** (hot scalars): written to `this.config.X`, picked up next frame.
-- **Bucket B** (keyword recompile): `shading`, `bloom`, `sunrays`, `reveal`, `distortion`, `obstructionColor` presence → `updateKeywords()` recompiles the display shader.
+- **Bucket B** (keyword recompile): `shading`, `bloom`, `sunrays`, `toneMapping`, `reveal`, `distortion`, `obstructionColor` presence → `updateKeywords()` recompiles the display shader.
 - **Bucket C** (owned FBO transition): `simResolution`, `dyeResolution`, `bloomResolution`, `bloomIterations`, `sunraysResolution` → transition only the owning simulation, dye/scalar, bloom, or sunrays group.
 - **Bucket D** (construct-only): `seed`, `initialSplatCount*`, `presetSplats`, `requireHardwareAcceleration` → ignored after construction.
 

@@ -37,6 +37,7 @@ export type {
 	PresetSplat,
 	ResolvedConfig,
 	RGB,
+	ToneMapping,
 	FBO,
 	DoubleFBO,
 	ExtInfo,

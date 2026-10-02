@@ -109,7 +109,7 @@ describe('setConfig bucket classification', () => {
 			fbChanged: a.SIM_RESOLUTION !== b.SIM_RESOLUTION || a.DYE_RESOLUTION !== b.DYE_RESOLUTION,
 			bloomChanged: a.BLOOM_RESOLUTION !== b.BLOOM_RESOLUTION || a.BLOOM_ITERATIONS !== b.BLOOM_ITERATIONS,
 			sunraysChanged: a.SUNRAYS_RESOLUTION !== b.SUNRAYS_RESOLUTION,
-			kwChanged: a.SHADING !== b.SHADING || a.BLOOM !== b.BLOOM || a.SUNRAYS !== b.SUNRAYS,
+			kwChanged: a.SHADING !== b.SHADING || a.BLOOM !== b.BLOOM || a.SUNRAYS !== b.SUNRAYS || a.TONE_MAPPING !== b.TONE_MAPPING,
 			shapeChanged: !containerShapeEqual(a.CONTAINER_SHAPE, b.CONTAINER_SHAPE),
 			glassChanged: a.GLASS !== b.GLASS || !containerShapeEqual(a.CONTAINER_SHAPE, b.CONTAINER_SHAPE),
 			revealChanged: a.REVEAL !== b.REVEAL,

@@ -267,6 +267,36 @@
 </table>
 
 <!-- ================================================================ -->
+<h3>Tone mapping</h3>
+<table>
+	<thead>
+		<tr>
+			<th>Prop</th>
+			<th>Type</th>
+			<th>Default</th>
+			<th>Description</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td><code>toneMapping</code></td>
+			<td><code>'neutral' | 'agx' | 'none'</code></td>
+			<td><code>'neutral'</code></td>
+			<td>How bright dye and bloom are brought into display range. <code>'neutral'</code>
+				(Khronos PBR Neutral shoulder) leaves in-range colours unchanged and rolls
+				highlights off smoothly instead of clipping to white. <code>'agx'</code> is a
+				softer, filmic curve that desaturates highlights more. <code>'none'</code> clamps
+				each channel, like 0.8.0, which keeps saturated HDR dye (fire, lava) vivid.
+				Hot-updatable: recompiles only the display program, no framebuffer allocation.</td>
+		</tr>
+	</tbody>
+</table>
+<p>Authored colours (splat and preset dye, <code>backColor</code>, <code>obstructionColor</code>)
+	are display-referred sRGB. Dye is decoded to linear light, bloom is added there,
+	the tone map is applied, and the result is encoded to sRGB once, then composited
+	over <code>backColor</code> and blue-noise dithered to reduce 8-bit banding.
+	The GasFlare and LavaLamp presets set <code>toneMapping: 'none'</code>.</p>
+
 <h2>Bloom</h2>
 <p>Post-processing glow effect.</p>
 
@@ -308,7 +338,7 @@
 			<td><code>bloomThreshold</code></td>
 			<td><code>number</code></td>
 			<td><code>0.6</code></td>
-			<td>Luminance threshold for bloom.</td>
+			<td>Brightness (max channel) threshold for bloom.</td>
 		</tr>
 		<tr>
 			<td><code>bloomSoftKnee</code></td>

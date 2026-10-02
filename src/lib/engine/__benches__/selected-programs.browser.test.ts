@@ -159,8 +159,8 @@ describe('selected engine program compilation', () => {
 				S.blurVertexShader,
 				S.blurShader,
 				S.bloomPrefilterShader,
-				S.bloomBlurShader,
-				S.bloomFinalShader,
+				S.bloomDownShader,
+				S.bloomUpShader,
 				S.sunraysMaskShader,
 				S.sunraysShader,
 				S.advectionMacCormackShader,
@@ -181,7 +181,7 @@ describe('selected engine program compilation', () => {
 
 			counter.reset();
 			engine.setConfig({ bloom: true });
-			for (const source of [S.blurVertexShader, S.blurShader, S.bloomPrefilterShader, S.bloomBlurShader, S.bloomFinalShader]) {
+			for (const source of [S.blurVertexShader, S.blurShader, S.bloomPrefilterShader, S.bloomDownShader, S.bloomUpShader]) {
 				expect(includesSource(counter, source)).toBe(true);
 			}
 			const bloomLinks = counter.links;
@@ -301,7 +301,7 @@ describe('selected engine program compilation', () => {
 			extension!.restoreContext();
 			await restored;
 
-			for (const source of [S.blurShader, S.bloomPrefilterShader, S.bloomBlurShader, S.bloomFinalShader]) {
+			for (const source of [S.blurShader, S.bloomPrefilterShader, S.bloomDownShader, S.bloomUpShader]) {
 				expect(includesSource(counter, source)).toBe(true);
 			}
 			for (const source of [
