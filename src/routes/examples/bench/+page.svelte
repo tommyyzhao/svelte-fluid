@@ -259,6 +259,7 @@
 
 <svelte:head>
 	<title>Benchmark profiler — svelte-fluid</title>
+	<meta name="robots" content="noindex" />
 	<meta
 		name="description"
 		content="Interactive fluid benchmark page with whole-frame GPU/CPU timing, lifecycle and resource telemetry, and liveness checks."
