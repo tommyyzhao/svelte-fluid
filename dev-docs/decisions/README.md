@@ -80,6 +80,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0093](./0093-fluid-engine-on-shared-gl-host.md)              | FluidEngine context tiers: own contexts, then the shared host        | Accepted |
 | [0094](./0094-liquid-drop-zone-and-caustics.md)                | Liquid drop zone: native file input, four-wall analytic climb          | Accepted |
 | [0095](./0095-material-promotion-disposition.md)              | Which R&D materials are promoted to WebGL2                            | Accepted |
+| [0096](./0096-foil-switch.md)                                  | FoilSwitch: R&D snap foil on the shared WebGL2 host, borderless native switch | Accepted |
 
 ## How to add a new ADR
 
