@@ -121,3 +121,15 @@ tries, a circle container on a 2:1 canvas dropped the only opening splat for
 exactly 0 (the flaky "defers GL work safely while the context is lost" test;
 seeds 28 and 36). Opening splats now get 64 tries (they run once); per-frame
 auto-splats keep 10. The test pins seed 36 as a regression guard.
+
+## GPU timer queries over-read on ANGLE Metal
+
+Symptom: `EXT_disjoint_timer_query_webgl2` `TIME_ELAPSED` reported 4–6 ms for
+LavaLamp/GasFlare at 1440×900 DPR 3, and 13.8 ms for a Venturi frame whose wall
+time was 0.08 ms. Cause: Chrome on macOS runs WebGL through ANGLE's Metal
+backend, which charges a query the full GPU span of every `MTLCommandBuffer`
+open while it is active; large canvases over-read 2–100×. Fix: budget against
+synced batches of fed frames (ended by a 1-px readback or fence) and per-pass
+replays, which agree with each other; treat the per-frame query, and
+`EngineProfiler` (`instrument: true`) GPU numbers, as unreliable at large
+sizes. See ADR-0089 and `dev-docs/benchmarks/gpu-budget.md`.
