@@ -2,8 +2,9 @@
  * GPU budget harness (measurement, not a gate). Opt in with
  * SVELTE_FLUID_GPU_BENCH=1; see dev-docs/benchmarks/gpu-budget.md.
  *
- * Per preset x DPR: whole-frame GPU time (EXT_disjoint_timer_query_webgl2,
- * gl.finish() CPU-wall fallback) on an uninstrumented engine, plus per-pass
+ * Per preset x DPR: steady back-to-back whole-frame GPU time
+ * (EXT_disjoint_timer_query_webgl2, one query per frame, read asynchronously;
+ * CPU-wall batch fallback), a separate cold isolated-frame median, plus per-pass
  * medians from the existing EngineProfiler on a second, instrumented engine.
  */
 import { commands } from 'vitest/browser';
@@ -14,11 +15,16 @@ import { cssQualityPolicy } from '../resolution.js';
 import { PRESETS } from '../../presets/registry.js';
 import type { FluidConfig } from '../types.js';
 
-const CSS_W = 800;
-const CSS_H = 500;
+// Override e.g. SVELTE_FLUID_GPU_BENCH_CSS=1440x900 for a full-viewport check.
+const [CSS_W, CSS_H] = String(import.meta.env.SVELTE_FLUID_GPU_BENCH_CSS || '800x500')
+	.split('x')
+	.map(Number);
 const DPRS = [1, 2, 3] as const;
-const WARMUP = 40;
-const SAMPLES = 90;
+// Fed warm-up long enough (~0.2-0.3 s of GPU work) for clocks to ramp after
+// engine construction idles the GPU.
+const WARMUP = 200;
+const SAMPLES = 120;
+const COLD_SAMPLES = 15;
 const OUT = import.meta.env.SVELTE_FLUID_GPU_BENCH_OUT || '/tmp/svelte-fluid-gpu-budget.json';
 // Comma-separated preset ids, e.g. 'Karman,(default)'; empty = all.
 const ONLY = String(import.meta.env.SVELTE_FLUID_GPU_BENCH_PRESETS || '')
@@ -33,6 +39,7 @@ interface Row {
 	samples: number;
 	medianMs: number;
 	p95Ms: number;
+	coldMedianMs: number;
 	passMedianMs: Partial<Record<ProfileGroup, number>>;
 	canvas: string;
 }
@@ -94,36 +101,52 @@ async function measure(preset: string, base: FluidConfig, dpr: number): Promise<
 
 	const engine = make(false);
 	const times: number[] = [];
+	const cold: number[] = [];
 	try {
 		const gl = (engine as unknown as { gl: WebGL2RenderingContext }).gl;
 		const dbg = gl.getExtension('WEBGL_debug_renderer_info');
 		if (dbg) adapter = String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL));
 		const timer = createTimerQueryAdapter(gl);
 		timing = timer ? 'gpu' : 'cpu-wall';
-		for (let i = 0; i < WARMUP; i++) {
-			frame(engine);
-			gl.finish();
-		}
-		for (let i = 0; i < SAMPLES; i++) {
-			// gl.finish() per frame isolates each frame's GPU work from its neighbours.
-			if (timer) {
+		for (let i = 0; i < WARMUP; i++) frame(engine);
+		gl.finish();
+		if (timer) {
+			// Steady state: SAMPLES frames issued back to back, one query each, results
+			// read only afterwards. A gl.finish() between frames lets the GPU idle and
+			// downclock, which inflated and destabilised the old medians.
+			const qs = Array.from({ length: SAMPLES }, () => timer.create()!);
+			timer.disjoint(); // clear any stale disjoint flag
+			for (const q of qs) {
+				timer.begin(q);
+				frame(engine);
+				timer.end();
+			}
+			for (let spin = 0; spin < 400 && !timer.available(qs[SAMPLES - 1]); spin++) await tick();
+			const disjoint = timer.disjoint();
+			for (const q of qs) {
+				const ns = !disjoint && timer.available(q) ? timer.resultNanos(q) : null;
+				if (ns != null && Number.isFinite(ns)) times.push(ns / 1e6);
+				timer.delete(q);
+			}
+			// Cold single frame: idle GPU, one isolated frame (what a sparse/paused
+			// page pays). Reported separately; not the budget number.
+			for (let i = 0; i < COLD_SAMPLES; i++) {
+				for (let spin = 0; spin < 5; spin++) await tick();
 				const q = timer.create()!;
 				timer.begin(q);
 				frame(engine);
 				timer.end();
 				gl.finish();
 				for (let spin = 0; spin < 200 && !timer.available(q); spin++) await tick();
-				if (!timer.disjoint() && timer.available(q)) {
-					const ns = timer.resultNanos(q);
-					if (ns != null && Number.isFinite(ns)) times.push(ns / 1e6);
-				}
+				const ns = !timer.disjoint() && timer.available(q) ? timer.resultNanos(q) : null;
+				if (ns != null && Number.isFinite(ns)) cold.push(ns / 1e6);
 				timer.delete(q);
-			} else {
-				const t0 = performance.now();
-				frame(engine);
-				gl.finish();
-				times.push(performance.now() - t0);
 			}
+		} else {
+			const t0 = performance.now();
+			for (let i = 0; i < SAMPLES; i++) frame(engine);
+			gl.finish();
+			times.push((performance.now() - t0) / SAMPLES);
 		}
 	} finally {
 		engine.dispose();
@@ -156,6 +179,7 @@ async function measure(preset: string, base: FluidConfig, dpr: number): Promise<
 		samples: times.length,
 		medianMs: quantile(times, 0.5),
 		p95Ms: quantile(times, 0.95),
+		coldMedianMs: quantile(cold, 0.5),
 		passMedianMs,
 		canvas: `${w}x${h}`
 	};
@@ -191,13 +215,13 @@ describe('GPU budget (measurement only)', () => {
 		const names = [...new Set(rows.map((r) => r.preset))];
 		const cell = (n: string, d: number) => {
 			const r = rows.find((x) => x.preset === n && x.dpr === d);
-			return r ? `${r.medianMs.toFixed(2)}/${r.p95Ms.toFixed(2)}` : '-';
+			return r ? `${r.medianMs.toFixed(2)}/${r.p95Ms.toFixed(2)} c${r.coldMedianMs.toFixed(1)}` : '-';
 		};
 		const lines = [
-			`GPU budget [${timing}] ${adapter} @ ${CSS_W}x${CSS_H} css, median/p95 ms`,
-			'preset'.padEnd(16) + DPRS.map((d) => `DPR${d}`.padStart(13)).join('')
+			`GPU budget [${timing}] ${adapter} @ ${CSS_W}x${CSS_H} css, median/p95 steady, c=cold median ms`,
+			'preset'.padEnd(16) + DPRS.map((d) => `DPR${d}`.padStart(19)).join('')
 		];
-		for (const n of names) lines.push(n.padEnd(16) + DPRS.map((d) => cell(n, d).padStart(13)).join(''));
+		for (const n of names) lines.push(n.padEnd(16) + DPRS.map((d) => cell(n, d).padStart(19)).join(''));
 		console.log(lines.join('\n'));
 		console.log(`results: ${OUT}`);
 	});
