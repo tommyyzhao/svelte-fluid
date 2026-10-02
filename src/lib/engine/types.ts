@@ -4,6 +4,10 @@
  * https://github.com/PavelDoGreat/WebGL-Fluid-Simulation
  */
 
+import type { Snippet } from 'svelte';
+import type { HTMLCanvasAttributes } from 'svelte/elements';
+import type { WebGLUnavailableReason } from './gl-utils.js';
+
 /**
  * RGB triple. Unit conventions vary by call site:
  *
@@ -1042,4 +1046,395 @@ export interface FluidHandle {
 	 * emitted, so applications can read this when rendering diagnostics.
 	 */
 	getPerformanceState(): PerformanceState;
+}
+
+// ---------------------------------------------------------------------------
+// Component props (moved from the .svelte module scripts; re-exported there).
+// ---------------------------------------------------------------------------
+
+/** Public props for the `<Fluid />` component. */
+export interface FluidProps
+	extends Omit<HTMLCanvasAttributes, 'width' | 'height'>,
+		FluidConfig {
+	/** Optional fixed width in CSS pixels. Omit to fill the parent container. */
+	width?: number;
+	/** Optional fixed height in CSS pixels. Omit to fill the parent container. */
+	height?: number;
+	/** Class applied to the wrapper container. */
+	class?: string;
+	/** Inline style applied to the wrapper container. */
+	style?: string;
+	/**
+	 * Maximum physical pixels per CSS pixel. Default `2`, limiting GPU
+	 * allocation on DPR 3+ displays without changing CSS-based quality tiers.
+	 * Pass `null` to use the device's native DPR. Construct-only.
+	 */
+	maxPixelRatio?: number | null;
+	/**
+	 * Defer engine creation until the container enters the viewport,
+	 * and tear it down when it leaves. Frees the WebGL context for
+	 * other instances on dense pages, at the cost of a shader-recompile
+	 * pause when scrolled back into view. Default `false` (immediate
+	 * instantiation) so the library default matches naive usage.
+	 *
+	 * Recommended `true` for any page with more than ~6 simultaneous
+	 * `<Fluid />` instances. Browsers cap WebGL contexts at 8–16 per
+	 * tab, so dense layouts hit the ceiling otherwise.
+	 *
+	 * The IntersectionObserver uses `rootMargin: 50px` so the engine
+	 * comes alive shortly before it would be visible, hiding the
+	 * recompile pause behind the user's scroll momentum while
+	 * minimizing simultaneous context creation.
+	 */
+	lazy?: boolean;
+	/**
+	 * Automatically pause the animation loop when the canvas is not
+	 * visible — either scrolled out of the viewport or on a hidden
+	 * browser tab. Resumes when visibility is restored. Default `true`.
+	 *
+	 * This is lighter than `lazy`: the WebGL context stays alive (no
+	 * recompile pause on resume) but the RAF loop stops, freeing CPU
+	 * and GPU cycles. When both `lazy` and `autoPause` are set, `lazy`
+	 * takes precedence for scroll visibility (full teardown), while
+	 * `autoPause` still handles tab-level visibility (Page Visibility API).
+	 */
+	autoPause?: boolean;
+	/**
+	 * Custom UI rendered when WebGL is permanently unavailable (no WebGL,
+	 * or no half-float texture support). Receives the typed failure
+	 * `reason`. Takes precedence over {@link poster}. Transient failures
+	 * (e.g. hitting the browser's live-context limit) do NOT trigger it —
+	 * those stay blank and retry on the next reconcile — EXCEPT in `reveal`
+	 * mode, where any failure (including transient) surfaces the fallback,
+	 * because the transparent reveal canvas would otherwise expose the
+	 * covered content. See ADR-0041.
+	 */
+	fallback?: Snippet<[{ reason: WebGLUnavailableReason }]>;
+	/**
+	 * Static image shown (object-fit: cover) when WebGL is permanently
+	 * unavailable and no {@link fallback} snippet is provided. A graceful
+	 * still of what the animation would have rendered.
+	 */
+	poster?: string;
+	/**
+	 * Alt text for the {@link poster} image. Defaults to `''` (decorative) —
+	 * the poster is a graceful still of a decorative visual, so it is not
+	 * announced unless you describe it. Set this when the poster conveys
+	 * meaning a screen-reader user needs.
+	 */
+	posterAlt?: string;
+	/**
+	 * Visually-hidden message for the default fallback, discoverable (not
+	 * announced) by assistive tech when WebGL is permanently unavailable. It
+	 * is rendered for the `backColor`-fill fallback AND alongside a
+	 * {@link poster} (since the dead canvas is `aria-hidden`), but NOT for a
+	 * custom {@link fallback} snippet (which owns its own semantics). Set `''`
+	 * to suppress for a purely decorative instance. Default: "This animation
+	 * requires WebGL, which isn't available in your browser."
+	 */
+	fallbackText?: string;
+	/**
+	 * Called after the engine is constructed and its first frame is
+	 * scheduled. Fires again whenever a `lazy` instance rebuilds its engine.
+	 * A throwing callback is caught and logged.
+	 */
+	onReady?: () => void;
+	/**
+	 * Called when engine construction fails — a {@link WebGLUnavailableError}
+	 * (check `.reason`) or any other initialization error such as a shader
+	 * compile failure. Also fires for transient failures that the component
+	 * retries. A throwing callback is caught and logged.
+	 */
+	onError?: (error: Error) => void;
+}
+
+export interface FluidBackgroundProps
+	extends FluidConfig,
+		Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
+	/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
+	maxPixelRatio?: number | null;
+	/**
+	 * CSS selector for elements within the content slot to exclude
+	 * from the fluid. Matched elements become "holes" — the fluid
+	 * pools around them. Queried on scroll, resize, and DOM mutation.
+	 * Example: `".card, .sidebar"`
+	 */
+	exclude?: string;
+	/** Border radius of exclusion zones in CSS px. Default 16. */
+	excludeRadius?: number;
+	/** Padding around exclusion zones in CSS px. Default 4. */
+	excludePad?: number;
+	/** Class applied to the outer wrapper div. */
+	class?: string;
+	/** Inline style applied to the outer wrapper div. */
+	style?: string;
+	/** Page content rendered above the fluid canvas. */
+	children?: Snippet;
+}
+
+export interface FluidDistortionProps
+	extends FluidConfig,
+		Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
+	/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
+	maxPixelRatio?: number | null;
+	/**
+	 * URL of the image to distort. Required.
+	 * The image is loaded asynchronously and uploaded as a WebGL texture.
+	 */
+	src: string;
+	/**
+	 * How strongly the velocity field warps the image UV coordinates.
+	 * 0 = no distortion, 1 = very strong. Default 0.4.
+	 */
+	strength?: number;
+	/**
+	 * How much distortion dye each pointer interaction injects.
+	 * Higher values create more dramatic warping per gesture.
+	 * Default 24.
+	 */
+	intensity?: number;
+	/**
+	 * How the image fits the canvas.
+	 * - `'cover'`: image fills the canvas, cropping if needed (default)
+	 * - `'contain'`: full image visible, may have empty borders
+	 */
+	fit?: 'cover' | 'contain';
+	/**
+	 * Scale factor for the image. Values > 1 zoom out (more image
+	 * visible, less edge smearing during distortion). Values < 1
+	 * zoom in. Default 1.0.
+	 */
+	scale?: number;
+	/**
+	 * Enable automatic Lissajous curve animation before user interaction.
+	 * Creates a gentle, continuous distortion effect. Stops on the first
+	 * pointer/touch event. Default false.
+	 */
+	autoDistort?: boolean;
+	/**
+	 * Speed multiplier for the auto-distort animation. Higher values
+	 * make the Lissajous curve trace faster. Default 1.0.
+	 */
+	autoDistortSpeed?: number;
+	/**
+	 * Number of random high-velocity splats injected at startup.
+	 * Creates a chaotic distortion that settles into the undistorted
+	 * image over ~1 second. Set to 0 to start undistorted.
+	 * Default 20.
+	 */
+	initialSplats?: number;
+	/**
+	 * Extra canvas pixels beyond each visible edge. The canvas
+	 * extends invisibly by this amount so the fluid velocity field
+	 * doesn't bounce at the content boundaries. The image is mapped
+	 * to the visible sub-region only — no extra cropping.
+	 * Default 60.
+	 */
+	bleed?: number;
+	/** Optional fixed width in CSS pixels. Omit to fill the parent container. */
+	width?: number;
+	/** Optional fixed height in CSS pixels. Omit to fill the parent container. */
+	height?: number;
+	/**
+	 * Defer engine creation until the container enters the viewport.
+	 * Recommended on pages with many instances. Default false.
+	 */
+	lazy?: boolean;
+	/**
+	 * Automatically pause when not visible. Default true.
+	 */
+	autoPause?: boolean;
+	/** Class applied to the outer wrapper div. */
+	class?: string;
+	/** Inline style applied to the outer wrapper div. */
+	style?: string;
+	/**
+	 * Content rendered behind the distorted image. Visible where the
+	 * image has transparent regions or at edges when using `contain` fit.
+	 *
+	 * **Note:** The canvas sits on top of the content. Interactive elements
+	 * (links, buttons) inside children will not receive pointer events
+	 * because the canvas layer intercepts them.
+	 */
+	children?: Snippet;
+}
+
+export interface FluidRevealProps
+	extends FluidConfig,
+		Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
+	/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
+	maxPixelRatio?: number | null;
+	/**
+	 * How easily areas reveal. Multiplier on dye intensity before
+	 * the power curve. Higher = less dye needed. Default 0.1.
+	 */
+	sensitivity?: number;
+	/**
+	 * Power exponent for the reveal alpha curve. Higher values create
+	 * a crisper edge (more binary), lower values create a softer
+	 * gradient with wider fringes. Default 0.5.
+	 */
+	curve?: number;
+	/**
+	 * Solid color of the reveal cover layer (visible before scratching).
+	 * RGB components in 0–1 linear range. Default white `{ r: 1, g: 1, b: 1 }`.
+	 */
+	coverColor?: RGB;
+	/**
+	 * Accent color of the reveal fringe (visible at scratch edges).
+	 * RGB components in 0–1 linear range. Default blue `{ r: 0.2, g: 0.35, b: 0.7 }`.
+	 */
+	accentColor?: RGB;
+	/**
+	 * Fringe color at the outer edge of the reveal boundary, between
+	 * cover and accent. Creates a two-tone fringe. RGB components in
+	 * 0–1 linear range. Default soft blue `{ r: 0.6, g: 0.7, b: 0.85 }`.
+	 */
+	fringeColor?: RGB;
+	/**
+	 * Whether revealed areas gradually fade back to covered.
+	 * `true` → multiplicative dissipation 0.995 (slow fade-back).
+	 * `false` → multiplicative dissipation 1.0 (permanent reveal).
+	 * Overridden by `fadeSpeed` if both are provided.
+	 * Default `true`.
+	 */
+	fadeBack?: boolean;
+	/**
+	 * Explicit density dissipation value (multiplicative).
+	 * 1.0 = permanent reveal, 0.99 = slow fade-back, 0.9 = fast fade.
+	 * Takes precedence over `fadeBack` when provided.
+	 */
+	fadeSpeed?: number;
+	/**
+	 * Enable automatic Lissajous curve animation before user interaction.
+	 * The animation injects dye along a smooth path, gradually revealing
+	 * content. Stops on the first pointer/touch event. Default `false`.
+	 */
+	autoReveal?: boolean;
+	/**
+	 * Speed multiplier for the auto-reveal animation. Higher values
+	 * make the Lissajous curve trace faster. Default `1.0`.
+	 */
+	autoRevealSpeed?: number;
+	/** Optional fixed width in CSS pixels. Omit to fill the parent container. */
+	width?: number;
+	/** Optional fixed height in CSS pixels. Omit to fill the parent container. */
+	height?: number;
+	/**
+	 * Defer engine creation until the container enters the viewport.
+	 * Recommended on pages with many instances. Default `false`.
+	 */
+	lazy?: boolean;
+	/**
+	 * Automatically pause when not visible. Default `true`.
+	 */
+	autoPause?: boolean;
+	/** Class applied to the outer wrapper div. */
+	class?: string;
+	/** Inline style applied to the outer wrapper div. */
+	style?: string;
+	/**
+	 * Content rendered behind the fluid mask, revealed by interaction.
+	 *
+	 * **Note:** The canvas sits on top of the content for alpha compositing.
+	 * Interactive elements (links, buttons) inside children will not receive
+	 * pointer events because the canvas layer intercepts them. Use FluidReveal
+	 * for visual/decorative content. For interactive content, set
+	 * `pointerInput={false}` and drive splats manually via `handle.splat()`.
+	 */
+	children?: Snippet;
+}
+
+export interface FluidStickProps
+	extends FluidConfig,
+		Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
+	/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
+	maxPixelRatio?: number | null;
+	/** Text to render as the sticky mask. `d` takes precedence if both are set. */
+	text?: string;
+	/** CSS font string for text mode. Default `'bold 72px sans-serif'`. */
+	font?: string;
+	/** SVG path data for the sticky mask. */
+	d?: string;
+	/** viewBox for path mode. Default `[0, 0, 100, 100]`. */
+	maskViewBox?: [number, number, number, number];
+	/** Fill rule for path mode. Default `'nonzero'`. */
+	maskFillRule?: 'nonzero' | 'evenodd';
+	/** Mask rasterization resolution. Default 512. */
+	maskResolution?: number;
+	/** Blur radius on the mask (mask pixels). Default 4. */
+	maskBlur?: number;
+	/**
+	 * How much of the mask texture the text fills (text mode only).
+	 * 0.9 = text fills 90% of the texture (default). Use smaller
+	 * values when combining with a container shape (e.g. 0.5 to fit
+	 * text inside a circle). Default 0.9.
+	 */
+	maskPadding?: number;
+	/**
+	 * How strongly dye dissipation is reduced on the mask.
+	 * 0 = no effect, 1 = dye never fades on mask. Default 0.95.
+	 */
+	strength?: number;
+	/**
+	 * Artificial pressure on the mask to push fluid around it.
+	 * 0 = no effect. Default 0.15.
+	 */
+	stickyPressureAmount?: number;
+	/**
+	 * Splat intensity multiplier on the mask. Default 2.0.
+	 */
+	amplify?: number;
+	/**
+	 * Enable automatic Lissajous curve animation. Splats trace
+	 * a path to deposit dye on the mask before user interaction.
+	 * Default `true`.
+	 */
+	autoAnimate?: boolean;
+	/** Speed multiplier for auto-animation. Default 2.0. */
+	autoAnimateSpeed?: number;
+	/**
+	 * How many seconds auto-animation runs before stopping.
+	 * Once stopped, off-mask dye fades away, revealing the sticky shape.
+	 * 0 = run indefinitely (until user interacts). Default 5.0.
+	 */
+	autoAnimateDuration?: number;
+	/** Optional fixed width in CSS pixels. */
+	width?: number;
+	/** Optional fixed height in CSS pixels. */
+	height?: number;
+	/** Defer engine creation until visible. Default false. */
+	lazy?: boolean;
+	/** Auto-pause when not visible. Default true. */
+	autoPause?: boolean;
+	/** Class applied to the outer wrapper. */
+	class?: string;
+	/** Inline style applied to the outer wrapper. */
+	style?: string;
+}
+
+export interface FluidTextProps
+	extends FluidConfig,
+		Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
+	/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
+	maxPixelRatio?: number | null;
+	/** The text to render as fluid-filled letterforms. */
+	text: string;
+	/**
+	 * CSS font string for the mask rasterization.
+	 * Default `'bold 100px "Helvetica Neue", Arial, sans-serif'`.
+	 */
+	font?: string;
+	/** Mask rasterization resolution. Default 512. */
+	maskResolution?: number;
+	/** Optional fixed height in CSS pixels. */
+	height?: number;
+	/** Defer engine creation until visible. Default false. */
+	lazy?: boolean;
+	/** Auto-pause when not visible. Default true. */
+	autoPause?: boolean;
+	/** Class applied to the outer wrapper. */
+	class?: string;
+	/** Inline style applied to the outer wrapper. */
+	style?: string;
 }

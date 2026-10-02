@@ -10,6 +10,7 @@ import { DEFAULTS } from '../FluidEngine.js';
 import { getResolution } from '../gl-utils.js';
 import type { GL } from '../gl-utils.js';
 import fluidSrc from '../../Fluid.svelte?raw';
+import typesSrc from '../types.ts?raw';
 
 describe('component pixel ratio and CSS quality policy', () => {
 	it('keeps CSS quality tiers identical across DPR 1, 2, and 3', () => {
@@ -28,7 +29,7 @@ describe('component pixel ratio and CSS quality policy', () => {
 	});
 
 	it('declares and consumes the public component prop instead of leaking it to canvas attributes', () => {
-		expect(fluidSrc).toContain('maxPixelRatio?: number | null');
+		expect(typesSrc).toContain('maxPixelRatio?: number | null');
 		expect(fluidSrc).toContain('maxPixelRatio = 2');
 		expect(fluidSrc).toContain('const stableMaxPixelRatio = untrack(() => maxPixelRatio)');
 		expect(fluidSrc).toContain('canvasPixelSize(cssW, cssH, window.devicePixelRatio || 1, stableMaxPixelRatio)');

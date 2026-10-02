@@ -13,99 +13,11 @@
 -->
 
 <script lang="ts" module>
-	import type { Snippet } from 'svelte';
-	import type { FluidConfig, FluidHandle, RGB } from './engine/types.js';
-	import type { FluidProps } from './Fluid.svelte';
-
-	export interface FluidDistortionProps
-		extends FluidConfig,
-			Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
-		/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
-		maxPixelRatio?: number | null;
-		/**
-		 * URL of the image to distort. Required.
-		 * The image is loaded asynchronously and uploaded as a WebGL texture.
-		 */
-		src: string;
-		/**
-		 * How strongly the velocity field warps the image UV coordinates.
-		 * 0 = no distortion, 1 = very strong. Default 0.4.
-		 */
-		strength?: number;
-		/**
-		 * How much distortion dye each pointer interaction injects.
-		 * Higher values create more dramatic warping per gesture.
-		 * Default 24.
-		 */
-		intensity?: number;
-		/**
-		 * How the image fits the canvas.
-		 * - `'cover'`: image fills the canvas, cropping if needed (default)
-		 * - `'contain'`: full image visible, may have empty borders
-		 */
-		fit?: 'cover' | 'contain';
-		/**
-		 * Scale factor for the image. Values > 1 zoom out (more image
-		 * visible, less edge smearing during distortion). Values < 1
-		 * zoom in. Default 1.0.
-		 */
-		scale?: number;
-		/**
-		 * Enable automatic Lissajous curve animation before user interaction.
-		 * Creates a gentle, continuous distortion effect. Stops on the first
-		 * pointer/touch event. Default false.
-		 */
-		autoDistort?: boolean;
-		/**
-		 * Speed multiplier for the auto-distort animation. Higher values
-		 * make the Lissajous curve trace faster. Default 1.0.
-		 */
-		autoDistortSpeed?: number;
-		/**
-		 * Number of random high-velocity splats injected at startup.
-		 * Creates a chaotic distortion that settles into the undistorted
-		 * image over ~1 second. Set to 0 to start undistorted.
-		 * Default 20.
-		 */
-		initialSplats?: number;
-		/**
-		 * Extra canvas pixels beyond each visible edge. The canvas
-		 * extends invisibly by this amount so the fluid velocity field
-		 * doesn't bounce at the content boundaries. The image is mapped
-		 * to the visible sub-region only — no extra cropping.
-		 * Default 60.
-		 */
-		bleed?: number;
-		/** Optional fixed width in CSS pixels. Omit to fill the parent container. */
-		width?: number;
-		/** Optional fixed height in CSS pixels. Omit to fill the parent container. */
-		height?: number;
-		/**
-		 * Defer engine creation until the container enters the viewport.
-		 * Recommended on pages with many instances. Default false.
-		 */
-		lazy?: boolean;
-		/**
-		 * Automatically pause when not visible. Default true.
-		 */
-		autoPause?: boolean;
-		/** Class applied to the outer wrapper div. */
-		class?: string;
-		/** Inline style applied to the outer wrapper div. */
-		style?: string;
-		/**
-		 * Content rendered behind the distorted image. Visible where the
-		 * image has transparent regions or at edges when using `contain` fit.
-		 *
-		 * **Note:** The canvas sits on top of the content. Interactive elements
-		 * (links, buttons) inside children will not receive pointer events
-		 * because the canvas layer intercepts them.
-		 */
-		children?: Snippet;
-	}
+	export type { FluidDistortionProps } from './engine/types.js';
 </script>
 
 <script lang="ts">
+	import type { FluidDistortionProps, FluidHandle } from './engine/types.js';
 	import { onMount, untrack } from 'svelte';
 	import Fluid from './Fluid.svelte';
 	import { createDistortionPresetSplats } from './engine/distortion-splats.js';

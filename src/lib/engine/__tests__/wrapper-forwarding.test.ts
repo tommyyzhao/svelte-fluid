@@ -5,18 +5,23 @@ import distortionSrc from '../../FluidDistortion.svelte?raw';
 import revealSrc from '../../FluidReveal.svelte?raw';
 import stickSrc from '../../FluidStick.svelte?raw';
 import textSrc from '../../FluidText.svelte?raw';
+import typesSrc from '../types.ts?raw';
 
 describe('wrapper components expose fallback, poster and lifecycle props', () => {
 	const pick =
 		"Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'>";
+	it('declares the shared pick in engine/types.ts for every wrapper', () => {
+		expect(typesSrc.split(pick).length - 1).toBe(5);
+	});
 	it.each([
 		['FluidBackground', backgroundSrc],
 		['FluidDistortion', distortionSrc],
 		['FluidReveal', revealSrc],
 		['FluidStick', stickSrc],
 		['FluidText', textSrc]
-	])('%s types them and spreads the rest to <Fluid>', (_name, src) => {
-		expect(src).toContain(pick);
+	])('%s types them and spreads the rest to <Fluid>', (name, src) => {
+		expect(typesSrc).toContain(`export interface ${name}Props`);
+		expect(src).toContain(`export type { ${name}Props } from './engine/types.js'`);
 		expect(src).toContain('{...fluidProps}');
 	});
 });

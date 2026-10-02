@@ -4,22 +4,16 @@
  */
 
 export { default as Fluid } from './Fluid.svelte';
-export type { FluidProps } from './Fluid.svelte';
 
 export { default as FluidBackground } from './FluidBackground.svelte';
-export type { FluidBackgroundProps } from './FluidBackground.svelte';
 
 export { default as FluidReveal } from './FluidReveal.svelte';
-export type { FluidRevealProps } from './FluidReveal.svelte';
 
 export { default as FluidDistortion } from './FluidDistortion.svelte';
-export type { FluidDistortionProps } from './FluidDistortion.svelte';
 
 export { default as FluidStick } from './FluidStick.svelte';
-export type { FluidStickProps } from './FluidStick.svelte';
 
 export { default as FluidText } from './FluidText.svelte';
-export type { FluidTextProps } from './FluidText.svelte';
 
 export { FluidEngine, type FluidEngineOptions } from './engine/FluidEngine.js';
 export {
@@ -54,7 +48,13 @@ export type {
 	FlowGridField,
 	PrescribedFlowField,
 	FlowVisualization,
-	FlowConfig
+	FlowConfig,
+	FluidProps,
+	FluidBackgroundProps,
+	FluidRevealProps,
+	FluidDistortionProps,
+	FluidStickProps,
+	FluidTextProps
 } from './engine/types.js';
 export { mulberry32, randomSeed, generateColor, HSVtoRGB, normalizeColor, type Rng } from './engine/rng.js';
 

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { notifyHost } from '../notify-host.js';
 import fluidSrc from '../../Fluid.svelte?raw';
+import typesSrc from '../types.ts?raw';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -25,8 +26,8 @@ describe('notifyHost', () => {
 
 describe('Fluid lifecycle wiring', () => {
 	it('declares onReady/onError and invokes them only through notifyHost', () => {
-		expect(fluidSrc).toContain('onReady?: () => void');
-		expect(fluidSrc).toContain('onError?: (error: Error) => void');
+		expect(typesSrc).toContain('onReady?: () => void');
+		expect(typesSrc).toContain('onError?: (error: Error) => void');
 		expect(fluidSrc).toContain("notifyHost(onReady, 'onReady')");
 		expect(fluidSrc).toContain("notifyHost(onError, 'onError'");
 	});

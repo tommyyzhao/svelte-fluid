@@ -12,79 +12,11 @@
 -->
 
 <script lang="ts" module>
-	import type { FluidConfig, FluidHandle, RGB, StickyMask } from './engine/types.js';
-	import type { FluidProps } from './Fluid.svelte';
-
-	export interface FluidStickProps
-		extends FluidConfig,
-			Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
-		/** Maximum physical pixels per CSS pixel. Default 2; null uses native DPR. */
-		maxPixelRatio?: number | null;
-		/** Text to render as the sticky mask. `d` takes precedence if both are set. */
-		text?: string;
-		/** CSS font string for text mode. Default `'bold 72px sans-serif'`. */
-		font?: string;
-		/** SVG path data for the sticky mask. */
-		d?: string;
-		/** viewBox for path mode. Default `[0, 0, 100, 100]`. */
-		maskViewBox?: [number, number, number, number];
-		/** Fill rule for path mode. Default `'nonzero'`. */
-		maskFillRule?: 'nonzero' | 'evenodd';
-		/** Mask rasterization resolution. Default 512. */
-		maskResolution?: number;
-		/** Blur radius on the mask (mask pixels). Default 4. */
-		maskBlur?: number;
-		/**
-		 * How much of the mask texture the text fills (text mode only).
-		 * 0.9 = text fills 90% of the texture (default). Use smaller
-		 * values when combining with a container shape (e.g. 0.5 to fit
-		 * text inside a circle). Default 0.9.
-		 */
-		maskPadding?: number;
-		/**
-		 * How strongly dye dissipation is reduced on the mask.
-		 * 0 = no effect, 1 = dye never fades on mask. Default 0.95.
-		 */
-		strength?: number;
-		/**
-		 * Artificial pressure on the mask to push fluid around it.
-		 * 0 = no effect. Default 0.15.
-		 */
-		stickyPressureAmount?: number;
-		/**
-		 * Splat intensity multiplier on the mask. Default 2.0.
-		 */
-		amplify?: number;
-		/**
-		 * Enable automatic Lissajous curve animation. Splats trace
-		 * a path to deposit dye on the mask before user interaction.
-		 * Default `true`.
-		 */
-		autoAnimate?: boolean;
-		/** Speed multiplier for auto-animation. Default 2.0. */
-		autoAnimateSpeed?: number;
-		/**
-		 * How many seconds auto-animation runs before stopping.
-		 * Once stopped, off-mask dye fades away, revealing the sticky shape.
-		 * 0 = run indefinitely (until user interacts). Default 5.0.
-		 */
-		autoAnimateDuration?: number;
-		/** Optional fixed width in CSS pixels. */
-		width?: number;
-		/** Optional fixed height in CSS pixels. */
-		height?: number;
-		/** Defer engine creation until visible. Default false. */
-		lazy?: boolean;
-		/** Auto-pause when not visible. Default true. */
-		autoPause?: boolean;
-		/** Class applied to the outer wrapper. */
-		class?: string;
-		/** Inline style applied to the outer wrapper. */
-		style?: string;
-	}
+	export type { FluidStickProps } from './engine/types.js';
 </script>
 
 <script lang="ts">
+	import type { FluidStickProps, FluidHandle, StickyMask } from './engine/types.js';
 	import { onMount } from 'svelte';
 	import Fluid from './Fluid.svelte';
 	import { DISABLED_PERFORMANCE_STATE } from './engine/performance-governor.js';
