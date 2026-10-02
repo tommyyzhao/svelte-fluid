@@ -10,6 +10,7 @@ Contributing guidelines live in [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 | --- | --- |
 | [`architecture.md`](./architecture.md) | High-level architecture diagram, module boundaries, control flow, and lifecycle. |
 | [`porting-notes.md`](./porting-notes.md) | Mapping of upstream `script.js` symbols and lines to the refactored class/module structure, plus a list of intentional behavioral differences. |
+| [`benchmarks/`](./benchmarks/) | Measured performance notes: GPU frame-time budget harness and results. |
 | [`learnings/`](./learnings/) | Lessons captured during the port — things tried, things broken, things fixed. Organized by topic. |
 | [`decisions/`](./decisions/) | ADR-style log of every key architectural decision, in chronological order. Each ADR is small and self-contained. |
 
