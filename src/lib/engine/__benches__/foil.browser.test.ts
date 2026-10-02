@@ -344,6 +344,16 @@ describe('FoilSwitch', () => {
 		expect(b.getAttribute('aria-checked')).toBe('false');
 	});
 
+	it('a throwing forwarded onclick still flips the switch and is logged once', async () => {
+		const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const b = mountSwitch({ onclick: () => { throw new Error('consumer'); } });
+		await frames(2);
+		b.click();
+		flushSync();
+		expect(b.getAttribute('aria-checked')).toBe('true');
+		expect(err).toHaveBeenCalledOnce();
+	});
+
 	it('disabled: no toggle, no hover', async () => {
 		const b = mountSwitch({ disabled: true });
 		await frames(2);

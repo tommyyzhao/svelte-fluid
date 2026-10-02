@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { notifyHost } from './engine/notify-host.js';
 	import { SURFACE_PAD, attachSurface, rectIn, resolveTone } from './engine/surface/attach.js';
 	import type { SurfaceBinding } from './engine/surface/attach.js';
 	import { LOOKS } from './engine/surface/look.js';
@@ -68,26 +69,28 @@
 	style:--liquid-ring={look.ring}
 	style:--liquid-pad="{SURFACE_PAD}px"
 	onpointerdown={(e) => {
-		onpointerdown?.(e);
-		if (e.button !== 0 || button.disabled) return;
-		const p = local(e);
-		// Pen pressure scales the impulse (ADR-0083); mouse/touch pressure is unreliable.
-		binding?.press(p.x, p.y, e.pointerType === 'pen' ? 0.5 + e.pressure : 1);
+		// Own behaviour first; consumer handlers are isolated so a throw cannot break it.
+		if (e.button === 0 && !button.disabled) {
+			const p = local(e);
+			// Pen pressure scales the impulse (ADR-0083); mouse/touch pressure is unreliable.
+			binding?.press(p.x, p.y, e.pointerType === 'pen' ? 0.5 + e.pressure : 1);
+		}
+		notifyHost(onpointerdown, 'onpointerdown', e);
 	}}
 	onkeydown={(e) => {
-		onkeydown?.(e);
 		if ((e.key === 'Enter' || e.key === ' ') && !e.repeat && !button.disabled) {
 			const r = rectIn(button, canvas);
 			binding?.press(r.x + r.width / 2, r.y + r.height / 2);
 		}
+		notifyHost(onkeydown, 'onkeydown', e);
 	}}
 	onfocus={(e) => {
-		onfocus?.(e);
 		focused = true;
+		notifyHost(onfocus, 'onfocus', e);
 	}}
 	onblur={(e) => {
-		onblur?.(e);
 		focused = false;
+		notifyHost(onblur, 'onblur', e);
 	}}
 	{...rest}
 >

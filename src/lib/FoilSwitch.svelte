@@ -120,7 +120,9 @@
 	style:--foil-metal={look.metal}
 	style:--foil-ring={look.ring}
 	onclick={(e) => {
-		onclick?.(e);
+		// Isolated: a throwing consumer handler cannot block the toggle.
+		// preventDefault() in it still vetoes the flip.
+		notifyHost(onclick, 'onclick', e);
 		if (e.defaultPrevented) return;
 		// State flips now; the physics follows and never delays it.
 		checked = !checked;
