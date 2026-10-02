@@ -117,6 +117,44 @@ export const checkerboardShader = `
     }
 `;
 
+/** Absorbing-layer geometry. Dye is concentration, NOT emitted RGB height (ADR-0087).
+ * T_i = 1/(1+c_i), optical depth = -mean(log(T_i)). Height and XY distances
+ * share canvas-height units; sampling the dye grid removes output-DPR dependence.
+ */
+export const DYE_GEOMETRY_GLSL = `
+    uniform sampler2D uHeightTexture;
+    uniform vec2 uHeightTexel;
+    uniform float uHeightAspect;
+
+    float dyeHeight (vec3 concentration) {
+        return 0.06 * dot(log(vec3(1.0) + max(concentration, vec3(0.0))), vec3(1.0 / 3.0));
+    }
+
+    vec3 dyeNormal (vec2 uv) {
+        float l = dyeHeight(texture2D(uHeightTexture, uv - vec2(uHeightTexel.x, 0.0)).rgb);
+        float r = dyeHeight(texture2D(uHeightTexture, uv + vec2(uHeightTexel.x, 0.0)).rgb);
+        float b = dyeHeight(texture2D(uHeightTexture, uv - vec2(0.0, uHeightTexel.y)).rgb);
+        float t = dyeHeight(texture2D(uHeightTexture, uv + vec2(0.0, uHeightTexel.y)).rgb);
+        vec2 slope = vec2(r - l, t - b) / (2.0 * uHeightTexel * vec2(uHeightAspect, 1.0));
+        return normalize(vec3(-slope, 1.0));
+    }
+
+    vec2 dyeRefraction (vec2 uv, vec3 n, float h) {
+        vec3 ray = refract(vec3(0.0, 0.0, -1.0), n, 1.0 / 1.33);
+        return ray.xy / max(-ray.z, 0.001) * h * vec2(1.0 / uHeightAspect, 1.0);
+    }
+
+    float dyeSpecular (vec3 n, float h) {
+        // Normalized Blinn-Phong BRDF, dielectric Schlick F0=0.02, studio key.
+        vec3 l = normalize(vec3(-0.35, 0.45, 1.0));
+        vec3 halfVector = normalize(l + vec3(0.0, 0.0, 1.0));
+        float fresnel = 0.02 + 0.98 * pow(1.0 - halfVector.z, 5.0);
+        float coverage = 1.0 - exp(-h / 0.06);
+        return (130.0 / (8.0 * 3.14159265)) * pow(max(dot(n, halfVector), 0.0), 128.0)
+            * fresnel * max(dot(n, l), 0.0) * coverage;
+    }
+`;
+
 /** Exact IEC 61966-2-1 transfer; GLSL ES 1.00 compatible. */
 export const SRGB_TRANSFER_GLSL = `
     vec3 srgbToLinear (vec3 c) {
@@ -269,6 +307,16 @@ export const displayShaderSource = `
 ${SRGB_TRANSFER_GLSL}
 ${TONE_MAP_GLSL}
 
+#if defined(SHADING) || defined(SPECULAR) || defined(REFRACTION)
+${DYE_GEOMETRY_GLSL}
+#endif
+#ifdef SPECULAR
+    uniform float uSpecular;
+#endif
+#ifdef REFRACTION
+    uniform float uRefraction;
+#endif
+
     // ±1 LSB blue noise (64² LDR_LLL1 texture), shared by every output mode.
     vec3 ditherNoise () {
         return vec3((texture2D(uDithering, vUv * ditherScale).r * 2.0 - 1.0) / 255.0);
@@ -324,20 +372,18 @@ ${TONE_MAP_GLSL}
     void main () {
         vec3 c = texture2D(uTexture, vUv).rgb;
 
+    #if defined(SHADING) || defined(SPECULAR) || defined(REFRACTION)
+        vec3 n = dyeNormal(vUv);
+        float h = dyeHeight(c);
+    #endif
     #ifdef SHADING
-        vec3 lc = texture2D(uTexture, vL).rgb;
-        vec3 rc = texture2D(uTexture, vR).rgb;
-        vec3 tc = texture2D(uTexture, vT).rgb;
-        vec3 bc = texture2D(uTexture, vB).rgb;
-
-        float dx = length(rc) - length(lc);
-        float dy = length(tc) - length(bc);
-
-        vec3 n = normalize(vec3(dx, dy, length(texelSize)));
-        vec3 l = vec3(0.0, 0.0, 1.0);
-
-        float diffuse = clamp(dot(n, l) + 0.7, 0.7, 1.0);
+        // Artistic ambient/key ratio preserves the 0.8.0 0.7–1 envelope.
+        // Only diffuse slopes are amplified, not the physical geometry.
+        float diffuse = clamp(0.7 + inversesqrt(1.0 + 10000.0 * dot(n.xy, n.xy) / max(n.z * n.z, 0.000001)), 0.7, 1.0);
         c *= diffuse;
+    #endif
+    #ifdef SPECULAR
+        c = linearToSrgb(dyeToLinear(c) + vec3(uSpecular * dyeSpecular(n, h)));
     #endif
 
     #ifdef BLOOM
@@ -540,6 +586,18 @@ ${TONE_MAP_GLSL}
 
         // Apply velocity-directed distortion
         imgUv -= uDistortionPower * normalize(vel) * offset;
+    #ifdef REFRACTION
+        // Convert a canvas-UV ray displacement into the fitted image's units.
+        vec2 shift = dyeRefraction(vUv, n, h) / max(1.0 - 2.0 * uBleed, 0.01);
+        if (uDistortionFit == 0) {
+            if (visRatio > uImgRatio) shift.y *= uImgRatio / visRatio;
+            else shift.x *= visRatio / uImgRatio;
+        } else {
+            if (visRatio > uImgRatio) shift.x *= visRatio / uImgRatio;
+            else shift.y *= uImgRatio / visRatio;
+        }
+        imgUv += uRefraction * shift / max(uDistortionScale, 0.01);
+    #endif
 
         vec3 img = texture2D(uDistortionTexture, vec2(imgUv.x, 1.0 - imgUv.y)).rgb;
 
@@ -549,6 +607,9 @@ ${TONE_MAP_GLSL}
         edgeAlpha *= smoothstep(0.0, ew, imgUv.y) * smoothstep(1.0, 1.0 - ew, imgUv.y);
 
         float alpha = edgeAlpha * cmask;
+    #ifdef SPECULAR
+        img = linearToSrgb(srgbToLinear(img) + vec3(uSpecular * dyeSpecular(n, h)));
+    #endif
         gl_FragColor = vec4(clamp(img + ditherNoise(), 0.0, 1.0) * alpha, alpha);
     #elif defined(REVEAL)
         float raw = clamp(a * uRevealSensitivity, 0.0, 1.0);
@@ -602,6 +663,8 @@ export const glassShaderSource = `
 
     varying vec2 vUv;
     uniform sampler2D uScene;
+    uniform float uRefraction;
+    ${DYE_GEOMETRY_GLSL}
 
     // Glass parameters
     uniform float uGlassThickness;
@@ -680,8 +743,17 @@ export const glassShaderSource = `
         return len > 0.0001 ? g / len : vec2(0.0);
     }
 
+    // No new target: refract the existing scene with the dye surface before
+    // the container's glass optics. Never sample the framebuffer being written.
+    vec4 layerScene (vec2 uv) {
+        if (uRefraction <= 0.0) return texture2D(uScene, uv);
+        float h = dyeHeight(texture2D(uHeightTexture, uv).rgb);
+        vec2 shift = uRefraction * dyeRefraction(uv, dyeNormal(uv), h);
+        return texture2D(uScene, clamp(uv + shift, 0.0, 1.0));
+    }
+
     void main () {
-        vec4 scene = texture2D(uScene, vUv);
+        vec4 scene = layerScene(vUv);
 
         // Obstructed pixels read as a clean cutout: transparent (transparent
         // mode) or the untouched scene color. Glass rim around obstacles is
@@ -750,9 +822,9 @@ export const glassShaderSource = `
             vec2 uvB = clamp(vUv + Tb.xy * scale * afix, 0.0, 1.0);
 
             vec3 refracted = vec3(
-                texture2D(uScene, uvR).r,
-                texture2D(uScene, uvG).g,
-                texture2D(uScene, uvB).b
+                layerScene(uvR).r,
+                layerScene(uvG).g,
+                layerScene(uvB).b
             );
 
             // Light from the fluid that the glass surface can catch.
@@ -817,9 +889,9 @@ export const glassShaderSource = `
             vec2 uvB = clamp(vUv - n2d * strBase * (1.0 + spread), 0.0, 1.0);
 
             vec3 refracted = vec3(
-                texture2D(uScene, uvR).r,
-                texture2D(uScene, uvG).g,
-                texture2D(uScene, uvB).b
+                layerScene(uvR).r,
+                layerScene(uvG).g,
+                layerScene(uvB).b
             );
 
             // Light from the fluid — no fluid = no highlights

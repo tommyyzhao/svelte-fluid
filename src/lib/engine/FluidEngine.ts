@@ -239,6 +239,8 @@ export const DEFAULTS: ResolvedConfig = {
 	SPLAT_RADIUS: 0.25,
 	SPLAT_FORCE: 6000,
 	SHADING: true,
+	SPECULAR: 0,
+	REFRACTION: 0,
 	COLORFUL: true,
 	COLOR_UPDATE_SPEED: 10,
 	PAUSED: false,
@@ -357,6 +359,8 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 	if (input.splatRadius !== undefined) out.SPLAT_RADIUS = input.splatRadius;
 	if (input.splatForce !== undefined) out.SPLAT_FORCE = input.splatForce;
 	if (input.shading !== undefined) out.SHADING = input.shading;
+	if (input.specular !== undefined) out.SPECULAR = clamp01(input.specular);
+	if (input.refraction !== undefined) out.REFRACTION = clamp01(input.refraction);
 	if (input.colorful !== undefined) out.COLORFUL = input.colorful;
 	if (input.colorUpdateSpeed !== undefined) out.COLOR_UPDATE_SPEED = input.colorUpdateSpeed;
 	if (input.paused !== undefined) out.PAUSED = input.paused;
@@ -1217,7 +1221,8 @@ export class FluidEngine implements FluidHandle {
 		const bloomResourceChanged = bloomChanged || a.BLOOM !== b.BLOOM;
 		const sunraysResourceChanged = sunraysChanged || a.SUNRAYS !== b.SUNRAYS;
 		const kwChanged =
-			a.SHADING !== b.SHADING || a.BLOOM !== b.BLOOM || a.SUNRAYS !== b.SUNRAYS || a.TONE_MAPPING !== b.TONE_MAPPING;
+			a.SHADING !== b.SHADING || a.BLOOM !== b.BLOOM || a.SUNRAYS !== b.SUNRAYS || a.TONE_MAPPING !== b.TONE_MAPPING ||
+			(a.SPECULAR > 0) !== (b.SPECULAR > 0) || (a.REFRACTION > 0) !== (b.REFRACTION > 0);
 		const shapeChanged = !containerShapeEqual(a.CONTAINER_SHAPE, b.CONTAINER_SHAPE);
 		const glassChanged = a.GLASS !== b.GLASS || shapeChanged;
 		const revealChanged = a.REVEAL !== b.REVEAL;
@@ -2898,6 +2903,8 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	private displayKeywords(config: ResolvedConfig): string[] {
 		const keywords: string[] = [];
 		if (config.SHADING) keywords.push('SHADING');
+		if (config.SPECULAR > 0 && !config.REVEAL) keywords.push('SPECULAR');
+		if (config.REFRACTION > 0 && config.DISTORTION) keywords.push('REFRACTION');
 		if (config.BLOOM) keywords.push('BLOOM');
 		if (config.SUNRAYS) keywords.push('SUNRAYS');
 		if (config.TONE_MAPPING === 'agx') keywords.push('TONE_MAP_AGX');
@@ -4128,6 +4135,11 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		const bg = backgroundColor ?? { r: 0, g: 0, b: 0 };
 		gl.uniform3f(this.displayMaterial.uniforms.uBackColor, bg.r, bg.g, bg.b);
 		gl.uniform1i(this.displayMaterial.uniforms.uTexture, this.dye.read.attach(0));
+		gl.uniform1i(this.displayMaterial.uniforms.uHeightTexture, 0);
+		gl.uniform2f(this.displayMaterial.uniforms.uHeightTexel, this.dye.texelSizeX, this.dye.texelSizeY);
+		gl.uniform1f(this.displayMaterial.uniforms.uHeightAspect, this.canvas.width / this.canvas.height);
+		gl.uniform1f(this.displayMaterial.uniforms.uSpecular, this.config.SPECULAR);
+		gl.uniform1f(this.displayMaterial.uniforms.uRefraction, this.config.REFRACTION);
 		// Every output mode dithers its final 8-bit write (ADR-0081).
 		gl.uniform1i(this.displayMaterial.uniforms.uDithering, this.ditheringTexture.attach(2));
 		const ditherScale = getTextureScale(this.ditheringTexture, width, height);
@@ -4284,6 +4296,10 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		this.glassProgram.bind();
 
 		gl.uniform1i(this.glassProgram.uniforms.uScene, this.sceneFBO!.attach(0));
+		gl.uniform1i(this.glassProgram.uniforms.uHeightTexture, this.dye.read.attach(3));
+		gl.uniform2f(this.glassProgram.uniforms.uHeightTexel, this.dye.texelSizeX, this.dye.texelSizeY);
+		gl.uniform1f(this.glassProgram.uniforms.uHeightAspect, this.canvas.width / this.canvas.height);
+		gl.uniform1f(this.glassProgram.uniforms.uRefraction, this.config.REFRACTION);
 		gl.uniform1f(this.glassProgram.uniforms.uGlassThickness, this.config.GLASS_THICKNESS);
 		gl.uniform1f(this.glassProgram.uniforms.uGlassRefraction, this.config.GLASS_REFRACTION);
 		gl.uniform1f(this.glassProgram.uniforms.uGlassReflectivity, this.config.GLASS_REFLECTIVITY);

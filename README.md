@@ -166,7 +166,9 @@ config from the upstream project.
 | `curl` | `number` | `30` | vorticity confinement; hot |
 | `splatRadius` | `number` | `0.25` | hot |
 | `splatForce` | `number` | `6000` | hot |
-| `shading` | `boolean` | `true` | **shader recompile** |
+| `shading` | `boolean` | `true` | **shader recompile**; diffuse from optical-depth dye relief |
+| `specular` | `number` | `0` | opt-in 0–1 Fresnel highlight; recompile only when crossing 0 |
+| `refraction` | `number` | `0` | opt-in 0–1; refracts the distortion image or glass scene; recompile only when crossing 0 |
 | `colorful` | `boolean` | `true` | hot; rotate pointer/touch splat colors over time |
 | `colorUpdateSpeed` | `number` | `10` | hot; pointer/touch color rotation rate |
 | `paused` | `boolean` | `false` | hot |

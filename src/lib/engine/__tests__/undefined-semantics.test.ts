@@ -35,6 +35,8 @@ const rich: Required<FluidConfig> = {
 	splatRadius: 0.4,
 	splatForce: 1234,
 	shading: false,
+	specular: 0.4,
+	refraction: 0.6,
 	colorful: false,
 	colorUpdateSpeed: 3,
 	paused: true,

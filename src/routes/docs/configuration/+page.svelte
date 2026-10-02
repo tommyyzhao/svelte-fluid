@@ -231,7 +231,24 @@
 			<td><code>shading</code></td>
 			<td><code>boolean</code></td>
 			<td><code>true</code></td>
-			<td>3D-style shading effect.</td>
+			<td>Diffuse relief lit from the dye's optical depth (a thin absorbing layer),
+				tuned to the 0.8.0 look. Recompiles the display program.</td>
+		</tr>
+		<tr>
+			<td><code>specular</code></td>
+			<td><code>number</code></td>
+			<td><code>0</code></td>
+			<td>Opt-in 0–1. Glossy studio-light highlight on the same surface (Blinn-Phong
+				with Schlick Fresnel). Independent of <code>shading</code>. Turning it on or off
+				recompiles the display program; other values are hot.</td>
+		</tr>
+		<tr>
+			<td><code>refraction</code></td>
+			<td><code>number</code></td>
+			<td><code>0</code></td>
+			<td>Opt-in 0–1. Refracts the image under the dye: the distortion image, or the
+				fluid seen through <code>glass</code>. No effect on plain fluid, reveal, or page
+				content behind a transparent canvas. No extra textures; values above 0 are hot.</td>
 		</tr>
 		<tr>
 			<td><code>colorful</code></td>
@@ -864,7 +881,9 @@
 <p>
 	Triggers a display shader recompile (~1 ms). Applies to feature toggles that change which
 	GLSL code paths are active: <code>shading</code>, <code>bloom</code>, <code>sunrays</code>,
-	<code>reveal</code>, <code>distortion</code>, and field visualization inside <code>flow</code>.
+	<code>reveal</code>, <code>distortion</code>, <code>toneMapping</code>, <code>specular</code> or
+	<code>refraction</code> crossing 0, and field visualization inside <code>flow</code>. Positive
+	<code>specular</code>/<code>refraction</code> changes are hot scalars.
 </p>
 
 <h3>Bucket C — FBO rebuild</h3>
