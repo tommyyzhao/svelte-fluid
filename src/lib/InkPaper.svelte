@@ -83,6 +83,9 @@
 	onMount(() => {
 		let reduced = false;
 		let wickCount = 0;
+		// A mouse/pen press that began on text or a resist child is a native
+		// selection or click, not a stroke: no painting until it ends.
+		let native = false;
 		resolved = resolvePigmentOptions(resolved, { paper: paperHex(paper) });
 		mounted = true;
 		try {
@@ -126,11 +129,27 @@
 		const detachBrush = attachBrush(
 			root,
 			(dabs) => {
-				if (!reduced) e.paint(dabs);
+				if (!reduced && !native) e.paint(dabs);
 			},
 			() => ({ size: e.brush.size, water: e.brush.water, channel: e.brush.pigment, channels: e.pigmentCount })
 		);
-		const onDown = () => e.setResist(resistRects());
+		const onDown = (ev: PointerEvent) => {
+			e.setResist(resistRects());
+			if (ev.pointerType === 'touch' || ev.button !== 0) return;
+			native = !onBarePaper(ev.target as Element | null);
+			// Bare paper: the drag paints instead of selecting text.
+			if (!native) ev.preventDefault();
+		};
+		const onUp = () => {
+			native = false;
+		};
+		// Text, interactive elements, resist children and an existing selection keep native behaviour.
+		const onBarePaper = (t: Element | null): boolean => {
+			if (!t || t.closest('[data-ink-resist], a, button, input, select, textarea, label, summary, [contenteditable], [tabindex]')) return false;
+			for (const n of t.childNodes) if (n.nodeType === Node.TEXT_NODE && n.textContent?.trim()) return false;
+			const sel = getSelection();
+			return !(sel && !sel.isCollapsed && sel.containsNode(t, true));
+		};
 
 		const bloomAt = (el: HTMLElement, entryX: number | null) => {
 			e.setResist(resistRects());
@@ -152,6 +171,8 @@
 			if (el && el !== wickTarget(ev.relatedTarget) && ev.pointerType !== 'touch') bloomAt(el, ev.clientX);
 		};
 		root.addEventListener('pointerdown', onDown);
+		window.addEventListener('pointerup', onUp);
+		window.addEventListener('pointercancel', onUp);
 		root.addEventListener('focusin', onFocus);
 		root.addEventListener('pointerover', onOver);
 
@@ -163,6 +184,8 @@
 			window.removeEventListener('resize', layout);
 			detachBrush();
 			root.removeEventListener('pointerdown', onDown);
+			window.removeEventListener('pointerup', onUp);
+			window.removeEventListener('pointercancel', onUp);
 			root.removeEventListener('focusin', onFocus);
 			root.removeEventListener('pointerover', onOver);
 			e.dispose();

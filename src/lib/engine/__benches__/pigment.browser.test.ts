@@ -1,5 +1,6 @@
 import { createRawSnippet, flushSync, mount, unmount } from 'svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { commands } from 'vitest/browser';
 import InkPaper from '../../InkPaper.svelte';
 import { activeFrameSubscribers } from '../frame-scheduler.js';
 import { PigmentEngine } from '../pigment/PigmentEngine.js';
@@ -316,6 +317,44 @@ describe('InkPaper', () => {
 		expect(wet).toBe(0);
 	});
 
+	it('a drag on bare paper paints without selecting; a drag on text selects without painting', async () => {
+		const text = createRawSnippet(() => ({
+			render: () => `<div style="padding:20px"><p id="copy" style="margin:0;width:200px">Selectable paragraph text</p></div>`
+		}));
+		const el = host(400, 260);
+		const app = mount(InkPaper, { target: el, props: { children: text, paper: PAPER, pigments: ['#2549a8'], seed: 4, style: 'width:400px;height:260px' } });
+		live.push(() => {
+			void unmount(app);
+		});
+		flushSync();
+		const root = el.firstElementChild as HTMLElement;
+		const canvas = root.querySelector('canvas')!;
+		await vi.waitFor(() => expect(canvas.width).toBeGreaterThan(0));
+		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 30000, interval: 100 });
+		const dark = () => {
+			const px = pixels(canvas);
+			let n = 0;
+			for (let i = 0; i < px.length; i += 4) if (Math.abs(px[i] - PAPER_RGB[0]) + Math.abs(px[i + 1] - PAPER_RGB[1]) + Math.abs(px[i + 2] - PAPER_RGB[2]) > 24) n++;
+			return n;
+		};
+		const dragFrom = async (from: [number, number], to: [number, number]) => {
+			const r = root.getBoundingClientRect();
+			await (commands as unknown as Record<string, (...a: number[]) => Promise<void>>).dragMouse(r.left + from[0], r.top + from[1], r.left + to[0], r.top + to[1]);
+			await frames(20);
+		};
+		getSelection()?.removeAllRanges();
+		const before = dark();
+		await dragFrom([260, 200], [8, 22]);
+		expect(getSelection()?.toString()).toBe('');
+		expect(dark()).toBeGreaterThan(before);
+
+		getSelection()?.removeAllRanges();
+		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 30000, interval: 100 });
+		const afterBare = dark();
+		await dragFrom([22, 30], [190, 30]);
+		expect(getSelection()?.toString().length).toBeGreaterThan(3);
+		expect(dark()).toBe(afterBare);
+	});
 	it('falls back to plain paper with usable content when WebGL2 is unavailable', async () => {
 		const original = HTMLCanvasElement.prototype.getContext;
 		vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function (this: HTMLCanvasElement, type: string, ...args: unknown[]) {
