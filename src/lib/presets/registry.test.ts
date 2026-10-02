@@ -89,6 +89,17 @@ describe('preset config registry', () => {
 		expect(PRESETS.some((p) => p.category === 'flow')).toBe(true);
 	});
 
+	// GPU budget guard: the 192-class solver is pass-count bound, so a second
+	// substep doubles frame cost (Karman was 10.5 ms at 2 x 1/120 s; see
+	// dev-docs/benchmarks/gpu-budget.md). Presets run one step per 60 Hz frame.
+	it('every preset runs at most one solver step per 60 Hz frame', () => {
+		for (const p of PRESETS) {
+			const maxTimeStep = p.config.maxTimeStep ?? 1 / 60;
+			const steps = Math.max(p.config.substeps ?? 1, Math.ceil(1 / 60 / maxTimeStep - 1e-9));
+			expect(steps, p.id).toBe(1);
+		}
+	});
+
 	// Drift guard: each component must actually CONSUME its registry config by
 	// spreading the const and deriving its default backColor from it. This is
 	// what makes the registry the single source of truth for what renders.

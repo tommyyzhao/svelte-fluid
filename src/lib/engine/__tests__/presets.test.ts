@@ -79,7 +79,7 @@ describe('flow-sensitive obstruction demos', () => {
 
 	it('Karman uses pressure-driven throughflow with a passive streakline rake', () => {
 		const flow = KARMAN_CONFIG.flow!;
-		expect(flow.forces).toEqual([{ kind: 'pressureGradient', vector: { x: 64, y: 0 } }]);
+		expect(flow.forces).toEqual([{ kind: 'pressureGradient', vector: { x: 40, y: 0 } }]);
 		expect(flow.visualization).toEqual({ colorBy: 'dye' });
 		expect(flow.boundary).toEqual({ left: 'open', right: 'open', top: 'open', bottom: 'open' });
 		// Startup freestream curtain — without it the first tracer packets
@@ -87,10 +87,10 @@ describe('flow-sensitive obstruction demos', () => {
 		expect(KARMAN_CONFIG.presetSplats?.length).toBe(5);
 		// Drains on all four edges so the wake can exit rather than saturate.
 		expect(flow.outlets).toEqual([
-			{ edge: 'right', from: 0, to: 1, width: 0.075, clearDye: 0.08, clearScalars: true, clearVelocity: true },
-			{ edge: 'top', from: 0, to: 1, width: 0.045, clearDye: 0.12, clearScalars: true, clearVelocity: false },
-			{ edge: 'bottom', from: 0, to: 1, width: 0.045, clearDye: 0.12, clearScalars: true, clearVelocity: false },
-			{ edge: 'left', from: 0, to: 1, width: 0.02, clearDye: 0.45, clearScalars: true, clearVelocity: false }
+			{ edge: 'right', from: 0, to: 1, width: 0.075, clearDye: 0.0064, clearScalars: true, clearVelocity: true },
+			{ edge: 'top', from: 0, to: 1, width: 0.045, clearDye: 0.0144, clearScalars: true, clearVelocity: false },
+			{ edge: 'bottom', from: 0, to: 1, width: 0.045, clearDye: 0.0144, clearScalars: true, clearVelocity: false },
+			{ edge: 'left', from: 0, to: 1, width: 0.02, clearDye: 0.2025, clearScalars: true, clearVelocity: false }
 		]);
 		// Genuine flow tracers: a six-line streakline rake of persistent
 		// dye-only point sources, not autosplat packets. The rake is passive

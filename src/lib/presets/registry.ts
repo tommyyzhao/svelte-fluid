@@ -498,10 +498,15 @@ const KARMAN_RAKE_RADIUS = 0.028;
 const karmanRakeLine = (y: number, dye: RGB) =>
 	({ kind: 'point', x: KARMAN_RAKE_X, y, dye, rate: KARMAN_RAKE_RATE, radius: KARMAN_RAKE_RADIUS }) as const;
 
+// One 1/60 s step per frame (was 2 x 1/120): the 192-class solver is pass-count
+// bound, so substeps doubled GPU cost. Outlet keeps and wall friction apply per
+// step, so they are squared / 1-(1-f)^2 to keep per-frame clearing, and the
+// pressure gradient drops 64 -> 40 to restore the ~140 inlet speed that the
+// halved outlet/friction drag would otherwise raise. Measured in gpu-budget.md.
 const KARMAN_FLOW: FlowConfig = {
 	mode: 'live',
 	boundary: { left: 'open', right: 'open', top: 'open', bottom: 'open' },
-	forces: [{ kind: 'pressureGradient', vector: { x: 64, y: 0 } }],
+	forces: [{ kind: 'pressureGradient', vector: { x: 40, y: 0 } }],
 	sources: [
 		karmanRakeLine(0.2, { r: 0.42, g: 0.07, b: 0.1 }),
 		karmanRakeLine(0.32, { r: 0.42, g: 0.26, b: 0.05 }),
@@ -511,10 +516,10 @@ const KARMAN_FLOW: FlowConfig = {
 		karmanRakeLine(0.8, { r: 0.34, g: 0.1, b: 0.4 })
 	],
 	outlets: [
-		{ edge: 'right', from: 0, to: 1, width: 0.075, clearDye: 0.08, clearScalars: true, clearVelocity: true },
-		{ edge: 'top', from: 0, to: 1, width: 0.045, clearDye: 0.12, clearScalars: true, clearVelocity: false },
-		{ edge: 'bottom', from: 0, to: 1, width: 0.045, clearDye: 0.12, clearScalars: true, clearVelocity: false },
-		{ edge: 'left', from: 0, to: 1, width: 0.02, clearDye: 0.45, clearScalars: true, clearVelocity: false }
+		{ edge: 'right', from: 0, to: 1, width: 0.075, clearDye: 0.0064, clearScalars: true, clearVelocity: true },
+		{ edge: 'top', from: 0, to: 1, width: 0.045, clearDye: 0.0144, clearScalars: true, clearVelocity: false },
+		{ edge: 'bottom', from: 0, to: 1, width: 0.045, clearDye: 0.0144, clearScalars: true, clearVelocity: false },
+		{ edge: 'left', from: 0, to: 1, width: 0.02, clearDye: 0.2025, clearScalars: true, clearVelocity: false }
 	],
 	visualization: { colorBy: 'dye' }
 };
@@ -527,11 +532,11 @@ export const KARMAN_CONFIG: PresetConfig = {
 	curl: 15,
 	densityDissipation: 0.7,
 	velocityDissipation: 0.075,
-	maxTimeStep: 1 / 120,
-	substeps: 2,
+	maxTimeStep: 1 / 60,
+	substeps: 1,
 	viscosity: 0.009333,
 	viscosityIterations: 8,
-	wallFriction: 0.16,
+	wallFriction: 0.2944,
 	wallFrictionWidth: 2,
 	pressure: 0.9,
 	pressureIterations: 34,
