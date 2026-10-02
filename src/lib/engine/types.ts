@@ -15,6 +15,9 @@
  *
  * Each consumer documents its own range explicitly.
  */
+/** Display tone map selector. See {@link FluidConfig.toneMapping}. */
+export type ToneMapping = 'neutral' | 'agx' | 'none';
+
 export interface RGB {
 	r: number;
 	g: number;
@@ -487,6 +490,19 @@ export interface FluidConfig {
 	backColor?: RGB;
 	/** Render with transparent background (checkerboard fallback). Default false. */
 	transparent?: boolean;
+	/**
+	 * Display tone map applied once, in linear light, after dye and bloom are
+	 * combined and before the single sRGB encode (ADR-0081).
+	 * - `'neutral'` (default): Khronos PBR Neutral shoulder. Colours below it
+	 *   are unchanged; bright dye and bloom roll off smoothly instead of
+	 *   clipping to white.
+	 * - `'agx'`: AgX filmic curve. Softer contrast and stronger highlight
+	 *   desaturation, closer to a photographic look.
+	 * - `'none'`: hard clamp, closest to the 0.8.0 look (highlights clip).
+	 *
+	 * Hot-updatable: changing it recompiles only the display program.
+	 */
+	toneMapping?: ToneMapping;
 	/** Enable bloom effect. Default true. */
 	bloom?: boolean;
 	/** Bloom blur iterations. Default 8. */
@@ -863,6 +879,7 @@ export interface ResolvedConfig {
 	PAUSED: boolean;
 	BACK_COLOR: RGB;
 	TRANSPARENT: boolean;
+	TONE_MAPPING: ToneMapping;
 	BLOOM: boolean;
 	BLOOM_ITERATIONS: number;
 	BLOOM_RESOLUTION: number;

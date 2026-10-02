@@ -117,6 +117,78 @@ export const checkerboardShader = `
     }
 `;
 
+/** Exact IEC 61966-2-1 transfer; GLSL ES 1.00 compatible. */
+export const SRGB_TRANSFER_GLSL = `
+    vec3 srgbToLinear (vec3 c) {
+        c = max(c, vec3(0.0));
+        return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
+    }
+
+    vec3 dyeToLinear (vec3 c) {
+        c = max(c, vec3(0.0));
+        float peak = max(1.0, max(c.r, max(c.g, c.b)));
+        return srgbToLinear(min(c, vec3(1.0))) * peak;
+    }
+
+    vec3 linearToSrgb (vec3 c) {
+        c = max(c, vec3(0.0));
+        return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), c));
+    }
+`;
+
+/**
+ * Khronos PBR Neutral highlight compression (exact constants) without its toe
+ * offset; AgX default look (bwrensch polynomial fit).
+ */
+export const TONE_MAP_GLSL = `
+    // The Khronos toe subtracts up to 0.04 linear (a PBR Fresnel-F0
+    // compensation). Authored dye is display-referred, so below the shoulder
+    // colours must pass through unchanged (ADR-0081).
+    vec3 toneMapNeutral (vec3 color) {
+        const float startCompression = 0.76;
+        const float desaturation = 0.15;
+        float peak = max(color.r, max(color.g, color.b));
+        if (peak < startCompression) return color;
+        const float d = 1.0 - startCompression;
+        float newPeak = 1.0 - d * d / (peak + d - startCompression);
+        color *= newPeak / peak;
+        float g = 1.0 - 1.0 / (desaturation * (peak - newPeak) + 1.0);
+        return mix(color, vec3(newPeak), g);
+    }
+
+    vec3 toneMapAgx (vec3 color) {
+        const mat3 inset = mat3(
+            0.842479062253094, 0.0423282422610123, 0.0423756549057051,
+            0.0784335999999992, 0.878468636469772, 0.0784336,
+            0.0792237451477643, 0.0791661274605434, 0.879142973793104);
+        const mat3 outset = mat3(
+            1.19687900512017, -0.0528968517574562, -0.0529716355144438,
+            -0.0980208811401368, 1.15190312990417, -0.0980434501171241,
+            -0.0990297440797205, -0.0989611768448433, 1.15107367264116);
+        const float minEv = -12.47393;
+        const float maxEv = 4.026069;
+        vec3 v = inset * max(color, vec3(1e-10));
+        v = (clamp(log2(v), minEv, maxEv) - minEv) / (maxEv - minEv);
+        vec3 v2 = v * v;
+        vec3 v4 = v2 * v2;
+        v = 15.5 * v4 * v2 - 40.14 * v4 * v + 31.96 * v4 - 6.868 * v2 * v + 0.4298 * v2 + 0.1191 * v - 0.00232;
+        // AgX produces display-gamma values; EOTF returns linear light for our
+        // one final sRGB encode, not a second encode of the polynomial output.
+        return pow(clamp(outset * v, 0.0, 1.0), vec3(2.2));
+    }
+
+    vec3 toneMap (vec3 color) {
+        color = max(color, vec3(0.0));
+    #if defined(TONE_MAP_AGX)
+        return toneMapAgx(color);
+    #elif defined(TONE_MAP_NONE)
+        return clamp(color, 0.0, 1.0);
+    #else
+        return clamp(toneMapNeutral(color), 0.0, 1.0);
+    #endif
+    }
+`;
+
 export const displayShaderSource = `
     precision highp float;
     precision highp sampler2D;
@@ -186,9 +258,12 @@ export const displayShaderSource = `
     uniform vec2 uBleed;
 #endif
 
-    vec3 linearToGamma (vec3 color) {
-        color = max(color, vec3(0));
-        return max(1.055 * pow(color, vec3(0.416666667)) - 0.055, vec3(0));
+${SRGB_TRANSFER_GLSL}
+${TONE_MAP_GLSL}
+
+    // ±1 LSB blue noise (64² LDR_LLL1 texture), shared by every output mode.
+    vec3 ditherNoise () {
+        return vec3((texture2D(uDithering, vUv * ditherScale).r * 2.0 - 1.0) / 255.0);
     }
 
 #ifdef FLOW_VISUALIZATION
@@ -256,19 +331,13 @@ export const displayShaderSource = `
     #endif
 
     #ifdef SUNRAYS
+        // Sunrays are an artistic occlusion mask tuned against display-referred
+        // dye in 0.8.0; keep applying them there so ray contrast is unchanged.
         float sunrays = texture2D(uSunrays, vUv).r;
         c *= sunrays;
     #ifdef BLOOM
         bloom *= sunrays;
     #endif
-    #endif
-
-    #ifdef BLOOM
-        float noise = texture2D(uDithering, vUv * ditherScale).r;
-        noise = noise * 2.0 - 1.0;
-        bloom += noise / 255.0;
-        bloom = linearToGamma(bloom);
-        c += bloom;
     #endif
 
         float a = max(c.r, max(c.g, c.b));
@@ -439,7 +508,8 @@ export const displayShaderSource = `
         float edgeAlpha = smoothstep(0.0, ew, imgUv.x) * smoothstep(1.0, 1.0 - ew, imgUv.x);
         edgeAlpha *= smoothstep(0.0, ew, imgUv.y) * smoothstep(1.0, 1.0 - ew, imgUv.y);
 
-        gl_FragColor = vec4(img * edgeAlpha * cmask, edgeAlpha * cmask);
+        float alpha = edgeAlpha * cmask;
+        gl_FragColor = vec4(clamp(img + ditherNoise(), 0.0, 1.0) * alpha, alpha);
     #elif defined(REVEAL)
         float raw = clamp(a * uRevealSensitivity, 0.0, 1.0);
         // pow shapes the input; smoothstep sharpens the transition into a
@@ -453,19 +523,32 @@ export const displayShaderSource = `
         float outerBlend = smoothstep(0.0, 0.15, revealAmount);
         float innerBlend = smoothstep(0.15, 0.4, revealAmount);
         vec3 color = mix(mix(uRevealCoverColor, uRevealFringeColor, outerBlend), uRevealAccentColor, innerBlend);
-        gl_FragColor = vec4(color, alpha);
+        // The canvas context is premultiplied: emit colour × alpha so revealed
+        // pixels composite as see-through instead of brightening the page.
+        gl_FragColor = vec4(clamp(color + ditherNoise(), 0.0, 1.0) * alpha, alpha);
     #else
-    #ifdef OBSTRUCTION_FILL
-        // Paint the obstruction footprint as a solid object on top of the
-        // (already cropped) dye, before background compositing.
-        c = mix(c, uObstructionFillColor, obCoverage);
-        a = max(a, obCoverage);
+        // Authored dye is display-referred sRGB: decode once, add linear bloom,
+        // tone-map, encode once (ADR-0081).
+        vec3 light = dyeToLinear(c);
+    #ifdef BLOOM
+        light += bloom * cmask;
     #endif
+        // One encode. The background/fill composite stays display-referred,
+        // exactly what the browser does with the transparent canvas over a page
+        // of the same colour, so opaque and transparent modes agree and light
+        // backColors keep dye hue as in 0.8.0.
+        vec3 display = clamp(linearToSrgb(toneMap(light)), 0.0, 1.0);
+        float outAlpha = max(display.r, max(display.g, display.b));
         if (uCompositeBackground > 0.5) {
-            gl_FragColor = vec4(c + uBackColor * (1.0 - a), 1.0);
-        } else {
-            gl_FragColor = vec4(c, a);
+            display += uBackColor * (1.0 - outAlpha);
+            outAlpha = 1.0;
         }
+    #ifdef OBSTRUCTION_FILL
+        display = mix(display, uObstructionFillColor, obCoverage);
+        outAlpha = max(outAlpha, obCoverage);
+    #endif
+        display = clamp(display + ditherNoise() * outAlpha, 0.0, outAlpha);
+        gl_FragColor = vec4(display, outAlpha);
     #endif
     }
 `;
@@ -659,7 +742,7 @@ export const glassShaderSource = `
             float nr = sqrt(r2);
             float edgeFade = 1.0 - smoothstep(0.99, 1.0, nr);
             float alpha = uTransparent > 0.5 ? edgeFade : scene.a;
-            gl_FragColor = vec4(mix(scene.rgb, glassColor, edgeFade), alpha);
+            gl_FragColor = vec4(clamp(mix(scene.rgb, glassColor, edgeFade), 0.0, alpha), alpha);
 
         } else {
             // ======== RIM MODEL (frame, roundedRect, annulus, svgPath) ========
@@ -707,7 +790,7 @@ export const glassShaderSource = `
             vec3 glassColor = refracted + vec3(spec + rimGlow);
             // In transparent mode: opaque inside the shape, fade out outside
             float alpha = uTransparent > 0.5 ? (sdf < 0.0 ? 1.0 : glassMask) : scene.a;
-            gl_FragColor = vec4(mix(scene.rgb, glassColor, glassMask), alpha);
+            gl_FragColor = vec4(clamp(mix(scene.rgb, glassColor, glassMask), 0.0, alpha), alpha);
         }
     }
 `;
@@ -722,7 +805,10 @@ export const bloomPrefilterShader = `
     uniform float threshold;
 
     void main () {
-        vec3 c = texture2D(uTexture, vUv).rgb;
+        // Max-channel brightness as in 0.8.0: a luminance key starves saturated
+        // blue/red dye of bloom. The passing energy is linear light and the
+        // display pass encodes it, as 0.8.0 did (ADR-0081).
+        vec3 c = max(texture2D(uTexture, vUv).rgb, vec3(0.0));
         float br = max(c.r, max(c.g, c.b));
         float rq = clamp(br - curve.x, 0.0, curve.y);
         rq = curve.z * rq * rq;
@@ -731,46 +817,61 @@ export const bloomPrefilterShader = `
     }
 `;
 
-export const bloomBlurShader = `
+// Dual-Kawase pyramid (Bjørge, "Bandwidth-efficient rendering", SIGGRAPH
+// 2015). `texelSize` is always the SOURCE texel; it must be declared highp to
+// match the vertex shader's uniform of the same name.
+export const bloomDownShader = `
     precision mediump float;
     precision mediump sampler2D;
 
-    varying vec2 vL;
-    varying vec2 vR;
-    varying vec2 vT;
-    varying vec2 vB;
+    varying highp vec2 vUv;
     uniform sampler2D uTexture;
+    uniform highp vec2 texelSize;
+    uniform float uKaris;
+
+    // Karis average on the first downsample: luminance-weighted taps stop a
+    // single over-bright texel from flashing as a bloom firefly.
+    float tapWeight (vec3 c) {
+        return mix(1.0, 1.0 / (1.0 + dot(c, vec3(0.2126, 0.7152, 0.0722))), uKaris);
+    }
 
     void main () {
-        vec4 sum = vec4(0.0);
-        sum += texture2D(uTexture, vL);
-        sum += texture2D(uTexture, vR);
-        sum += texture2D(uTexture, vT);
-        sum += texture2D(uTexture, vB);
-        sum *= 0.25;
-        gl_FragColor = sum;
+        vec2 o = texelSize;
+        vec3 c0 = texture2D(uTexture, vUv).rgb;
+        vec3 c1 = texture2D(uTexture, vUv + vec2(-o.x, -o.y)).rgb;
+        vec3 c2 = texture2D(uTexture, vUv + vec2(o.x, -o.y)).rgb;
+        vec3 c3 = texture2D(uTexture, vUv + vec2(-o.x, o.y)).rgb;
+        vec3 c4 = texture2D(uTexture, vUv + vec2(o.x, o.y)).rgb;
+        float w0 = 4.0 * tapWeight(c0);
+        float w1 = tapWeight(c1);
+        float w2 = tapWeight(c2);
+        float w3 = tapWeight(c3);
+        float w4 = tapWeight(c4);
+        vec3 sum = c0 * w0 + c1 * w1 + c2 * w2 + c3 * w3 + c4 * w4;
+        gl_FragColor = vec4(sum / (w0 + w1 + w2 + w3 + w4), 0.0);
     }
 `;
 
-export const bloomFinalShader = `
+export const bloomUpShader = `
     precision mediump float;
     precision mediump sampler2D;
 
-    varying vec2 vL;
-    varying vec2 vR;
-    varying vec2 vT;
-    varying vec2 vB;
+    varying highp vec2 vUv;
     uniform sampler2D uTexture;
+    uniform highp vec2 texelSize;
     uniform float intensity;
 
     void main () {
-        vec4 sum = vec4(0.0);
-        sum += texture2D(uTexture, vL);
-        sum += texture2D(uTexture, vR);
-        sum += texture2D(uTexture, vT);
-        sum += texture2D(uTexture, vB);
-        sum *= 0.25;
-        gl_FragColor = sum * intensity;
+        vec2 h = texelSize * 0.5;
+        vec3 sum = texture2D(uTexture, vUv + vec2(-2.0 * h.x, 0.0)).rgb;
+        sum += texture2D(uTexture, vUv + vec2(2.0 * h.x, 0.0)).rgb;
+        sum += texture2D(uTexture, vUv + vec2(0.0, 2.0 * h.y)).rgb;
+        sum += texture2D(uTexture, vUv + vec2(0.0, -2.0 * h.y)).rgb;
+        sum += texture2D(uTexture, vUv + vec2(-h.x, h.y)).rgb * 2.0;
+        sum += texture2D(uTexture, vUv + vec2(h.x, h.y)).rgb * 2.0;
+        sum += texture2D(uTexture, vUv + vec2(h.x, -h.y)).rgb * 2.0;
+        sum += texture2D(uTexture, vUv + vec2(-h.x, -h.y)).rgb * 2.0;
+        gl_FragColor = vec4(sum * (intensity / 12.0), 0.0);
     }
 `;
 

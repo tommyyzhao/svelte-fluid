@@ -46,6 +46,8 @@ export interface PresetDefinition {
 // ----------------------------------------------------------------------------
 
 export const LAVA_LAMP_CONFIG: PresetConfig = {
+	// HDR-red wax over a light back; Neutral's shoulder desaturates it to salmon. ADR-0081.
+	toneMapping: 'none',
 	containerShape: { type: 'roundedRect', cx: 0.5, cy: 0.5, halfW: 0.38, halfH: 0.45, cornerRadius: 0.15 },
 	glass: true,
 	glassRefraction: 0.3,
@@ -405,6 +407,8 @@ const GAS_FLARE_FLOW: FlowConfig = {
 };
 
 export const GAS_FLARE_CONFIG: PresetConfig = {
+	// Keep the authored yellow-white fire core; Neutral makes it pink. ADR-0081.
+	toneMapping: 'none',
 	obstructions: [
 		{ d: GAS_FLARE_LEFT_WALL, fit: 'fill' },
 		{ d: GAS_FLARE_RIGHT_WALL, fit: 'fill' }
@@ -424,8 +428,8 @@ export const GAS_FLARE_CONFIG: PresetConfig = {
 	bloom: true,
 	bloomIterations: 5,
 	bloomResolution: 192,
-	bloomThreshold: 0.48,
-	bloomIntensity: 1.0,
+	bloomThreshold: 0.3,
+	bloomIntensity: 1.2,
 	sunrays: false,
 	sunraysWeight: 0,
 	simResolution: 160,
