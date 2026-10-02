@@ -13,19 +13,13 @@
 -->
 
 <script lang="ts" module>
-	import type { FluidProps } from '../Fluid.svelte';
-
-	/** Props consumed by `<SvgPathFluid />`. */
-	export type SvgPathFluidProps = Pick<
-		FluidProps,
-		'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
-	>;
+	export type { SvgPathFluidProps } from '../engine/types.js';
 </script>
 
 <script lang="ts">
 	import Fluid from '../Fluid.svelte';
 	import { DISABLED_PERFORMANCE_STATE } from '../engine/performance-governor.js';
-	import type { FluidHandle } from '../engine/types.js';
+	import type { SvgPathFluidProps, FluidHandle } from '../engine/types.js';
 	import { SVG_PATH_FLUID_CONFIG } from './registry.js';
 
 	let {

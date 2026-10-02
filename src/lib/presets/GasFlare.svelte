@@ -16,29 +16,13 @@
 -->
 
 <script lang="ts" module>
-	import type { FluidProps } from '../Fluid.svelte';
-
-	/** Props consumed by `<GasFlare />`. Sizing/seed/styling are forwarded; flare geometry and plume behavior are pinned. */
-	export type GasFlareProps = Pick<
-		FluidProps,
-		| 'width'
-		| 'height'
-		| 'maxPixelRatio'
-		| 'class'
-		| 'style'
-		| 'seed'
-		| 'lazy'
-		| 'pointerInput'
-		| 'splatOnHover'
-		| 'aria-label'
-		| 'backColor'
-	>;
+	export type { GasFlareProps } from '../engine/types.js';
 </script>
 
 <script lang="ts">
 	import Fluid from '../Fluid.svelte';
 	import { DISABLED_PERFORMANCE_STATE } from '../engine/performance-governor.js';
-	import type { FluidHandle } from '../engine/types.js';
+	import type { GasFlareProps, FluidHandle } from '../engine/types.js';
 	import { GAS_FLARE_CONFIG } from './registry.js';
 
 	let {

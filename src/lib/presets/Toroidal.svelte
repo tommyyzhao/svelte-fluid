@@ -13,20 +13,14 @@
 -->
 
 <script lang="ts" module>
-	import type { FluidProps } from '../Fluid.svelte';
-
-	/** Props consumed by `<Toroidal />`. Sizing/seed/styling are forwarded; all other physics props are hard-coded. */
-	export type ToroidalProps = Pick<
-		FluidProps,
-		'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
-	>;
+	export type { ToroidalProps } from '../engine/types.js';
 </script>
 
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import Fluid from '../Fluid.svelte';
 	import { DISABLED_PERFORMANCE_STATE } from '../engine/performance-governor.js';
-	import type { FluidHandle } from '../engine/types.js';
+	import type { ToroidalProps, FluidHandle } from '../engine/types.js';
 	import { TOROIDAL_CONFIG } from './registry.js';
 
 	let {

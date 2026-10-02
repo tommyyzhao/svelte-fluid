@@ -16,29 +16,13 @@
 -->
 
 <script lang="ts" module>
-	import type { FluidProps } from '../Fluid.svelte';
-
-	/** Props consumed by `<TeslaValve />`. Sizing/seed/styling are forwarded; valve geometry and flow settings are pinned. */
-	export type TeslaValveProps = Pick<
-		FluidProps,
-		| 'width'
-		| 'height'
-		| 'maxPixelRatio'
-		| 'class'
-		| 'style'
-		| 'seed'
-		| 'lazy'
-		| 'pointerInput'
-		| 'splatOnHover'
-		| 'aria-label'
-		| 'backColor'
-	>;
+	export type { TeslaValveProps } from '../engine/types.js';
 </script>
 
 <script lang="ts">
 	import Fluid from '../Fluid.svelte';
 	import { DISABLED_PERFORMANCE_STATE } from '../engine/performance-governor.js';
-	import type { FluidHandle } from '../engine/types.js';
+	import type { TeslaValveProps, FluidHandle } from '../engine/types.js';
 	import { TESLA_VALVE_CONFIG } from './registry.js';
 
 	let {

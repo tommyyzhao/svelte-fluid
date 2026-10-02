@@ -13,19 +13,13 @@
 -->
 
 <script lang="ts" module>
-	import type { FluidProps } from '../Fluid.svelte';
-
-	/** Props consumed by `<FrameFluid />`. */
-	export type FrameFluidProps = Pick<
-		FluidProps,
-		'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
-	> & { innerCornerRadius?: number; outerCornerRadius?: number };
+	export type { FrameFluidProps } from '../engine/types.js';
 </script>
 
 <script lang="ts">
 	import Fluid from '../Fluid.svelte';
 	import { DISABLED_PERFORMANCE_STATE } from '../engine/performance-governor.js';
-	import type { ContainerShape, FluidHandle } from '../engine/types.js';
+	import type { FrameFluidProps, ContainerShape, FluidHandle } from '../engine/types.js';
 	import { FRAME_FLUID_CONFIG } from './registry.js';
 
 	let {

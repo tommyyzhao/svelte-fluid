@@ -14,29 +14,13 @@
 -->
 
 <script lang="ts" module>
-	import type { FluidProps } from '../Fluid.svelte';
-
-	/** Props consumed by `<Venturi />`. Sizing/seed/styling are forwarded; all physics props are pinned. */
-	export type VenturiProps = Pick<
-		FluidProps,
-		| 'width'
-		| 'height'
-		| 'maxPixelRatio'
-		| 'class'
-		| 'style'
-		| 'seed'
-		| 'lazy'
-		| 'pointerInput'
-		| 'splatOnHover'
-		| 'aria-label'
-		| 'backColor'
-	>;
+	export type { VenturiProps } from '../engine/types.js';
 </script>
 
 <script lang="ts">
 	import Fluid from '../Fluid.svelte';
 	import { DISABLED_PERFORMANCE_STATE } from '../engine/performance-governor.js';
-	import type { FluidHandle } from '../engine/types.js';
+	import type { VenturiProps, FluidHandle } from '../engine/types.js';
 	import { VENTURI_CONFIG } from './registry.js';
 
 	let {
