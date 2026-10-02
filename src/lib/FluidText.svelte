@@ -74,6 +74,7 @@
 	style:height={height != null ? `${height}px` : undefined}
 	style:aspect-ratio={aspectRatio}
 	{style}
+	role="img"
 	aria-label={text}
 >
 	<Fluid

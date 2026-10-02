@@ -28,6 +28,7 @@
 	import { notifyHost } from './engine/notify-host.js';
 	import { DISABLED_PERFORMANCE_STATE } from './engine/performance-governor.js';
 	import { randomSeed } from './engine/rng.js';
+	import { watchReducedMotion } from './engine/reduced-motion.js';
 
 	let {
 		width,
@@ -134,6 +135,11 @@
 		...rest
 	}: FluidProps = $props();
 
+	// Decorative unless the consumer names or roles the canvas themselves.
+	const decorativeDefault = $derived(
+		rest['aria-label'] || rest['aria-labelledby'] || rest.role ? undefined : 'true'
+	);
+
 	let canvasEl = $state<HTMLCanvasElement | undefined>(undefined);
 	let container = $state<HTMLDivElement | undefined>(undefined);
 	let engine: FluidEngine | undefined;
@@ -210,6 +216,9 @@
 	 */
 	const stablePresetSplats = untrack(() => presetSplats);
 
+	// prefers-reduced-motion: hold a still frame instead of animating.
+	let reduced = $state(false);
+
 	let cssW = $state(0);
 	let cssH = $state(0);
 
@@ -241,7 +250,7 @@
 			shading,
 			colorful,
 			colorUpdateSpeed,
-			paused,
+			paused: reduced ? true : paused,
 			backColor,
 			transparent,
 			toneMapping,
@@ -461,7 +470,10 @@
 	};
 
 	onMount(() => {
-		if (!container) return;
+		const stopReduced = watchReducedMotion((v) => (reduced = v));
+		if (!container) {
+			return stopReduced;
+		}
 		let resizeFrame = 0;
 		let rebuildingAfterResizeFailure = false;
 
@@ -562,6 +574,7 @@
 		}
 
 		return () => {
+			stopReduced();
 			ro.disconnect();
 			io?.disconnect();
 			if (onVisibilityChange) {
@@ -602,7 +615,7 @@
 		bind:this={canvasEl}
 		style:background={transparent || reveal ? 'transparent' : undefined}
 		{...rest}
-		aria-hidden={failureReason ? 'true' : ariaHidden}
+		aria-hidden={failureReason ? 'true' : (ariaHidden ?? decorativeDefault)}
 	></canvas>
 	{#if failureReason}
 		<div

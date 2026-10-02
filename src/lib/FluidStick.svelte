@@ -20,6 +20,7 @@
 	import { onMount } from 'svelte';
 	import Fluid from './Fluid.svelte';
 	import { DISABLED_PERFORMANCE_STATE } from './engine/performance-governor.js';
+	import { prefersReducedMotion } from './engine/reduced-motion.js';
 
 	let {
 		text,
@@ -135,7 +136,7 @@
 	}
 
 	onMount(() => {
-		if (autoAnimate) startAutoAnimate();
+		if (autoAnimate && !prefersReducedMotion()) startAutoAnimate();
 		return () => {
 			if (autoAnimateRaf != null) cancelAnimationFrame(autoAnimateRaf);
 		};
@@ -157,6 +158,8 @@
 	style:width={width != null ? `${width}px` : undefined}
 	style:height={height != null ? `${height}px` : undefined}
 	{style}
+	role={text ? 'img' : undefined}
+	aria-label={text || undefined}
 	bind:clientWidth={containerW}
 	bind:clientHeight={containerH}
 	onpointerdown={onPointerActivity}

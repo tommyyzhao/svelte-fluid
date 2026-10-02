@@ -24,6 +24,7 @@
 	import { notifyHost } from './engine/notify-host.js';
 	import { DISABLED_PERFORMANCE_STATE } from './engine/performance-governor.js';
 	import { randomSeed } from './engine/rng.js';
+	import { prefersReducedMotion } from './engine/reduced-motion.js';
 
 	let {
 		src,
@@ -64,6 +65,7 @@
 		onReady,
 		onError,
 		poster,
+		posterAlt,
 		...fluidProps
 	}: FluidDistortionProps = $props();
 
@@ -85,6 +87,9 @@
 	// The initialDensityDissipation ramp burns them off over ~2 seconds.
 	const stableSeed = untrack(() => (seedProp ?? randomSeed()) >>> 0);
 	const stableInitialSplats = untrack(() => createDistortionPresetSplats(stableSeed, initialSplats));
+	// Reduced motion freezes the sim, so the chaos splats would stay on screen as a
+	// permanent warp; start undistorted instead.
+	const stableInitialSplatsFinal = prefersReducedMotion() ? undefined : stableInitialSplats;
 
 	// ---- Pointer-driven distortion splats ----
 	// Pixel-based velocity to match Ascend-Fluid reference (see FluidReveal).
@@ -165,7 +170,7 @@
 	}
 
 	onMount(() => {
-		if (autoDistort) startAutoDistort();
+		if (autoDistort && !prefersReducedMotion()) startAutoDistort();
 
 		const wrapper = canvasWrapperEl;
 		if (wrapper) {
@@ -214,6 +219,8 @@
 	{/if}
 	<div
 		class="svelte-fluid-distortion__canvas"
+		role={posterAlt ? 'img' : undefined}
+		aria-label={posterAlt || undefined}
 		bind:this={canvasWrapperEl}
 		style:inset="{-bleed}px"
 	>
@@ -232,7 +239,7 @@
 			{splatRadius}
 			{splatOnHover}
 			{initialSplatCount}
-			presetSplats={stableInitialSplats}
+			presetSplats={stableInitialSplatsFinal}
 			{bloom}
 			{sunrays}
 			{shading}
@@ -244,6 +251,7 @@
 			{lazy}
 			{autoPause}
 			poster={poster ?? src}
+			{posterAlt}
 			{...fluidProps}
 			seed={stableSeed}
 			onReady={() => {
