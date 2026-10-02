@@ -177,7 +177,6 @@
 		z-index: 0;
 	}
 	.svelte-fluid-bg__canvas :global(canvas) {
-		touch-action: pan-y !important;
 		cursor: crosshair;
 	}
 	.svelte-fluid-bg__content {
