@@ -50,11 +50,11 @@ describe('buildSkillMd', () => {
 		expect(out).toContain('containerShape');
 		expect(out).toContain('autoPerformanceTargetFrameMs');
 		expect(out).toContain('maxPixelRatio');
-		// All twelve public components must be listed (count must match the prose).
-		for (const c of ['Fluid', 'FluidBackground', 'FluidReveal', 'FluidDistortion', 'FluidStick', 'FluidText', 'InkPaper', 'LiquidButton', 'LiquidSegmented', 'LiquidDropZone', 'LiquidCaustics', 'FoilSwitch'])
+		// All thirteen public components must be listed (count must match the prose).
+		for (const c of ['Fluid', 'FluidBackground', 'FluidReveal', 'FluidDistortion', 'FluidStick', 'FluidText', 'InkPaper', 'LiquidButton', 'LiquidSegmented', 'LiquidDropZone', 'LiquidCaustics', 'FoilSwitch', 'EnamelText'])
 			expect(out, c).toContain(`<${c}>`);
 		for (const p of PRESETS) expect(out, p.id).toContain(`**${p.id}**`);
-		expect(out).not.toContain('EnamelText');
+		expect(out).toContain('EnamelText');
 	});
 });
 

@@ -21,7 +21,7 @@ an existing primitive does not already do. "It looks good" is not a job.
 | Material | UI job | Disposition |
 |---|---|---|
 | Snap foil (bistable beam) | The two buckled wells *are* a switch's on/off state | **Promote now** as `FoilSwitch` (ADR 0096) |
-| Enamel (compliant transport toward a glyph profile) | A display heading whose relief gives under a press | **Promote now** as `EnamelText` (ADR 0097), behind a kill gate: it must visibly beat a static CSS/SVG bevel of the same text |
+| Enamel (compliant transport toward a glyph profile) | A display heading whose relief gives under a press | **Promoted (ADR 0097) after one tuning pass**; it met the kill gate (visibly beats a static CSS/SVG bevel of the same text) |
 | Thin film (interference) | Tint on a selected lens | **Later**: a possible `finish` on `LiquidSegmented`, after owner review. Adding it now would stack effects on a shipped look |
 | Velvet (pile-lean field) | A finish of the enamel heading | **Later**, folded into `EnamelText` if it ships. Not a primitive on its own |
 | Stress glass (photoelastic disk) | Pressed state of a circular icon button | **Later at best**: disk-only geometry, and rainbow fringes under a label put contrast at risk |
@@ -40,3 +40,8 @@ Each promoted material becomes a sibling model engine on the shared gl-host
   job and an owner review justify them.
 - If `EnamelText` fails its kill gate, only `FoilSwitch` ships, and this ADR's
   table is updated.
+
+## Amendment (2026-10-02)
+
+`EnamelText` met the kill gate after one tuning pass and is now root-exported
+and documented at `/docs/components#enameltext`. Both promoted materials ship.

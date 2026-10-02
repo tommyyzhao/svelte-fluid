@@ -81,7 +81,7 @@ route as part of the same change — not as a follow-up.
 | Route | Content |
 |-------|---------|
 | `src/routes/docs/+page.svelte` | Getting Started |
-| `src/routes/docs/components/+page.svelte` | All 12 components (6 fluid, 6 interface primitives) with props and live examples |
+| `src/routes/docs/components/+page.svelte` | All 13 components (6 fluid, 7 interface primitives) with props and live examples |
 | `src/routes/docs/configuration/+page.svelte` | Full FluidConfig prop reference (70+ props) |
 | `src/routes/docs/shapes/+page.svelte` | ContainerShape variants and fields |
 | `src/routes/docs/presets/+page.svelte` | All 14 presets (registry-driven tables via `PresetReference`) |

@@ -107,7 +107,7 @@ yarn add svelte-fluid</code></pre>
 
 <h2>Beyond the basics</h2>
 
-<p>svelte-fluid ships six fluid components and six interface primitives:</p>
+<p>svelte-fluid ships six fluid components and seven interface primitives:</p>
 
 <table>
 	<thead>
@@ -164,6 +164,10 @@ yarn add svelte-fluid</code></pre>
 		<tr>
 			<td><code><a href="{base}/docs/components#foilswitch">&lt;FoilSwitch&gt;</a></code></td>
 			<td>Native switch drawn as a bistable metal arch.</td>
+		</tr>
+		<tr>
+			<td><code><a href="{base}/docs/components#enameltext">&lt;EnamelText&gt;</a></code></td>
+			<td>Display heading in glazed enamel whose relief gives under a press.</td>
 		</tr>
 	</tbody>
 </table>
