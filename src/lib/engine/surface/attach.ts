@@ -4,6 +4,7 @@
  * `live = false` so the component shows its plain native styling. No Svelte.
  */
 import { measurePageColor } from '../css-color.js';
+import { notifyHost } from '../notify-host.js';
 import { relativeLuminance } from '../contrast.js';
 import { watchReducedMotion } from '../reduced-motion.js';
 import type { LiquidTone } from '../types.js';
@@ -46,13 +47,14 @@ export function attachSurface(
 	canvas: HTMLCanvasElement,
 	box: HTMLElement,
 	measure: () => SurfaceConfig,
-	onLive: (live: boolean) => void
+	onLive: (live: boolean) => void,
+	seedOverride?: number
 ): SurfaceBinding | null {
 	let engine: SurfaceEngine;
 	try {
 		engine = new SurfaceEngine({
 			canvas,
-			seed: seed++,
+			seed: seedOverride ?? seed++,
 			config: measure(),
 			onFrameError: () => {
 				onLive(false);
@@ -95,4 +97,40 @@ export function attachSurface(
 		}
 	};
 	return binding;
+}
+
+/** Whether `file` matches a native `accept` list (`.ext`, `type/*`, `type/sub`). Empty accepts all. */
+export function acceptsFile(file: { name: string; type: string }, accept: string | undefined): boolean {
+	const tokens = (accept ?? '')
+		.split(',')
+		.map((t) => t.trim().toLowerCase())
+		.filter(Boolean);
+	if (!tokens.length) return true;
+	const name = file.name.toLowerCase();
+	const type = file.type.toLowerCase();
+	return tokens.some((t) => (t.startsWith('.') ? name.endsWith(t) : t.endsWith('/*') ? type.startsWith(t.slice(0, -1)) : type === t));
+}
+
+/** Dropped files the input itself would have allowed: filtered by `accept`, one unless `multiple`. */
+export function pickFiles<F extends { name: string; type: string }>(files: Iterable<F>, accept: string | undefined, multiple: boolean | undefined): F[] {
+	const kept = [...files].filter((f) => acceptsFile(f, accept));
+	return multiple ? kept : kept.slice(0, 1);
+}
+
+/** Default polite announcement for a result. */
+export function filesMessage(files: unknown[]): string {
+	return `${files.length} ${files.length === 1 ? 'file' : 'files'} selected`;
+}
+
+/**
+ * Hand `files` to the consumer and return the live-region text. Both callbacks
+ * are untrusted: a throw is logged, never propagated. Nothing happens for an
+ * empty list (a cancelled picker or a drop of rejected types).
+ */
+export function deliverFiles<F>(files: F[], onfiles?: (files: F[]) => void, announce?: (files: F[]) => string): string {
+	if (!files.length) return '';
+	notifyHost(onfiles, 'onfiles', files);
+	let message = filesMessage(files);
+	notifyHost((f: F[]) => (message = announce?.(f) || message), 'announce', files);
+	return message;
 }

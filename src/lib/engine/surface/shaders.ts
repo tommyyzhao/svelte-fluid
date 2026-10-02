@@ -195,7 +195,7 @@ uniform float uRefractCap;   // CSS px
 uniform float uRefractGain;  // 1 − 1/n
 uniform vec3 uFill;          // linear, top
 uniform vec3 uFillLow;       // linear, bottom
-uniform vec4 uFillRect;      // control bounds y0, y1 (CSS px), unused zw
+uniform vec4 uFillRect;      // control bounds y0, y1, x0, x1 (CSS px, y up)
 uniform vec3 uEnvLow;
 uniform vec3 uEnvHigh;
 uniform vec3 uLights;        // key, strips, bounce
@@ -208,6 +208,12 @@ uniform vec2 uRingBand;      // gap, width (CSS px)
 uniform vec2 uBand;          // label background luminance band lo, hi
 uniform vec4 uLabels[8];     // x0, y0, x1, y1 (CSS px)
 uniform int uLabelCount;
+uniform vec4 uClimb;         // drop-zone drag: pointer (CSS px, y up), strength 0–1, along-wall spread
+uniform vec3 uClimbShape;    // rise, length (CSS px), far-wall floor
+uniform vec4 uOverlay;       // light-path depth (CSS px), contrast-clamped peak strength, glint gain, edge fade (CSS px)
+uniform vec3 uOverlayTint;   // sRGB the overlay blends toward (light: shade, dark: light)
+uniform vec4 uWaves[6];      // ambient trains: kx, ky (rad/CSS px), amplitude (CSS px), phase now
+uniform int uWaveCount;
 out vec4 outColor;
 
 const float F0 = 0.0204;     // ((1 − 1.333) / (1 + 1.333))²
@@ -291,6 +297,16 @@ void main () {
 	}
 	grad /= uCell;
 	hess /= uCell * uCell;
+	// Ambient trains (caustics overlay): analytic, so their slope and curvature are exact.
+	vec3 ambHess = vec3(0.0);
+	for (int i = 0; i < 6; i++) {
+		if (i >= uWaveCount) break;
+		vec4 w = uWaves[i];
+		float ph = dot(w.xy, p) + w.w;
+		h += w.z * sin(ph);
+		grad += w.z * cos(ph) * w.xy;
+		ambHess -= w.z * sin(ph) * vec3(w.x * w.x, w.x * w.y, w.y * w.y);
+	}
 #ifdef BILINEAR_PROBE
 	// The prototype's path: central differences per cell, bilinearly interpolated.
 	{
@@ -314,6 +330,37 @@ void main () {
 	outColor = vec4(h, grad, hess.x + hess.z);
 	return;
 #endif
+	float dither = (texture(uDither, px / 64.0).r * 2.0 - 1.0) / 255.0;
+#ifdef OVERLAY
+	// Caustics overlay (ADR-0094): light terms only, so the content beneath is never
+	// resampled. No walls: the edge fades instead of climbing a meniscus.
+	vec3 hcO = texture(uCurv, p / (vec2(n) * uCell)).rgb + ambHess;
+	float sO = uOverlay.x * uRefractGain;
+	float detO = (1.0 + sO * hcO.x) * (1.0 + sO * hcO.z) - sO * sO * hcO.y * hcO.y;
+	float ratioO = min(6.0, 1.0 / max(abs(detO), 1.0 / 6.0));
+	// Both tones draw the focus net (thin lines where crests converge light): dark
+	// tones add it as light, light tones as shade. Soft knee, no plateau at the cap.
+	// Caustic net: the fold contours (det = 0) are where refracted light piles up.
+	// Drawn as lines one-ish CSS px wide (anti-aliased by det's own screen
+	// derivative) over a faint broad focus, so the net reads as lines, not blobs.
+	// Intensity ∝ 1/|det| near a fold, floored at one pixel's det change so
+	// the peak is resolved, not aliased; the 1/|det| tail gives the soft side.
+	// Light tones draw a broader, softer net: shading, not ink lines.
+	float wO = fwidth(detO) * (1.0 + 0.5 * uCaustic.y) + 0.02 + 0.015 * uCaustic.y;
+	float v = pow(clamp(wO / max(abs(detO), wO) - 0.12, 0.0, 1.0), 1.4);
+	if (uCaustic.y < 0.5) {
+		vec3 nO = normalize(vec3(-grad, 1.0));
+		vec3 rO = vec3(2.0 * nO.z * nO.xy, 2.0 * nO.z * nO.z - 1.0);
+		// Sun glints: a small hard source low in the sky, so only the steepest flanks catch it.
+		float glint = smoothstep(0.9994, 0.99985, dot(rO, normalize(vec3(0.16, 0.22, 1.0))));
+		v += uOverlay.z * glint;
+	}
+	float fade = smoothstep(0.0, uOverlay.w * uDpr, -dPx);
+	// Never above the contrast-clamped peak (look.ts overlayCap), dither included.
+	float kO = clamp(uOverlay.y * clamp(v, 0.0, 1.0) * fade + dither * step(0.001, v * fade), 0.0, uOverlay.y);
+	outColor = vec4(uOverlayTint * kO, kO);
+	return;
+#endif
 
 	// Capillary meniscus: liquid climbs the wall over the capillary length.
 	vec2 e = 1.0 / uRes;
@@ -333,6 +380,43 @@ void main () {
 	h += men;
 	grad += (men / uMeniscus.y) * wall;
 	vec3 menHess = (men / (uMeniscus.y * uMeniscus.y)) * vec3(wall.x * wall.x, wall.x * wall.y, wall.y * wall.y);
+	// Drop-zone climb (mirror: climbHeight() in wave.ts): a taller meniscus, highest on
+	// the wall nearest the dragged pointer. A sum over the four straight walls, not a
+	// function of the SDF: the SDF has a crease along the medial axis of each corner,
+	// and an 18 px climb reaches it (a pinched highlight). The sum is C∞ and rises a
+	// little more into corners, as a real meniscus does. Analytic slope and curvature.
+	if (uClimb.z > 0.0) {
+		float amp = uClimbShape.x * uClimb.z;
+		float L = uClimbShape.y;
+		float f = uClimbShape.z;
+		float s2 = uClimb.w * uClimb.w;
+		vec2 lo = vec2(uFillRect.z, uFillRect.x);
+		vec2 hi = vec2(uFillRect.w, uFillRect.y);
+		for (int i = 0; i < 4; i++) {
+			// Inward normal and the wall's offset along it.
+			vec2 nI = i == 0 ? vec2(1.0, 0.0) : i == 1 ? vec2(-1.0, 0.0) : i == 2 ? vec2(0.0, 1.0) : vec2(0.0, -1.0);
+			float w0 = i == 0 ? lo.x : i == 1 ? -hi.x : i == 2 ? lo.y : -hi.y;
+			vec2 tI = vec2(-nI.y, nI.x);
+			float d = max(dot(p, nI) - w0, 0.0);
+			float a = dot(p - uClimb.xy, tI);
+			float b = dot(uClimb.xy, nI) - w0;
+			float N = exp(-(a * a + b * b) / (2.0 * s2));
+			float E = exp(-d / L);
+			float c = amp * (f + (1.0 - f) * N) * E;
+			float dN = amp * (1.0 - f) * E * N;
+			h += c;
+			grad += -(c / L) * nI - dN * (a / s2) * tI;
+			vec3 nn = vec3(nI.x * nI.x, nI.x * nI.y, nI.y * nI.y);
+			vec3 tt = vec3(tI.x * tI.x, tI.x * tI.y, tI.y * tI.y);
+			vec3 nt = vec3(2.0 * nI.x * tI.x, nI.x * tI.y + nI.y * tI.x, 2.0 * nI.y * tI.y);
+			menHess += (c / (L * L)) * nn + (dN * a / (s2 * L)) * nt + dN * (a * a / (s2 * s2) - 1.0 / s2) * tt;
+		}
+	}
+#ifdef HEIGHT_PROBE
+	// Test probe: surface height including meniscus and climb (float target).
+	outColor = vec4(h, grad, 0.0);
+	return;
+#endif
 
 	vec3 nrm = normalize(vec3(-grad, 1.0));
 	float fresnel = F0 + (1.0 - F0) * pow(1.0 - nrm.z, 5.0);
@@ -379,7 +463,6 @@ void main () {
 		color = mix(color, clamped, label);
 	}
 
-	float dither = (texture(uDither, px / 64.0).r * 2.0 - 1.0) / 255.0;
 	vec3 srgb = clamp(linearToSrgb(color) + dither, 0.0, 1.0);
 	outColor = coverage > 0.0 ? vec4(srgb * coverage, coverage) + ringColor * (1.0 - coverage) : ringColor;
 }

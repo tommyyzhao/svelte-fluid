@@ -18,21 +18,26 @@ import { mulberry32 } from '../rng.js';
 import type { Rng } from '../rng.js';
 import { baseVertexShader } from '../shaders.js';
 import type { FBO } from '../types.js';
-import { LOOKS, hexToLinear, hexToSrgb, labelBand } from './look.js';
+import { CAUSTICS, hexToLinear, hexToSrgb, labelBand, lookFor } from './look.js';
 import type { SurfaceControl, SurfaceTone } from './look.js';
 import { SURFACE_COMPOSITE_FS, SURFACE_CURVATURE_FS, SURFACE_MASK_FS, SURFACE_RESAMPLE_FS, SURFACE_STEP_FS, SURFACE_VS } from './shaders.js';
 import {
+	CLIMB,
 	MAX_IMPULSES_PER_STEP,
 	REFRACT_GAIN,
 	REFRACTION_CAP_CSS,
 	WAVE,
+	ambientWaves,
 	assignDefined,
+	climbSpread,
 	dampingFor,
+	dragProximity,
 	enqueueImpulse,
+	roundRectDistance,
 	substepsPerFrame,
 	surfaceGrid
 } from './wave.js';
-import type { Impulse } from './wave.js';
+import type { AmbientWave, Impulse } from './wave.js';
 
 /** DOM CSS px rectangle relative to the canvas's top-left. */
 export interface SurfaceRect {
@@ -57,6 +62,10 @@ export interface SurfaceConfig {
 	focus?: boolean;
 	/** Settled stills only: no impulses, lens moves snap. */
 	reducedMotion?: boolean;
+	/** Drop zone: the dragged pointer (DOM CSS px, canvas-relative); null = no drag. */
+	drag?: { x: number; y: number } | null;
+	/** Caustics overlay: contrast-clamped peak strength 0–1 (look.ts overlayCap). */
+	overlay?: number;
 }
 
 export interface SurfaceEngineOptions {
@@ -70,7 +79,7 @@ export interface SurfaceEngineOptions {
 	onContextRestored?: () => void;
 }
 
-type Resolved = Required<Omit<SurfaceConfig, 'lens'>> & { lens: SurfaceRect | null };
+type Resolved = Required<Omit<SurfaceConfig, 'lens' | 'drag'>> & { lens: SurfaceRect | null; drag: { x: number; y: number } | null };
 
 const DEFAULTS: Resolved = {
 	control: 'button',
@@ -80,7 +89,9 @@ const DEFAULTS: Resolved = {
 	lens: null,
 	labels: [],
 	focus: false,
-	reducedMotion: false
+	reducedMotion: false,
+	drag: null,
+	overlay: 0
 };
 
 /** Wave speed, CSS px/s. */
@@ -102,6 +113,12 @@ const DEPTH = 6;
 const CAUSTIC_DEPTH = 36;
 const RING = { gap: 2, width: 2 };
 const MAX_LABELS = 8;
+/** Drop-zone climb follows its target with this time constant, s. */
+const CLIMB_TAU = 0.12;
+/** Overlay: light-path depth (caustic focus), glint gain, edge fade (CSS px), grid cell floor (CSS px). */
+const OVERLAY = { depth: 750, glint: 1, fade: 28, cell: 2 };
+/** Pointer and focus ripples on the overlay are gentle; a drop is a full press. */
+export const OVERLAY_RIPPLE = 0.4;
 
 function rectEqual(a: SurfaceRect | null, b: SurfaceRect | null): boolean {
 	return a === b || (!!a && !!b && a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height);
@@ -139,11 +156,18 @@ export class SurfaceEngine implements GlHostInstance {
 	private failed = false;
 	private disposed = false;
 	private frames = 0;
+	/** Eased drop-zone climb strength and the pointer it leans toward (GL CSS px). */
+	private climb = { at: 0, x: 0, y: 0 };
+	private waves: AmbientWave[] = [];
+	private time = 0;
+	/** The smoothed curvature no longer matches the field. */
+	private curvStale = true;
 
 	constructor(private options: SurfaceEngineOptions) {
 		this.canvas = options.canvas;
 		this.config = assignDefined({ ...DEFAULTS }, options.config ?? {});
 		this.rng = mulberry32(options.seed ?? 1);
+		this.waves = ambientWaves(options.seed ?? 1);
 		// The opening lens is placed, not sloshed in.
 		this.retargetLens(this.config.lens, true);
 		this.host = acquireGlHost(this);
@@ -178,6 +202,7 @@ export class SurfaceEngine implements GlHostInstance {
 			this.stepPending = true;
 		}
 		this.config = next;
+		if (next.reducedMotion) this.climb.at = this.climbTarget();
 		this.invalidate();
 	}
 
@@ -239,15 +264,16 @@ export class SurfaceEngine implements GlHostInstance {
 	 * @internal Test hook: the composite's reconstructed field per device px
 	 * (h, ∂h/∂x, ∂h/∂y, ∇²h; CSS px units, rows bottom-up), rendered with
 	 * `probe` = 'bspline' (shipped) or 'bilinear' (the prototype's normal path).
+	 * 'surface' adds the analytic meniscus and drop-zone climb (alpha unused).
 	 */
-	readSlope(probe: 'bspline' | 'bilinear' = 'bspline'): { width: number; height: number; data: Float32Array } {
+	readSlope(probe: 'bspline' | 'bilinear' | 'surface' = 'bspline'): { width: number; height: number; data: Float32Array } {
 		const w = this.canvas.width;
 		const h = this.canvas.height;
 		const data = new Float32Array(w * h * 4);
 		this.host?.run(this, (gl) => {
 			const out = createFBO(gl, w, h, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
 			try {
-				this.composite(gl, out, probe === 'bspline' ? ['SLOPE_PROBE'] : ['SLOPE_PROBE', 'BILINEAR_PROBE']);
+				this.composite(gl, out, probe === 'surface' ? ['HEIGHT_PROBE'] : probe === 'bspline' ? ['SLOPE_PROBE'] : ['SLOPE_PROBE', 'BILINEAR_PROBE']);
 				gl.bindFramebuffer(gl.FRAMEBUFFER, out.fbo);
 				gl.readPixels(0, 0, w, h, gl.RGBA, gl.FLOAT, data);
 			} finally {
@@ -343,7 +369,23 @@ export class SurfaceEngine implements GlHostInstance {
 	}
 
 	private animating(): boolean {
-		return this.energy > SETTLED_PX || this.impulses.length > 0 || this.lensMoving();
+		return this.energy > SETTLED_PX || this.impulses.length > 0 || this.lensMoving() || this.climbMoving() || this.ambient();
+	}
+
+	/** Ambient trains run while visible; under reduced motion they freeze at their seeded phase. */
+	private ambient(): boolean {
+		return this.config.control === 'overlay' && !this.config.reducedMotion;
+	}
+
+	/** Proximity 0–1 of the dragged pointer to the zone (1 on or inside it). */
+	private climbTarget(): number {
+		const { drag, rect, radius } = this.config;
+		if (!drag || this.config.control !== 'dropzone') return 0;
+		return dragProximity(roundRectDistance(drag.x, drag.y, rect, radius));
+	}
+
+	private climbMoving(): boolean {
+		return Math.abs(this.climb.at - this.climbTarget()) > 0.002;
 	}
 
 	private lensMoving(): boolean {
@@ -408,6 +450,11 @@ export class SurfaceEngine implements GlHostInstance {
 				if (was > 0 && !this.lensMoving()) this.relaxPending = true;
 			}
 		}
+		this.easeClimb(dt);
+		if (this.ambient()) this.time += dt;
+		// No field dynamics left (the settle frame already wrote the equilibrium): the
+		// climb and ambient trains are analytic in the composite, so skip the step.
+		if (this.energy === 0 && !this.impulses.length && !this.lensMoving()) substeps = 0;
 		if (this.stepPending || this.impulses.length) substeps = Math.max(substeps, 1);
 		const still = this.config.reducedMotion || this.relaxPending;
 		if (still) substeps = Math.max(substeps, 1);
@@ -420,6 +467,16 @@ export class SurfaceEngine implements GlHostInstance {
 		this.stepPending = false;
 		this.dirty = false;
 		this.frames++;
+	}
+
+	private easeClimb(dt: number): void {
+		const drag = this.config.drag;
+		if (drag) {
+			this.climb.x = drag.x;
+			this.climb.y = this.cssHeight - drag.y;
+		}
+		const target = this.climbTarget();
+		this.climb.at = this.config.reducedMotion || !this.climbMoving() ? target : target + (this.climb.at - target) * Math.exp(-dt / CLIMB_TAU);
 	}
 
 	private springLens(dt: number): void {
@@ -435,7 +492,7 @@ export class SurfaceEngine implements GlHostInstance {
 
 	private ensureResources(gl: WebGL2RenderingContext): void {
 		const host = this.host!;
-		const grid = surfaceGrid(this.cssWidth, this.cssHeight);
+		const grid = surfaceGrid(this.cssWidth, this.cssHeight, this.config.control === 'overlay' ? OVERLAY.cell : undefined);
 		if (!this.state || grid.cols !== this.cols || grid.rows !== this.rows || grid.cell !== this.cell) {
 			const make = () => createFBO(gl, grid.cols, grid.rows, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
 			const next = { read: make(), write: make() };
@@ -458,6 +515,7 @@ export class SurfaceEngine implements GlHostInstance {
 			// Bilinear over cells: the smoothed Hessian is band-limited, so linear is exact enough.
 			this.curv = createFBO(gl, grid.cols, grid.rows, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.LINEAR);
 			this.stepPending = true;
+			this.curvStale = true;
 		}
 		if (this.sdfDirty || !this.sdf) {
 			const w = this.canvas.width;
@@ -528,17 +586,22 @@ export class SurfaceEngine implements GlHostInstance {
 			[state.read, state.write] = [state.write, state.read];
 		}
 		this.lensDrawn = lens;
+		this.curvStale = true;
 	}
 
 	private composite(gl: WebGL2RenderingContext, target: FBO | null = null, defines?: string[]): void {
 		const host = this.host!;
-		const look = LOOKS[this.config.control][this.config.tone];
-		const k = host.program('surface-curvature', SURFACE_VS, SURFACE_CURVATURE_FS);
-		k.bind();
-		gl.uniform1i(k.uniforms.uState, this.state!.read.attach(0));
-		gl.uniform1f(k.uniforms.uCell, this.cell);
-		host.blit(this.curv!);
-		const p = host.program('surface-composite', SURFACE_VS, SURFACE_COMPOSITE_FS, defines);
+		const look = lookFor(this.config.control, this.config.tone);
+		const overlay = this.config.control === 'overlay';
+		if (this.curvStale) {
+			const k = host.program('surface-curvature', SURFACE_VS, SURFACE_CURVATURE_FS);
+			k.bind();
+			gl.uniform1i(k.uniforms.uState, this.state!.read.attach(0));
+			gl.uniform1f(k.uniforms.uCell, this.cell);
+			host.blit(this.curv!);
+			this.curvStale = false;
+		}
+		const p = host.program('surface-composite', SURFACE_VS, SURFACE_COMPOSITE_FS, defines ?? (overlay ? ['OVERLAY'] : undefined));
 		p.bind();
 		// Probe variants compile some uniforms away; a missing location must be null, not undefined.
 		const u = new Proxy(p.uniforms, { get: (t, k: string) => t[k] ?? null });
@@ -557,7 +620,7 @@ export class SurfaceEngine implements GlHostInstance {
 		gl.uniform1f(u.uRefractGain, REFRACT_GAIN);
 		gl.uniform3fv(u.uFill, hexToLinear(look.fill));
 		gl.uniform3fv(u.uFillLow, hexToLinear(look.fillLow));
-		gl.uniform4f(u.uFillRect, this.cssHeight - rect.y - rect.height, this.cssHeight - rect.y, 0, 0);
+		gl.uniform4f(u.uFillRect, this.cssHeight - rect.y - rect.height, this.cssHeight - rect.y, rect.x, rect.x + rect.width);
 		gl.uniform3fv(u.uEnvLow, look.envLow);
 		gl.uniform3fv(u.uEnvHigh, look.envHigh);
 		gl.uniform3fv(u.uLights, look.lights);
@@ -576,6 +639,17 @@ export class SurfaceEngine implements GlHostInstance {
 				u['uLabels[0]'],
 				labels.flatMap((l) => [l.x, this.cssHeight - l.y - l.height, l.x + l.width, this.cssHeight - l.y])
 			);
+		}
+		gl.uniform4f(u.uClimb, this.climb.x, this.climb.y, this.climb.at, climbSpread(rect.width, rect.height));
+		gl.uniform3f(u.uClimbShape, CLIMB.rise, CLIMB.length, CLIMB.floor);
+		const strength = overlay ? Math.min(1, Math.max(0, this.config.overlay)) : 0;
+		gl.uniform4f(u.uOverlay, OVERLAY.depth, strength, OVERLAY.glint, OVERLAY.fade);
+		gl.uniform3fv(u.uOverlayTint, CAUSTICS[this.config.tone].tint);
+		const waves = overlay ? this.waves : [];
+		gl.uniform1i(u.uWaveCount, waves.length);
+		if (waves.length) {
+			const k = (w: AmbientWave) => Math.hypot(w.kx, w.ky);
+			gl.uniform4fv(u['uWaves[0]'], waves.flatMap((w) => [w.kx, w.ky, w.amplitude, w.phase - k(w) * w.speed * this.time]));
 		}
 		host.blit(target);
 	}
