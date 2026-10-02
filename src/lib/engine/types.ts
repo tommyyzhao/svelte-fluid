@@ -1490,3 +1490,40 @@ export interface FluidTextProps
 	/** Inline style applied to the outer wrapper. */
 	style?: string;
 }
+
+/* ---------------------------------------------------------------------------
+ * InkPaper (ADR-0090): pigment on paper. Not root-exported yet.
+ * ------------------------------------------------------------------------- */
+
+/** Brush for {@link InkPaperProps.brush}. Omitted fields keep their current value. */
+export interface InkBrush {
+	/** Brush radius in CSS px at full pressure. Default 23; clamped to 2–120. */
+	size?: number;
+	/** Water per dab relative to the default load. Default 1; clamped to 0.1–3. */
+	water?: number;
+	/**
+	 * Index into `pigments` for every stroke, or `null` (default) to pick up the
+	 * next pigment after each pause.
+	 */
+	pigment?: number | null;
+}
+
+export interface InkPaperProps extends Omit<import('svelte/elements').HTMLAttributes<HTMLDivElement>, 'children'> {
+	/**
+	 * Paper colour, any CSS colour (normalised to opaque sRGB over white). Also
+	 * the fallback background. Default `#f4ecdc`.
+	 */
+	paper?: string;
+	/** Up to four pigment colours (`#rgb`/`#rrggbb`), mixed subtractively. */
+	pigments?: string[];
+	brush?: InkBrush;
+	/** Seeds the paper grain and the opening wash. Default 1. */
+	seed?: number;
+	/**
+	 * Content above the paper. Descendants marked `data-ink-resist` stay dry
+	 * (pigment meets their border-radius outline); focusing or hovering a
+	 * `data-ink-wick` descendant blooms pigment around it (an integer
+	 * value picks the pigment).
+	 */
+	children?: Snippet;
+}

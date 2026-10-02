@@ -74,6 +74,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0088](./0088-shared-gl-host-for-model-engines.md)             | Shared WebGL2 host for model engines                                  | Accepted |
 | [0089](./0089-native-dpr-default.md)                           | Native DPR by default, measured by synced throughput                  | Accepted |
 | [0086](./0086-text-contrast-floor.md)                          | Opt-in WCAG contrast floor in the display pass; FluidText default 3:1 | Accepted |
+| [0090](./0090-pigment-model.md)                                | Pigment model: 12-band Kubelka–Munk, wet-to-deposited transfer, paper height | Accepted |
 
 ## How to add a new ADR
 
