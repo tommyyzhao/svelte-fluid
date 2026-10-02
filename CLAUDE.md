@@ -28,6 +28,7 @@ Run `bun run prepack` before committing to verify publint.
 4. **shaders.ts is GL-free.** Raw GLSL strings only; compilation happens in the engine.
 5. **The Svelte component never touches WebGL directly.** It hands the canvas to the engine.
 6. **Engine dispose() does NOT call loseContext().** All resources freed explicitly via gl.delete* calls. A shared-tier `FluidEngine` frees only its fields and releases its host reference (cached programs stay); its `lazy` scroll-out is dispose-and-release, not loseContext. Own-tier dispose frees its context slot count; `lazy` on own-tier still releases the context with loseContext in `Fluid.svelte`. Narrow exception (ADR 0088): the final shared-host release or failed host construction frees its unowned context slot; never lose a still-shared context.
+7. **Public declarations are GL-type-neutral** (ADR 0098). `index.ts` and everything reachable from it must not name `WebGL*`/`GPU*` types, `FBO`, `DoubleFBO`, `ExtInfo`, `ProgramWrap` or `ResolvedConfig`; those live in `engine/internal-types.ts` / `gl-utils.ts`. `prepack` (`scripts/check-public-declarations.mjs`) and `public-surface.test.ts` enforce it.
 
 ## setConfig 4-bucket system
 

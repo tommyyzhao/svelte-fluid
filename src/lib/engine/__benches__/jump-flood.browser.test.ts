@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FluidEngine } from '../FluidEngine.js';
-import type { FBO, FluidConfig } from '../types.js';
+import type { FluidConfig } from '../types.js';
+import type { FBO } from '../internal-types.js';
 
 interface Harness {
 	gl: WebGL2RenderingContext;

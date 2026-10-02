@@ -17,7 +17,7 @@ import { JumpFlood } from '../jump-flood.js';
 import { notifyHost } from '../notify-host.js';
 import { canvasPixelSize, fitDrawingBufferSize } from '../resolution.js';
 import { baseVertexShader } from '../shaders.js';
-import type { FBO } from '../types.js';
+import type { FBO } from '../internal-types.js';
 import { DabQueue, StrokeLog, openingWash, wetStepsFor, DABS_PER_PASS, EVAP } from './brush.js';
 import type { Corner, Dab } from './brush.js';
 import { PIGMENT_DEFAULTS, resolvePigmentOptions } from './options.js';

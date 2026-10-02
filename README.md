@@ -509,6 +509,11 @@ engine.setConfig({ curl: 5 });
 engine.dispose();
 ```
 
+The public API is GL-type-neutral: no root-exported signature mentions a
+`WebGL*` DOM type, `FBO`, `DoubleFBO`, `ExtInfo` or `ResolvedConfig` (removed in
+1.0; they were internal). `isWebGLAvailable()` takes
+`{ failIfMajorPerformanceCaveat?: boolean }`.
+
 ## Development
 
 This project uses **bun**.

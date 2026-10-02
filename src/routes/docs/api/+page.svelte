@@ -448,6 +448,15 @@ interface FlowGridField {LB}
 
 <hr />
 
+<h2>GL-type-neutral API</h2>
+
+<p>
+	As of 1.0 no root-exported declaration mentions a <code>WebGL*</code> DOM type. The internal
+	types <code>FBO</code>, <code>DoubleFBO</code>, <code>ExtInfo</code> and
+	<code>ResolvedConfig</code> are no longer exported (nothing in the public API returned them).
+	<code>isWebGLAvailable()</code> accepts <code>{LB} failIfMajorPerformanceCaveat?: boolean {RB}</code>.
+</p>
+
 <h2>FluidEngine (Advanced)</h2>
 
 <p>

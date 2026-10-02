@@ -64,7 +64,8 @@ svelte-fluid/
 │   │       ├── dithering.ts       ← inlined LDR_LLL1_0.png
 │   │       ├── rng.ts             ← mulberry32 + color helpers
 │   │       ├── pointer.ts         ← Pointer type + update helpers
-│   │       └── types.ts           ← FluidConfig, ResolvedConfig, FluidHandle, ...
+│   │       ├── internal-types.ts  ← ResolvedConfig, FBO, ExtInfo (internal)
+│   │       └── types.ts           ← FluidConfig, FluidHandle, ... (public)
 │   ├── routes/                    ← SvelteKit demo app
 │   │   ├── +layout.svelte
 │   │   ├── +page.svelte
@@ -91,7 +92,7 @@ svelte-fluid/
 ### Add a new config field
 
 1. Add the field to `FluidConfig` in `src/lib/engine/types.ts` (camelCase).
-2. Add the field to `ResolvedConfig` in the same file (SCREAMING_CASE).
+2. Add the field to `ResolvedConfig` in `src/lib/engine/internal-types.ts` (SCREAMING_CASE).
 3. Add a default value in `DEFAULTS` in `FluidEngine.ts`.
 4. Add a line in `resolveConfig` mapping the camelCase prop to the
    SCREAMING_CASE internal name.

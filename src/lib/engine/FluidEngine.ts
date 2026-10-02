@@ -33,10 +33,8 @@
  *    context restore reproduce the configured opening scene.
  */
 
+import type { DoubleFBO, ExtInfo, FBO, ResolvedConfig } from './internal-types.js';
 import type {
-	DoubleFBO,
-	ExtInfo,
-	FBO,
 	FlowConfig,
 	FlowForce,
 	FlowGridField,
@@ -50,7 +48,6 @@ import type {
 	PerformanceTier,
 	PresetSplat,
 	PrescribedFlowField,
-	ResolvedConfig,
 	RGB
 } from './types.js';
 import {

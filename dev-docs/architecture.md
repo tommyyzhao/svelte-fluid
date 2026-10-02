@@ -85,10 +85,14 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 │                      roundedRectSDF, frameMask (inner+outer),   │
 │                      annulusMask, svgPathMask, maskAreaFraction,│
 │                      MaskContext, glslSmoothstep (TS↔GLSL)     │
-│  types.ts            FluidConfig, ResolvedConfig, FluidHandle,  │
+│  types.ts            FluidConfig, FluidHandle, component props, │
 │                      ContainerShape (circle | frame |           │
 │                      roundedRect | annulus | svgPath),          │
-│                      FBO, DoubleFBO, ExtInfo                    │
+│  internal-types.ts   ResolvedConfig, FBO, DoubleFBO, ExtInfo    │
+│                      (internal; never exported from index.ts,   │
+│                      ADR-0098)                                  │
+│  gl-support.ts       isWebGLAvailable, WebGLUnavailableError    │
+│                      (GL-free public declarations)              │
 │                      frame: innerCornerRadius, outerHalfW/H,    │
 │                      outerCornerRadius (all optional)           │
 └─────────────────────────────────────────────────────────────────┘

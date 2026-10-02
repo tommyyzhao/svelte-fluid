@@ -11,7 +11,7 @@
 import { compileShader, createBlit, getWebGLContext, makeProgram, WebGLUnavailableError } from './gl-utils.js';
 import type { BlitFn, ProgramWrap } from './gl-utils.js';
 import { notifyHost } from './notify-host.js';
-import type { ExtInfo, FBO } from './types.js';
+import type { ExtInfo, FBO } from './internal-types.js';
 
 export interface GlHostInstance {
 	/** Visible canvas; its width/height are the instance's pixel size. */

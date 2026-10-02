@@ -13,7 +13,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { resolveConfig, DEFAULTS } from '../FluidEngine.js';
 import { containerShapeEqual, stickyMaskEqual } from '../container-shapes.js';
-import type { FlowBoundary, FlowGridField, FluidConfig, PrescribedFlowField, ResolvedConfig } from '../types.js';
+import type { FlowBoundary, FlowGridField, FluidConfig, PrescribedFlowField } from '../types.js';
+import type { ResolvedConfig } from '../internal-types.js';
 
 /* ------------------------------------------------------------------ */
 /*              setConfig bucket classification tests                  */

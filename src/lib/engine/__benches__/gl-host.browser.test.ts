@@ -5,7 +5,7 @@ import type { GlHost, GlHostInstance } from '../gl-host.js';
 import { createBlit, getWebGLContext, compileShader, disposeFBO } from '../gl-utils.js';
 import { JumpFlood } from '../jump-flood.js';
 import { baseVertexShader, jumpFloodSeedShader } from '../shaders.js';
-import type { FBO } from '../types.js';
+import type { FBO } from '../internal-types.js';
 
 const VERTEX = `#version 300 es
 layout(location = 0) in vec2 aPosition;

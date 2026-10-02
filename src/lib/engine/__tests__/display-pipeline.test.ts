@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULTS, FluidEngine, resolveConfig } from '../FluidEngine.js';
 import { displayShaderSource, bloomBlurShader, bloomFinalShader, bloomPrefilterShader } from '../shaders.js';
 import { GAS_FLARE_CONFIG, PRESETS } from '../../presets/registry.js';
-import type { FluidConfig, ResolvedConfig } from '../types.js';
+import type { FluidConfig } from '../types.js';
+import type { ResolvedConfig } from '../internal-types.js';
 
 // Pure TS mirrors of SRGB_TRANSFER_GLSL / TONE_MAP_GLSL (ADR-0081).
 const decode = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);

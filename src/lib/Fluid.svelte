@@ -24,7 +24,7 @@
 		type PolicyField
 	} from './engine/resolution.js';
 	import { DEFAULTS, FluidEngine } from './engine/FluidEngine.js';
-	import { WebGLUnavailableError, type WebGLUnavailableReason } from './engine/gl-utils.js';
+	import { WebGLUnavailableError, type WebGLUnavailableReason } from './engine/gl-support.js';
 	import { notifyHost } from './engine/notify-host.js';
 	import { DISABLED_PERFORMANCE_STATE } from './engine/performance-governor.js';
 	import { randomSeed } from './engine/rng.js';

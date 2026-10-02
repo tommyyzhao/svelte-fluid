@@ -17,7 +17,7 @@ import { canvasPixelSize } from '../resolution.js';
 import { mulberry32 } from '../rng.js';
 import type { Rng } from '../rng.js';
 import { baseVertexShader } from '../shaders.js';
-import type { FBO } from '../types.js';
+import type { FBO } from '../internal-types.js';
 import { CAUSTICS, hexToLinear, hexToSrgb, labelBand, lookFor } from './look.js';
 import type { SurfaceControl, SurfaceTone } from './look.js';
 import { SURFACE_COMPOSITE_FS, SURFACE_CURVATURE_FS, SURFACE_MASK_FS, SURFACE_RESAMPLE_FS, SURFACE_STEP_FS, SURFACE_VS } from './shaders.js';
