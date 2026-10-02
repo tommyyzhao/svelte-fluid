@@ -19,8 +19,8 @@ function setup(extra = {}) {
 }
 
 describe('display pipeline readback', () => {
-	it('rolls bright HDR splats below white in a floating display target; hot keywords allocate no FBOs', () => {
-		const { engine, harness } = setup();
+	it('opt-in Neutral rolls bright HDR splats below white in a floating display target; hot keywords allocate no FBOs', () => {
+		const { engine, harness } = setup({ toneMapping: 'neutral' as const });
 		const gl = harness.gl;
 		const target = createFBO(gl, 64, 64, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST);
 		try {

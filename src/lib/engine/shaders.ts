@@ -181,10 +181,10 @@ export const TONE_MAP_GLSL = `
         color = max(color, vec3(0.0));
     #if defined(TONE_MAP_AGX)
         return toneMapAgx(color);
-    #elif defined(TONE_MAP_NONE)
-        return clamp(color, 0.0, 1.0);
-    #else
+    #elif defined(TONE_MAP_NEUTRAL)
         return clamp(toneMapNeutral(color), 0.0, 1.0);
+    #else
+        return clamp(color, 0.0, 1.0);
     #endif
     }
 `;
@@ -338,6 +338,14 @@ ${TONE_MAP_GLSL}
     #ifdef BLOOM
         bloom *= sunrays;
     #endif
+    #endif
+
+    #ifdef BLOOM
+        // Bloom is a display-space glow, composited exactly where and how 0.8.0
+        // did (encoded, added to display-referred dye, inside the coverage that
+        // reveal/distortion read). A linear-light add was tried and rejected: it
+        // flattened wisp/gap contrast into haze on every bloom preset (ADR-0081).
+        c += linearToSrgb(bloom);
     #endif
 
         float a = max(c.r, max(c.g, c.b));
@@ -527,22 +535,25 @@ ${TONE_MAP_GLSL}
         // pixels composite as see-through instead of brightening the page.
         gl_FragColor = vec4(clamp(color + ditherNoise(), 0.0, 1.0) * alpha, alpha);
     #else
-        // Authored dye is display-referred sRGB: decode once, add linear bloom,
-        // tone-map, encode once (ADR-0081).
-        vec3 light = dyeToLinear(c);
-    #ifdef BLOOM
-        light += bloom * cmask;
+    #if defined(TONE_MAP_NEUTRAL) || defined(TONE_MAP_AGX)
+        // Display-referred dye + glow: decode once, tone-map, encode once.
+        vec3 display = clamp(linearToSrgb(toneMap(dyeToLinear(c))), 0.0, 1.0);
+    #else
+        // 'none' (default): 0.8.0 exactly. HDR dye stays unclamped through the
+        // composite, so coverage above 1 darkens the backColor term and keeps
+        // saturated wax over light backs (LavaLamp); the final write clips.
+        vec3 display = max(c, vec3(0.0));
     #endif
-        // One encode. The background/fill composite stays display-referred,
-        // exactly what the browser does with the transparent canvas over a page
-        // of the same colour, so opaque and transparent modes agree and light
-        // backColors keep dye hue as in 0.8.0.
-        vec3 display = clamp(linearToSrgb(toneMap(light)), 0.0, 1.0);
+        // The background/fill composite stays display-referred, exactly what
+        // the browser does with the transparent canvas over a page of the same
+        // colour, so opaque and transparent modes agree and light backColors
+        // keep dye hue as in 0.8.0.
         float outAlpha = max(display.r, max(display.g, display.b));
         if (uCompositeBackground > 0.5) {
             display += uBackColor * (1.0 - outAlpha);
             outAlpha = 1.0;
         }
+        outAlpha = min(outAlpha, 1.0);
     #ifdef OBSTRUCTION_FILL
         display = mix(display, uObstructionFillColor, obCoverage);
         outAlpha = max(outAlpha, obCoverage);
@@ -817,61 +828,53 @@ export const bloomPrefilterShader = `
     }
 `;
 
-// Dual-Kawase pyramid (Bjørge, "Bandwidth-efficient rendering", SIGGRAPH
-// 2015). `texelSize` is always the SOURCE texel; it must be declared highp to
-// match the vertex shader's uniform of the same name.
-export const bloomDownShader = `
+export const bloomBlurShader = `
     precision mediump float;
     precision mediump sampler2D;
 
-    varying highp vec2 vUv;
+    varying vec2 vL;
+    varying vec2 vR;
+    varying vec2 vT;
+    varying vec2 vB;
     uniform sampler2D uTexture;
-    uniform highp vec2 texelSize;
     uniform float uKaris;
 
-    // Karis average on the first downsample: luminance-weighted taps stop a
-    // single over-bright texel from flashing as a bloom firefly.
+    // Karis average on the first downsample only: luminance-weighted taps stop
+    // a single over-bright texel from flashing as a bloom firefly (ADR-0081).
     float tapWeight (vec3 c) {
         return mix(1.0, 1.0 / (1.0 + dot(c, vec3(0.2126, 0.7152, 0.0722))), uKaris);
     }
 
     void main () {
-        vec2 o = texelSize;
-        vec3 c0 = texture2D(uTexture, vUv).rgb;
-        vec3 c1 = texture2D(uTexture, vUv + vec2(-o.x, -o.y)).rgb;
-        vec3 c2 = texture2D(uTexture, vUv + vec2(o.x, -o.y)).rgb;
-        vec3 c3 = texture2D(uTexture, vUv + vec2(-o.x, o.y)).rgb;
-        vec3 c4 = texture2D(uTexture, vUv + vec2(o.x, o.y)).rgb;
-        float w0 = 4.0 * tapWeight(c0);
-        float w1 = tapWeight(c1);
-        float w2 = tapWeight(c2);
-        float w3 = tapWeight(c3);
-        float w4 = tapWeight(c4);
-        vec3 sum = c0 * w0 + c1 * w1 + c2 * w2 + c3 * w3 + c4 * w4;
-        gl_FragColor = vec4(sum / (w0 + w1 + w2 + w3 + w4), 0.0);
+        vec3 l = texture2D(uTexture, vL).rgb;
+        vec3 r = texture2D(uTexture, vR).rgb;
+        vec3 t = texture2D(uTexture, vT).rgb;
+        vec3 b = texture2D(uTexture, vB).rgb;
+        vec4 w = vec4(tapWeight(l), tapWeight(r), tapWeight(t), tapWeight(b));
+        vec3 sum = l * w.x + r * w.y + t * w.z + b * w.w;
+        gl_FragColor = vec4(sum / dot(w, vec4(1.0)), 0.0);
     }
 `;
 
-export const bloomUpShader = `
+export const bloomFinalShader = `
     precision mediump float;
     precision mediump sampler2D;
 
-    varying highp vec2 vUv;
+    varying vec2 vL;
+    varying vec2 vR;
+    varying vec2 vT;
+    varying vec2 vB;
     uniform sampler2D uTexture;
-    uniform highp vec2 texelSize;
     uniform float intensity;
 
     void main () {
-        vec2 h = texelSize * 0.5;
-        vec3 sum = texture2D(uTexture, vUv + vec2(-2.0 * h.x, 0.0)).rgb;
-        sum += texture2D(uTexture, vUv + vec2(2.0 * h.x, 0.0)).rgb;
-        sum += texture2D(uTexture, vUv + vec2(0.0, 2.0 * h.y)).rgb;
-        sum += texture2D(uTexture, vUv + vec2(0.0, -2.0 * h.y)).rgb;
-        sum += texture2D(uTexture, vUv + vec2(-h.x, h.y)).rgb * 2.0;
-        sum += texture2D(uTexture, vUv + vec2(h.x, h.y)).rgb * 2.0;
-        sum += texture2D(uTexture, vUv + vec2(h.x, -h.y)).rgb * 2.0;
-        sum += texture2D(uTexture, vUv + vec2(-h.x, -h.y)).rgb * 2.0;
-        gl_FragColor = vec4(sum * (intensity / 12.0), 0.0);
+        vec4 sum = vec4(0.0);
+        sum += texture2D(uTexture, vL);
+        sum += texture2D(uTexture, vR);
+        sum += texture2D(uTexture, vT);
+        sum += texture2D(uTexture, vB);
+        sum *= 0.25;
+        gl_FragColor = sum * intensity;
     }
 `;
 

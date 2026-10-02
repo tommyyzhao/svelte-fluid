@@ -146,8 +146,8 @@ const CORE_PROGRAM_NAMES = [
 const OPTIONAL_PROGRAM_NAMES = [
 	'blur',
 	'bloomPrefilter',
-	'bloomDown',
-	'bloomUp',
+	'bloomBlur',
+	'bloomFinal',
 	'sunraysMask',
 	'sunrays',
 	'advectionMacCormack',
@@ -237,7 +237,7 @@ export const DEFAULTS: ResolvedConfig = {
 	PAUSED: false,
 	BACK_COLOR: { r: 0, g: 0, b: 0 },
 	TRANSPARENT: false,
-	TONE_MAPPING: 'neutral' as const,
+	TONE_MAPPING: 'none' as const,
 	BLOOM: true,
 	BLOOM_ITERATIONS: 8,
 	BLOOM_RESOLUTION: 256,
@@ -638,8 +638,8 @@ export class FluidEngine implements FluidHandle {
 	private copyProgram!: ProgramWrap;
 	private clearProgram!: ProgramWrap;
 	private bloomPrefilterProgram!: ProgramWrap;
-	private bloomDownProgram!: ProgramWrap;
-	private bloomUpProgram!: ProgramWrap;
+	private bloomBlurProgram!: ProgramWrap;
+	private bloomFinalProgram!: ProgramWrap;
 	private sunraysMaskProgram!: ProgramWrap;
 	private sunraysProgram!: ProgramWrap;
 	private splatProgram!: ProgramWrap;
@@ -1470,8 +1470,8 @@ export class FluidEngine implements FluidHandle {
 			this.copyProgram,
 			this.clearProgram,
 			this.bloomPrefilterProgram,
-			this.bloomDownProgram,
-			this.bloomUpProgram,
+			this.bloomBlurProgram,
+			this.bloomFinalProgram,
 			this.sunraysMaskProgram,
 			this.sunraysProgram,
 			this.splatProgram,
@@ -1712,8 +1712,8 @@ export class FluidEngine implements FluidHandle {
 		if (config.BLOOM) {
 			selected.add('blur');
 			selected.add('bloomPrefilter');
-			selected.add('bloomDown');
-			selected.add('bloomUp');
+			selected.add('bloomBlur');
+			selected.add('bloomFinal');
 		}
 		if (config.SUNRAYS) {
 			selected.add('blur');
@@ -1771,8 +1771,8 @@ export class FluidEngine implements FluidHandle {
 			case 'copy': return S.copyShader;
 			case 'clear': return S.clearShader;
 			case 'bloomPrefilter': return S.bloomPrefilterShader;
-			case 'bloomDown': return S.bloomDownShader;
-			case 'bloomUp': return S.bloomUpShader;
+			case 'bloomBlur': return S.bloomBlurShader;
+			case 'bloomFinal': return S.bloomFinalShader;
 			case 'sunraysMask': return S.sunraysMaskShader;
 			case 'sunrays': return S.sunraysShader;
 			case 'splat': return S.splatShader;
@@ -1807,8 +1807,8 @@ export class FluidEngine implements FluidHandle {
 		switch (name) {
 			case 'blur': return this.blurProgram;
 			case 'bloomPrefilter': return this.bloomPrefilterProgram;
-			case 'bloomDown': return this.bloomDownProgram;
-			case 'bloomUp': return this.bloomUpProgram;
+			case 'bloomBlur': return this.bloomBlurProgram;
+			case 'bloomFinal': return this.bloomFinalProgram;
 			case 'sunraysMask': return this.sunraysMaskProgram;
 			case 'sunrays': return this.sunraysProgram;
 			case 'advectionMacCormack': return this.advectionMacCormackProgram;
@@ -1827,8 +1827,8 @@ export class FluidEngine implements FluidHandle {
 			case 'copy': this.copyProgram = program; break;
 			case 'clear': this.clearProgram = program; break;
 			case 'bloomPrefilter': this.bloomPrefilterProgram = program; break;
-			case 'bloomDown': this.bloomDownProgram = program; break;
-			case 'bloomUp': this.bloomUpProgram = program; break;
+			case 'bloomBlur': this.bloomBlurProgram = program; break;
+			case 'bloomFinal': this.bloomFinalProgram = program; break;
 			case 'sunraysMask': this.sunraysMaskProgram = program; break;
 			case 'sunrays': this.sunraysProgram = program; break;
 			case 'splat': this.splatProgram = program; break;
@@ -1854,8 +1854,8 @@ export class FluidEngine implements FluidHandle {
 	private resetOptionalProgramHandles(): void {
 		this.blurProgram = undefined!;
 		this.bloomPrefilterProgram = undefined!;
-		this.bloomDownProgram = undefined!;
-		this.bloomUpProgram = undefined!;
+		this.bloomBlurProgram = undefined!;
+		this.bloomFinalProgram = undefined!;
 		this.sunraysMaskProgram = undefined!;
 		this.sunraysProgram = undefined!;
 		this.advectionMacCormackProgram = undefined!;
@@ -2792,7 +2792,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		if (config.BLOOM) keywords.push('BLOOM');
 		if (config.SUNRAYS) keywords.push('SUNRAYS');
 		if (config.TONE_MAPPING === 'agx') keywords.push('TONE_MAP_AGX');
-		else if (config.TONE_MAPPING === 'none') keywords.push('TONE_MAP_NONE');
+		else if (config.TONE_MAPPING === 'neutral') keywords.push('TONE_MAP_NEUTRAL');
 		if (config.CONTAINER_SHAPE) keywords.push('CONTAINER_MASK');
 		// Obstructions and distortion share display texture unit 6; the
 		// obstruction mask is only bound when distortion is off, so the
@@ -4196,33 +4196,34 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		gl.uniform1i(this.bloomPrefilterProgram.uniforms.uTexture, source.attach(0));
 		this.blit(last);
 
-		// Dual-Kawase (ADR-0081): 5-tap downsample chain, then 8-tap tent
-		// upsamples accumulated additively back up the same chain.
-		const chain = this.bloomFramebuffers;
-		this.bloomDownProgram.bind();
-		for (let i = 0; i < chain.length; i++) {
-			gl.uniform2f(this.bloomDownProgram.uniforms.texelSize, last.texelSizeX, last.texelSizeY);
-			gl.uniform1f(this.bloomDownProgram.uniforms.uKaris, i === 0 ? 1 : 0);
-			gl.uniform1i(this.bloomDownProgram.uniforms.uTexture, last.attach(0));
-			this.blit(chain[i]);
-			last = chain[i];
+		this.bloomBlurProgram.bind();
+		for (let i = 0; i < this.bloomFramebuffers.length; i++) {
+			const dest = this.bloomFramebuffers[i];
+			gl.uniform2f(this.bloomBlurProgram.uniforms.texelSize, last.texelSizeX, last.texelSizeY);
+			gl.uniform1f(this.bloomBlurProgram.uniforms.uKaris, i === 0 ? 1 : 0);
+			gl.uniform1i(this.bloomBlurProgram.uniforms.uTexture, last.attach(0));
+			this.blit(dest);
+			last = dest;
 		}
 
+		gl.uniform1f(this.bloomBlurProgram.uniforms.uKaris, 0);
 		gl.blendFunc(gl.ONE, gl.ONE);
 		gl.enable(gl.BLEND);
-		this.bloomUpProgram.bind();
-		gl.uniform1f(this.bloomUpProgram.uniforms.intensity, 1);
-		for (let i = chain.length - 2; i >= 0; i--) {
-			gl.uniform2f(this.bloomUpProgram.uniforms.texelSize, last.texelSizeX, last.texelSizeY);
-			gl.uniform1i(this.bloomUpProgram.uniforms.uTexture, last.attach(0));
-			this.blit(chain[i]);
-			last = chain[i];
+
+		for (let i = this.bloomFramebuffers.length - 2; i >= 0; i--) {
+			const baseTex = this.bloomFramebuffers[i];
+			gl.uniform2f(this.bloomBlurProgram.uniforms.texelSize, last.texelSizeX, last.texelSizeY);
+			gl.uniform1i(this.bloomBlurProgram.uniforms.uTexture, last.attach(0));
+			gl.viewport(0, 0, baseTex.width, baseTex.height);
+			this.blit(baseTex);
+			last = baseTex;
 		}
 
 		gl.disable(gl.BLEND);
-		gl.uniform2f(this.bloomUpProgram.uniforms.texelSize, last.texelSizeX, last.texelSizeY);
-		gl.uniform1i(this.bloomUpProgram.uniforms.uTexture, last.attach(0));
-		gl.uniform1f(this.bloomUpProgram.uniforms.intensity, this.config.BLOOM_INTENSITY);
+		this.bloomFinalProgram.bind();
+		gl.uniform2f(this.bloomFinalProgram.uniforms.texelSize, last.texelSizeX, last.texelSizeY);
+		gl.uniform1i(this.bloomFinalProgram.uniforms.uTexture, last.attach(0));
+		gl.uniform1f(this.bloomFinalProgram.uniforms.intensity, this.config.BLOOM_INTENSITY);
 		this.blit(destination);
 	}
 

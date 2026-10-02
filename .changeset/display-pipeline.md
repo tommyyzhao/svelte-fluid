@@ -2,11 +2,11 @@
 'svelte-fluid': minor
 ---
 
-Linear display pipeline with tone mapping, dual-Kawase bloom and dithering (ADR-0081).
+Display pipeline correctness fixes and opt-in tone mapping (ADR-0081).
 
-- New `toneMapping?: 'neutral' | 'agx' | 'none'` prop (default `'neutral'`). It is hot-updatable and recompiles only the display program.
-- **Visual change:** bright dye and bloom now roll off smoothly instead of clipping to flat white. Very bright presets (Aurora, Plasma, FrameFluid) show more hue and detail in their highlights and read somewhat dimmer overall. Colours below the highlight shoulder are unchanged. Set `toneMapping: 'none'` for the 0.8.0 clipped look.
+- **Presets look unchanged by default.** Bloom spread, crispness and saturation match 0.8.0.
+- New `toneMapping?: 'none' | 'neutral' | 'agx'` prop, default `'none'` (the 0.8.0 per-channel clip). `'neutral'` (Khronos PBR Neutral) and `'agx'` are opt-in and roll bright dye and bloom off smoothly instead of clipping to white. It is hot-updatable and recompiles only the display program.
+- `backColor` is now exact: dark backgrounds are no longer lifted about 11/255 by gamma-encoded dither noise.
 - Banding is reduced: every output mode (opaque, transparent, reveal, distortion) is now blue-noise dithered, not just bloom.
-- The bloom is softer and wider, with no single-pixel fireflies (dual-Kawase pyramid with a Karis average). Its cost is unchanged.
-- GasFlare was retuned (`toneMapping: 'none'`, `bloomThreshold: 0.3`, `bloomIntensity: 1.2`) and LavaLamp now uses `toneMapping: 'none'`, so both keep their saturated fire and wax colours.
+- Bloom suppresses single-pixel fireflies (Karis average on the first downsample) at unchanged cost.
 - Transparent, reveal and distortion output is strictly premultiplied, so there is no light fringe over page content.

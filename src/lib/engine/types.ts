@@ -491,14 +491,13 @@ export interface FluidConfig {
 	/** Render with transparent background (checkerboard fallback). Default false. */
 	transparent?: boolean;
 	/**
-	 * Display tone map applied once, in linear light, after dye and bloom are
-	 * combined and before the single sRGB encode (ADR-0081).
-	 * - `'neutral'` (default): Khronos PBR Neutral shoulder. Colours below it
-	 *   are unchanged; bright dye and bloom roll off smoothly instead of
+	 * Display tone map for bright dye and bloom (ADR-0081).
+	 * - `'none'` (default): per-channel clip, exactly the 0.8.0 look.
+	 * - `'neutral'`: Khronos PBR Neutral shoulder applied once in linear light.
+	 *   Colours below it are unchanged; highlights roll off smoothly instead of
 	 *   clipping to white.
 	 * - `'agx'`: AgX filmic curve. Softer contrast and stronger highlight
 	 *   desaturation, closer to a photographic look.
-	 * - `'none'`: hard clamp, closest to the 0.8.0 look (highlights clip).
 	 *
 	 * Hot-updatable: changing it recompiles only the display program.
 	 */

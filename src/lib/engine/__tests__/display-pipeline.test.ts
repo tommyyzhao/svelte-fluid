@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULTS, FluidEngine, resolveConfig } from '../FluidEngine.js';
-import { displayShaderSource, bloomDownShader, bloomUpShader, bloomPrefilterShader } from '../shaders.js';
-import { GAS_FLARE_CONFIG, LAVA_LAMP_CONFIG, PRESETS } from '../../presets/registry.js';
+import { displayShaderSource, bloomBlurShader, bloomFinalShader, bloomPrefilterShader } from '../shaders.js';
+import { GAS_FLARE_CONFIG, PRESETS } from '../../presets/registry.js';
 import type { FluidConfig, ResolvedConfig } from '../types.js';
 
 // Pure TS mirrors of SRGB_TRANSFER_GLSL / TONE_MAP_GLSL (ADR-0081).
@@ -76,15 +76,16 @@ describe('linear display pipeline', () => {
 		expect(displayShaderSource).toContain('clamp(color + ditherNoise(), 0.0, 1.0) * alpha');
 		expect(displayShaderSource).toContain('display = clamp(display + ditherNoise() * outAlpha, 0.0, outAlpha)');
 	});
-	it('uses max-channel prefilter, first-down Karis and normalized Kawase kernels', () => {
+	it('keeps the 0.8.0 max-channel prefilter and box-chain bloom with a first-down Karis average', () => {
 		expect(bloomPrefilterShader).toContain('float br = max(c.r, max(c.g, c.b));');
-		expect(bloomDownShader.match(/texture2D\(/g)).toHaveLength(5);
-		expect(bloomDownShader).toContain('1.0 / (1.0 + dot');
-		expect(bloomUpShader.match(/texture2D\(/g)).toHaveLength(8);
-		expect(bloomUpShader).toContain('intensity / 12.0');
+		expect(bloomBlurShader.match(/texture2D\(/g)).toHaveLength(4);
+		expect(bloomBlurShader).toContain('1.0 / (1.0 + dot');
+		expect(bloomFinalShader).toContain('sum *= 0.25;');
+		// Bloom is composited in display space, as in 0.8.0 (ADR-0081).
+		expect(displayShaderSource).toContain('c += linearToSrgb(bloom);');
 	});
 	it('validates toneMapping, preserves undefined hot values, emits display keywords', () => {
-		expect(DEFAULTS.TONE_MAPPING).toBe('neutral');
+		expect(DEFAULTS.TONE_MAPPING).toBe('none');
 		const hot = resolveConfig({ toneMapping: 'agx' }, DEFAULTS);
 		expect(resolveConfig({ toneMapping: undefined }, hot).TONE_MAPPING).toBe('agx');
 		expect(resolveConfig({ toneMapping: 'bad' } as unknown as FluidConfig, hot).TONE_MAPPING).toBe('agx');
@@ -92,14 +93,11 @@ describe('linear display pipeline', () => {
 			displayKeywords(config: ResolvedConfig): string[];
 		};
 		expect(harness.displayKeywords(hot)).toContain('TONE_MAP_AGX');
-		expect(harness.displayKeywords(resolveConfig({ toneMapping: 'none' }, DEFAULTS))).toContain('TONE_MAP_NONE');
-		expect(harness.displayKeywords(DEFAULTS)).not.toContain('TONE_MAP_AGX');
-		expect(harness.displayKeywords(DEFAULTS)).not.toContain('TONE_MAP_NONE');
+		expect(harness.displayKeywords(resolveConfig({ toneMapping: 'neutral' }, DEFAULTS))).toContain('TONE_MAP_NEUTRAL');
+		expect(harness.displayKeywords(DEFAULTS).filter((k) => k.startsWith('TONE_MAP'))).toEqual([]);
 	});
-	it('pins the ADR-0081 preset retunes', () => {
-		expect(GAS_FLARE_CONFIG).toMatchObject({ toneMapping: 'none', bloomThreshold: 0.3, bloomIntensity: 1.2 });
-		expect(LAVA_LAMP_CONFIG.toneMapping).toBe('none');
-		const opted = PRESETS.filter((p) => p.config.toneMapping !== undefined).map((p) => p.id).sort();
-		expect(opted).toEqual(['GasFlare', 'LavaLamp']);
+	it('leaves every preset on the 0.8.0 default look', () => {
+		expect(GAS_FLARE_CONFIG).toMatchObject({ bloomThreshold: 0.48, bloomIntensity: 1.0 });
+		expect(PRESETS.filter((p) => p.config.toneMapping !== undefined)).toEqual([]);
 	});
 });
