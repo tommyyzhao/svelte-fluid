@@ -440,8 +440,8 @@
 		<tr>
 			<td><code>maxPixelRatio</code></td>
 			<td><code>number | null</code></td>
-			<td><code>2</code></td>
-			<td>Component drawing-buffer DPR cap. Pass <code>null</code> to use native DPR. Texture allocation caps use physical pixels, while small-canvas quality tiers use CSS pixels, so DPR alone does not disable or enable effects. Construct-only.</td>
+			<td><code>null</code></td>
+			<td>Component drawing-buffer DPR cap. The default, <code>null</code>, uses the native device pixel ratio; pass a number such as <code>2</code> to cap physical pixels on DPR 3+ screens. Texture allocation caps use physical pixels, while small-canvas quality tiers use CSS pixels, so DPR alone does not disable or enable effects. Construct-only.</td>
 		</tr>
 	</tbody>
 </table>

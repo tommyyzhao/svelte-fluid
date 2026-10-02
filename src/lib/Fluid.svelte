@@ -33,7 +33,7 @@
 	let {
 		width,
 		height,
-		maxPixelRatio = 2,
+		maxPixelRatio = null,
 		class: className,
 		style,
 		seed: seedProp,
