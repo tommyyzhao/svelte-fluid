@@ -5,7 +5,7 @@
  */
 
 import type { Snippet } from 'svelte';
-import type { HTMLCanvasAttributes } from 'svelte/elements';
+import type { HTMLButtonAttributes, HTMLCanvasAttributes } from 'svelte/elements';
 import type { WebGLUnavailableReason } from './gl-utils.js';
 
 /**
@@ -1526,4 +1526,40 @@ export interface InkPaperProps extends Omit<import('svelte/elements').HTMLAttrib
 	 * value picks the pigment).
 	 */
 	children?: Snippet;
+}
+
+/* ------------------------------------------------------------------------ */
+/*              Liquid controls (height-field surface, ADR-0091)            */
+/* ------------------------------------------------------------------------ */
+
+/** `'auto'` follows the page colour behind the control. */
+export type LiquidTone = 'light' | 'dark' | 'auto';
+
+/** A real `<button>`; every native attribute is forwarded. `type` defaults to `'button'`. */
+export interface LiquidButtonProps extends HTMLButtonAttributes {
+	/** Palette. Default `'auto'`. */
+	tone?: LiquidTone;
+	/** Label content, drawn by the DOM above the liquid. */
+	children?: Snippet;
+}
+
+export interface LiquidSegmentedOption {
+	value: string;
+	label: string;
+}
+
+/** `<fieldset>` of native radios; the selected option carries a liquid lens. */
+export interface LiquidSegmentedProps {
+	options: LiquidSegmentedOption[];
+	/** Selected value (`bind:value`). */
+	value?: string;
+	/** Radio group name; unique on the page. */
+	name: string;
+	/** Visible group label (`<legend>`). */
+	legend: string;
+	/** Palette. Default `'auto'`. */
+	tone?: LiquidTone;
+	disabled?: boolean;
+	/** Class applied to the `<fieldset>`. */
+	class?: string;
 }
