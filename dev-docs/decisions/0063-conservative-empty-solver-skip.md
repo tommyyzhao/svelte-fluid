@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-07-11)
+Accepted (2026-07-11); partly superseded by ADR 0099 (decayed scenes now settle)
 
 ## Context
 

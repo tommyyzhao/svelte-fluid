@@ -187,3 +187,7 @@ snapshot copy: +0.45 ms at DPR 2 and +0.7 ms at DPR 3 per shared instance, flat
 in n, up to about 2.37 ms (Karman, DPR 3). That can exceed the 2 ms budget by up
 to about 0.4 ms. Accepted: the alternative past about 16 instances is context
 loss and a blank canvas.
+
+## Settled engines (ADR 0099)
+
+An engine whose velocity and dye have decayed below one 8-bit step stops its frame loop: 0 ms GPU and 0 rAF callbacks until the next input. Its quiet check costs about 0.17 ms per frame averaged while still active.

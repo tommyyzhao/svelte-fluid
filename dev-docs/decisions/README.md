@@ -68,7 +68,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0060](./0060-css-quality-and-capped-physical-dpr.md) | CSS quality policy with capped physical DPR | Accepted |
 | [0061](./0061-lazy-optional-framebuffers.md) | Optional framebuffers exist only while active | Accepted |
 | [0062](./0062-selected-program-compilation.md) | Compile and cache only selected engine programs | Accepted |
-| [0063](./0063-conservative-empty-solver-skip.md) | Skip solver work only while emptiness is provable | Accepted |
+| [0063](./0063-conservative-empty-solver-skip.md) | Skip solver work only while emptiness is provable | Accepted (2026-07-11); partly superseded by ADR 0099 (decayed scenes now settle) |
 | [0064](./0064-dirty-rendering-while-paused.md) | Render paused scenes only after invalidation | Accepted |
 | [0065](./0065-fractional-aperture-gate-stays-closed.md) | Keep fractional face apertures gated | Accepted |
 | [0066](./0066-resolution-normalized-adaptive-vorticity.md) | Normalize adaptive vorticity before gating | Accepted |
@@ -92,6 +92,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0096](./0096-foil-switch.md) | FoilSwitch: R&D snap foil on the shared WebGL2 host, borderless native switch | Accepted |
 | [0097](./0097-enamel-text.md) | EnamelText: compliant enamel on glyphs, gather-form pair transport, glyph contrast band | Accepted |
 | [0098](./0098-gl-neutral-public-declarations.md) | Public declarations are GL-type-neutral; internal GL types removed from the root | Accepted |
+| [0099](./0099-settle-visible-idle-fluid.md) | Settle a visible idle fluid to zero frames | Accepted |
 
 ADRs 0067-0078 exist only on the private R&D branch (`rd/webgpu-replacement`); the numbering gap here is intentional.
 

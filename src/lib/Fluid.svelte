@@ -505,7 +505,9 @@
 		randomSplats: (count) => engine?.randomSplats(count),
 		pause: () => engine?.pause(),
 		resume: () => engine?.resume(),
-		get isPaused() { return engine?.isPaused ?? true; },
+		// A settled engine (ADR 0099) is idle, not paused: it wakes on input, and
+		// auto-animation wrappers keyed on isPaused must keep feeding it splats.
+		get isPaused() { return engine ? engine.isPaused && !engine.isSettled : true; },
 		getPerformanceState: () => engine?.getPerformanceState() ?? DISABLED_PERFORMANCE_STATE
 	};
 

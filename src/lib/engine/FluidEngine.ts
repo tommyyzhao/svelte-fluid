@@ -92,6 +92,7 @@ import {
 import { type Rng, generateColor, mulberry32, normalizeColor, randomSeed } from './rng.js';
 import { fitDrawingBufferSize } from './resolution.js';
 import { flowCanDriveSolver } from './solver-activity.js';
+import { SETTLE_CHECKS, SETTLE_CHECK_INTERVAL, hasContinuousDriver, isQuiet } from './settle.js';
 import { blurMaskData } from './sticky-blur.js';
 import { subscribeFrame } from './frame-scheduler.js';
 import { notifyHost } from './notify-host.js';
@@ -838,6 +839,10 @@ export class FluidEngine implements FluidHandle {
 	private autoStart = true;
 	/** True after settleStill() until resume(): no RAF; a context restore re-settles once. */
 	private still = false;
+	/** ADR 0099: loop stopped because velocity and dye are quiet; any input wakes it. */
+	private settled = false;
+	private settleFrames = 0;
+	private settleQuietChecks = 0;
 	private readonly onFrameError?: (error: unknown) => void;
 	private benchmarkInstrument = false;
 	private benchmarkForceCpu = false;
@@ -1127,6 +1132,7 @@ export class FluidEngine implements FluidHandle {
 		if (this.disposed || this.contextLost || this.failed || !isFiniteSplat(x, y, dx, dy, color)) return;
 		// Conservatively activate even for a numerically zero splat. Proving a
 		// caller's future values are zero is not worth a false-idle solver.
+		this.wake();
 		this.solverMayContainContent = true;
 		const radius = this.config.SPLAT_RADIUS / 100.0;
 		this.withGl(() => {
@@ -1139,11 +1145,14 @@ export class FluidEngine implements FluidHandle {
 
 	randomSplats(count: number): void {
 		if (this.disposed) return;
+		this.wake();
 		this.pendingRandomSplats = enqueueRandomSplats(this.pendingRandomSplats, count);
 	}
 
 	/** Stop the animation loop. The GL context stays alive. Idempotent. */
 	pause(): void {
+		// Explicit pause wins over a settled state.
+		this.settled = false;
 		if (!this.rafRunning || this.disposed) return;
 		this.stopRaf();
 		this.resetPerformanceGovernor();
@@ -1151,6 +1160,9 @@ export class FluidEngine implements FluidHandle {
 
 	/** Restart the animation loop after a pause. Idempotent. */
 	resume(): void {
+		this.settled = false;
+		this.settleFrames = 0;
+		this.settleQuietChecks = 0;
 		if (this.rafRunning || this.disposed || this.contextLost || this.still || this.failed) return;
 		this.lastUpdateTime = performance.now();
 		this.startRaf();
@@ -1223,6 +1235,7 @@ export class FluidEngine implements FluidHandle {
 		this.canvas.width = nextWidth;
 		this.canvas.height = nextHeight;
 		this.invalidateRender();
+		this.wake();
 		if (this.contextLost) return true;
 
 		const aspectChanged = oldWidth * nextHeight !== nextWidth * oldHeight;
@@ -1389,6 +1402,11 @@ export class FluidEngine implements FluidHandle {
 		return !this.rafRunning;
 	}
 
+	/** @internal True while the loop is stopped because the fluid decayed (ADR 0099). */
+	get isSettled(): boolean {
+		return this.settled;
+	}
+
 	getPerformanceState(): PerformanceState {
 		const enabled = this.config.AUTO_PERFORMANCE;
 		return {
@@ -1474,6 +1492,7 @@ export class FluidEngine implements FluidHandle {
 		});
 		if (preparedDisplayVariant === undefined) return;
 		this.config = b;
+		this.wake();
 		if (performanceResetChanged) this.resetPerformanceGovernor();
 		if (a.BACK_COLOR !== b.BACK_COLOR) {
 			this.normalizedBackColor = normalizeColor(b.BACK_COLOR);
@@ -1584,6 +1603,9 @@ export class FluidEngine implements FluidHandle {
 				this.renderOnce();
 			});
 		} else if (this.autoStart) {
+			this.settled = false;
+			this.settleFrames = 0;
+			this.settleQuietChecks = 0;
 			this.startRaf();
 		}
 	}
@@ -3286,6 +3308,67 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		return this.pendingRandomSplats > 0 || this.pointers.some((pointer) => pointer.moved);
 	}
 
+	/** Seconds on the same clock as currentDensityDissipation(). */
+	private elapsedSeconds(): number {
+		return this.deterministicMode ? this.simTime : (performance.now() - this.engineStartTime) / 1000;
+	}
+
+	private wake(): void {
+		if (!this.settled) return;
+		this.settled = false;
+		this.settleFrames = 0;
+		this.settleQuietChecks = 0;
+		this.resume();
+	}
+
+	/**
+	 * ADR 0099: stop the loop once velocity and dye are provably invisible.
+	 * Runs after the frame is presented, so the last frame is on screen.
+	 */
+	private trackSettle(): void {
+		if (
+			!this.autoStart || this.deterministicMode || this.config.PAUSED || this.hasPendingFrameInput() ||
+			this.pointers.some((p) => p.down) || hasContinuousDriver(this.config, this.elapsedSeconds())
+		) {
+			this.settleFrames = 0;
+			this.settleQuietChecks = 0;
+			return;
+		}
+		if (++this.settleFrames % SETTLE_CHECK_INTERVAL !== 0) return;
+		if (!this.fieldsAreQuiet()) {
+			this.settleQuietChecks = 0;
+			return;
+		}
+		if (++this.settleQuietChecks < SETTLE_CHECKS) return;
+		this.settled = true;
+		this.stopRaf();
+		this.resetPerformanceGovernor();
+	}
+
+	private settleCheckMs = 0;
+	private settleCheckCount = 0;
+
+	/** @internal Mean ms per quiet check (benchmark observability). */
+	get settleCheckStats(): { checks: number; totalMs: number } {
+		return { checks: this.settleCheckCount, totalMs: this.settleCheckMs };
+	}
+
+	private fieldsAreQuiet(): boolean {
+		const t0 = performance.now();
+		const quiet = this.withGl(() => {
+			const v = this.readFieldInner('velocity', {}).data;
+			let maxV = 0;
+			for (let i = 0; i < v.length; i++) maxV = Math.max(maxV, Math.abs(v[i]));
+			const d = this.readFieldInner('dye', { components: 3 }).data;
+			let maxD = 0;
+			for (let i = 0; i < d.length; i++) maxD = Math.max(maxD, Math.abs(d[i]));
+			return isQuiet(maxV, maxD, this.config.DENSITY_DISSIPATION);
+		});
+		this.settleCheckMs += performance.now() - t0;
+		this.settleCheckCount++;
+		return quiet === true;
+	}
+
 	private update(): void {
 		if (this.disposed || this.contextLost || this.failed || !this.rafRunning) return;
 		const dt = this.calcDeltaTime();
@@ -3316,6 +3399,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 				}
 			}
 		});
+		this.trackSettle();
 	}
 
 	private simulateFrame(dt: number): void {
@@ -4948,6 +5032,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	private handlePointerDown(e: PointerEvent): void {
 		const slot = this.pointerSlots.slotFor(e.pointerId, e.pointerType, true);
 		if (slot < 0) return;
+		this.wake();
 		const pos = this.pointerCanvasPos(e.clientX, e.clientY);
 		if (!pos) return;
 		const { x, y } = pos;
@@ -4973,6 +5058,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		if (!pointer.down) {
 			// Hover never applies to touch (slotFor only returns slot 0 for mouse/pen).
 			if (!this.config.SPLAT_ON_HOVER || e.pointerType === 'touch') return;
+			this.wake();
 			const pos = this.pointerCanvasPos(e.clientX, e.clientY);
 			if (!pos) return;
 			const { x, y } = pos;
