@@ -164,13 +164,12 @@ describe('FluidEngine.resize', () => {
 		const { canvas, gl, counts } = countedCanvas();
 		const extension = gl.getExtension('WEBGL_lose_context');
 		expect(extension).toBeTruthy();
-		// Pinned seed: opening splats are rejection-sampled (10 tries) against the
-		// circle at the restore-time 2:1 aspect; ~4% of random seeds place none.
-		// See dev-docs/learnings/verification.md.
+		// Seed 36 used to place no opening splat (10 rejection tries against the
+		// circle at the restore-time 2:1 aspect); kept as a regression guard.
 		const engine = new FluidEngine({
 			canvas,
 			autoStart: false,
-			config: { ...CONFIG, initialSplatCount: 1, seed: 1 }
+			config: { ...CONFIG, initialSplatCount: 1, seed: 36 }
 		});
 		try {
 			const lost = once(canvas, 'webglcontextlost');
