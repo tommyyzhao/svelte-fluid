@@ -96,6 +96,7 @@ import { fitDrawingBufferSize } from './resolution.js';
 import { flowCanDriveSolver } from './solver-activity.js';
 import { blurMaskData } from './sticky-blur.js';
 import { subscribeFrame } from './frame-scheduler.js';
+import { JumpFlood, supportsJumpFlood } from './jump-flood.js';
 import {
 	MAX_COALESCED_PER_EVENT,
 	MAX_AUTO_SPLAT_COUNT,
@@ -685,6 +686,13 @@ export class FluidEngine implements FluidHandle {
 	private maskW = 0;
 	private maskH = 0;
 	private maskAreaFractionCache = 1.0;
+
+	// --- Jump-flood signed distance fields (ADR-0084, WebGL2 only) ---
+	// Built from the coverage masks when they change; R16F, in mask texels,
+	// negative inside. Programs and seed buffers are created on first use.
+	private jumpFlood: JumpFlood | null = null;
+	private containerSdf: FBO | null = null;
+	private obstructionSdf: FBO | null = null;
 
 	// --- Sticky mask texture ---
 	private stickyMaskTexture: WebGLTexture | null = null;
@@ -1314,6 +1322,9 @@ export class FluidEngine implements FluidHandle {
 		this.maskData = null;
 		this.maskW = 0;
 		this.maskH = 0;
+		this.jumpFlood = null;
+		this.containerSdf = null;
+		this.obstructionSdf = null;
 		this.stickyMaskTexture = null;
 		this.stickyMaskW = 0;
 		this.stickyMaskH = 0;
@@ -1415,6 +1426,13 @@ export class FluidEngine implements FluidHandle {
 			this.maskTexture = null;
 			this.maskData = null;
 		}
+
+		disposeFBO(gl, this.containerSdf ?? undefined);
+		disposeFBO(gl, this.obstructionSdf ?? undefined);
+		this.containerSdf = null;
+		this.obstructionSdf = null;
+		this.jumpFlood?.dispose();
+		this.jumpFlood = null;
 
 		// Sticky mask texture
 		if (this.stickyMaskTexture) {
@@ -1625,6 +1643,8 @@ export class FluidEngine implements FluidHandle {
 			if (exists) bytes += Math.max(0, width) * Math.max(0, height) * channels;
 		};
 		byteTexture(this.maskTexture, this.maskW, this.maskH, 1);
+		for (const sdf of [this.containerSdf, this.obstructionSdf]) byteTexture(sdf, sdf?.width ?? 0, sdf?.height ?? 0, 2);
+		bytes += this.jumpFlood?.seedBytes() ?? 0;
 		byteTexture(this.stickyMaskTexture, this.stickyMaskW, this.stickyMaskH, 1);
 		byteTexture(this.stickyFallbackTexture, 1, 1, 1);
 		byteTexture(this.obstructionMaskTexture, this.obstructionMaskW, this.obstructionMaskH, 1);
@@ -2180,7 +2200,11 @@ export class FluidEngine implements FluidHandle {
 			this.maskData = null;
 		}
 
-		if (!shape || shape.type !== 'svgPath') return;
+		if (!shape || shape.type !== 'svgPath') {
+			disposeFBO(gl, this.containerSdf ?? undefined);
+			this.containerSdf = null;
+			return;
+		}
 
 		const baseDim = shape.maskResolution ?? 512;
 		const [vx, vy, vw, vh] = shape.viewBox ?? [0, 0, 100, 100];
@@ -2264,6 +2288,28 @@ export class FluidEngine implements FluidHandle {
 		}
 		gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
 		this.maskTexture = tex;
+		this.containerSdf = this.buildMaskSdf(tex, maskW, maskH, this.containerSdf);
+	}
+
+	/**
+	 * Rebuild a mask's jump-flood SDF into `previous` (reused when same size).
+	 * Returns null on WebGL1, which keeps the coverage-texture edge.
+	 */
+	private buildMaskSdf(source: WebGLTexture, w: number, h: number, previous: FBO | null): FBO | null {
+		if (!supportsJumpFlood(this.ext)) return null;
+		this.jumpFlood ??= new JumpFlood(this.gl, this.ext, this.baseVertexShader, this.blit);
+		return this.jumpFlood.build(source, w, h, previous);
+	}
+
+	/**
+	 * @internal Signed distance to a mask edge, for edge effects that follow a
+	 * shape (outlines, wetting bands, focus rings). R16F, LINEAR, texture rows
+	 * top-down like the coverage masks (sample at `(u, 1 - v)`); values are in
+	 * texels of `width`×`height`, negative inside. Null on WebGL1 or with no mask.
+	 */
+	getMaskSdf(kind: 'container' | 'obstruction'): { texture: WebGLTexture; width: number; height: number } | null {
+		const sdf = kind === 'container' ? this.containerSdf : this.obstructionSdf;
+		return sdf ? { texture: sdf.texture, width: sdf.width, height: sdf.height } : null;
 	}
 
 	/**
@@ -2284,7 +2330,11 @@ export class FluidEngine implements FluidHandle {
 			this.obstructionMaskData = null;
 		}
 
-		if (!obstructions || obstructions.length === 0) return;
+		if (!obstructions || obstructions.length === 0) {
+			disposeFBO(gl, this.obstructionSdf ?? undefined);
+			this.obstructionSdf = null;
+			return;
+		}
 
 		// Use the same base resolution + aspect-corrected dims as the
 		// container mask so obstruction UVs line up with the canvas.
@@ -2375,6 +2425,7 @@ export class FluidEngine implements FluidHandle {
 		}
 		gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
 		this.obstructionMaskTexture = tex;
+		this.obstructionSdf = this.buildMaskSdf(tex, maskW, maskH, this.obstructionSdf);
 	}
 
 	/**
@@ -2798,6 +2849,11 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			// Paint obstruction footprints in a solid color (ADR-0039).
 			if (config.OBSTRUCTION_COLOR) keywords.push('OBSTRUCTION_FILL');
 		}
+		// Pixel-width mask edges from the jump-flood SDFs (ADR-0084).
+		if (
+			supportsJumpFlood(this.ext) &&
+			(config.CONTAINER_SHAPE?.type === 'svgPath' || keywords.includes('OBSTRUCTION_MASK'))
+		) keywords.push('MASK_SDF');
 		if (this.flowVisualizationActiveFor(config)) keywords.push('FLOW_VISUALIZATION');
 		// DISTORTION and REVEAL are mutually exclusive display modes
 		if (config.DISTORTION) keywords.push('DISTORTION');
@@ -4035,6 +4091,21 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 				gl.uniform3f(this.displayMaterial.uniforms.uObstructionFillColor, oc.r, oc.g, oc.b);
 			}
 		}
+		// MASK_SDF variants read the distance fields instead of the coverage
+		// masks, so they take over units 4/6 (keeps the WebGL1 0–7 budget).
+		// The scale converts mask texels to target pixels; masks follow the
+		// canvas aspect, so one factor per mask serves both axes (ADR-0084).
+		if (this.containerSdf && this.config.CONTAINER_SHAPE?.type === 'svgPath') {
+			gl.uniform1i(this.displayMaterial.uniforms.uContainerSdf, this.containerSdf.attach(4));
+		}
+		if (!this.config.DISTORTION && this.obstructionSdf) {
+			gl.uniform1i(this.displayMaterial.uniforms.uObstructionSdf, this.obstructionSdf.attach(6));
+		}
+		gl.uniform2f(
+			this.displayMaterial.uniforms.uSdfScale,
+			this.containerSdf ? width / this.containerSdf.width : 1,
+			this.obstructionSdf ? width / this.obstructionSdf.width : 1
+		);
 		if (this.flowVisualizationActive()) {
 			const mode = this.flowVisualizationMode();
 			const primary =

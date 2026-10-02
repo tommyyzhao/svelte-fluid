@@ -79,6 +79,8 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 │                      HSVtoRGB, normalizeColor                   │
 │  pointer.ts          Pointer, createPointer, update*Data,       │
 │                      correctDeltaX/Y                            │
+│  jump-flood.ts       GPU JFA: coverage mask → R16F signed       │
+│                      distance (WebGL2, ADR-0084)                │
 │  container-shapes.ts containerShapeEqual, containerMask (SDF),  │
 │                      roundedRectSDF, frameMask (inner+outer),   │
 │                      annulusMask, svgPathMask, maskAreaFraction,│

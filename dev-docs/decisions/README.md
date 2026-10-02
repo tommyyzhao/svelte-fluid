@@ -68,6 +68,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0081](./0081-linear-display-pipeline.md)                      | Display pipeline: opt-in tone mapping, exact backColor, dithering     | Accepted |
 | [0082](./0082-shared-gl-context.md)                            | One shared WebGL context and program cache for all instances          | Proposed |
 | [0083](./0083-pointer-events-input.md)                         | Pointer Events input, capture, and deliberate touch-action            | Accepted |
+| [0084](./0084-jump-flood-mask-sdf.md)                          | GPU jump-flood SDF for pixel-width mask edges                         | Accepted |
 
 ## How to add a new ADR
 

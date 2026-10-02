@@ -219,6 +219,14 @@ export const displayShaderSource = `
     uniform float uContainerOuterCornerRadius;
     uniform sampler2D uContainerMaskTexture;
 
+#ifdef MASK_SDF
+    // Jump-flood SDFs in mask texels (negative inside); uSdfScale converts
+    // container (x) / obstruction (y) texels to target pixels (ADR-0084).
+    uniform sampler2D uContainerSdf;
+    uniform sampler2D uObstructionSdf;
+    uniform vec2 uSdfScale;
+#endif
+
 #ifdef OBSTRUCTION_MASK
     uniform sampler2D uObstructionMask;
 #ifdef OBSTRUCTION_FILL
@@ -307,6 +315,12 @@ ${TONE_MAP_GLSL}
     }
 #endif
 
+    // Inside-coverage of a signed distance measured in target pixels: exactly
+    // one pixel of anti-aliasing at any DPR (ADR-0084).
+    float pixelCoverage (float dPx) {
+        return clamp(0.5 - dPx, 0.0, 1.0);
+    }
+
     void main () {
         vec3 c = texture2D(uTexture, vUv).rgb;
 
@@ -352,12 +366,12 @@ ${TONE_MAP_GLSL}
         float cmask = 1.0;
 
     #ifdef CONTAINER_MASK
+        // Aspect-corrected container coordinates are in canvas-height units,
+        // so dividing by texelSize.y yields pixels; raw UV x uses texelSize.x.
         if (uContainerShapeType == 0) {
             vec2 cp = vec2((vUv.x - uContainerCenter.x) * uContainerAspect,
                            vUv.y - uContainerCenter.y);
-            cmask = 1.0 - smoothstep(uContainerRadius - 0.005,
-                                      uContainerRadius + 0.005,
-                                      length(cp));
+            cmask = pixelCoverage((length(cp) - uContainerRadius) / texelSize.y);
         } else if (uContainerShapeType == 1) {
             // Frame: intersection of outside-inner and inside-outer
             // Inner mask: 0 inside inner rect, 1 outside
@@ -366,12 +380,12 @@ ${TONE_MAP_GLSL}
             if (icr > 0.0) {
                 vec2 ip = vec2((vUv.x - uContainerCenter.x) * uContainerAspect, vUv.y - uContainerCenter.y);
                 vec2 id = abs(ip) - vec2(uContainerHalfW * uContainerAspect, uContainerHalfH) + icr;
-                float iDist = length(max(id, 0.0)) - icr;
-                innerMask = smoothstep(-0.005, 0.005, iDist);
+                float iDist = length(max(id, 0.0)) + min(max(id.x, id.y), 0.0) - icr;
+                innerMask = pixelCoverage(-iDist / texelSize.y);
             } else {
-                float fdx = abs(vUv.x - uContainerCenter.x) - uContainerHalfW;
-                float fdy = abs(vUv.y - uContainerCenter.y) - uContainerHalfH;
-                innerMask = smoothstep(-0.005, 0.005, max(fdx, fdy));
+                float fdx = (abs(vUv.x - uContainerCenter.x) - uContainerHalfW) / texelSize.x;
+                float fdy = (abs(vUv.y - uContainerCenter.y) - uContainerHalfH) / texelSize.y;
+                innerMask = pixelCoverage(-max(fdx, fdy));
             }
             // Outer mask: 1 inside outer rect, 0 outside
             float ocr = uContainerOuterCornerRadius;
@@ -379,30 +393,34 @@ ${TONE_MAP_GLSL}
             if (ocr > 0.0) {
                 vec2 op = vec2((vUv.x - uContainerCenter.x) * uContainerAspect, vUv.y - uContainerCenter.y);
                 vec2 od = abs(op) - vec2(uContainerOuterHalfW * uContainerAspect, uContainerOuterHalfH) + ocr;
-                float oDist = length(max(od, 0.0)) - ocr;
-                outerMask = 1.0 - smoothstep(-0.005, 0.005, oDist);
+                float oDist = length(max(od, 0.0)) + min(max(od.x, od.y), 0.0) - ocr;
+                outerMask = pixelCoverage(oDist / texelSize.y);
             } else {
-                float odx = abs(vUv.x - uContainerCenter.x) - uContainerOuterHalfW;
-                float ody = abs(vUv.y - uContainerCenter.y) - uContainerOuterHalfH;
-                outerMask = 1.0 - smoothstep(-0.005, 0.005, max(odx, ody));
+                float odx = (abs(vUv.x - uContainerCenter.x) - uContainerOuterHalfW) / texelSize.x;
+                float ody = (abs(vUv.y - uContainerCenter.y) - uContainerOuterHalfH) / texelSize.y;
+                outerMask = pixelCoverage(max(odx, ody));
             }
             cmask = innerMask * outerMask;
         } else if (uContainerShapeType == 2) {
             // Rounded rect: 1 inside, 0 outside
             vec2 rp = vec2((vUv.x - uContainerCenter.x) * uContainerAspect, vUv.y - uContainerCenter.y);
             vec2 rd = abs(rp) - vec2(uContainerHalfW * uContainerAspect, uContainerHalfH) + uContainerInnerCornerRadius;
-            float rdDist = length(max(rd, 0.0)) - uContainerInnerCornerRadius;
-            cmask = 1.0 - smoothstep(-0.005, 0.005, rdDist);
+            float rdDist = length(max(rd, 0.0)) + min(max(rd.x, rd.y), 0.0) - uContainerInnerCornerRadius;
+            cmask = pixelCoverage(rdDist / texelSize.y);
         } else if (uContainerShapeType == 3) {
             // Annulus: 1 in the ring between inner and outer circles, 0 elsewhere
             vec2 cp = vec2((vUv.x - uContainerCenter.x) * uContainerAspect,
                            vUv.y - uContainerCenter.y);
             float d = length(cp);
             float sdf = max(d - uContainerRadius, uContainerInnerRadius - d);
-            cmask = 1.0 - smoothstep(-0.005, 0.005, sdf);
+            cmask = pixelCoverage(sdf / texelSize.y);
         } else if (uContainerShapeType == 4) {
-            // SVG path: sample pre-rasterized mask texture
+        #ifdef MASK_SDF
+            cmask = pixelCoverage(texture2D(uContainerSdf, vec2(vUv.x, 1.0 - vUv.y)).r * uSdfScale.x);
+        #else
+            // WebGL1: bilinear coverage of the pre-rasterized mask.
             cmask = texture2D(uContainerMaskTexture, vec2(vUv.x, 1.0 - vUv.y)).r;
+        #endif
         }
     #endif
 
@@ -411,7 +429,11 @@ ${TONE_MAP_GLSL}
         // display matches the masked physics. Orthogonal to CONTAINER_MASK.
         // Coverage is kept for the optional OBSTRUCTION_FILL paint below —
         // the rasterized mask is anti-aliased, so fill edges stay smooth.
+    #ifdef MASK_SDF
+        float obCoverage = pixelCoverage(texture2D(uObstructionSdf, vec2(vUv.x, 1.0 - vUv.y)).r * uSdfScale.y);
+    #else
         float obCoverage = texture2D(uObstructionMask, vec2(vUv.x, 1.0 - vUv.y)).r;
+    #endif
         cmask *= (1.0 - obCoverage);
     #endif
 
@@ -430,22 +452,32 @@ ${TONE_MAP_GLSL}
 
     #ifdef OBSTRUCTION_MASK
         vec2 solidUv = vec2(vUv.x, 1.0 - vUv.y);
+    #ifdef MASK_SDF
+        // Same guard as the 5-tap max below: the bilinear coverage ramp (one
+        // mask texel) dilated by one target pixel, so overlays do not move.
+        float solidEdge = clamp(0.5 - texture2D(uObstructionSdf, solidUv).r + 1.0 / uSdfScale.y, 0.0, 1.0);
+    #else
         float solidEdge = texture2D(uObstructionMask, solidUv).r;
         solidEdge = max(solidEdge, texture2D(uObstructionMask, solidUv + vec2(texelSize.x, 0.0)).r);
         solidEdge = max(solidEdge, texture2D(uObstructionMask, solidUv - vec2(texelSize.x, 0.0)).r);
         solidEdge = max(solidEdge, texture2D(uObstructionMask, solidUv + vec2(0.0, texelSize.y)).r);
         solidEdge = max(solidEdge, texture2D(uObstructionMask, solidUv - vec2(0.0, texelSize.y)).r);
+    #endif
         flowMask *= 1.0 - smoothstep(0.05, 0.45, solidEdge);
     #endif
 
     #ifdef CONTAINER_MASK
         if (uContainerShapeType == 4) {
             vec2 containerUv = vec2(vUv.x, 1.0 - vUv.y);
+        #ifdef MASK_SDF
+            float containerEdge = clamp(0.5 + texture2D(uContainerSdf, containerUv).r + 1.0 / uSdfScale.x, 0.0, 1.0);
+        #else
             float containerEdge = 1.0 - texture2D(uContainerMaskTexture, containerUv).r;
             containerEdge = max(containerEdge, 1.0 - texture2D(uContainerMaskTexture, containerUv + vec2(texelSize.x, 0.0)).r);
             containerEdge = max(containerEdge, 1.0 - texture2D(uContainerMaskTexture, containerUv - vec2(texelSize.x, 0.0)).r);
             containerEdge = max(containerEdge, 1.0 - texture2D(uContainerMaskTexture, containerUv + vec2(0.0, texelSize.y)).r);
             containerEdge = max(containerEdge, 1.0 - texture2D(uContainerMaskTexture, containerUv - vec2(0.0, texelSize.y)).r);
+        #endif
             flowMask *= 1.0 - smoothstep(0.05, 0.45, containerEdge);
         }
     #endif
@@ -1891,5 +1923,92 @@ export const applyMaskShader = `
         }
 
         gl_FragColor = val * mask;
+    }
+`;
+
+/*
+ * Jump-flood signed distance field (ADR-0084). Seeds store the offset from
+ * the texel to its nearest 0.5-coverage crossing, in texels, rather than an
+ * absolute position: half floats keep ~1/1000-texel precision near the edge,
+ * where accuracy matters, instead of ~0.25 texel at absolute coordinate 512.
+ * |offset.x| > 5000 marks "no seed" (sentinel 1e4, see jump-flood.ts).
+ */
+export const jumpFloodSeedShader = `
+    precision highp float;
+    precision highp sampler2D;
+
+    varying vec2 vUv;
+    uniform sampler2D uSource;
+    uniform vec2 uTexel;
+
+    void main () {
+        float c = texture2D(uSource, vUv).r;
+        float l = texture2D(uSource, vUv - vec2(uTexel.x, 0.0)).r;
+        float r = texture2D(uSource, vUv + vec2(uTexel.x, 0.0)).r;
+        float b = texture2D(uSource, vUv - vec2(0.0, uTexel.y)).r;
+        float t = texture2D(uSource, vUv + vec2(0.0, uTexel.y)).r;
+        bool inside = c >= 0.5;
+        bool edge = (l >= 0.5) != inside || (r >= 0.5) != inside ||
+                    (b >= 0.5) != inside || (t >= 0.5) != inside;
+        if (!edge) {
+            gl_FragColor = vec4(1.0e4, 1.0e4, 0.0, 1.0);
+            return;
+        }
+        // Steeper one-sided difference = the side the crossing lies on, so a
+        // hard 0/1 step lands on the half-texel edge (mirror: seedOffset()).
+        float gx = abs(r - c) > abs(c - l) ? r - c : c - l;
+        float gy = abs(t - c) > abs(c - b) ? t - c : c - b;
+        float g2 = gx * gx + gy * gy;
+        vec2 o = g2 < 1.0e-6 ? vec2(0.0) : -(c - 0.5) * vec2(gx, gy) / g2;
+        float len = length(o);
+        if (len > 1.0) o /= len;
+        gl_FragColor = vec4(o, 0.0, 1.0);
+    }
+`;
+
+export const jumpFloodStepShader = `
+    precision highp float;
+    precision highp sampler2D;
+
+    varying vec2 vUv;
+    uniform sampler2D uSeeds;
+    uniform vec2 uTexel;
+    uniform float uStep;
+
+    void main () {
+        vec2 best = vec2(1.0e4);
+        float bestD = 1.0e9;
+        for (int j = -1; j <= 1; j++) {
+            for (int i = -1; i <= 1; i++) {
+                vec2 o = vec2(float(i), float(j)) * uStep;
+                vec2 uv = vUv + o * uTexel;
+                if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) continue;
+                vec2 s = texture2D(uSeeds, uv).xy;
+                if (abs(s.x) > 5000.0) continue;
+                vec2 cand = s + o;
+                float d = dot(cand, cand);
+                if (d < bestD) {
+                    bestD = d;
+                    best = cand;
+                }
+            }
+        }
+        gl_FragColor = vec4(best, 0.0, 1.0);
+    }
+`;
+
+export const jumpFloodDistanceShader = `
+    precision highp float;
+    precision highp sampler2D;
+
+    varying vec2 vUv;
+    uniform sampler2D uSeeds;
+    uniform sampler2D uSource;
+
+    void main () {
+        vec2 s = texture2D(uSeeds, vUv).xy;
+        // No seed anywhere (empty or full mask): clamp to a large finite value.
+        float d = abs(s.x) > 5000.0 ? 1.0e4 : length(s);
+        gl_FragColor = vec4(texture2D(uSource, vUv).r >= 0.5 ? -d : d, 0.0, 0.0, 1.0);
     }
 `;
