@@ -120,11 +120,6 @@
 			layout();
 		});
 	});
-
-	/** @internal Test hook. */
-	export function engineForTest(): EnamelEngine | null {
-		return engine;
-	}
 </script>
 
 <!-- No whitespace between tags: it would become part of the heading's text. -->
