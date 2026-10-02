@@ -90,6 +90,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0094](./0094-liquid-drop-zone-and-caustics.md) | Liquid drop zone (four-wall analytic climb); interaction-only caustics overlay (regularized area ratio, contrast-clamped) | Accepted |
 | [0095](./0095-material-promotion-disposition.md) | Which R&D materials are promoted to WebGL2 | Accepted |
 | [0096](./0096-foil-switch.md) | FoilSwitch: R&D snap foil on the shared WebGL2 host, borderless native switch | Accepted |
+| [0097](./0097-enamel-text.md) | EnamelText: compliant enamel on glyphs, gather-form pair transport, glyph contrast band | Accepted |
 | [0098](./0098-gl-neutral-public-declarations.md) | Public declarations are GL-type-neutral; internal GL types removed from the root | Accepted |
 
 ADRs 0067-0078 exist only on the private R&D branch (`rd/webgpu-replacement`); the numbering gap here is intentional.
