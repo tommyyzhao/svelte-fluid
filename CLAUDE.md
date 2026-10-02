@@ -23,11 +23,11 @@ Run `bun run prepack` before committing to verify publint.
 ## Architecture invariants — never break these
 
 1. **Engine never imports Svelte.** `FluidEngine` is framework-agnostic.
-2. **No module-level mutable GL state.** Each engine instance owns its own context, buffers, programs, FBOs.
+2. **Module-level mutable GL state lives only in `gl-host.ts` for model engines** (ADR 0088): one context, program cache and shared quad. Models own their fields/FBOs/textures and bind all state they read. `FluidEngine` still owns its own context, buffers, programs and FBOs.
 3. **gl-utils.ts is stateless.** Every helper takes `gl` as first arg.
 4. **shaders.ts is GL-free.** Raw GLSL strings only; compilation happens in the engine.
 5. **The Svelte component never touches WebGL directly.** It hands the canvas to the engine.
-6. **dispose() does NOT call loseContext().** All resources freed explicitly via gl.delete* calls. The context object is left intact for lazy rebuild.
+6. **Engine dispose() does NOT call loseContext().** All resources freed explicitly via gl.delete* calls. The context object is left intact for lazy rebuild. Narrow exception (ADR 0088): the final shared-host release or failed host construction frees its unowned context slot; never lose a still-shared context.
 
 ## setConfig 4-bucket system
 

@@ -70,6 +70,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0083](./0083-pointer-events-input.md)                         | Pointer Events input, capture, and deliberate touch-action            | Accepted |
 | [0084](./0084-jump-flood-mask-sdf.md)                          | GPU jump-flood SDF for pixel-width mask edges                         | Accepted |
 | [0085](./0085-reduced-motion-still-and-frame-failure.md)       | Reduced-motion still frame and terminal frame-failure fallback        | Accepted |
+| [0088](./0088-shared-gl-host-for-model-engines.md)             | Shared WebGL2 host for model engines                                  | Accepted |
 | [0089](./0089-native-dpr-default.md)                           | Native DPR by default, measured by synced throughput                  | Accepted |
 
 ## How to add a new ADR

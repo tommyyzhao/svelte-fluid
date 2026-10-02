@@ -62,28 +62,38 @@ export function supportsJumpFlood(ext: ExtInfo | undefined): boolean {
 	return !!ext?.isWebGL2;
 }
 
+/** Compiles a fragment through a shared cache that owns the result (gl-host, ADR-0088). */
+export type JumpFloodProgramFactory = (name: string, fragment: string) => ProgramWrap;
+
 /**
  * Owns the three JFA programs and a reusable seed ping-pong pair. One
  * instance serves every mask of an engine; outputs are owned by the caller
- * and passed back in so same-size rebuilds reuse their framebuffer.
+ * and passed back in so same-size rebuilds reuse their framebuffer. Given a
+ * program factory instead of a vertex shader, the programs come from (and
+ * stay owned by) that cache.
  */
 export class JumpFlood {
 	private seed: ProgramWrap;
 	private step: ProgramWrap;
 	private distance: ProgramWrap;
-	private shaders: WebGLShader[];
+	private shaders: WebGLShader[] = [];
+	private ownsPrograms: boolean;
 	private seeds: DoubleFBO | null = null;
 
 	constructor(
 		private gl: GL,
 		private ext: ExtInfo,
-		private vertexShader: WebGLShader,
+		programs: WebGLShader | JumpFloodProgramFactory,
 		private blit: BlitFn
 	) {
-		this.shaders = [jumpFloodSeedShader, jumpFloodStepShader, jumpFloodDistanceShader].map((src) =>
-			compileShader(gl, gl.FRAGMENT_SHADER, src)
-		);
-		[this.seed, this.step, this.distance] = this.shaders.map((fs) => makeProgram(gl, vertexShader, fs));
+		const sources = { 'jfa-seed': jumpFloodSeedShader, 'jfa-step': jumpFloodStepShader, 'jfa-distance': jumpFloodDistanceShader };
+		this.ownsPrograms = typeof programs !== 'function';
+		if (typeof programs === 'function') {
+			[this.seed, this.step, this.distance] = Object.entries(sources).map(([name, src]) => programs(name, src));
+			return;
+		}
+		this.shaders = Object.values(sources).map((src) => compileShader(gl, gl.FRAGMENT_SHADER, src));
+		[this.seed, this.step, this.distance] = this.shaders.map((fs) => makeProgram(gl, programs, fs));
 	}
 
 	/** Build (or rebuild into `out`) the SDF of a `w`×`h` coverage texture. */
@@ -138,7 +148,7 @@ export class JumpFlood {
 		const gl = this.gl;
 		disposeDoubleFBO(gl, this.seeds ?? undefined);
 		this.seeds = null;
-		for (const p of [this.seed, this.step, this.distance]) gl.deleteProgram(p.program);
+		if (this.ownsPrograms) for (const p of [this.seed, this.step, this.distance]) gl.deleteProgram(p.program);
 		for (const s of this.shaders) gl.deleteShader(s);
 		this.shaders = [];
 	}
