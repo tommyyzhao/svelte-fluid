@@ -20,7 +20,11 @@ const browserProject = defineProject({
 			SVELTE_FLUID_GPU_BENCH_OUT: process.env.SVELTE_FLUID_GPU_BENCH_OUT ?? '',
 			SVELTE_FLUID_GPU_BENCH_PRESETS: process.env.SVELTE_FLUID_GPU_BENCH_PRESETS ?? '',
 			SVELTE_FLUID_GPU_BENCH_CSS: process.env.SVELTE_FLUID_GPU_BENCH_CSS ?? '',
-			SVELTE_FLUID_SHOTS_DIR: process.env.SVELTE_FLUID_SHOTS_DIR ?? ''
+			SVELTE_FLUID_SHOTS_DIR: process.env.SVELTE_FLUID_SHOTS_DIR ?? '',
+			SVELTE_FLUID_SHOTS_DPRS: process.env.SVELTE_FLUID_SHOTS_DPRS ?? '',
+			SVELTE_FLUID_SHOTS_CSS: process.env.SVELTE_FLUID_SHOTS_CSS ?? '',
+			SVELTE_FLUID_SHOTS_EXTRA: process.env.SVELTE_FLUID_SHOTS_EXTRA ?? '',
+			SVELTE_FLUID_SHOTS_DYE: process.env.SVELTE_FLUID_SHOTS_DYE ?? ''
 		},
 		// The bench files each create real WebGL contexts and run sustained GPU
 		// workloads. Running files in parallel makes their wall-clock timing

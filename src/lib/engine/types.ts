@@ -467,8 +467,23 @@ export interface FluidConfig {
 	splatRadius?: number;
 	/** Splat impulse force. Default 6000. */
 	splatForce?: number;
-	/** 3D-style shading. Default true. */
+	/** Optical-depth surface diffuse, preserving the 0.8.0 shading envelope. Default true. */
 	shading?: boolean;
+	/**
+	 * Dielectric surface highlight intensity, 0–1. Default 0 (opt-in).
+	 * Uses an optical-depth height normal, normalized Blinn-Phong and Schlick Fresnel.
+	 * Independent of `shading`. Crossing zero recompiles only the display shader;
+	 * positive intensity changes are hot uniforms, with no framebuffer allocation.
+	 */
+	specular?: number;
+	/**
+	 * Screen-space dye-layer refraction strength, 0–1. Default 0 (opt-in).
+	 * Refracts the existing image in distortion mode or scene under glass;
+	 * no effect on plain fluid/reveal or on DOM content behind the canvas.
+	 * Crossing zero recompiles only the distortion display variant; positive
+	 * changes are hot uniforms. Never allocates a scene texture of its own.
+	 */
+	refraction?: number;
 	/**
 	 * Rotate pointer/touch splat colors over time. Does not affect
 	 * hand-authored `presetSplats` colors. Automatic splats use their
@@ -883,6 +898,8 @@ export interface ResolvedConfig {
 	SPLAT_RADIUS: number;
 	SPLAT_FORCE: number;
 	SHADING: boolean;
+	SPECULAR: number;
+	REFRACTION: number;
 	COLORFUL: boolean;
 	COLOR_UPDATE_SPEED: number;
 	PAUSED: boolean;

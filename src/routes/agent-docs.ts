@@ -138,7 +138,7 @@ export function buildSkillMd(site = DEFAULT_SITE): string {
 		'',
 		'- Physics: `curl`, `densityDissipation`, `velocityDissipation`, `advectionScheme`, `pressure`, `pressureIterations`, `viscosity`, `splatRadius`, `splatForce`, `maxTimeStep`, `substeps`, `autoPerformance`, `autoPerformanceTargetFrameMs`.',
 		'- Auto splats: `autoSplatRate`, `autoSplatCount`, `autoSplatVelocityX/Y`, `autoSplatCenterX/Y`, `autoSplatBandWidth/Height`, `autoSplatSwirl`.',
-		'- Visuals: `shading`, `colorful`, `bloom` (+`bloomIntensity`/`bloomThreshold`), `sunrays` (+`sunraysWeight`), `backColor` ({r,g,b} 0–255), `transparent`; component-level `maxPixelRatio` defaults to `null` (native DPR) and accepts a number cap such as `2`.',
+		'- Visuals: `shading`, opt-in `specular`/`refraction` (0–1), `colorful`, `bloom` (+`bloomIntensity`/`bloomThreshold`), `sunrays` (+`sunraysWeight`), `backColor` ({r,g,b} 0–255), `transparent`; component-level `maxPixelRatio` defaults to `null` (native DPR) and accepts a number cap such as `2`.',
 		'- Shapes: `containerShape` — `circle`, `roundedRect`, `frame`, `annulus` (analytical SDF) or `svgPath` (text/path rasterized to a mask). `glass` adds refraction.',
 		'- Flow scenes: `flow` (FlowConfig) for solver-native sources/outlets/forces/scalar fields + `obstructions` the fluid flows around (`obstructionColor` paints them).',
 		'- Presetting: `presetSplats` (construct-only initial splats), `seed`.',
