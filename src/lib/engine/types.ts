@@ -530,7 +530,12 @@ export interface FluidConfig {
 	initialSplatCountMax?: number;
 	/** Exact initial splat count (overrides min/max if set). */
 	initialSplatCount?: number;
-	/** Enable mouse / touch input. Default true. */
+	/**
+	 * Enable mouse / touch / pen input (Pointer Events). Default true.
+	 * A canvas-target instance sets `touch-action: none` on its canvas only
+	 * while this is true; otherwise touch scrolling is not blocked. Pen
+	 * pressure scales splat force 0.5x-1.5x. See ADR 0083.
+	 */
 	pointerInput?: boolean;
 	/**
 	 * Where to attach pointer event listeners.
@@ -539,13 +544,14 @@ export interface FluidConfig {
 	 *   on the page drives the simulation. Useful for background fluid
 	 *   where the canvas is behind other content.
 	 *
-	 * When `'window'`, touch listeners are registered as passive
-	 * (scrolling is not blocked). Bucket A (hot-updatable).
+	 * When `'window'`, touch scrolling is never blocked. When `'canvas'`,
+	 * drags that leave the canvas keep splatting until release.
+	 * Bucket A (hot-updatable).
 	 */
 	pointerTarget?: 'canvas' | 'window';
 	/**
-	 * When true, moving the mouse over the canvas creates splats without
-	 * requiring a click. The splat velocity follows the cursor movement.
+	 * When true, moving a mouse or pen over the canvas creates splats without
+	 * requiring a press (never for touch). The splat velocity follows the cursor movement.
 	 * Has no effect when `pointerInput` is false. Default false.
 	 */
 	splatOnHover?: boolean;

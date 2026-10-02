@@ -193,8 +193,8 @@ config from the upstream project.
 | `autoSplatEvenX` | `boolean` | `false` | within each burst, use equal x positions instead of random x positions |
 | `autoSplatSwirl` | `number` | `0` | orbital velocity around the container/canvas center; positive = CCW |
 | `autoSplatBandHeight` | `number` | `0.1` | height of the spawn band; 0 = single line, 0.1 = ±5%, 2.0 = full canvas |
-| `pointerInput` | `boolean` | `true` | hot; toggles canvas + window listeners |
-| `splatOnHover` | `boolean` | `false` | hot; splat on mousemove without click |
+| `pointerInput` | `boolean` | `true` | hot; toggles Pointer Events listeners; canvas gets `touch-action: none` only while input is on and target is `canvas` |
+| `splatOnHover` | `boolean` | `false` | hot; splat on mouse/pen move without press (never touch) |
 | `containerShape` | `ContainerShape` | `null` | confine fluid to a shape; see [Container shapes](#container-shapes) |
 | `glass` | `boolean` | `false` | glass post-processing; requires `containerShape`; see [Glass effect](#glass-effect) |
 | `glassThickness` | `number` | `0.04` | glass wall width in UV units (rim model only) |

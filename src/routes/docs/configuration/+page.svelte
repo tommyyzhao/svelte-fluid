@@ -196,19 +196,19 @@
 			<td><code>splatOnHover</code></td>
 			<td><code>boolean</code></td>
 			<td><code>false</code></td>
-			<td>Create splats on mouse move without requiring a click. No effect when <code>pointerInput</code> is false.</td>
+			<td>Create splats on mouse or pen move without requiring a press (never for touch). No effect when <code>pointerInput</code> is false.</td>
 		</tr>
 		<tr>
 			<td><code>pointerInput</code></td>
 			<td><code>boolean</code></td>
 			<td><code>true</code></td>
-			<td>Enable mouse and touch input.</td>
+			<td>Enable mouse, touch and pen input (Pointer Events). Drags that leave the canvas keep splatting until release; pen pressure scales force 0.5x-1.5x. While true on a canvas target the canvas gets <code>touch-action: none</code>; when false it does not block touch scrolling.</td>
 		</tr>
 		<tr>
 			<td><code>pointerTarget</code></td>
 			<td><code>'canvas' | 'window'</code></td>
 			<td><code>'canvas'</code></td>
-			<td>Where to attach pointer listeners. <code>'window'</code> drives the sim from pointer activity anywhere on the page.</td>
+			<td>Where to attach pointer listeners. <code>'window'</code> drives the sim from pointer activity anywhere on the page and never blocks touch scrolling.</td>
 		</tr>
 	</tbody>
 </table>

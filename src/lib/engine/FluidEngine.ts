@@ -82,9 +82,13 @@ import {
 import { type DitheringTexture, createDitheringTexture } from './dithering.js';
 import {
 	type Pointer,
+	PointerSlots,
+	boundCoalesced,
+	clampToCanvas,
 	createPointer,
+	pressureScale,
+	recordPointerMove,
 	updatePointerDownData,
-	updatePointerMoveData,
 	updatePointerUpData
 } from './pointer.js';
 import { type Rng, generateColor, mulberry32, normalizeColor, randomSeed } from './rng.js';
@@ -93,6 +97,7 @@ import { flowCanDriveSolver } from './solver-activity.js';
 import { blurMaskData } from './sticky-blur.js';
 import { subscribeFrame } from './frame-scheduler.js';
 import {
+	MAX_COALESCED_PER_EVENT,
 	MAX_AUTO_SPLAT_COUNT,
 	MAX_INITIAL_SPLATS,
 	enqueueRandomSplats,
@@ -773,13 +778,10 @@ export class FluidEngine implements FluidHandle {
 	private flowOutletBatchKeep = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
 
 	// --- Bound listeners ---
-	private onMouseDown = (e: MouseEvent) => this.handleMouseDown(e);
-	private onMouseMove = (e: MouseEvent) => this.handleMouseMove(e);
-	private onMouseUp = () => this.handleMouseUp();
-	private onMouseLeave = () => this.handleMouseLeave();
-	private onTouchStart = (e: TouchEvent) => this.handleTouchStart(e);
-	private onTouchMove = (e: TouchEvent) => this.handleTouchMove(e);
-	private onTouchEnd = (e: TouchEvent) => this.handleTouchEnd(e);
+	private onPointerDown = (e: PointerEvent) => this.handlePointerDown(e);
+	private onPointerMove = (e: PointerEvent) => this.handlePointerMove(e);
+	private onPointerUp = (e: PointerEvent) => this.handlePointerUp(e);
+	private onPointerLeave = (e: PointerEvent) => this.handlePointerLeave(e);
 	private onContextLost = (e: Event) => this.handleContextLost(e);
 	private onContextRestored = () => this.handleContextRestored();
 	private tick = () => this.update();
@@ -1221,12 +1223,6 @@ export class FluidEngine implements FluidHandle {
 			if (b.POINTER_INPUT) {
 				this.installPointerListeners();
 			} else {
-				// Drain in-flight pointer state so a half-press
-				// doesn't keep emitting splats after listeners are gone.
-				for (const p of this.pointers) {
-					p.down = false;
-					p.moved = false;
-				}
 			}
 		}
 		if (configChanged) this.invalidateRender();
@@ -4255,9 +4251,12 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	}
 
 	private splatPointer(pointer: Pointer): void {
-		const dx = pointer.deltaX * this.config.SPLAT_FORCE;
-		const dy = pointer.deltaY * this.config.SPLAT_FORCE;
-		this.splat(pointer.texcoordX, pointer.texcoordY, dx, dy, pointer.color);
+		const force = this.config.SPLAT_FORCE * pointer.pressureScale;
+		const s = pointer.samples;
+		for (let i = 0; i < pointer.sampleCount; i++) {
+			this.splat(s[4 * i], s[4 * i + 1], s[4 * i + 2] * force, s[4 * i + 3] * force, pointer.color);
+		}
+		pointer.sampleCount = 0;
 	}
 
 	/** Build a MaskContext for CPU-side mask sampling, or undefined if N/A. */
@@ -4345,6 +4344,9 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	/* ---------------------------------------------------------------------- */
 
 	private installedPointerTarget: EventTarget | null = null;
+	private installedTouchAction: string | null = null;
+	private pointerSlots = new PointerSlots();
+	private capturedPointers = new Set<number>();
 
 	private installPointerListeners(): void {
 		if (this.pointerListenersInstalled) return;
@@ -4352,20 +4354,17 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		const target: EventTarget = useWindow ? window : this.canvas;
 		this.installedPointerTarget = target;
 
-		target.addEventListener('mousedown', this.onMouseDown as EventListener);
-		target.addEventListener('mousemove', this.onMouseMove as EventListener);
-		if (!useWindow) {
-			this.canvas.addEventListener('mouseleave', this.onMouseLeave);
+		target.addEventListener('pointerdown', this.onPointerDown as EventListener);
+		target.addEventListener('pointermove', this.onPointerMove as EventListener);
+		if (!useWindow) this.canvas.addEventListener('pointerleave', this.onPointerLeave as EventListener);
+		// Window-level so a release outside the canvas still ends the stroke.
+		window.addEventListener('pointerup', this.onPointerUp as EventListener);
+		window.addEventListener('pointercancel', this.onPointerUp as EventListener);
+		// ADR 0083: only a canvas that owns drags blocks touch scrolling.
+		if (!useWindow && this.canvas.style) {
+			this.installedTouchAction = this.canvas.style.touchAction;
+			this.canvas.style.touchAction = 'none';
 		}
-		window.addEventListener('mouseup', this.onMouseUp);
-		// Window-level touch listeners must be passive to avoid blocking scroll
-		target.addEventListener('touchstart', this.onTouchStart as EventListener, {
-			passive: useWindow
-		});
-		target.addEventListener('touchmove', this.onTouchMove as EventListener, {
-			passive: useWindow
-		});
-		window.addEventListener('touchend', this.onTouchEnd);
 		this.pointerListenersInstalled = true;
 	}
 
@@ -4373,13 +4372,30 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		if (!this.pointerListenersInstalled) return;
 		const target = this.installedPointerTarget ?? this.canvas;
 
-		target.removeEventListener('mousedown', this.onMouseDown as EventListener);
-		target.removeEventListener('mousemove', this.onMouseMove as EventListener);
-		this.canvas.removeEventListener('mouseleave', this.onMouseLeave);
-		window.removeEventListener('mouseup', this.onMouseUp);
-		target.removeEventListener('touchstart', this.onTouchStart as EventListener);
-		target.removeEventListener('touchmove', this.onTouchMove as EventListener);
-		window.removeEventListener('touchend', this.onTouchEnd);
+		target.removeEventListener('pointerdown', this.onPointerDown as EventListener);
+		target.removeEventListener('pointermove', this.onPointerMove as EventListener);
+		this.canvas.removeEventListener('pointerleave', this.onPointerLeave as EventListener);
+		window.removeEventListener('pointerup', this.onPointerUp as EventListener);
+		window.removeEventListener('pointercancel', this.onPointerUp as EventListener);
+		if (this.installedTouchAction !== null) {
+			this.canvas.style.touchAction = this.installedTouchAction;
+			this.installedTouchAction = null;
+		}
+		for (const id of this.capturedPointers) {
+			try {
+				this.canvas.releasePointerCapture(id);
+			} catch {
+				// Already released.
+			}
+		}
+		this.capturedPointers.clear();
+		this.pointerSlots.clear();
+		// Drain in-flight state so a half-press can't keep splatting.
+		for (const p of this.pointers) {
+			p.down = false;
+			p.moved = false;
+			p.sampleCount = 0;
+		}
 		this.installedPointerTarget = null;
 		this.pointerListenersInstalled = false;
 	}
@@ -4392,87 +4408,82 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		};
 	}
 
-	private handleMouseDown(e: MouseEvent): void {
-		const { x, y } = this.getCanvasOffset(e.clientX, e.clientY);
-		let pointer = this.pointers.find((p) => p.id === -1);
-		if (pointer == null) {
-			pointer = createPointer();
-			this.pointers.push(pointer);
-		}
-		updatePointerDownData(pointer, -1, x, y, this.canvas.width, this.canvas.height, generateColor(this.rng));
+	/** Backbuffer position, clamped near the canvas; null for non-finite input. */
+	private pointerCanvasPos(clientX: number, clientY: number): { x: number; y: number } | null {
+		const { x, y } = this.getCanvasOffset(clientX, clientY);
+		const cx = clampToCanvas(x, this.canvas.width);
+		const cy = clampToCanvas(y, this.canvas.height);
+		return cx === null || cy === null ? null : { x: cx, y: cy };
 	}
 
-	private handleMouseMove(e: MouseEvent): void {
-		const pointer = this.pointers[0];
+	private pointerFor(slot: number): Pointer {
+		while (this.pointers.length <= slot) this.pointers.push(createPointer());
+		return this.pointers[slot];
+	}
+
+	private handlePointerDown(e: PointerEvent): void {
+		const slot = this.pointerSlots.slotFor(e.pointerId, e.pointerType, true);
+		if (slot < 0) return;
+		const pos = this.pointerCanvasPos(e.clientX, e.clientY);
+		if (!pos) return;
+		const { x, y } = pos;
+		const pointer = this.pointerFor(slot);
+		updatePointerDownData(pointer, e.pointerId, x, y, this.canvas.width, this.canvas.height, generateColor(this.rng));
+		pointer.pressureScale = pressureScale(e.pointerType, e.pressure);
+		// Canvas target: keep the stroke alive after the pointer leaves the canvas.
+		if (this.config.POINTER_TARGET !== 'window') {
+			try {
+				this.canvas.setPointerCapture(e.pointerId);
+				this.capturedPointers.add(e.pointerId);
+			} catch {
+				// Unsupported or already-ended pointer; stroke just stops at the edge.
+			}
+		}
+	}
+
+	private handlePointerMove(e: PointerEvent): void {
+		const slot = this.pointerSlots.slotFor(e.pointerId, e.pointerType, false);
+		if (slot < 0) return;
+		const pointer = this.pointers[slot];
 		if (!pointer) return;
 		if (!pointer.down) {
-			// In hover-splat mode, synthesize a pointer-down so the move
-			// generates a splat. The first move seeds the position; the
-			// second move onward produces a delta that drives the splat.
-			if (!this.config.SPLAT_ON_HOVER) return;
-			const { x, y } = this.getCanvasOffset(e.clientX, e.clientY);
-			updatePointerDownData(pointer, -1, x, y, this.canvas.width, this.canvas.height, generateColor(this.rng));
+			// Hover never applies to touch (slotFor only returns slot 0 for mouse/pen).
+			if (!this.config.SPLAT_ON_HOVER || e.pointerType === 'touch') return;
+			const pos = this.pointerCanvasPos(e.clientX, e.clientY);
+			if (!pos) return;
+			const { x, y } = pos;
+			// First move seeds the position; later moves produce deltas.
+			updatePointerDownData(pointer, e.pointerId, x, y, this.canvas.width, this.canvas.height, generateColor(this.rng));
 			return;
 		}
-		const { x, y } = this.getCanvasOffset(e.clientX, e.clientY);
-		updatePointerMoveData(pointer, x, y, this.canvas.width, this.canvas.height);
+		pointer.pressureScale = pressureScale(e.pointerType, e.pressure);
+		const coalesced = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [];
+		const events: readonly PointerEvent[] = coalesced.length
+			? boundCoalesced(coalesced, MAX_COALESCED_PER_EVENT)
+			: [e];
+		for (const ev of events) {
+			const pos = this.pointerCanvasPos(ev.clientX, ev.clientY);
+			if (!pos) continue;
+			recordPointerMove(pointer, pos.x, pos.y, this.canvas.width, this.canvas.height);
+		}
 	}
 
-	private handleMouseUp(): void {
-		const pointer = this.pointers[0];
+	private handlePointerUp(e: PointerEvent): void {
+		const slot = this.pointerSlots.slotFor(e.pointerId, e.pointerType, false);
+		this.pointerSlots.release(e.pointerId);
+		this.capturedPointers.delete(e.pointerId);
+		if (slot < 0) return;
+		const pointer = this.pointers[slot];
 		if (pointer) updatePointerUpData(pointer);
 	}
 
-	private handleMouseLeave(): void {
-		// End the hover-splat stream when the cursor leaves the canvas,
-		// so re-entering doesn't produce a splat that stretches from the
-		// exit point to the new entry point.
-		if (this.config.SPLAT_ON_HOVER) {
-			const pointer = this.pointers[0];
-			if (pointer) updatePointerUpData(pointer);
-		}
-	}
-
-	private handleTouchStart(e: TouchEvent): void {
-		if (this.config.POINTER_TARGET !== 'window') e.preventDefault();
-		const touches = e.targetTouches;
-		for (let i = 0; i < touches.length; i++) {
-			// Reuse existing slots from previous gestures. Only push when
-			// there is no slot at this index, bounding the array at
-			// maxConcurrentTouches + 1 (slot 0 is the permanent mouse pointer).
-			if (i + 1 >= this.pointers.length) {
-				this.pointers.push(createPointer());
-			}
-			const { x, y } = this.getCanvasOffset(touches[i].clientX, touches[i].clientY);
-			updatePointerDownData(
-				this.pointers[i + 1],
-				touches[i].identifier,
-				x,
-				y,
-				this.canvas.width,
-				this.canvas.height,
-				generateColor(this.rng)
-			);
-		}
-	}
-
-	private handleTouchMove(e: TouchEvent): void {
-		if (this.config.POINTER_TARGET !== 'window') e.preventDefault();
-		const touches = e.targetTouches;
-		for (let i = 0; i < touches.length; i++) {
-			const pointer = this.pointers[i + 1];
-			if (!pointer || !pointer.down) continue;
-			const { x, y } = this.getCanvasOffset(touches[i].clientX, touches[i].clientY);
-			updatePointerMoveData(pointer, x, y, this.canvas.width, this.canvas.height);
-		}
-	}
-
-	private handleTouchEnd(e: TouchEvent): void {
-		const touches = e.changedTouches;
-		for (let i = 0; i < touches.length; i++) {
-			const pointer = this.pointers.find((p) => p.id === touches[i].identifier);
-			if (!pointer) continue;
-			updatePointerUpData(pointer);
-		}
+	private handlePointerLeave(e: PointerEvent): void {
+		// End the hover-splat stream when the cursor leaves the canvas so
+		// re-entering doesn't stretch a splat across the gap. A captured
+		// (pressed) stroke continues until release.
+		if (!this.config.SPLAT_ON_HOVER || e.pointerType === 'touch') return;
+		if (this.capturedPointers.has(e.pointerId)) return;
+		const pointer = this.pointers[0];
+		if (pointer) updatePointerUpData(pointer);
 	}
 }

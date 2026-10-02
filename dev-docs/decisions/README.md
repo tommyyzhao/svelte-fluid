@@ -67,6 +67,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0080](./0080-shared-frame-scheduler.md)                       | One shared animation frame for all engines                            | Accepted |
 | [0081](./0081-linear-display-pipeline.md)                      | Display pipeline: opt-in tone mapping, exact backColor, dithering     | Accepted |
 | [0082](./0082-shared-gl-context.md)                            | One shared WebGL context and program cache for all instances          | Proposed |
+| [0083](./0083-pointer-events-input.md)                         | Pointer Events input, capture, and deliberate touch-action            | Accepted |
 
 ## How to add a new ADR
 

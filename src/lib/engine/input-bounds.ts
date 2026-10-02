@@ -12,6 +12,13 @@ export const MAX_INITIAL_SPLATS = MAX_QUEUED_RANDOM_SPLATS;
 /** Auto-splat bursts may fire several times per frame after a throttled tab; cap each burst. */
 export const MAX_AUTO_SPLAT_COUNT = MAX_RANDOM_SPLATS_PER_FRAME;
 
+/** Simultaneous touch pointers tracked; further touches are ignored. */
+export const MAX_TOUCH_POINTERS = 10;
+/** Stroke samples queued per pointer per frame (extra coalesced samples merge into the last). */
+export const MAX_STROKE_SAMPLES_PER_FRAME = 16;
+/** Coalesced events read from one pointermove. */
+export const MAX_COALESCED_PER_EVENT = 16;
+
 // Not GL state: a process-wide dedupe so a 60 Hz caller bug logs once, not forever.
 const warned = new Set<string>();
 

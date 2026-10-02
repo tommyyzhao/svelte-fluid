@@ -651,7 +651,7 @@
 		width: 100%;
 		height: 100%;
 		background: #000;
-		touch-action: none;
+		/* touch-action is set by the engine only while the canvas owns drags (ADR 0083). */
 	}
 	/* Accessible WebGL fallback overlay (ADR-0041). Covers the blank canvas
 	   when WebGL is permanently unavailable. */
