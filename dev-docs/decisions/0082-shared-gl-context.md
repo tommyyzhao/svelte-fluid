@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-10-02). Design spike; no engine change has landed.
+Proposed (2026-10-02). Partially accepted for model engines by [ADR 0088](./0088-shared-gl-host-for-model-engines.md); FluidEngine migration remains proposed.
 
 ## Context
 
