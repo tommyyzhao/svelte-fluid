@@ -1600,3 +1600,22 @@ export type KarmanProps = Pick<
 	| 'aria-label'
 	| 'backColor'
 >;
+
+/* ------------------------------------------------------------------------ */
+/*                 Enamel text (compliant enamel, ADR-0097)                  */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * A native `<span>` whose text is shaded as soft, molded enamel; a press
+ * dents it and it relaxes. Put it inside your heading: the heading supplies
+ * the role. Other attributes go to the `<span>`. Not root-exported yet.
+ */
+export interface EnamelTextProps extends Omit<import('svelte/elements').HTMLAttributes<HTMLSpanElement>, 'children' | 'color'> {
+	/** Display text: short, plain (one line or a few wrapped lines). */
+	text: string;
+	/** Studio lighting. Default `'auto'` (follows the page colour). */
+	tone?: LiquidTone;
+	/** Enamel body colour, any CSS colour. Default: the inherited text colour. */
+	color?: string;
+}
+
