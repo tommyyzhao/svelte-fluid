@@ -13,6 +13,13 @@
   at most one per 80 ms and skipped when the path string is unchanged.
 
   See ADR-0026 for design rationale and performance analysis.
+
+  Contrast: the canvas is opaque and the text colour is the consumer's, so
+  nothing is guaranteed by default (0.8.0 look). Opt in with `minContrast`
+  (e.g. 4.5): every fluid pixel is then darkened/lightened until it meets that
+  WCAG ratio against `contrastColor`, which defaults to the computed text
+  colour of the content wrapper. Set it explicitly when text colours vary
+  (ADR-0086).
 -->
 
 <script lang="ts" module>
@@ -20,9 +27,10 @@
 </script>
 
 <script lang="ts">
-	import type { FluidBackgroundProps, FluidHandle, ContainerShape } from './engine/types.js';
+	import type { FluidBackgroundProps, FluidHandle, ContainerShape, RGB } from './engine/types.js';
 	import { onMount } from 'svelte';
 	import Fluid from './Fluid.svelte';
+	import { cssColorToRgb } from './engine/css-color.js';
 	import { DISABLED_PERFORMANCE_STATE } from './engine/performance-governor.js';
 
 	let {
@@ -42,6 +50,7 @@
 		backColor = { r: 8, g: 8, b: 16 },
 		pointerTarget = 'window' as const,
 		splatOnHover = true,
+		contrastColor,
 		...fluidProps
 	}: FluidBackgroundProps = $props();
 
@@ -51,6 +60,7 @@
 	let contentEl: HTMLDivElement | undefined = $state(undefined);
 	let shape: ContainerShape | null = $state(null);
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
+	let textColor = $state<RGB | undefined>(undefined);
 
 	/** Build an SVG rounded-rect subpath for one exclusion zone. */
 	function rrPath(x: number, y: number, w: number, h: number, r: number): string {
@@ -106,6 +116,7 @@
 
 	onMount(() => {
 		sync();
+		if (contentEl) textColor = cssColorToRgb(getComputedStyle(contentEl).color, backColor);
 
 		let timer: ReturnType<typeof setTimeout> | undefined;
 		const kick = () => {
@@ -158,6 +169,7 @@
 			{backColor}
 			{pointerTarget}
 			{splatOnHover}
+			contrastColor={contrastColor ?? textColor}
 			{...fluidProps}
 		/>
 	</div>

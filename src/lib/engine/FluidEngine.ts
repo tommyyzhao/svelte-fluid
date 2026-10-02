@@ -130,6 +130,7 @@ import {
 	type ProfileLifecyclePhase,
 	type ProfileResources
 } from './engine-profiler.js';
+import { OUTLINE_CSS_PX, contrastFloorFor, outlineColorFor } from './contrast.js';
 import { adaptiveVorticityWeight, vorticityNormalizationScale } from './vorticity-normalization.js';
 
 const FLOW_SOURCE_BATCH_SIZE = 4;
@@ -246,6 +247,9 @@ export const DEFAULTS: ResolvedConfig = {
 	PAUSED: false,
 	BACK_COLOR: { r: 0, g: 0, b: 0 },
 	TRANSPARENT: false,
+	MIN_CONTRAST: 0,
+	CONTRAST_MODE: 'floor',
+	CONTRAST_COLOR: null,
 	TONE_MAPPING: 'none' as const,
 	BLOOM: true,
 	BLOOM_ITERATIONS: 8,
@@ -366,6 +370,9 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 	if (input.paused !== undefined) out.PAUSED = input.paused;
 	if (input.backColor !== undefined) out.BACK_COLOR = input.backColor;
 	if (input.transparent !== undefined) out.TRANSPARENT = input.transparent;
+	if (input.minContrast !== undefined) out.MIN_CONTRAST = Number.isFinite(input.minContrast) ? Math.min(21, Math.max(0, input.minContrast)) : 0;
+	if (input.contrastMode === 'floor' || input.contrastMode === 'outline') out.CONTRAST_MODE = input.contrastMode;
+	if (input.contrastColor !== undefined) out.CONTRAST_COLOR = input.contrastColor ?? null;
 	if (input.toneMapping === 'neutral' || input.toneMapping === 'agx' || input.toneMapping === 'none')
 		out.TONE_MAPPING = input.toneMapping;
 	if (input.bloom !== undefined) out.BLOOM = input.bloom;
@@ -798,6 +805,13 @@ export class FluidEngine implements FluidHandle {
 	// capability-gated effective decision, recomputed alongside MANUAL_FILTERING
 	// so a context restore re-derives it from the (possibly new) GL feature set.
 	private useMacCormack = false;
+	// Contrast-floor uniforms are derived once per resolved config object (hot path stays allocation-free).
+	private contrastFloorFor: ResolvedConfig | null = null;
+	private contrastFloorUniform: [number, number, number, number] = [0, 0, -1, 2];
+	private contrastRefUniform: RGB = { r: 0, g: 0, b: 0 };
+	private contrastOutlineUniform: [number, number, number] = [0, 0, 0];
+	private contrastOutlinePx = 0;
+	private contrastDevicePx = 0;
 	private readbackUint8Buffer = new Uint8Array(0);
 	private readbackFloatBuffer = new Float32Array(0);
 	private profiler: EngineProfiler | null = null;
@@ -1222,7 +1236,9 @@ export class FluidEngine implements FluidHandle {
 		const sunraysResourceChanged = sunraysChanged || a.SUNRAYS !== b.SUNRAYS;
 		const kwChanged =
 			a.SHADING !== b.SHADING || a.BLOOM !== b.BLOOM || a.SUNRAYS !== b.SUNRAYS || a.TONE_MAPPING !== b.TONE_MAPPING ||
-			(a.SPECULAR > 0) !== (b.SPECULAR > 0) || (a.REFRACTION > 0) !== (b.REFRACTION > 0);
+			(a.SPECULAR > 0) !== (b.SPECULAR > 0) || (a.REFRACTION > 0) !== (b.REFRACTION > 0) ||
+			a.MIN_CONTRAST > 1 !== b.MIN_CONTRAST > 1 || a.CONTRAST_MODE !== b.CONTRAST_MODE ||
+			(a.CONTRAST_COLOR === null) !== (b.CONTRAST_COLOR === null) || a.TRANSPARENT !== b.TRANSPARENT;
 		const shapeChanged = !containerShapeEqual(a.CONTAINER_SHAPE, b.CONTAINER_SHAPE);
 		const glassChanged = a.GLASS !== b.GLASS || shapeChanged;
 		const revealChanged = a.REVEAL !== b.REVEAL;
@@ -2900,6 +2916,24 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		target.swap();
 	}
 
+	/**
+	 * Colour the pixels must contrast with: the caller's `contrastColor` (page behind a
+	 * transparent canvas, or the text colour over an opaque one). The halo on an opaque
+	 * canvas sits over the back colour, so that is its reference. Null = unknown, so no
+	 * correction: guessing a page colour paints the whole canvas grey (ADR-0086).
+	 */
+	private contrastRef(config: ResolvedConfig): RGB | null {
+		return !config.TRANSPARENT && this.contrastOutlineFor(config) ? config.BACK_COLOR : config.CONTRAST_COLOR;
+	}
+
+	/** Halo from the svgPath mask: SDF on WebGL2, neighbouring coverage taps on WebGL1. */
+	private contrastOutlineFor(config: ResolvedConfig): boolean {
+		return (
+			config.CONTRAST_MODE === 'outline' && !config.DISTORTION && !config.REVEAL &&
+			config.CONTAINER_SHAPE?.type === 'svgPath'
+		);
+	}
+
 	private displayKeywords(config: ResolvedConfig): string[] {
 		const keywords: string[] = [];
 		if (config.SHADING) keywords.push('SHADING');
@@ -2910,6 +2944,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		if (config.TONE_MAPPING === 'agx') keywords.push('TONE_MAP_AGX');
 		else if (config.TONE_MAPPING === 'neutral') keywords.push('TONE_MAP_NEUTRAL');
 		if (config.CONTAINER_SHAPE) keywords.push('CONTAINER_MASK');
+		if (config.MIN_CONTRAST > 1 && this.contrastRef(config)) keywords.push(this.contrastOutlineFor(config) ? 'CONTRAST_OUTLINE' : 'CONTRAST_FLOOR');
 		// Obstructions and distortion share display texture unit 6; the
 		// obstruction mask is only bound when distortion is off, so the
 		// keyword must match that guard or the display samples a stale unit.
@@ -4140,6 +4175,27 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		gl.uniform1f(this.displayMaterial.uniforms.uHeightAspect, this.canvas.width / this.canvas.height);
 		gl.uniform1f(this.displayMaterial.uniforms.uSpecular, this.config.SPECULAR);
 		gl.uniform1f(this.displayMaterial.uniforms.uRefraction, this.config.REFRACTION);
+		const contrastRef = this.contrastRef(this.config);
+		if (this.config.MIN_CONTRAST > 1 && contrastRef && !this.config.DISTORTION && !this.config.REVEAL) {
+			if (this.contrastFloorFor !== this.config || this.contrastDevicePx !== width) {
+				const ref = contrastRef;
+				this.contrastFloorUniform = contrastFloorFor(this.config.MIN_CONTRAST, ref);
+				this.contrastRefUniform = normalizeColor(ref);
+				this.contrastOutlineUniform = outlineColorFor(this.config.MIN_CONTRAST, ref) ?? [0, 0, 0];
+				const cssW = this.canvas.getBoundingClientRect().width;
+				this.contrastOutlinePx = OUTLINE_CSS_PX * (cssW > 0 ? width / cssW : (typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1));
+				this.contrastDevicePx = width;
+				this.contrastFloorFor = this.config;
+			}
+			if (this.contrastOutlineFor(this.config)) {
+				const o = this.contrastOutlineUniform;
+				gl.uniform3f(this.displayMaterial.uniforms.uOutlineColor, o[0], o[1], o[2]);
+				gl.uniform1f(this.displayMaterial.uniforms.uOutlinePx, this.contrastOutlinePx);
+			} else {
+				gl.uniform4f(this.displayMaterial.uniforms.uContrastFloor, ...this.contrastFloorUniform);
+				gl.uniform3f(this.displayMaterial.uniforms.uContrastRef, this.contrastRefUniform.r, this.contrastRefUniform.g, this.contrastRefUniform.b);
+			}
+		}
 		// Every output mode dithers its final 8-bit write (ADR-0081).
 		gl.uniform1i(this.displayMaterial.uniforms.uDithering, this.ditheringTexture.attach(2));
 		const ditherScale = getTextureScale(this.ditheringTexture, width, height);

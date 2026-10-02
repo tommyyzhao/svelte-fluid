@@ -280,6 +280,20 @@
 			<td><code>false</code></td>
 			<td>Render with a transparent background.</td>
 		</tr>
+		<tr>
+			<td><code>minContrast</code></td>
+			<td><code>number</code></td>
+			<td><code>0</code> (off)</td>
+			<td>WCAG contrast floor (1-21) the display pass enforces against <code>contrastColor</code>: failing pixels are lightened or darkened with hue kept; pixels already passing against the reference are untouched. Glass reflections are excluded. <code>FluidText</code> defaults to 3 with an outline halo, not a fill correction; use 4.5 for small text. Toggling on/off recompiles the display shader; changing the value is hot.</td>
+		</tr>
+		<tr>
+			<td><code>contrastColor</code></td>
+			<td><code>RGB | null</code></td>
+			<td><code>null</code> (<code>backColor</code>)</td>
+			<td>Reference colour (0-255) for <code>minContrast</code>: the page behind transparent canvases, the text colour over opaque ones. No default: without it the correction is off (a guessed page colour would paint the canvas grey).</td>
+		</tr>
+		<tr><td><code>contrastMode</code></td><td><code>'floor' | 'outline'</code></td><td><code>'floor'</code></td><td>Outline draws a 1.5 CSS px halo around svgPath masks, preserving interior dye (SDF on WebGL2, coverage mask on WebGL1). FluidText uses outline. Other shapes use floor.</td></tr>
+
 	</tbody>
 </table>
 

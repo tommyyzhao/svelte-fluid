@@ -510,6 +510,29 @@ export interface FluidConfig {
 	/** Render with transparent background (checkerboard fallback). Default false. */
 	transparent?: boolean;
 	/**
+	 * Minimum WCAG contrast ratio (1–21) against
+	 * `contrastColor`. Pixels that miss it are lifted toward white (against a
+	 * dark reference) or darkened keeping hue (against a light one) until they
+	 * pass; passing pixels are untouched. Values ≤ 1 / `undefined` disable it,
+	 * which is the `<Fluid>` default, so the 0.8.0 look is unchanged.
+	 * `<FluidText>` defaults it to 3 (AA for large text) using an outline halo. With a transparent
+	 * canvas the reference is the page behind it, so set `contrastColor` to the
+	 * real page colour (`<FluidText>` measures it for you); without one it does nothing. Bucket B (keyword recompile on
+	 * enable/disable; the value is a hot uniform). See ADR-0086.
+	 */
+	minContrast?: number;
+	/**
+	 * Reference colour for {@link FluidConfig.minContrast}, in **0–255 RGB**.
+	 * No default: without it the correction is off (the engine cannot guess the
+	 * page behind a transparent canvas, and a wrong guess paints the canvas grey).
+	 * Set it to the page colour for a transparent canvas, or the text colour when
+	 * text is drawn over an opaque fluid canvas (`<FluidBackground>` does this).
+	 * Exception: an `outline` halo on an opaque canvas uses `backColor`.
+	 */
+	contrastColor?: RGB | null;
+	/** Outline an svgPath mask (thin halo; interiors untouched, WebGL1 included) instead of correcting fill. FluidText defaults to outline. Bucket B. */
+	contrastMode?: 'floor' | 'outline';
+	/**
 	 * Display tone map for bright dye and bloom (ADR-0081).
 	 * - `'none'` (default): per-channel clip, exactly the 0.8.0 look.
 	 * - `'neutral'`: Khronos PBR Neutral shoulder applied once in linear light.
@@ -905,6 +928,9 @@ export interface ResolvedConfig {
 	PAUSED: boolean;
 	BACK_COLOR: RGB;
 	TRANSPARENT: boolean;
+	MIN_CONTRAST: number;
+	CONTRAST_COLOR: RGB | null;
+	CONTRAST_MODE: 'floor' | 'outline';
 	TONE_MAPPING: ToneMapping;
 	BLOOM: boolean;
 	BLOOM_ITERATIONS: number;
