@@ -65,7 +65,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0066](./0066-resolution-normalized-adaptive-vorticity.md)      | Normalize adaptive vorticity before gating                            | Accepted |
 | [0079](./0079-bound-imperative-input.md)                       | Bound imperative input and reject non-finite values                   | Accepted |
 | [0080](./0080-shared-frame-scheduler.md)                       | One shared animation frame for all engines                            | Accepted |
-| [0081](./0081-linear-display-pipeline.md)                      | Linear display pipeline: tone mapping, dual-Kawase bloom, dithering   | Accepted |
+| [0081](./0081-linear-display-pipeline.md)                      | Display pipeline: opt-in tone mapping, exact backColor, dithering     | Accepted |
 
 ## How to add a new ADR
 

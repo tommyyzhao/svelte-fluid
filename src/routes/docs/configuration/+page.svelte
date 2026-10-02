@@ -281,21 +281,23 @@
 		<tr>
 			<td><code>toneMapping</code></td>
 			<td><code>'neutral' | 'agx' | 'none'</code></td>
-			<td><code>'neutral'</code></td>
-			<td>How bright dye and bloom are brought into display range. <code>'neutral'</code>
-				(Khronos PBR Neutral shoulder) leaves in-range colours unchanged and rolls
-				highlights off smoothly instead of clipping to white. <code>'agx'</code> is a
-				softer, filmic curve that desaturates highlights more. <code>'none'</code> clamps
-				each channel, like 0.8.0, which keeps saturated HDR dye (fire, lava) vivid.
-				Hot-updatable: recompiles only the display program, no framebuffer allocation.</td>
+			<td><code>'none'</code></td>
+			<td>How bright dye and bloom are brought into display range. <code>'none'</code>
+				(default) clips each channel exactly as 0.8.0 did, so every preset keeps its
+				authored look and saturated HDR dye (fire, lava) stays vivid. Opt-in
+				<code>'neutral'</code> (Khronos PBR Neutral shoulder) leaves in-range colours
+				unchanged and rolls highlights off smoothly instead of clipping to white.
+				Opt-in <code>'agx'</code> is a softer, filmic curve that desaturates highlights
+				more. Hot-updatable: recompiles only the display program, no framebuffer
+				allocation.</td>
 		</tr>
 	</tbody>
 </table>
 <p>Authored colours (splat and preset dye, <code>backColor</code>, <code>obstructionColor</code>)
-	are display-referred sRGB. Dye is decoded to linear light, bloom is added there,
-	the tone map is applied, and the result is encoded to sRGB once, then composited
-	over <code>backColor</code> and blue-noise dithered to reduce 8-bit banding.
-	The GasFlare and LavaLamp presets set <code>toneMapping: 'none'</code>.</p>
+	are display-referred sRGB. Bloom is encoded and added to the dye as in 0.8.0. With
+	<code>'neutral'</code> or <code>'agx'</code> the combined colour is decoded to linear
+	light, tone-mapped and encoded to sRGB once. Every mode is then composited over
+	<code>backColor</code> and blue-noise dithered to reduce 8-bit banding.</p>
 
 <h2>Bloom</h2>
 <p>Post-processing glow effect.</p>
