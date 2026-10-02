@@ -148,3 +148,42 @@ enabled and sunrays about 0.16 ms. Display costs 0.25-0.9 ms and glass
 - One laptop GPU (M1 Max). Lower-end integrated GPUs will be slower.
 - `EngineProfiler` group GPU times (`instrument: true`) carry the same ANGLE
   Metal timer-query bias at large canvases.
+
+## Model engines
+
+Interface-primitive engines on the shared WebGL2 host (ADR-0088). Apple M1 Max,
+hardware Chrome, synced batches (1-px readback per batch, busy frames; no timer
+query). Budget 2 ms. All are zero or near zero at rest.
+
+| Component | Size (CSS) | DPR | Method | ms | Source |
+|---|---|---|---|---|---|
+| InkPaper (wet, step + display) | 800x500 | 2 | 30-frame batches, median of 9 | 0.97 | ADR-0090 |
+| InkPaper (wet, step + display) | 800x500 | 3 | same | 1.46 | ADR-0090 |
+| LiquidButton | 220x56, 480x64 | 2, 3 | impulse every frame | 0.42-0.44 | ADR-0091/0092 |
+| LiquidSegmented | 360x56 | 2 | impulse every frame, 30-frame batches, median of 15 | 0.41 (worst 0.43) | measured 2026-10-02 |
+| LiquidSegmented | 360x56 | 3 | same | 0.43 (worst 0.45) | measured 2026-10-02 |
+| LiquidDropZone (dragging) | 480x200 | 2 | impulse every frame | 0.46 | ADR-0094 |
+| LiquidDropZone (dragging) | 480x200 | 3 | same | 0.58 | ADR-0094 |
+| LiquidCaustics (busy) | 720x400 | 2 | impulse every frame | 0.33 | ADR-0094 |
+| LiquidCaustics (busy) | 720x400 | 3 | same | 0.40 | ADR-0094 |
+| FoilSwitch | 96x48, 192x96 | 2, 3 | 60-frame batches | 0.012-0.015 | ADR-0096 |
+
+LiquidSegmented has no number of its own in the ADRs. It was measured with
+`surface-gpu.browser.test.ts` at native DPR (the bench reads `devicePixelRatio`):
+
+```sh
+SVELTE_FLUID_GPU_BENCH=1 SVELTE_FLUID_DPR=2 VITEST_CHROME_PATH=... \
+  bun run test:browser src/lib/engine/__benches__/surface-gpu.browser.test.ts
+```
+
+Button, segmented and wide-button cases all land within 0.02 ms of each other
+and do not grow with canvas area, so the batch is submit-bound and these are
+upper bounds.
+
+## Shared tier (ADR 0093)
+
+`FluidEngine` instances past K=8 present through the shared host. Each pays the
+snapshot copy: +0.45 ms at DPR 2 and +0.7 ms at DPR 3 per shared instance, flat
+in n, up to about 2.37 ms (Karman, DPR 3). That can exceed the 2 ms budget by up
+to about 0.4 ms. Accepted: the alternative past about 16 instances is context
+loss and a blank canvas.
