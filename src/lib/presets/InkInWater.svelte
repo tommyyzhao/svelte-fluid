@@ -10,19 +10,13 @@
 -->
 
 <script lang="ts" module>
-	import type { FluidProps } from '../Fluid.svelte';
-
-	/** Props consumed by `<InkInWater />`. */
-	export type InkInWaterProps = Pick<
-		FluidProps,
-		'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
-	>;
+	export type { InkInWaterProps } from '../engine/types.js';
 </script>
 
 <script lang="ts">
 	import Fluid from '../Fluid.svelte';
 	import { DISABLED_PERFORMANCE_STATE } from '../engine/performance-governor.js';
-	import type { FluidHandle } from '../engine/types.js';
+	import type { InkInWaterProps, FluidHandle } from '../engine/types.js';
 	import { INK_IN_WATER_CONFIG } from './registry.js';
 
 	let {

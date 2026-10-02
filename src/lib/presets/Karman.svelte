@@ -22,29 +22,13 @@
 -->
 
 <script lang="ts" module>
-	import type { FluidProps } from '../Fluid.svelte';
-
-	/** Props consumed by `<Karman />`. Sizing/seed/styling are forwarded; all physics is pinned. */
-	export type KarmanProps = Pick<
-		FluidProps,
-		| 'width'
-		| 'height'
-		| 'maxPixelRatio'
-		| 'class'
-		| 'style'
-		| 'seed'
-		| 'lazy'
-		| 'pointerInput'
-		| 'splatOnHover'
-		| 'aria-label'
-		| 'backColor'
-	>;
+	export type { KarmanProps } from '../engine/types.js';
 </script>
 
 <script lang="ts">
 	import Fluid from '../Fluid.svelte';
 	import { DISABLED_PERFORMANCE_STATE } from '../engine/performance-governor.js';
-	import type { FluidHandle } from '../engine/types.js';
+	import type { KarmanProps, FluidHandle } from '../engine/types.js';
 	import { KARMAN_CONFIG } from './registry.js';
 
 	let {

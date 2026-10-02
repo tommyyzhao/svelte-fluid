@@ -1474,3 +1474,129 @@ export interface LiquidCausticsProps extends Omit<import('svelte/elements').HTML
 	intensity?: number;
 	children?: Snippet;
 }
+
+// ---- Preset component props (re-exported by each preset .svelte module) ----
+
+/** Props consumed by `<FrameFluid />`. */
+export type FrameFluidProps = Pick<
+	FluidProps,
+	'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+> & { innerCornerRadius?: number; outerCornerRadius?: number };
+
+/** Props consumed by `<GasFlare />`. Sizing/seed/styling are forwarded; flare geometry and plume behavior are pinned. */
+export type GasFlareProps = Pick<
+	FluidProps,
+	| 'width'
+	| 'height'
+	| 'maxPixelRatio'
+	| 'class'
+	| 'style'
+	| 'seed'
+	| 'lazy'
+	| 'pointerInput'
+	| 'splatOnHover'
+	| 'aria-label'
+	| 'backColor'
+>;
+
+/** Props consumed by `<LavaLamp />`. Sizing/seed/styling are forwarded; all other physics props are hard-coded. */
+export type LavaLampProps = Pick<
+	FluidProps,
+	'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+>;
+
+/** Props consumed by `<InkInWater />`. */
+export type InkInWaterProps = Pick<
+	FluidProps,
+	'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+>;
+
+/** Props consumed by `<Venturi />`. Sizing/seed/styling are forwarded; all physics props are pinned. */
+export type VenturiProps = Pick<
+	FluidProps,
+	| 'width'
+	| 'height'
+	| 'maxPixelRatio'
+	| 'class'
+	| 'style'
+	| 'seed'
+	| 'lazy'
+	| 'pointerInput'
+	| 'splatOnHover'
+	| 'aria-label'
+	| 'backColor'
+>;
+
+/** Props consumed by `<Toroidal />`. Sizing/seed/styling are forwarded; all other physics props are hard-coded. */
+export type ToroidalProps = Pick<
+	FluidProps,
+	'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+>;
+
+/** Props consumed by `<Plasma />`. Sizing/seed/styling are forwarded, and `backColor` may be overridden so the preset adapts to its host page; all other physics props are hard-coded. */
+export type PlasmaProps = Pick<
+	FluidProps,
+	'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+>;
+
+/** Props consumed by `<Aurora />`. */
+export type AuroraProps = Pick<
+	FluidProps,
+	'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+>;
+
+/** Props consumed by `<TeslaValve />`. Sizing/seed/styling are forwarded; valve geometry and flow settings are pinned. */
+export type TeslaValveProps = Pick<
+	FluidProps,
+	| 'width'
+	| 'height'
+	| 'maxPixelRatio'
+	| 'class'
+	| 'style'
+	| 'seed'
+	| 'lazy'
+	| 'pointerInput'
+	| 'splatOnHover'
+	| 'aria-label'
+	| 'backColor'
+>;
+
+/** Props consumed by `<CircularFluid />`. */
+export type CircularFluidProps = Pick<
+	FluidProps,
+	'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+>;
+
+/** Props consumed by `<FrozenSwirl />`. */
+export type FrozenSwirlProps = Pick<
+	FluidProps,
+	'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+>;
+
+/** Props consumed by `<SvgPathFluid />`. */
+export type SvgPathFluidProps = Pick<
+	FluidProps,
+	'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+>;
+
+/** Props consumed by `<AnnularFluid />`. */
+export type AnnularFluidProps = Pick<
+	FluidProps,
+	'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+>;
+
+/** Props consumed by `<Karman />`. Sizing/seed/styling are forwarded; all physics is pinned. */
+export type KarmanProps = Pick<
+	FluidProps,
+	| 'width'
+	| 'height'
+	| 'maxPixelRatio'
+	| 'class'
+	| 'style'
+	| 'seed'
+	| 'lazy'
+	| 'pointerInput'
+	| 'splatOnHover'
+	| 'aria-label'
+	| 'backColor'
+>;

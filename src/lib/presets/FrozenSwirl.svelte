@@ -12,19 +12,13 @@
 -->
 
 <script lang="ts" module>
-	import type { FluidProps } from '../Fluid.svelte';
-
-	/** Props consumed by `<FrozenSwirl />`. */
-	export type FrozenSwirlProps = Pick<
-		FluidProps,
-		'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
-	>;
+	export type { FrozenSwirlProps } from '../engine/types.js';
 </script>
 
 <script lang="ts">
 	import Fluid from '../Fluid.svelte';
 	import { DISABLED_PERFORMANCE_STATE } from '../engine/performance-governor.js';
-	import type { FluidHandle } from '../engine/types.js';
+	import type { FrozenSwirlProps, FluidHandle } from '../engine/types.js';
 	import { FROZEN_SWIRL_CONFIG } from './registry.js';
 
 	let {

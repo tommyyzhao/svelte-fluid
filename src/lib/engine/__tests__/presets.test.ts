@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import typesSrc from '../types.ts?raw';
 import annularFluid from '../../presets/AnnularFluid.svelte?raw';
 import aurora from '../../presets/Aurora.svelte?raw';
 import circularFluid from '../../presets/CircularFluid.svelte?raw';
@@ -57,7 +58,9 @@ describe('preset pixel-ratio forwarding', () => {
 	for (const [name, source] of Object.entries(presets)) {
 		if (name === 'Airfoil' || name === 'Maze') continue;
 		it(`${name} forwards maxPixelRatio`, () => {
-			expect(source).toContain("'maxPixelRatio'");
+			// The prop alias lives in engine/types.ts; the preset re-exports it.
+			const alias = typesSrc.slice(typesSrc.indexOf(`export type ${name}Props`)).split(';')[0];
+			expect(alias).toContain("'maxPixelRatio'");
 			expect(source).toContain('{maxPixelRatio}');
 		});
 	}

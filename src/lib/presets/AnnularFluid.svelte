@@ -13,19 +13,13 @@
 -->
 
 <script lang="ts" module>
-	import type { FluidProps } from '../Fluid.svelte';
-
-	/** Props consumed by `<AnnularFluid />`. */
-	export type AnnularFluidProps = Pick<
-		FluidProps,
-		'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
-	>;
+	export type { AnnularFluidProps } from '../engine/types.js';
 </script>
 
 <script lang="ts">
 	import Fluid from '../Fluid.svelte';
 	import { DISABLED_PERFORMANCE_STATE } from '../engine/performance-governor.js';
-	import type { FluidHandle } from '../engine/types.js';
+	import type { AnnularFluidProps, FluidHandle } from '../engine/types.js';
 	import { ANNULAR_FLUID_CONFIG } from './registry.js';
 
 	let {
