@@ -1565,7 +1565,7 @@ export interface LiquidSegmentedProps {
 }
 
 /* ------------------------------------------------------------------------ */
-/*               Liquid drop zone (height-field surface, ADR-0094)           */
+/*           Liquid drop zone and caustics (height-field surface, ADR-0094)  */
 /* ------------------------------------------------------------------------ */
 
 /**
@@ -1612,3 +1612,14 @@ export interface FoilSwitchProps extends Omit<HTMLButtonAttributes, 'type' | 'ro
 	children?: Snippet;
 }
 
+/** Caustic light (dark tone) or a soft caustic shading net (light tone) over live content. */
+export interface LiquidCausticsProps extends Omit<import('svelte/elements').HTMLAttributes<HTMLDivElement>, 'children'> {
+	/** Palette. Default `'auto'` (from the page colour behind the block). */
+	tone?: LiquidTone;
+	/**
+	 * Strength 0–1. Default 0.75. Always clamped so body text (the block's
+	 * `color`) keeps ≥ 4.5:1 against its measured background.
+	 */
+	intensity?: number;
+	children?: Snippet;
+}

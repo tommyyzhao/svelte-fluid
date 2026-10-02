@@ -210,10 +210,8 @@ uniform vec4 uLabels[8];     // x0, y0, x1, y1 (CSS px)
 uniform int uLabelCount;
 uniform vec4 uClimb;         // drop-zone drag: pointer (CSS px, y up), strength 0–1, along-wall spread
 uniform vec3 uClimbShape;    // rise, length (CSS px), far-wall floor
-uniform vec4 uOverlay;       // light-path depth (CSS px), contrast-clamped peak strength, glint gain, edge fade (CSS px)
+uniform vec4 uOverlay;       // light-path depth (CSS px), contrast-clamped peak strength, sun blur (CSS px), edge fade (CSS px)
 uniform vec3 uOverlayTint;   // sRGB the overlay blends toward (light: shade, dark: light)
-uniform vec4 uWaves[6];      // ambient trains: kx, ky (rad/CSS px), amplitude (CSS px), phase now
-uniform int uWaveCount;
 out vec4 outColor;
 
 const float F0 = 0.0204;     // ((1 − 1.333) / (1 + 1.333))²
@@ -297,16 +295,6 @@ void main () {
 	}
 	grad /= uCell;
 	hess /= uCell * uCell;
-	// Ambient trains (caustics overlay): analytic, so their slope and curvature are exact.
-	vec3 ambHess = vec3(0.0);
-	for (int i = 0; i < 6; i++) {
-		if (i >= uWaveCount) break;
-		vec4 w = uWaves[i];
-		float ph = dot(w.xy, p) + w.w;
-		h += w.z * sin(ph);
-		grad += w.z * cos(ph) * w.xy;
-		ambHess -= w.z * sin(ph) * vec3(w.x * w.x, w.x * w.y, w.y * w.y);
-	}
 #ifdef BILINEAR_PROBE
 	// The prototype's path: central differences per cell, bilinearly interpolated.
 	{
@@ -334,28 +322,39 @@ void main () {
 #ifdef OVERLAY
 	// Caustics overlay (ADR-0094): light terms only, so the content beneath is never
 	// resampled. No walls: the edge fades instead of climbing a meniscus.
-	vec3 hcO = texture(uCurv, p / (vec2(n) * uCell)).rgb + ambHess;
+	// Intensity is the area ratio of the refracted grid, I = 1/|J|, J = det(I + s·H)
+	// (flux is conserved, so its area mean is 1). The singular folds are regularized by
+	// the sun's angular size: a fold is blurred over uOverlay.z CSS px, i.e. by
+	// |∇J|·blur in J, never less than one pixel's change of J. So lines taper and dim
+	// where J crosses zero fast, and widen and brighten where it crosses slowly and at
+	// the cusps where folds meet. No contour threshold, no fixed-width stroke.
+	vec3 hcO = texture(uCurv, p / (vec2(n) * uCell)).rgb;
 	float sO = uOverlay.x * uRefractGain;
-	float detO = (1.0 + sO * hcO.x) * (1.0 + sO * hcO.z) - sO * sO * hcO.y * hcO.y;
-	float ratioO = min(6.0, 1.0 / max(abs(detO), 1.0 / 6.0));
-	// Both tones draw the focus net (thin lines where crests converge light): dark
-	// tones add it as light, light tones as shade. Soft knee, no plateau at the cap.
-	// Caustic net: the fold contours (det = 0) are where refracted light piles up.
-	// Drawn as lines one-ish CSS px wide (anti-aliased by det's own screen
-	// derivative) over a faint broad focus, so the net reads as lines, not blobs.
-	// Intensity ∝ 1/|det| near a fold, floored at one pixel's det change so
-	// the peak is resolved, not aliased; the 1/|det| tail gives the soft side.
-	// Light tones draw a broader, softer net: shading, not ink lines.
-	float wO = fwidth(detO) * (1.0 + 0.5 * uCaustic.y) + 0.02 + 0.015 * uCaustic.y;
-	float v = pow(clamp(wO / max(abs(detO), wO) - 0.12, 0.0, 1.0), 1.4);
-	if (uCaustic.y < 0.5) {
-		vec3 nO = normalize(vec3(-grad, 1.0));
-		vec3 rO = vec3(2.0 * nO.z * nO.xy, 2.0 * nO.z * nO.z - 1.0);
-		// Sun glints: a small hard source low in the sky, so only the steepest flanks catch it.
-		float glint = smoothstep(0.9994, 0.99985, dot(rO, normalize(vec3(0.16, 0.22, 1.0))));
-		v += uOverlay.z * glint;
+	float J = (1.0 + sO * hcO.x) * (1.0 + sO * hcO.z) - sO * sO * hcO.y * hcO.y;
+	float eps = max(fwidth(J) * uDpr * uOverlay.z, 1e-3);
+	float I = min(inversesqrt(J * J + eps * eps), 12.0);
+	float v;
+	if (uCaustic.y > 0.5) {
+		// Light tone: light cannot be added to near-white paper, so only the broad
+		// defocused regions (I < 1) shade, softly. Foci stay page-bright.
+		// Shading only follows a ripple and fades with it; the clamp bounds the peak.
+		v = 0.7 * smoothstep(0.0, 0.8, 1.0 - I);
+	} else {
+		// Dark tone: the excess over the mean, tone-mapped; dim regions add nothing.
+		// x²/(x + 0.25) eases in with zero slope at I = 1, so the boundary of the lit
+		// region is C¹: a plain max(I − 1, 0) hinge drew any straight iso-line of I
+		// (a plane wave's crest) as a visible straight edge.
+		float x = max(I - 1.0, 0.0);
+		x = x * x / (x + 0.25);
+		v = x / (x + 2.5);
 	}
-	float fade = smoothstep(0.0, uOverlay.w * uDpr, -dPx);
+	// Edge fade from the analytic rect, a smooth product over its four sides. Not
+	// the SDF: the overlay's rect is the whole canvas, so its coverage mask has no
+	// edge along the straight sides and the JFA SDF only measures distance to the
+	// corner arcs. Light then ran full strength into the canvas edge: a hard cut.
+	vec4 side = vec4(p.x - uFillRect.z, uFillRect.w - p.x, p.y - uFillRect.x, uFillRect.y - p.y);
+	vec4 ramp = smoothstep(vec4(0.0), vec4(uOverlay.w), side);
+	float fade = ramp.x * ramp.y * ramp.z * ramp.w;
 	// Never above the contrast-clamped peak (look.ts overlayCap), dither included.
 	float kO = clamp(uOverlay.y * clamp(v, 0.0, 1.0) * fade + dither * step(0.001, v * fade), 0.0, uOverlay.y);
 	outColor = vec4(uOverlayTint * kO, kO);
