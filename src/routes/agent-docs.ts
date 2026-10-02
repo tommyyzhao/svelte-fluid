@@ -28,7 +28,8 @@ const COMPONENTS: Array<{ name: string; summary: string }> = [
 	{ name: 'LiquidSegmented', summary: 'Interface primitive. Native radio group (fieldset/legend) whose selected option sits on a liquid lens. Props: options, bind:value, name, legend, tone, disabled.' },
 	{ name: 'LiquidDropZone', summary: 'Interface primitive. Native file picker (label + hidden input) and drop target with a meniscus along its edge. Props: accept, multiple, label, onfiles, announce, tone, disabled, name.' },
 	{ name: 'LiquidCaustics', summary: 'Interface primitive. Wrapper that lays caustic light over live content where the user acts; text stays crisp and 4.5:1. Props: tone, intensity.' },
-	{ name: 'FoilSwitch', summary: 'Interface primitive. Native role="switch" button drawn as a bistable metal arch. Props: bind:checked, onchange, tone, disabled; label as children.' }
+	{ name: 'FoilSwitch', summary: 'Interface primitive. Native role="switch" button drawn as a bistable metal arch. Props: bind:checked, onchange, tone, disabled; label as children.' },
+	{ name: 'EnamelText', summary: 'Interface primitive. Display text (a native <span>, place it inside your own <h2>) shaded as glazed enamel whose relief gives under a press; text stays selectable. Props: text, tone, color.' }
 ];
 
 function presetLine(p: (typeof PRESETS)[number]): string {
@@ -39,7 +40,7 @@ function presetLine(p: (typeof PRESETS)[number]): string {
 export function buildLlmsTxt(site = DEFAULT_SITE): string {
 	const docs = [
 		['Getting Started', '/docs', 'install and first component'],
-		['Components', '/docs/components', 'all twelve components, props, examples, keyboard and reduced-motion behaviour'],
+		['Components', '/docs/components', 'all thirteen components, props, examples, keyboard and reduced-motion behaviour'],
 		['Configuration', '/docs/configuration', 'full FluidConfig prop reference (70+ props)'],
 		['Container shapes', '/docs/shapes', 'ContainerShape variants and fields'],
 		['Presets', '/docs/presets', 'all 14 presets with configs and playground links'],
@@ -51,7 +52,7 @@ export function buildLlmsTxt(site = DEFAULT_SITE): string {
 		'',
 		'> WebGL Navier–Stokes fluid simulation as a Svelte 5 component library. Multi-instance, resize-stable, deterministic seeding. MIT licensed, zero runtime dependencies.',
 		'',
-		'svelte-fluid renders interactive fluid on a canvas through a thin Svelte 5 wrapper around a framework-agnostic WebGL engine (a port of Pavel Dobryakov\'s WebGL-Fluid-Simulation). Six fluid components, six interface primitives (InkPaper, LiquidButton, LiquidSegmented, LiquidDropZone, LiquidCaustics, FoilSwitch) and fourteen zero-config presets. Requires Svelte 5.',
+		'svelte-fluid renders interactive fluid on a canvas through a thin Svelte 5 wrapper around a framework-agnostic WebGL engine (a port of Pavel Dobryakov\'s WebGL-Fluid-Simulation). Six fluid components, seven interface primitives (InkPaper, LiquidButton, LiquidSegmented, LiquidDropZone, LiquidCaustics, FoilSwitch, EnamelText) and fourteen zero-config presets. Requires Svelte 5.',
 		'',
 		'## Docs',
 		'',
@@ -114,7 +115,7 @@ export function buildSkillMd(site = DEFAULT_SITE): string {
 		'',
 		'- A thin Svelte 5 component (`<Fluid>`) hands a `<canvas>` to a framework-agnostic `FluidEngine` (WebGL2/WebGL1). The engine never imports Svelte.',
 		'- Each component instance owns its own GL context, FBOs, programs — many instances coexist on a page. Browsers cap WebGL contexts (~8–16/tab), so use `lazy` on dense pages.',
-		'- The interface primitives (`InkPaper`, `Liquid*`, `FoilSwitch`) are not `<Fluid>` wrappers: they render native elements with a decorative WebGL2 surface and share ONE WebGL2 context per page, so they do not count against the context cap. Without WebGL2 they fall back to plain native controls. They take no FluidConfig props.',
+		'- The interface primitives (`InkPaper`, `Liquid*`, `FoilSwitch`, `EnamelText`) are not `<Fluid>` wrappers: they render native elements with a decorative WebGL2 surface and share ONE WebGL2 context per page, so they do not count against the context cap. Without WebGL2 they fall back to plain native controls. They take no FluidConfig props.',
 		'- The sim is a real incompressible fluid solver: advection → (viscosity) → divergence → pressure (Jacobi) → gradient subtract, then dye advection, vorticity confinement (`curl`), bloom/sunrays/shading display.',
 		'- Determinism and resize: pass `seed` for reproducible initial splats. Resize preserves the live context, programs, dye, and velocity; rendering uses native DPR by default (`maxPixelRatio={2}` caps it).',
 		'- Lifecycle: all WebGL access is deferred to `onMount` (SSR-safe). `autoPause` (default true) stops the RAF loop when offscreen/hidden; `lazy` defers engine creation until in view.',
@@ -146,7 +147,7 @@ export function buildSkillMd(site = DEFAULT_SITE): string {
 		'',
 		'```svelte',
 		'<script>',
-		"  import { InkPaper, LiquidButton, LiquidSegmented, LiquidDropZone, LiquidCaustics, FoilSwitch } from 'svelte-fluid';",
+		"  import { InkPaper, LiquidButton, LiquidSegmented, LiquidDropZone, LiquidCaustics, FoilSwitch, EnamelText } from 'svelte-fluid';",
 		"  let range = $state('week');",
 		'  let on = $state(false);',
 		'</script>',
@@ -157,9 +158,10 @@ export function buildSkillMd(site = DEFAULT_SITE): string {
 		'<LiquidDropZone accept="image/*" onfiles={(files) => upload(files)} />',
 		'<LiquidCaustics tone="dark"><p>Content</p></LiquidCaustics>',
 		'<FoilSwitch bind:checked={on}>Notifications</FoilSwitch>',
+		'<h2><EnamelText text="Harbour" /></h2>',
 		'```',
 		'',
-		'All six honour `prefers-reduced-motion` (stills) and keep native keyboard, touch and pen behaviour. Details: ' + `${site}/docs/components`,
+		'All seven honour `prefers-reduced-motion` (stills) and keep native keyboard, touch and pen behaviour. Details: ' + `${site}/docs/components`,
 		'',
 		'## Key config groups',
 		'',

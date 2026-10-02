@@ -28,7 +28,7 @@ This one is built for Svelte 5 from the ground up:
 - **5 container shapes** — circle, frame, roundedRect, annulus, and arbitrary SVG paths / text via mask texture
 - **Glass post-processing** — refraction, specular highlights, and chromatic aberration on any container shape
 - **Lazy loading + auto-pause** — defer engine creation until viewport entry
-- **Interface primitives** — `InkPaper`, `LiquidButton`, `LiquidSegmented`, `LiquidDropZone`, `LiquidCaustics` and `FoilSwitch`: native controls with a shared-WebGL2 surface and plain-control fallback
+- **Interface primitives** — `InkPaper`, `LiquidButton`, `LiquidSegmented`, `LiquidDropZone`, `LiquidCaustics`, `FoilSwitch` and `EnamelText`: native controls with a shared-WebGL2 surface and plain-control fallback
 - **Imperative API** — `splat()` and `randomSplats()` via `bind:this`
 
 ## Install
@@ -146,9 +146,9 @@ See the [recipe](https://svelte-fluid.dev/docs/recipes/splash-cursor).
 ## Components
 
 Six fluid components (`Fluid`, `FluidBackground`, `FluidReveal`, `FluidDistortion`,
-`FluidStick`, `FluidText`; see [Props](#props)) and six interface primitives.
+`FluidStick`, `FluidText`; see [Props](#props)) and seven interface primitives.
 The primitives are real native elements (button, radio group, file input,
-switch, `div`) with a decorative WebGL2 surface. They share one WebGL2 context
+switch, `div`, heading text) with a decorative WebGL2 surface. They share one WebGL2 context
 per page, so they do not hit the browser's context cap. Without WebGL2 each
 falls back to a plain, fully styled native control. All honour
 `prefers-reduced-motion` and keep native keyboard, touch and pen behaviour.
@@ -162,15 +162,17 @@ Full props, live examples and contrast notes: [docs/components](https://svelte-f
 | `LiquidDropZone` | File picker and drop target | `<LiquidDropZone accept="image/*" onfiles={(files) => upload(files)} />` |
 | `LiquidCaustics` | Caustic light over live content | `<LiquidCaustics tone="dark"><p>Content</p></LiquidCaustics>` |
 | `FoilSwitch` | On/off switch drawn as a metal arch | `<FoilSwitch bind:checked={on}>Notifications</FoilSwitch>` |
+| `EnamelText` | Display heading in glazed enamel that gives under a press | `<h2><EnamelText text="Harbour" /></h2>` |
 
 ```svelte
 <script>
-  import { LiquidButton, FoilSwitch } from 'svelte-fluid';
+  import { LiquidButton, FoilSwitch, EnamelText } from 'svelte-fluid';
   let on = $state(false);
 </script>
 
 <LiquidButton onclick={() => console.log('saved')}>Save</LiquidButton>
 <FoilSwitch bind:checked={on}>Notifications</FoilSwitch>
+<h2><EnamelText text="Harbour" /></h2>
 ```
 
 ## Props

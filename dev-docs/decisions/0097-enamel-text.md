@@ -25,7 +25,7 @@ avoid pixel-sized glints.
 texture, the jump-flood SDF, the fine rest profile, a coarse rest/geometry
 texture, an R32F height ping-pong and a deviation texture.
 `EnamelText.svelte` is a native `<span>` (the consumer's heading supplies the
-role) with a decorative canvas. Not root-exported; no docs route.
+role) with a decorative canvas. Root-exported with a docs section after the tuning pass (see ADR-0095).
 
 **Rest profile.** The DOM text node is redrawn per laid-out line (Range boxes,
 computed font) into a device-px coverage image (R&D text-source, unchanged in

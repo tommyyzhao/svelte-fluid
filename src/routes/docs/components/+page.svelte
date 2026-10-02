@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import { FoilSwitch, LiquidButton, LiquidCaustics, LiquidDropZone, LiquidSegmented, InkPaper } from '$lib/index.js';
+	import { FoilSwitch, LiquidButton, LiquidCaustics, LiquidDropZone, LiquidSegmented, InkPaper, EnamelText } from '$lib/index.js';
 
 	let segmented = $state('week');
 	let foilOn = $state(false);
@@ -61,6 +61,13 @@ ${SCRIPT_CLOSE}
 ${SCRIPT_CLOSE}
 
 <FoilSwitch bind:checked={notifications} onchange={(on) => save(on)}>Notifications</FoilSwitch>`;
+	const ENAMEL_EXAMPLE = `${SCRIPT_OPEN}
+  import { EnamelText } from 'svelte-fluid';
+${SCRIPT_CLOSE}
+
+<h2 style="font-size: 4rem; color: #d9462b">
+  <EnamelText text="Harbour" />
+</h2>`;
 	const BACKGROUND_COMPOSITION_EXAMPLE = `${SCRIPT_OPEN}
   import { FluidBackground } from 'svelte-fluid';
 ${SCRIPT_CLOSE}
@@ -93,15 +100,15 @@ ${SCRIPT_CLOSE}
 
 <svelte:head>
 	<title>Components — svelte-fluid</title>
-	<meta name="description" content="All twelve svelte-fluid components — the six fluid components plus InkPaper, LiquidButton, LiquidSegmented, LiquidDropZone, LiquidCaustics and FoilSwitch." />
+	<meta name="description" content="All thirteen svelte-fluid components — the six fluid components plus InkPaper, LiquidButton, LiquidSegmented, LiquidDropZone, LiquidCaustics, FoilSwitch and EnamelText." />
 </svelte:head>
 
 <h1>Components</h1>
-<p class="subtitle">Twelve components. Six wrap the fluid engine; six are interface primitives on a shared WebGL2 context.</p>
+<p class="subtitle">Thirteen components. Six wrap the fluid engine; seven are interface primitives on a shared WebGL2 context.</p>
 
 <ul class="component-index">
 	<li>Fluid: <a href="#fluid">Fluid</a>, <a href="#fluidbackground">FluidBackground</a>, <a href="#fluidreveal">FluidReveal</a>, <a href="#fluiddistortion">FluidDistortion</a>, <a href="#fluidstick">FluidStick</a>, <a href="#fluidtext">FluidText</a></li>
-	<li>Interface primitives: <a href="#inkpaper">InkPaper</a>, <a href="#liquidbutton">LiquidButton</a>, <a href="#liquidsegmented">LiquidSegmented</a>, <a href="#liquiddropzone">LiquidDropZone</a>, <a href="#liquidcaustics">LiquidCaustics</a>, <a href="#foilswitch">FoilSwitch</a></li>
+	<li>Interface primitives: <a href="#inkpaper">InkPaper</a>, <a href="#liquidbutton">LiquidButton</a>, <a href="#liquidsegmented">LiquidSegmented</a>, <a href="#liquiddropzone">LiquidDropZone</a>, <a href="#liquidcaustics">LiquidCaustics</a>, <a href="#foilswitch">FoilSwitch</a>, <a href="#enameltext">EnamelText</a></li>
 </ul>
 
 <!-- ============================================================ -->
@@ -546,7 +553,41 @@ ${SCRIPT_CLOSE}
 	<strong>No WebGL2 / forced colours:</strong> an SVG arch of the same shape shows the state, in <code>ButtonText</code> under <code>forced-colors</code>. Shares one WebGL2 context per page with the other interface primitives (ADR-0088/0093), so many on one page do not hit the context cap.
 </div>
 
+<!-- ============================================================ -->
+<h2 id="enameltext">&lt;EnamelText&gt;</h2>
+
+<p>A display heading in glazed enamel: molded, rounded relief that gives under a press and relaxes. Use it for one short headline, not body copy. Place it inside your own heading element; the heading supplies the role and size.</p>
+
+<div class="example">
+	<h2 class="enamel-demo"><EnamelText text="Harbour" /></h2>
+</div>
+
+<pre><code>{ENAMEL_EXAMPLE}</code></pre>
+
+<table>
+	<thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+	<tbody>
+		<tr><td><code>text</code></td><td><code>string</code></td><td>required</td><td>Display text: short and plain, one line or a few wrapped lines.</td></tr>
+		<tr><td><code>tone</code></td><td><code>'light' | 'dark' | 'auto'</code></td><td><code>'auto'</code></td><td>Studio lighting. <code>'auto'</code> follows the page colour behind the text.</td></tr>
+		<tr><td><code>color</code></td><td><code>string</code></td><td>inherited text colour</td><td>Enamel body colour, any CSS colour.</td></tr>
+		<tr><td><code>...rest</code></td><td><code>HTMLAttributes&lt;HTMLSpanElement&gt;</code></td><td>—</td><td>All other <code>span</code> attributes are forwarded (<code>class</code>, <code>style</code>, ...).</td></tr>
+	</tbody>
+</table>
+
+<div class="callout">
+	<strong>Input:</strong> a pointer, touch or pen press dents the enamel under the contact and it relaxes on release; pen pressure scales the dent. It is not focusable and adds no tab stop. Keyboard users see the full static relief. The text is a real <code>&lt;span&gt;</code> in the heading, so it stays selectable, findable and zoomable; presses are observed, never captured or prevented.<br>
+	<strong>Reduced motion:</strong> the static relief is drawn and presses are ignored.<br>
+	<strong>Contrast:</strong> glyph pixels are clamped to at least 3:1 against the page for large text (24 px, or bold 18.66 px, and up) and at least 4.5:1 otherwise (ADR-0097).<br>
+	<strong>No WebGL2 / EXT_color_buffer_float:</strong> plain text in the inherited colour; the DOM text only turns transparent once the first enamel frame is on screen. Shares one WebGL2 context per page with the other interface primitives (ADR-0088/0093).
+</div>
+
 <style>
+	.example .enamel-demo {
+		margin: 0;
+		font-size: clamp(3rem, 12vw, 5.5rem);
+		line-height: 1.1;
+		color: #d9462b;
+	}
 	.example {
 		margin: 1rem 0;
 		padding: 1.25rem;
