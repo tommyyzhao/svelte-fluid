@@ -70,6 +70,12 @@
 			layout();
 		});
 		resize.observe(canvas);
+		const pixels = new ResizeObserver(layout);
+		try {
+			pixels.observe(canvas, { box: 'device-pixel-content-box' });
+		} catch {
+			// Older browsers notify zoom through the window resize fallback.
+		}
 		window.addEventListener('resize', layout);
 		const intersect = new IntersectionObserver(([entry]) => engine?.setVisible(entry.isIntersecting));
 		intersect.observe(root);
@@ -109,6 +115,7 @@
 			removeEventListener('pointercancel', up);
 			document.fonts?.removeEventListener('loadingdone', layout);
 			resize.disconnect();
+			pixels.disconnect();
 			window.removeEventListener('resize', layout);
 			intersect.disconnect();
 			unwatch();
