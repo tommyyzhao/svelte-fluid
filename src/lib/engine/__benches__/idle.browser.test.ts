@@ -139,10 +139,13 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		try {
 		// Odd, non-multiple-of-8 sizes exercise partial reduction tiles.
 		const e = engine({ simResolution: 61, dyeResolution: 203 }, false);
+		const sibling = tier === 'shared' ? engine({ simResolution: 47, dyeResolution: 159 }, false) : null;
 		e.splat(0.13, 0.91, 900, -400, { r: 0.2, g: 1.7, b: 0.4 });
 		e.splat(0.97, 0.04, -300, 1200, { r: 0.05, g: 0.1, b: 2.3 });
 		const probe = e as unknown as {
 			issueSettleProbe(): void;
+			trackSettle(): void;
+			autoStart: boolean; deterministicMode: boolean;
 			advanceSettleProbe(): void;
 			pollSettleProbe(): boolean | null;
 			settlePixels: Float32Array;
@@ -150,21 +153,30 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 			blit(...args: unknown[]): void;
 		};
 		const cpuMax = (data: Float32Array) => data.reduce((m, x) => Math.max(m, Math.abs(x)), 0);
+		for (const resized of [false, true]) {
+		if (resized) e.resize(137, 119);
+		(probe as unknown as { settleFrames: number }).settleFrames = 0;
 		const v = cpuMax(e.readField('velocity').data);
 		const d = cpuMax(e.readField('dye', { components: 3 }).data);
-		probe.issueSettleProbe();
 		const original = probe.blit;
 		let draws = 0;
 		probe.blit = (...args) => { draws++; original(...args); };
 		try {
+			probe.autoStart = true;
+			probe.deterministicMode = false;
+			for (let frame = 0; frame < 30; frame++) probe.trackSettle();
+			expect(draws).toBe(2);
 			for (let i = 0; i < 12 && probe.settleProbe; i++) {
 				// Changes the ping-pong fields without external input/epoch invalidation.
 				e.advance(1, 1 / 60);
 				draws = 0;
-				probe.advanceSettleProbe();
+				if (sibling) {
+					sibling.splat(0.4, 0.6, 250, -80, { r: 0.3, g: 0.4, b: 0.8 });
+					sibling.advance(1, 1 / 60);
+				}
+				probe.trackSettle();
 				expect(draws).toBeLessThanOrEqual(1);
 				await sleep(0);
-				probe.pollSettleProbe();
 			}
 		} finally { probe.blit = original; }
 		expect(probe.settleProbe).toBeNull();
@@ -176,6 +188,7 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		// Inputs are already half floats; the R16F chain re-rounds once (2^-11 relative).
 		expect(Math.abs(gv - v)).toBeLessThanOrEqual(v * 2 ** -10);
 		expect(Math.abs(gd - d)).toBeLessThanOrEqual(d * 2 ** -10);
+		}
 		} finally {
 			_setContextTier('auto');
 		}
@@ -294,11 +307,12 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 	it('readback issue frame cannot poll its newly created fence', () => {
 		const e = engine({}, false);
 		const p = e as unknown as {
-			autoStart: boolean; gl: WebGL2RenderingContext; trackSettle(): void;
+			autoStart: boolean; deterministicMode: boolean; gl: WebGL2RenderingContext; trackSettle(): void;
 			issueSettleProbe(): void; settleProbe: { sync: WebGLSync | null; velocityLevel: number; dyeLevel: number };
 			settleVelocityChain: unknown[]; settleDyeChain: unknown[];
 		};
 		p.autoStart = true;
+		p.deterministicMode = false;
 		p.issueSettleProbe();
 		p.settleProbe.velocityLevel = p.settleVelocityChain.length;
 		p.settleProbe.dyeLevel = p.settleDyeChain.length;
