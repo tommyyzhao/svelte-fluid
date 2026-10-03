@@ -47,7 +47,11 @@ bitmap delivery, not a literal single-frame GPU timer. Median/worst means
 median and worst **batch per-frame throughput**, not worst individual latency.
 Thus passing batches cannot prove every individual frame <2 ms. Startup chain/PBO
 allocation is excluded from steady-state tables; no startup-spike exemption is
-claimed. Strict bar not certified.
+claimed. Strict bar not certified. The later completed-fence poll and `getBufferSubData`
+frame is **not isolated by this stage harness**; its CPU/driver cost is additional
+unmeasured per-frame work. Reordering polling before advance at the final runtime
+SHA avoids same-frame issue+poll but does not establish that omitted frame's
+budget. No claim of exhaustive stage coverage.
 
 ## Own-tier independent stages
 
