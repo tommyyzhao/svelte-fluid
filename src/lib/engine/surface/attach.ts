@@ -78,6 +78,12 @@ export function attachSurface(
 	});
 	resize.observe(box);
 	resize.observe(canvas);
+	const pixels = new ResizeObserver(sync);
+	try {
+		pixels.observe(canvas, { box: 'device-pixel-content-box' });
+	} catch {
+		// Older browsers notify zoom through the window resize fallback.
+	}
 	window.addEventListener('resize', sync);
 	const intersect = new IntersectionObserver(([entry]) => engine.setVisible(entry.isIntersecting));
 	intersect.observe(box);
@@ -97,6 +103,7 @@ export function attachSurface(
 			if (destroyed) return;
 			destroyed = true;
 			resize.disconnect();
+			pixels.disconnect();
 			window.removeEventListener('resize', sync);
 			intersect.disconnect();
 			unwatch();

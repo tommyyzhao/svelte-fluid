@@ -57,6 +57,13 @@
 			sync();
 		});
 		resize.observe(canvas);
+		// A screen move can change DPR without changing the CSS viewport.
+		const pixels = new ResizeObserver(sync);
+		try {
+			pixels.observe(canvas, { box: 'device-pixel-content-box' });
+		} catch {
+			// Older browsers notify zoom through the window resize fallback.
+		}
 		window.addEventListener('resize', sync);
 		const intersect = new IntersectionObserver(([entry]) => {
 			onscreen = entry.isIntersecting;
@@ -75,6 +82,7 @@
 			if (destroyed) return;
 			destroyed = true;
 			resize.disconnect();
+			pixels.disconnect();
 			window.removeEventListener('resize', sync);
 			intersect.disconnect();
 			forced.removeEventListener('change', visibility);
