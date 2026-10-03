@@ -518,7 +518,7 @@ ${SCRIPT_CLOSE}
 <div class="callout">
 	<strong>Input:</strong> pointer moves and focus send a ripple that spreads and fades over about a second. At rest nothing is drawn or scheduled. The overlay ignores pointer events, so the content stays fully interactive, selectable and zoomable.<br>
 	<strong>Reduced motion:</strong> no ripples and nothing drawn; the content alone.<br>
-	<strong>Contrast:</strong> dark tone adds light, light tone adds soft shade, and the peak is clamped so the block's <code>color</code> keeps at least 4.5:1 against its background (ADR-0094).<br>
+	<strong>Contrast:</strong> dark tone adds light, light tone adds soft shade. Every visible native text run (including links and labels) limits the peak against its solid ancestor backgrounds, preserving passing 4.5:1 text (ADR-0094). Authored failing text stays unchanged, with no AA claim; the whole overlay is disabled. Gradients/images, filters, blending, opacity, shadows, generated/embedded/shadow content, animated styling and out-of-flow descendants also show plain content. The static-solid contract is bounded to 128 text runs, 512 elements and 64 ancestors; overflow disables the overlay. Class/style, content, font, pointer/focus and resize changes remeasure; arbitrary CSSOM edits and external overlapping layers are not supported.<br>
 	<strong>No WebGL2 / forced colours:</strong> the content alone. Shares one WebGL2 context per page with the other interface primitives (ADR-0088/0093), so many on one page do not hit the context cap.
 </div>
 
