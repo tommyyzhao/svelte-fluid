@@ -515,7 +515,7 @@ export interface FluidConfig {
 	 * dark reference) or darkened keeping hue (against a light one) until they
 	 * pass; passing pixels are untouched. Values ≤ 1 / `undefined` disable it,
 	 * which is the `<Fluid>` default, so the 0.8.0 look is unchanged.
-	 * `<FluidText>` defaults it to 3 (AA for large text) using an outline halo. With a transparent
+	 * `<FluidText>` defaults it to 4.5 (AA for all text sizes) using an outline halo. With a transparent
 	 * canvas the reference is the page behind it, so set `contrastColor` to the
 	 * real page colour (`<FluidText>` measures it for you); without one it does nothing. Bucket B (keyword recompile on
 	 * enable/disable; the value is a hot uniform). See ADR-0086.
@@ -1442,19 +1442,11 @@ export interface LiquidDropZoneProps extends Omit<import('svelte/elements').HTML
 	name?: string;
 }
 
-/* ------------------------------------------------------------------------ */
-/*                      Foil switch (snap foil, ADR-0096)                    */
-/* ------------------------------------------------------------------------ */
-
-/**
- * A native `<button type="button" role="switch">` whose state is drawn as a
- * bistable metal arch (arched = off, bowed = on). The label is `children`;
- * other button attributes are forwarded.
- */
-export interface FoilSwitchProps extends Omit<HTMLButtonAttributes, 'type' | 'role' | 'aria-checked' | 'onchange' | 'children'> {
+/** Native checkbox switch with a sliding height-field liquid lens (ADR-0092). */
+export interface LiquidToggleProps extends Omit<import('svelte/elements').HTMLInputAttributes, 'type' | 'role' | 'aria-checked' | 'onchange' | 'children'> {
 	/** On/off (`bind:checked`). Default `false`. */
 	checked?: boolean;
-	/** Palette for the focus ring and vector fallback. Default `'auto'`. */
+	/** Liquid palette and native fallback. Default `'auto'`. */
 	tone?: LiquidTone;
 	disabled?: boolean;
 	/** Called with the new state after a user toggle. Exceptions are caught and logged. */

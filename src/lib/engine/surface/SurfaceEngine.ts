@@ -200,7 +200,7 @@ export class SurfaceEngine implements GlHostInstance {
 		if (next.reducedMotion && !prev.reducedMotion) {
 			this.impulses.length = 0;
 			this.energy = 0;
-			if (this.lensAt) this.lensAt.vx = 0;
+			this.retargetLens(next.lens, true);
 			this.stepPending = true;
 		}
 		this.config = next;

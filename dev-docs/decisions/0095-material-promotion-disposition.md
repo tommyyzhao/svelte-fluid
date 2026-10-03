@@ -20,7 +20,7 @@ an existing primitive does not already do. "It looks good" is not a job.
 
 | Material | UI job | Disposition |
 |---|---|---|
-| Snap foil (bistable beam) | The two buckled wells *are* a switch's on/off state | **Promote now** as `FoilSwitch` (ADR 0096) |
+| Snap foil (bistable beam) | The two buckled wells *are* a switch's on/off state | **Removed by owner (2026-10-02)**: no metal switches; `LiquidToggle` reuses ADR 0091/0092 |
 | Enamel (compliant transport toward a glyph profile) | A display heading whose relief gives under a press | **Promoted (ADR 0097) after one tuning pass**; it met the kill gate (visibly beats a static CSS/SVG bevel of the same text) |
 | Thin film (interference) | Tint on a selected lens | **Later**: a possible `finish` on `LiquidSegmented`, after owner review. Adding it now would stack effects on a shipped look |
 | Velvet (pile-lean field) | A finish of the enamel heading | **Later**, folded into `EnamelText` if it ships. Not a primitive on its own |
@@ -45,3 +45,7 @@ Each promoted material becomes a sibling model engine on the shared gl-host
 
 `EnamelText` met the kill gate after one tuning pass and is now root-exported
 and documented at `/docs/components#enameltext`. Both promoted materials ship.
+
+## Owner disposition amendment (2026-10-02)
+
+Owner decision: “No metal switches, only liquid.” The foil port, public component, exclusive engine, tests and capture bench are removed rather than retained as a failed showcase. ADR 0096 remains the historical port record. `LiquidToggle` replaces the switch role with the existing height-field surface lens; `EnamelText` remains unchanged. The earlier promotion statements above are historical, not current approval. LiquidToggle still requires visual owner review.
