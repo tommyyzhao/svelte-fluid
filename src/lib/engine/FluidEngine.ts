@@ -3395,10 +3395,11 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 
 	private settleCheckMs = 0;
 	private settleCheckCount = 0;
+	private settleReadbackMs = 0;
 
 	/** @internal Quiet checks completed and CPU ms spent issuing/polling them (benchmark observability). */
-	get settleCheckStats(): { checks: number; totalMs: number } {
-		return { checks: this.settleCheckCount, totalMs: this.settleCheckMs };
+	get settleCheckStats(): { checks: number; totalMs: number; stageMs: number; readbackMs: number } {
+		return { checks: this.settleCheckCount, totalMs: this.settleCheckMs, stageMs: this.settleCheckMs - this.settleReadbackMs, readbackMs: this.settleReadbackMs };
 	}
 
 	/** Forget a snapshot before input or lifecycle changes can make it stale. */
@@ -3459,6 +3460,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			if (probe.bytes) {
 				// Eight bytes limit transfer size, not the synchronous GPU stall.
 				this.settleBytes.fill(127);
+				const readStart = performance.now();
 				if (this.ext.isWebGL2) gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
 				gl.bindFramebuffer(gl.FRAMEBUFFER, v.fbo);
 				gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.settleBytes.subarray(0, 4));
@@ -3466,6 +3468,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 				gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.settleBytes.subarray(4, 8));
 				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 				this.checkSettleGl();
+				this.settleReadbackMs += performance.now() - readStart;
 				probe.ready = true;
 				return;
 			}
@@ -3508,6 +3511,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			this.settleProbe = null;
 			if (probe.epoch !== this.settleEpoch) return null;
 			this.settleCheckCount++;
+			if (!Number.isFinite(this.config.DENSITY_DISSIPATION) || this.config.DENSITY_DISSIPATION < 0) return false;
 			return isQuietFlags(this.settleBytes, this.config.DISTORTION || this.config.REVEAL);
 		}
 		if (probe.epoch !== this.settleEpoch) { this.cancelSettleProbe(); return null; }
@@ -3545,7 +3549,9 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			this.cancelSettleProbe();
 			this.failTransition(error);
 		}
-		this.settleCheckMs += performance.now() - t0;
+		const readbackMs = performance.now() - t0;
+		this.settleReadbackMs += readbackMs;
+		this.settleCheckMs += readbackMs;
 		return result ?? null;
 	}
 
