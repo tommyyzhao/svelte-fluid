@@ -461,7 +461,8 @@ describe('FluidText actual small-text AA default', () => {
 						rows.push({ policy, minimum, fullHaloSamples: ratios.length, font, text,
 							cssWidth: canvas.getBoundingClientRect().width, cssHeight: height,
 							actualDpr: devicePixelRatio, backingWidth: w, backingHeight: h, measuredPage: measurePageColor(target),
-							baseline: 'c873fdf5d3763fba2d70145fccecdf873e6c03c5' });
+							// Fixture creation baseline, not the runtime SHA of future runs.
+							fixtureBaseline: 'c873fdf5d3763fba2d70145fccecdf873e6c03c5' });
 						await cmd.writeBenchJson(`/tmp/small-text-contrast/${theme}-dpr${devicePixelRatio}.json`, JSON.stringify(rows, null, 2));
 						console.info('small-text contrast', name, minimum, ratios.length);
 						if (policy === 'default-4.5') expect(minimum).toBeGreaterThanOrEqual(4.5);
