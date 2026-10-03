@@ -86,3 +86,11 @@ one frame. Time to settle is otherwise unchanged. A browser test checks that
 the probe's maxima equal a full `readField` maximum on a splatted field with
 odd sizes, to half-float precision. Measured cost is in
 `dev-docs/benchmarks/gpu-budget.md`.
+
+Final measured validation HEAD `b278b11`: default/GasFlare/Karman at 1440x900
+CSS DPR 3 cost 0.90 ms median CPU per check, max 1.20/1.20/1.10 ms,
+0.030 ms/frame amortized. Paired synced throughput puts probe workload at
+0.285/0.305/0.300 ms per checked frame (~0.010 ms/frame averaged). A favorable
+full matrix does not establish the 2 ms bar: earlier GasFlare checked frames
+measured 2.04 ms and shared-tier Karman remains above it. GL validation/read
+errors fail closed, candidate chains swap only after complete allocation.

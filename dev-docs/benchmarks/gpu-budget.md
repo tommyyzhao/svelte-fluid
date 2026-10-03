@@ -1,193 +1,211 @@
 # GPU budget (per-instance frame time)
 
-Measurement of the 1.0 bar "< 2 ms GPU per instance per frame at native DPR".
-Harness: `src/lib/engine/__benches__/gpu-budget.browser.test.ts`. Not a gate; it
-asserts only that numbers are finite. Decision record: ADR-0089.
+Evidence for the 1.0 bar "< 2 ms GPU per instance per frame at native DPR".
+Harness: `src/lib/engine/__benches__/gpu-budget.browser.test.ts`. Measurement,
+not a performance gate. Decision records: ADRs 0089, 0093, 0099.
 
 ## Run
 
 ```sh
 SVELTE_FLUID_GPU_BENCH=1 VITEST_CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
   bun run test:browser src/lib/engine/__benches__/gpu-budget.browser.test.ts
-# JSON: /tmp/svelte-fluid-gpu-budget.json (override: SVELTE_FLUID_GPU_BENCH_OUT=/path)
+# JSON: /tmp/svelte-fluid-gpu-budget.json (override SVELTE_FLUID_GPU_BENCH_OUT)
 # Subset: SVELTE_FLUID_GPU_BENCH_PRESETS='Karman,(default)'
 # CSS size: SVELTE_FLUID_GPU_BENCH_CSS=1440x900 (default 800x500)
+# Tier: SVELTE_FLUID_GPU_BENCH_TIER=shared (default own)
 ```
 
-About 1 min at 800x500 and 2 min at 1440x900. It is excluded from the default
-browser run unless `SVELTE_FLUID_GPU_BENCH` is set (`vitest.config.ts`). It
-needs hardware Chrome.
-
-Same-seed DPR 3 screenshots of every preset, for visual-equivalence review of
-display changes:
-
-```sh
-SVELTE_FLUID_GPU_BENCH=1 SVELTE_FLUID_SHOTS_DIR=/tmp/dpr/after VITEST_CHROME_PATH=... \
-  bun run test:browser src/lib/engine/__benches__/dpr-shots.browser.test.ts
-```
+About 2 minutes per size. Excluded by default unless `SVELTE_FLUID_GPU_BENCH`
+is set. Requires hardware Chrome; no unsafe GPU flags.
 
 ## Method
 
-- `FluidEngine` (`autoStart:false`) on a CSS canvas at DPR 1/2/3. The config is
-  the preset config plus the same canvas-derived adjustments `Fluid.svelte`
-  makes (dye/bloom/sunrays resolution caps, `cssQualityPolicy`). `(default)`
-  is an empty config. Pointer input is off and there is no synthetic input.
-- **Frame (the budget number).** 200 warm-up frames, then 12 batches of 20
-  live-loop frames (`update()`: simulate and render at a fixed 60 Hz dt), each
-  batch bracketed by a 1-px `readPixels` of the default framebuffer, which
-  drains the queue. Cells are the median per-frame time and the worst batch.
-  CPU submit is about 0.02 ms per frame, so the loop is GPU-bound and this is
-  an upper bound on GPU time per frame.
-- **Passes.** Each of `simulateFrame`, `applyBloom`, `applySunrays`,
-  `drawDisplay` and `drawGlass` is replayed alone 60 times back to back with
-  the arguments captured during warm-up, with a `gl.flush()` after each
-  replay. Without the flush, Apple's tiler culls the overwritten opaque draws
-  and display reads 0. Passes overlap a little inside a real frame, so their
-  sum can exceed the frame by up to about 0.4 ms.
-- **Old timer query.** Per-frame `EXT_disjoint_timer_query_webgl2`, back to
-  back. Recorded only to document the artefact below. Do not budget against
-  it.
+- Own-tier `FluidEngine`, `autoStart:false`, CSS canvas at DPR 1/2/3. Preset
+  config plus `Fluid.svelte`'s canvas-derived caps and `cssQualityPolicy`.
+  `(default)` is empty config. Pointer input off, no synthetic input.
+- **Ordinary frame:** 200 warm-up frames, 12 batches of 20 fixed-60-Hz
+  `update()` frames. A 1-px default-framebuffer `readPixels` brackets each
+  batch, draining the queue. Report median per-frame time / worst batch.
+  This is synced throughput, an upper bound on GPU work, not a timer query.
+- **Probe CPU:** one warm-up probe, 24 checks. Time issuing the async PBO
+  readback plus all polling attempts; scheduler delays excluded. The JSON
+  `settleDrainMs` is the post-submit drain remainder, **not GPU elapsed time**.
+  Do not add it to CPU cost as a separate GPU cost.
+- **1-in-30 probe:** 12 batches of 30 ordinary frames, then one probe, queue
+  drain, result polling. Report per-frame median; scheduling delays excluded.
+- **Checked-frame workload:** warm paired 20-frame batches of ordinary frames
+  versus identical frames with reduction + PBO readback enqueued **every
+  frame**, no polling in the timed span. Alternate order across 12 pairs.
+  Median difference bounds incremental probe workload; checked throughput
+  directly measures check frames without counting CPU/readback latency twice.
+  Real continuous-driver presets do not check; the stress variant forces it.
+- **Passes:** replay `simulateFrame`, `applyBloom`, `applySunrays`,
+  `drawDisplay`, `drawGlass` alone 60 times with captured arguments, flush
+  each replay. Without flush Apple's tiler culls overwritten opaque draws.
+  Replayed passes overlap in real frames; their sum can exceed frame time.
 
-### Why the timer query was wrong ("the gap")
+### Why not timer queries
 
-On ANGLE's Metal backend a TIME_ELAPSED query is charged the full GPU span of
-every `MTLCommandBuffer` created while it is active. Partial and overlapping
-command buffers are counted in full. At large canvases the canvas-sized
-render passes change how ANGLE splits command buffers, and the query
-over-reads by 2-100×:
-a composite-only Venturi frame took 0.08 ms of wall time and read 13.8 ms on
-the query. That was the whole "unprofiled gap" (GasFlare: groups summed to
-about 2.5 ms of a 6 ms query). Implicit resolves (there is no MSAA), present,
-and extra clears or blits were ruled out. Synced throughput, fence-synced
-throughput and the sum of the replayed passes all agree. ADR-0089 has the
-evidence table.
-
-An earlier fix, from per-frame `gl.finish()` to back-to-back queries, removed
-the idle-downclock bias at 800x500 but not this one.
+ANGLE Metal charges a TIME_ELAPSED query the full span of each command buffer
+created while active, counting partial/overlapping buffers in full. Large
+canvas render passes over-read by 2–100× (a 0.08 ms composite read 13.8 ms).
+Synced throughput, fence-synced throughput and replayed passes agreed in
+ADR 0089. The harness retains old queries only as evidence of this artifact.
+`EngineProfiler` group timings have the same bias; its frame ends before
+`trackSettle()` and **omits probe work**. This harness measures it separately.
 
 ## Result (this machine)
 
-- Adapter: ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max)
-- Method: synced throughput. Date: 2026-10-02. Cells are median / worst batch
-  in ms.
+- Apple M1 Max, ANGLE Metal, hardware Chrome. Date **2026-10-02**.
+- Full 90-case matrix measured at **`7baa954`**, runtime **`1c154e4`**: includes
+  lighting 0087, contrast floor 0086, JFA 0084, context tiers 0093, async
+  settle probe 0099. No preset or solver defaults changed.
+- Final runtime HEAD **`b278b11`** adds GL-error/FBO validation and failure
+  cleanup. Its default/GasFlare/Karman 1440x900 subset was remeasured below.
+  **The full matrix was not rerun after validation.** Do not claim its cheaper
+  CPU numbers for final HEAD. Later docs-only commits do not change runtime.
+- Cells: ordinary median / worst 20-frame batch, ms. Last two columns are
+  per-frame medians including the stated probe frequency, not added costs.
 
 ### Full viewport (1440x900 CSS; DPR 3 = 4320x2700)
 
-| Preset | DPR 1 | DPR 2 | DPR 3 | Passes @ DPR 3 | Old timer query @ DPR 3 |
+| Preset | DPR 1 | DPR 2 | DPR 3 | 1-in-30 probe @ DPR 3 | Probe every frame @ DPR 3 |
 |---|---|---|---|---|---|
-| (default) | 1.45 / 1.47 | 1.46 / 1.48 | 1.50 / 1.50 | solver 0.61, bloom 0.57, sunrays 0.17, display 0.57 | 2.08 |
-| LavaLamp | 0.76 / 0.80 | 0.82 / 0.85 | 1.67 / 1.90 | solver 0.61, display 0.37, glass 0.65 | 5.94 |
-| Plasma | 1.45 / 1.50 | 1.47 / 1.65 | 1.52 / 1.54 | solver 0.62, bloom 0.57, sunrays 0.16, display 0.48 | 1.91 |
-| InkInWater | 1.29 / 1.35 | 1.30 / 1.32 | 1.34 / 1.36 | solver 0.62, bloom 0.57, display 0.45 | 1.85 |
-| FrozenSwirl | 1.28 / 1.29 | 1.31 / 1.43 | 1.35 / 1.39 | solver 0.61, bloom 0.57, display 0.58 | 1.91 |
-| Aurora | 1.44 / 1.46 | 1.46 / 1.48 | 1.52 / 1.58 | solver 0.61, bloom 0.57, sunrays 0.16, display 0.44 | 1.82 |
-| CircularFluid | 1.28 / 1.30 | 1.31 / 1.40 | 1.36 / 1.40 | solver 0.61, bloom 0.57, display 0.49 | 1.89 |
-| FrameFluid | 1.29 / 1.33 | 1.32 / 1.35 | 1.40 / 1.45 | solver 0.62, bloom 0.57, display 0.80 | 2.32 |
-| AnnularFluid | 1.28 / 1.30 | 1.32 / 1.38 | 1.35 / 1.40 | solver 0.62, bloom 0.57, display 0.64 | 2.00 |
-| SvgPathFluid | 1.28 / 1.30 | 1.30 / 1.31 | 1.36 / 1.40 | solver 0.62, bloom 0.57, display 0.54 | 1.97 |
-| Toroidal | 1.45 / 1.48 | 1.48 / 1.48 | 1.52 / 1.55 | solver 0.61, bloom 0.58, sunrays 0.15, display 0.65 | 2.38 |
-| GasFlare | 1.54 / 1.56 | 1.60 / 1.61 | 1.76 / 1.85 | solver 1.02, bloom 0.42, display 0.93 | 5.71 |
-| Venturi | 1.05 / 1.06 | 1.07 / 1.08 | 1.19 / 1.21 | solver 0.96, display 0.79 | 3.98 |
-| Karman | 1.60 / 1.65 | 1.64 / 1.66 | 1.66 / 1.68 | solver 1.51, display 0.25 | 2.21 |
-| TeslaValve | 1.55 / 1.69 | 1.56 / 1.59 | 1.58 / 1.59 | solver 1.44, display 0.30 | 1.74 |
+| (default) | 1.45 / 1.49 | 1.46 / 1.48 | 1.51 / 1.52 | 1.49 | 1.82 |
+| LavaLamp | 0.76 / 0.78 | 0.93 / 1.07 | 1.84 / 1.94 | 1.75 | 1.94 |
+| Plasma | 1.42 / 1.47 | 1.48 / 1.51 | 1.54 / 1.70 | 1.49 | 1.84 |
+| InkInWater | 1.28 / 1.30 | 1.29 / 1.30 | 1.35 / 1.43 | 1.32 | 1.65 |
+| FrozenSwirl | 1.28 / 1.29 | 1.30 / 1.32 | 1.38 / 1.40 | 1.33 | 1.67 |
+| Aurora | 1.43 / 1.45 | 1.46 / 1.48 | 1.53 / 1.56 | 1.49 | 1.82 |
+| CircularFluid | 1.29 / 1.32 | 1.31 / 1.39 | 1.39 / 1.43 | 1.33 | 1.67 |
+| FrameFluid | 1.30 / 1.32 | 1.33 / 1.34 | 1.50 / 1.56 | 1.44 | 1.69 |
+| AnnularFluid | 1.32 / 1.38 | 1.32 / 1.34 | 1.42 / 1.45 | 1.35 | 1.69 |
+| SvgPathFluid | 1.33 / 1.35 | 1.31 / 1.32 | 1.38 / 1.41 | 1.33 | 1.66 |
+| Toroidal | 1.45 / 1.50 | 1.48 / 1.49 | 1.55 / 1.63 | 1.49 | 1.83 |
+| GasFlare | 1.54 / 1.56 | 1.64 / 1.80 | 1.65 / 1.68 | 1.60 | 1.94 |
+| Venturi | 1.04 / 1.06 | 1.10 / 1.24 | 1.11 / 1.15 | 1.08 | 1.40 |
+| Karman | 1.60 / 1.62 | 1.65 / 1.72 | 1.66 / 1.71 | 1.62 | 1.97 |
+| TeslaValve | 1.54 / 1.56 | 1.55 / 1.57 | 1.58 / 1.61 | 1.58 | 1.88 |
 
 ### Component (800x500 CSS)
 
-| Preset | DPR 1 | DPR 2 | DPR 3 |
-|---|---|---|---|
-| (default) | 1.45 / 1.49 | 1.45 / 1.48 | 1.47 / 1.49 |
-| LavaLamp | 0.76 / 0.78 | 0.77 / 0.82 | 0.79 / 0.81 |
-| Plasma | 1.45 / 1.49 | 1.46 / 1.48 | 1.48 / 1.50 |
-| InkInWater | 1.29 / 1.30 | 1.30 / 1.31 | 1.30 / 1.32 |
-| FrozenSwirl | 1.29 / 1.30 | 1.30 / 1.31 | 1.31 / 1.34 |
-| Aurora | 1.45 / 1.50 | 1.47 / 1.52 | 1.46 / 1.48 |
-| CircularFluid | 1.28 / 1.30 | 1.30 / 1.31 | 1.31 / 1.32 |
-| FrameFluid | 1.29 / 1.33 | 1.30 / 1.32 | 1.33 / 1.36 |
-| AnnularFluid | 1.30 / 1.32 | 1.30 / 1.33 | 1.32 / 1.33 |
-| SvgPathFluid | 1.29 / 1.31 | 1.30 / 1.31 | 1.30 / 1.32 |
-| Toroidal | 1.45 / 1.48 | 1.47 / 1.49 | 1.47 / 1.48 |
-| GasFlare | 1.55 / 1.58 | 1.56 / 1.57 | 1.57 / 1.61 |
-| Venturi | 1.04 / 1.08 | 1.05 / 1.07 | 1.06 / 1.08 |
-| Karman | 1.58 / 1.64 | 1.62 / 1.64 | 1.62 / 1.64 |
-| TeslaValve | 1.54 / 1.62 | 1.56 / 1.60 | 1.58 / 1.74 |
-
-Native DPR is now the default, so these numbers are what users pay. The
-invalidate-before-overwrite and clear-fold candidate for display and glass
-was pixel-identical and within 0.07 ms of baseline on every preset, so it was
-not landed (ADR-0089). The default change itself costs nothing on DPR 1 and 2
-screens.
+| Preset | DPR 1 | DPR 2 | DPR 3 | 1-in-30 probe @ DPR 3 | Probe every frame @ DPR 3 |
+|---|---|---|---|---|---|
+| (default) | 1.50 / 1.57 | 1.45 / 1.46 | 1.47 / 1.49 | 1.46 | 1.76 |
+| LavaLamp | 0.74 / 0.76 | 0.81 / 0.92 | 0.78 / 0.80 | 0.79 | 1.08 |
+| Plasma | 1.43 / 1.47 | 1.46 / 1.52 | 1.47 / 1.48 | 1.46 | 1.77 |
+| InkInWater | 1.26 / 1.29 | 1.35 / 1.51 | 1.29 / 1.30 | 1.29 | 1.58 |
+| FrozenSwirl | 1.27 / 1.28 | 1.35 / 1.46 | 1.29 / 1.33 | 1.30 | 1.60 |
+| Aurora | 1.43 / 1.58 | 1.46 / 1.57 | 1.47 / 1.58 | 1.48 | 1.77 |
+| CircularFluid | 1.28 / 1.40 | 1.29 / 1.39 | 1.30 / 1.31 | 1.30 | 1.60 |
+| FrameFluid | 1.28 / 1.31 | 1.30 / 1.39 | 1.32 / 1.33 | 1.31 | 1.62 |
+| AnnularFluid | 1.28 / 1.31 | 1.30 / 1.32 | 1.32 / 1.46 | 1.32 | 1.68 |
+| SvgPathFluid | 1.28 / 1.31 | 1.29 / 1.30 | 1.32 / 1.43 | 1.30 | 1.61 |
+| Toroidal | 1.43 / 1.45 | 1.46 / 1.47 | 1.47 / 1.48 | 1.46 | 1.76 |
+| GasFlare | 1.57 / 1.67 | 1.53 / 1.55 | 1.57 / 1.58 | 1.56 | 1.87 |
+| Venturi | 1.04 / 1.06 | 1.05 / 1.07 | 1.11 / 1.12 | 1.10 | 1.39 |
+| Karman | 1.58 / 1.59 | 1.61 / 1.63 | 1.63 / 1.78 | 1.62 | 1.93 |
+| TeslaValve | 1.53 / 1.56 | 1.55 / 1.57 | 1.56 / 1.60 | 1.57 | 1.85 |
 
 ## Verdict vs 2 ms
 
-Every preset is under 2 ms median at DPR 1, 2 and 3, at both 800x500 and a
-full 1440x900 viewport. The worst median is GasFlare at 1.76 ms (DPR 3,
-1440x900). The worst single batch is LavaLamp at 1.90 ms (DPR 3, 1440x900).
-The solver is flat across DPR. Canvas-sized work (display, glass) grows about
-2.25× from DPR 2 to DPR 3 and peaks at about 1 ms (LavaLamp display plus
-glass, GasFlare display).
+**The 1.0 bar is not established.** Latest full own-tier matrix: worst ordinary
+median **LavaLamp 1.845 ms**, worst batch **LavaLamp 1.945 ms** (1440x900 DPR 3).
+Worst checked median **Karman 1.970 ms** (same). These favorable averages do not
+establish an every-frame bar. Earlier repeats must not be hidden:
 
-## `maxPixelRatio` default: native (`null`)
+| SHA / run | GasFlare, 1440x900 DPR 3: ordinary median / worst | Probe-every-frame median / paired overhead |
+|---|---|---|
+| `3222036`, before final hardening | **2.060 / 2.085** | not measured |
+| `1c154e4` plus paired-harness draft | 1.780 / — | **2.040 / 0.290** |
+| `7baa954` full matrix | 1.650 / 1.680 | 1.940 / 0.305 |
+| `b278b11` validated HEAD subset | 1.660 / 1.685 | 1.985 / 0.305 |
 
-Changed from 2 to `null` because the budget holds at DPR 3 full-viewport for
-every preset. Opt back in with `maxPixelRatio={2}`. This is reasonable for
-full-bleed backgrounds on low-end integrated GPUs, which will be slower than
-this M1 Max.
+GasFlare reached **>= 2 ms median** on both ordinary and checked repeats. No
+preset was tuned to hide it. Clock/contention/presentation variance is real;
+a favorable rerun does not erase the exceedance. Shared Karman also exceeds
+2 ms (below). No lower-end laptop GPU was tested.
 
-## Dominant pass
+## Native DPR and dominant passes
 
-The solver dominates every preset: 0.6 ms for most, 1.0 for Venturi and
-GasFlare, 1.4-1.5 for TeslaValve and Karman. The 307x192 solver is bound by
-pass count (about 40 µs per pass). Bloom costs a fixed 0.4-0.6 ms when
-enabled and sunrays about 0.16 ms. Display costs 0.25-0.9 ms and glass
-0.65 ms at 1440x900 DPR 3.
+`maxPixelRatio:null` remains the default; it was chosen under earlier own-tier
+measurements (ADR 0089), not proof of this stricter bar. Consumers can opt into
+`maxPixelRatio={2}`; this lane did not cap native DPR or change defaults.
 
-## Caveats
-
-- Karman: `substeps: 2` / `maxTimeStep: 1/120` was retuned to one 1/60 s step
-  (77 to 39 passes/frame); `registry.test.ts` guards it.
-- One laptop GPU (M1 Max). Lower-end integrated GPUs will be slower.
-- `EngineProfiler` group GPU times (`instrument: true`) carry the same ANGLE
-  Metal timer-query bias at large canvases.
-
-## Model engines
-
-Interface-primitive engines on the shared WebGL2 host (ADR-0088). Apple M1 Max,
-hardware Chrome, synced batches (1-px readback per batch, busy frames; no timer
-query). Budget 2 ms. All are zero or near zero at rest.
-
-| Component | Size (CSS) | DPR | Method | ms | Source |
-|---|---|---|---|---|---|
-| InkPaper (wet, step + display) | 800x500 | 2 | 30-frame batches, median of 9 | 0.97 | ADR-0090 |
-| InkPaper (wet, step + display) | 800x500 | 3 | same | 1.46 | ADR-0090 |
-| LiquidButton | 220x56, 480x64 | 2, 3 | impulse every frame | 0.42-0.44 | ADR-0091/0092 |
-| LiquidSegmented | 360x56 | 2 | impulse every frame, 30-frame batches, median of 15 | 0.41 (worst 0.43) | measured 2026-10-02 |
-| LiquidSegmented | 360x56 | 3 | same | 0.43 (worst 0.45) | measured 2026-10-02 |
-| LiquidDropZone (dragging) | 480x200 | 2 | impulse every frame | 0.46 | ADR-0094 |
-| LiquidDropZone (dragging) | 480x200 | 3 | same | 0.58 | ADR-0094 |
-| LiquidCaustics (busy) | 720x400 | 2 | impulse every frame | 0.33 | ADR-0094 |
-| LiquidCaustics (busy) | 720x400 | 3 | same | 0.40 | ADR-0094 |
-| FoilSwitch | 96x48, 192x96 | 2, 3 | 60-frame batches | 0.012-0.015 | ADR-0096 |
-
-LiquidSegmented has no number of its own in the ADRs. It was measured with
-`surface-gpu.browser.test.ts` at native DPR (the bench reads `devicePixelRatio`):
-
-```sh
-SVELTE_FLUID_GPU_BENCH=1 SVELTE_FLUID_DPR=2 VITEST_CHROME_PATH=... \
-  bun run test:browser src/lib/engine/__benches__/surface-gpu.browser.test.ts
-```
-
-Button, segmented and wide-button cases all land within 0.02 ms of each other
-and do not grow with canvas area, so the batch is submit-bound and these are
-upper bounds.
+GasFlare 1440x900 DPR 3 (`7baa954`): isolated solver **1.023 ms**, bloom
+**0.425 ms**, display **0.745 ms**, ordinary frame 1.650 ms. Passes overlap.
+On the earlier 2.060 ms run these passes were 1.077/0.473/1.007 ms: ordinary
+solver/display work, not settling, accounts for that excess. Paired probe
+work adds about 0.30 ms, producing the separate 2.040 ms checked repeat.
 
 ## Shared tier (ADR 0093)
 
-`FluidEngine` instances past K=8 present through the shared host. Each pays the
-snapshot copy: +0.45 ms at DPR 2 and +0.7 ms at DPR 3 per shared instance, flat
-in n, up to about 2.37 ms (Karman, DPR 3). That can exceed the 2 ms budget by up
-to about 0.4 ms. Accepted: the alternative past about 16 instances is context
-loss and a blank canvas.
+Forced shared Karman, 1440x900 CSS, `7baa954`, fired (not awaited) presents:
+
+| DPR | Ordinary median / worst batch | Probe every frame median | Paired probe overhead | 1-in-30 probe median |
+|---|---|---|---|---|
+| 1 | 2.575 / 5.535 | 2.590 | 0.495 | 2.183 |
+| 2 | 5.355 / 16.250 | 2.775 | 0.375 | 2.473 |
+| 3 | 4.440 / 16.985 | 5.605 | 0.370 | 2.863 |
+
+Snapshot/presentation scheduling makes these wall-throughput numbers volatile;
+they are **not clean GPU-only attribution**. Even the 30-frame averages exceed
+2 ms. Historical 800x500 shared Karman was ~2.37 ms at DPR 3 (ADR 0093); that
+is historical, not a final-HEAD measurement. Reduction parity tests cover both
+tiers. Shared-tier failure is not exempt from the 1.0 bar.
 
 ## Settled engines (ADR 0099)
 
-An engine whose velocity and dye have decayed below one 8-bit step stops its frame loop: 0 ms GPU and 0 rAF callbacks until the next input. Its quiet check costs about 0.17 ms per frame averaged while still active.
+Settled engines stop: 0 ms GPU, 0 rAF callbacks until input. Previously every
+30th frame synchronously read full velocity and dye fields to CPU. At
+1440x900 CSS DPR 3, component-derived resolutions:
+
+| Preset | Before check median / max wall ms (`db8d41a`) | Before median / 30 | After CPU check median / max (`b278b11`) | After CPU median / 30 | Paired workload overhead | Overhead / 30 |
+|---|---|---|---|---|---|---|
+| (default) | 33.90 / 42.80 | 1.130 | 0.90 / 1.20 | 0.030 | 0.285 | 0.0095 |
+| GasFlare | 19.30 / 23.30 | 0.643 | 0.90 / 1.20 | 0.030 | 0.305 | 0.0102 |
+| Karman | 35.80 / 40.10 | 1.193 | 0.90 / 1.10 | 0.030 | 0.300 | 0.0100 |
+
+Before: 12 drained checks. After: one warm-up (first-use chain/PBO allocation
+excluded), 24 checks, issue plus all poll CPU costs, scheduling delays excluded.
+Async CPU time is not the old GPU-synchronized wall time; paired throughput
+supplies workload evidence. CPU max still reached **1.20 ms**; averaged CPU
+cost is 0.030 ms/frame. Pre-validation full matrix measured 0.30 ms CPU median,
+<=0.70 ms max: do not claim those cheaper values for final HEAD.
+
+Replacement: 8x8 absolute max-pool chains, velocity rg and dye rgb, to 1x1 R16F
+per field. Two pixels enter a 32-byte PBO; consume only after its fence signals.
+`isQuiet` thresholds unchanged. Discard stale probes after field/config/input
+changes. Allocation/read errors fail closed; candidate chains are transactional.
+WebGL1/missing float readback stays active rather than claiming quietness.
+
+Final HEAD subset ordinary / checked medians: default 1.545/1.835, GasFlare
+1.660/1.985, Karman 1.705/1.990 ms. Little headroom; amortization is not the
+per-frame bar. GPU workload/snapshot optimization remains separate work.
+
+## Model engines
+
+Cheap surface/enamel/dropzone benches rerun DPR 2/3 at `1c154e4`, 2026-10-02,
+hardware Chrome, synced busy batches. Models were unchanged by this lane.
+InkPaper/FoilSwitch not rerun; rows retain historical evidence.
+
+| Component | Size (CSS) | DPR | Median ms / worst batch | Source |
+|---|---|---|---|---|
+| InkPaper wet | 800x500 | 2 / 3 | 0.97 / 1.46 (historical medians) | ADR 0090 |
+| LiquidButton | 220x56 / 480x64 | 2 / 3 | 0.43–0.44 / <=0.51 | remeasured |
+| LiquidSegmented | 360x56 | 2 | 0.46 / 0.55 | remeasured |
+| LiquidSegmented | 360x56 | 3 | 0.44 / 0.48 | remeasured |
+| LiquidDropZone dragging | 480x200 | 2 | 0.46 / 0.48 | remeasured |
+| LiquidDropZone dragging | 480x200 | 3 | 0.58 / 0.60 | remeasured |
+| LiquidCaustics busy | 720x400 | 2 | 0.34 / 0.39 | remeasured |
+| LiquidCaustics busy | 720x400 | 3 | 0.40 / 0.41 | remeasured |
+| EnamelText held press | 96px bold / 64px two words | 2 | 0.74 / 0.81; 0.76 / 0.78 | remeasured |
+| EnamelText held press | same | 3 | 0.73 / 0.81; 0.73 / 0.74 | remeasured |
+| FoilSwitch | 96x48 / 192x96 | 2 / 3 | 0.012–0.015 (historical medians) | ADR 0096 |
+
+```sh
+SVELTE_FLUID_GPU_BENCH=1 SVELTE_FLUID_DPR=2 VITEST_CHROME_PATH=... \
+  bun run test:browser src/lib/engine/__benches__/surface-gpu.browser.test.ts \
+  src/lib/engine/__benches__/enamel-gpu.browser.test.ts \
+  src/lib/engine/__benches__/dropzone-gpu.browser.test.ts
+```
