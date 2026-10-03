@@ -41,8 +41,16 @@ export function hasContinuousDriver(
  * the per-frame delta drops under SETTLE_EPSILON.
  */
 export function isQuiet(maxVelocity: number, maxDye: number, dissipation: number): boolean {
+	if (![maxVelocity, maxDye, dissipation].every(Number.isFinite) || maxVelocity < 0 || maxDye < 0 || dissipation < 0) return false;
 	// Fully invisible dye: nothing left to move, whatever the velocity does.
 	if (maxDye < SETTLE_EPSILON) return true;
 	const perFrameFade = maxDye * (1 - 1 / (1 + dissipation / 60));
 	return maxVelocity < SETTLE_VELOCITY && perFrameFade < SETTLE_EPSILON;
+}
+
+/** RGBA8 exact boolean reduction; untouched, partial or invalid readbacks fail closed. */
+export function isQuietFlags(bytes: ArrayLike<number>, exactDye = false): boolean {
+	if (bytes.length !== 8 || bytes[3] !== 255 || bytes[7] !== 255) return false;
+	if (![bytes[0], bytes[1], bytes[2], bytes[4], bytes[5], bytes[6]].every((v) => v === 0 || v === 255)) return false;
+	return exactDye ? bytes[6] === 0 : bytes[4] === 0 || (bytes[0] === 0 && bytes[5] === 0);
 }

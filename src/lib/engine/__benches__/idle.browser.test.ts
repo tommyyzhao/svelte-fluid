@@ -4,6 +4,9 @@ import FluidReveal from '../../FluidReveal.svelte';
 import { FluidEngine, _setContextTier } from '../FluidEngine.js';
 import { activeFrameSubscribers } from '../frame-scheduler.js';
 import type { FluidConfig } from '../types.js';
+import { isQuiet, isQuietFlags } from '../settle.js';
+import { createFBO, disposeFBO } from '../gl-utils.js';
+import type { FBO } from '../internal-types.js';
 
 /* ADR 0099: a decayed visible engine stops scheduling frames until input. */
 
@@ -78,6 +81,61 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 			`[idle] check cost: ${(stats.totalMs / stats.checks).toFixed(3)} ms per check, ${(stats.totalMs / stats.checks / 30).toFixed(4)} ms/frame (${stats.checks} checks)`
 		);
 	}, 60_000);
+
+	it.each(['webgl1', 'webgl2-byte'] as const)('%s fallback settles, preserves final image, wakes and re-settles', async (mode) => {
+		const canvas = document.createElement('canvas');
+		if (mode === 'webgl1') {
+			const get = canvas.getContext.bind(canvas) as (t: string, ...args: unknown[]) => unknown;
+			(canvas as unknown as { getContext: unknown }).getContext = (t: string, ...args: unknown[]) => t === 'webgl2' || t === 'bitmaprenderer' ? null : get(t, ...args);
+		}
+		const e = engine({ densityDissipation: 4, initialSplatCount: 0 }, false, canvas);
+		const p = e as unknown as { canReadSettleFloat(): boolean; autoStart: boolean; deterministicMode: boolean; settleBytes: Uint8Array; gl: WebGLRenderingContext };
+		if (mode === 'webgl2-byte') p.canReadSettleFloat = () => false;
+		p.autoStart = true;
+		p.deterministicMode = false;
+		e.resume();
+		await until(() => e.isSettled, 20_000);
+		expect(activeFrameSubscribers()).toBe(0);
+		expect(isQuietFlags(p.settleBytes)).toBe(true);
+		// Render once into a retained target: default drawing buffers need not persist.
+		const gl = p.gl;
+		const target = createFBO(gl, 128, 128, mode === 'webgl1' ? gl.RGBA : (gl as WebGL2RenderingContext).RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.NEAREST);
+		try {
+			(e as unknown as { renderCore(target: FBO): void }).renderCore(target);
+			const read = () => {
+				const bytes = new Uint8Array(128 * 128 * 4);
+				gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+				gl.readPixels(0, 0, 128, 128, gl.RGBA, gl.UNSIGNED_BYTE, bytes);
+				expect(gl.getError()).toBe(gl.NO_ERROR);
+				return bytes;
+			};
+			const before = read();
+			await sleep(200);
+			expect(read()).toEqual(before);
+		} finally { disposeFBO(gl, target); }
+		e.splat(0.5, 0.5, -300, 400, { r: 2, g: 0.5, b: 0.2 });
+		expect(e.isSettled).toBe(false);
+		await until(() => e.isSettled, 20_000);
+		expect(activeFrameSubscribers()).toBe(0);
+	}, 60_000);
+
+	it.each(['webgl1', 'webgl2-byte'] as const)('%s flags equal issue-time signed velocity/HDR dye maxima across odd edges', async (mode) => {
+		const canvas = document.createElement('canvas');
+		if (mode === 'webgl1') {
+			const get = canvas.getContext.bind(canvas) as (t: string, ...args: unknown[]) => unknown;
+			(canvas as unknown as { getContext: unknown }).getContext = (t: string, ...args: unknown[]) => t === 'webgl2' || t === 'bitmaprenderer' ? null : get(t, ...args);
+		}
+		const e = engine({ simResolution: 61, dyeResolution: 203, initialSplatCount: 0 }, false, canvas);
+		const p = e as unknown as { canReadSettleFloat(): boolean; issueSettleProbe(): void; advanceSettleProbe(): void; pollSettleProbe(): boolean | null; settleProbe: { ready?: boolean } | null; settleBytes: Uint8Array; config: { DENSITY_DISSIPATION: number } };
+		if (mode === 'webgl2-byte') p.canReadSettleFloat = () => false;
+		e.splat(0.999, 0.001, -900, 1200, { r: 0.2, g: 1.7, b: 2.3 });
+		const max = (data: Float32Array) => data.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
+		const expected = isQuiet(max(e.readField('velocity').data), max(e.readField('dye', { components: 3 }).data), p.config.DENSITY_DISSIPATION);
+		p.issueSettleProbe();
+		for (let i = 0; i < 12 && !p.settleProbe?.ready; i++) { e.advance(1, 1 / 60); p.advanceSettleProbe(); }
+		expect(p.pollSettleProbe()).toBe(expected);
+		expect([...p.settleBytes]).toEqual([255, 0, 0, 255, 255, 255, 255, 255]);
+	});
 
 	it('default densityDissipation settles within 20 s', async () => {
 		engine();

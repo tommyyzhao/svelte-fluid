@@ -88,17 +88,28 @@ export const settleMaxShader = `
     uniform sampler2D uSource;
     uniform vec2 uSourceTexel;
     uniform vec4 uChannels;
+    uniform int uFlagMode;
+    uniform float uFade;
 
     void main () {
         vec2 base = (floor(gl_FragCoord.xy) * 8.0 + 0.5) * uSourceTexel;
         float m = 0.0;
+        vec4 flags = vec4(0.0);
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
                 vec4 v = abs(texture2D(uSource, base + vec2(float(x), float(y)) * uSourceTexel)) * uChannels;
-                m = max(m, max(max(v.r, v.g), max(v.b, v.a)));
+                float value = max(max(v.r, v.g), max(v.b, v.a));
+                m = max(m, value);
+                if (uFlagMode == 1) flags.r = max(flags.r, value < 0.5 ? 0.0 : 1.0);
+                if (uFlagMode == 2) {
+                    flags.r = max(flags.r, value < (0.5 / 255.0) ? 0.0 : 1.0);
+                    flags.g = max(flags.g, value * uFade < (0.5 / 255.0) ? 0.0 : 1.0);
+                    flags.b = max(flags.b, value == 0.0 ? 0.0 : 1.0);
+                }
+                if (uFlagMode == 3) flags = max(flags, v);
             }
         }
-        gl_FragColor = vec4(m, 0.0, 0.0, 1.0);
+        gl_FragColor = uFlagMode == 0 ? vec4(m, 0.0, 0.0, 1.0) : vec4(flags.rgb, 1.0);
     }
 `;
 
