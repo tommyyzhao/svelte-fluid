@@ -56,7 +56,7 @@ describe('RGBA8 quiet flags', () => {
 	});
 });
 
- describe('presets', () => {
+describe('presets', () => {
 	const flags = PRESETS.map((p) => ({
 		id: p.id,
 		continuous: hasContinuousDriver(resolveConfig(p.config as never, DEFAULTS), 1e6)
