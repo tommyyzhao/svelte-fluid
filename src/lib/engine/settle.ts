@@ -52,5 +52,6 @@ export function isQuiet(maxVelocity: number, maxDye: number, dissipation: number
 export function isQuietFlags(bytes: ArrayLike<number>, exactDye = false): boolean {
 	if (bytes.length !== 8 || bytes[3] !== 255 || bytes[7] !== 255) return false;
 	if (![bytes[0], bytes[1], bytes[2], bytes[4], bytes[5], bytes[6]].every((v) => v === 0 || v === 255)) return false;
+	if (bytes[1] !== 0) return false;
 	return exactDye ? bytes[6] === 0 : bytes[4] === 0 || (bytes[0] === 0 && bytes[5] === 0);
 }

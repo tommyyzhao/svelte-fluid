@@ -167,3 +167,10 @@ immutable snapshots, byte errors, cancellation/restore, wake/re-settle, retained
 presentation, and rendered sub-epsilon distortion/reveal counterexamples.
 Separate stage/readback wall-time counters are instrumentation, not a timing
 budget acceptance result; native GPU certification remains pending.
+
+Review follow-up: velocity flags also preserve an invalid-component bit before
+max reduction; ordered per-component half-float bounds reject NaN/Infinity.
+Invalid dye writes all nonquiet flags. Both readback paths reject invalid internal
+dissipation even for exactly empty distortion/reveal. Public config resolution
+already sanitizes invalid dissipation; tests inject the internal boundary directly.
+Focused hardware follow-up passed all four selected parity/flag tests.
