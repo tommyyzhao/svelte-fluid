@@ -93,6 +93,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0097](./0097-enamel-text.md) | EnamelText: compliant enamel on glyphs, gather-form pair transport, glyph contrast band | Accepted |
 | [0098](./0098-gl-neutral-public-declarations.md) | Public declarations are GL-type-neutral; internal GL types removed from the root | Accepted |
 | [0099](./0099-settle-visible-idle-fluid.md) | Settle a visible idle fluid to zero frames | Accepted |
+| [0100](./0100-independent-deposited-thickness.md) | Independent deposited thickness in dye alpha | Accepted; visual review pending |
 
 ADRs 0067-0078 exist only on the private R&D branch (`rd/webgpu-replacement`); the numbering gap here is intentional.
 
