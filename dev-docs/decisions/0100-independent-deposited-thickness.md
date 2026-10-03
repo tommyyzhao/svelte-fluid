@@ -26,7 +26,9 @@ swapped into persistent read state. Every shared program binds its dose/height
 uniforms on every use, including zero for non-dye fields.
 
 One geometry snippet samples alpha for aspect-correct central-difference normals
-and dielectric refraction/specular. Pigment RGB and RGB-driven reveal/display
+and dielectric refraction/specular. Diffuse uses that true unit normal with the
+same studio key as specular, ambient/key weights 0.7/0.3; the old 10000× squared
+slope gain is removed, not hidden in a compatibility branch. Pigment RGB and RGB-driven reveal/display
 coverage remain separate; output remains premultiplied. `readField('dye')`'s
 internal fourth channel intentionally changes from padding to thickness; no new
 public prop, selector or root GL type.

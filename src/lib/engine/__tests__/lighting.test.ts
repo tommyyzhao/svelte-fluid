@@ -45,6 +45,8 @@ describe('independent deposited thickness', () => {
 	});
 	it('removes emitted RGB-length normals; defaults never opt presets into new optics', () => {
 		expect(displayShaderSource).not.toMatch(/length\([lrbt]c\)/);
+		expect(displayShaderSource).not.toContain('10000.0 * dot(n.xy');
+		expect(displayShaderSource).toContain('0.7 + 0.3 * max(dot(n, normalize(vec3(-0.35, 0.45, 1.0))), 0.0)');
 		expect(DYE_GEOMETRY_GLSL).not.toMatch(/log\(|concentration|\.rgb/);
 		expect(DYE_GEOMETRY_GLSL).toContain('float dyeHeight (float thickness)');
 		expect(displayShaderSource).toContain('dyeHeight(dye.a)');
