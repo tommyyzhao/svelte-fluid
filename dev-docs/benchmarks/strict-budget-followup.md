@@ -18,6 +18,9 @@ quietness. Production bitmap transport is unchanged.
   `e825b8f`. Raw files identify the exact run; no unmeasured performance SHA claim.
 - Initial matrices: `/tmp/strict-budget-own-01fe3ae.json`,
   `/tmp/strict-budget-shared-01fe3ae.json`.
+- Final runtime/test candidate `f15525d`; independent workload measurements above
+  predate reviewer fixes that defer fence polling and isolate sibling GL errors.
+  No final-SHA performance rerun is claimed; reduction/render workloads unchanged.
 - Repeat: `/tmp/strict-budget-own-repeat-e825b8f.json`.
 - Shared split: `/tmp/strict-budget-shared-split-e825b8f.json`.
 - Stability: `/tmp/strict-budget-bitmap-transfer.json`,
@@ -115,6 +118,12 @@ Mixed 9/16/24 instances remain resident on the shared host. Sizes cycle
 respectively gives largest native canvases 1440×900 / 2880×1800 / 4320×2700.
 Six randomized repeats of ten **individual instance** frames, not page total/n.
 This measures resident-instance cost, not compositor frame scheduling fairness.
+The initial mixed run incorrectly limited dye/post field resolutions against CSS
+rather than native size on small DPR2/3 instances; the largest 1440×900 instances
+and all viewport matrices are unaffected. Thus the maxima below remain real
+failing large-instance evidence, but this is **not** a certified production-config
+small-instance matrix. Harness corrected afterward; no corrected mixed rerun
+claimed. Do not infer small-instance budget compliance from those rows.
 
 | Instances | DPR | Largest per-instance median | Worst individual-instance batch |
 |---:|---:|---:|---:|

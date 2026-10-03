@@ -7,6 +7,7 @@
 // Diagnostic only, deliberately outside the library and normal test suite.
 // Open in hardware Chrome; ?snapshot uses the passing createImageBitmap path.
 // ?close clears the bitmaprenderer before loss (a diagnostic, NOT a fix).
+// ?churn=3 adds release/remount/loss rounds; ?mixed uses 24 sizes per mount.
 // Observed 2026-10-02: Chrome 154.0.8037.95, macOS 27, ANGLE Metal Apple M1 Max.
 // Transfer path intermittently loses the renderer/page; snapshot path survived
 // 28 isolated runs, then the host browser suite including all 24-instance loss
