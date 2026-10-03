@@ -3549,7 +3549,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, this.settlePixels);
 			gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
 			this.checkSettleGl();
-			if (!Number.isFinite(this.settlePixels[0]) || !Number.isFinite(this.settlePixels[4]) || this.settlePixels[4] === 65504) return false;
+			if (!Number.isFinite(this.settlePixels[0]) || !Number.isFinite(this.settlePixels[4]) || this.settlePixels[0] === 65504 || this.settlePixels[4] === 65504) return false;
 			this.settleCheckCount++;
 			if (!Number.isFinite(this.config.DENSITY_DISSIPATION) || this.config.DENSITY_DISSIPATION < 0) return false;
 			// Arbitrary image frequency/power and reveal curves can amplify any nonzero dye.

@@ -4,7 +4,7 @@ import FluidReveal from '../../FluidReveal.svelte';
 import { FluidEngine, _setContextTier } from '../FluidEngine.js';
 import { activeFrameSubscribers } from '../frame-scheduler.js';
 import type { FluidConfig } from '../types.js';
-import { isQuiet, isQuietFlags } from '../settle.js';
+import { dyeVisibilityGain, isQuiet, isQuietFlags } from '../settle.js';
 import { createFBO, disposeFBO } from '../gl-utils.js';
 import type { FBO } from '../internal-types.js';
 
@@ -363,6 +363,7 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		(probe as unknown as { settleFrames: number }).settleFrames = 0;
 		const v = cpuMax(e.readField('velocity').data);
 		const d = cpuMax(e.readField('dye', { components: 3 }).data);
+		const displayedDye = d * dyeVisibilityGain((e as unknown as { config: { SUNRAYS: boolean; SUNRAYS_WEIGHT: number } }).config);
 		const original = probe.blit;
 		let draws = 0;
 		probe.blit = (...args) => { draws++; original(...args); };
@@ -392,7 +393,7 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		expect(d).toBeGreaterThan(0.5);
 		// Inputs are already half floats; the R16F chain re-rounds once (2^-11 relative).
 		expect(Math.abs(gv - v)).toBeLessThanOrEqual(v * 2 ** -10);
-		expect(Math.abs(gd - d)).toBeLessThanOrEqual(d * 2 ** -10);
+		expect(Math.abs(gd - displayedDye)).toBeLessThanOrEqual(displayedDye * 2 ** -10);
 		}
 		} finally {
 			_setContextTier('auto');

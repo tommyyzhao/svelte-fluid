@@ -120,6 +120,7 @@ export const settleMaxShader = `
                 m = max(m, value);
                 // Half-float source fields cannot contain finite magnitudes above 65504.
                 bool valid = v.r >= 0.0 && v.r <= 65504.0 && v.g >= 0.0 && v.g <= 65504.0 && v.b >= 0.0 && v.b <= 65504.0 && v.a >= 0.0 && v.a <= 65504.0;
+                if (!valid) m = 65504.0;
                 if (uFlagMode == 1) {
                     flags.r = max(flags.r, value < 0.5 ? 0.0 : 1.0);
                     flags.g = max(flags.g, valid ? 0.0 : 1.0);
