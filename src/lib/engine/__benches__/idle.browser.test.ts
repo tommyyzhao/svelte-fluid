@@ -195,6 +195,45 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		}
 	});
 
+	it('a partial reduction allocation leaves no truncated chain to reuse', () => {
+		const e = engine({ simResolution: 16 }, false);
+		const p = e as unknown as {
+			gl: WebGL2RenderingContext; velocity: { read: unknown }; settleVelocityChain: unknown[];
+			settleReduce(src: unknown, chain: unknown[], r: number, g: number, b: number): { width: number; height: number };
+		};
+		const original = p.gl.createTexture.bind(p.gl);
+		let n = 0;
+		p.gl.createTexture = () => ++n === 2 ? null : original();
+		try {
+			expect(() => p.settleReduce(p.velocity.read, p.settleVelocityChain, 1, 1, 0)).toThrow();
+			expect(p.settleVelocityChain).toHaveLength(0);
+		} finally { p.gl.createTexture = original; }
+		const reduced = p.settleReduce(p.velocity.read, p.settleVelocityChain, 1, 1, 0);
+		expect([reduced.width, reduced.height]).toEqual([1, 1]);
+	});
+
+	it.each(['own', 'shared'] as const)('failed readPixels cannot become quiet (%s tier)', (tier) => {
+		_setContextTier(tier);
+		try {
+			const e = engine({}, false);
+			const p = e as unknown as {
+				gl: WebGL2RenderingContext;
+				issueSettleProbe(): void;
+				settleProbe: unknown; settleCheckCount: number; failed: boolean;
+			};
+			const original = p.gl.readPixels.bind(p.gl);
+			p.gl.readPixels = (() => {
+				// Real GL validation error; no JS exception, exactly the silent-zero failure.
+				p.gl.bindBuffer(-1, null);
+			}) as typeof p.gl.readPixels;
+			try { p.issueSettleProbe(); } finally { p.gl.readPixels = original; }
+			expect(p.failed).toBe(true);
+			expect(p.settleProbe).toBeNull();
+			expect(p.settleCheckCount).toBe(0);
+			expect(e.isSettled).toBe(false);
+		} finally { _setContextTier('auto'); }
+	});
+
 	it('FluidReveal auto-reveal is not deadlocked by settling', async () => {
 		const el = document.createElement('div');
 		el.style.cssText = 'width:200px;height:200px;position:relative';
