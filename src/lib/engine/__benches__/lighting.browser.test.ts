@@ -126,6 +126,38 @@ describe('independent thickness transport', () => {
 			}
 		} finally { a.engine.dispose(); b.engine.dispose(); }
 	});
+	it('recoloring RGB leaves height, normals and image refraction unchanged', () => {
+		const { engine, h } = setup({ distortion: true, distortionPower: 0, refraction: 1, shading: false });
+		try {
+			image(h);
+			engine.splat(0.5, 0.5, 0, 0, { r: 0, g: 0, b: 0 });
+			const before = read(h), heights = thickness(engine);
+			const field = engine.readField('dye');
+			for (let i = 0; i < field.data.length; i += 4) field.data.set([10, 0.1, 3], i);
+			h.gl.bindTexture(h.gl.TEXTURE_2D, h.dye.read.texture);
+			h.gl.texSubImage2D(h.gl.TEXTURE_2D, 0, 0, 0, field.width, field.height, h.gl.RGBA, h.gl.FLOAT, field.data);
+			expect(thickness(engine)).toEqual(heights);
+			expect(mae(before, read(h))).toBe(0);
+		} finally { engine.dispose(); }
+	});
+	it('sticky retention, physical masks and outlets remove/retain the full RGBA layer', () => {
+		for (const config of [
+			{ sticky: true, stickyStrength: 1, densityDissipation: 0.9, stickyMask: { d: 'M0 0H100V100H0Z', maskResolution: 32 } },
+			{ containerShape: { type: 'circle' as const, cx: 0.5, cy: 0.5, radius: 0.2 } },
+			{ flow: { outlets: [{ edge: 'left' as const, width: 1, clearDye: 0 }] } }
+		]) {
+			const { engine } = setup(config);
+			try {
+				engine.splat(0.5, 0.5, 0, 0, { r: DYE_SPLAT_DOSE, g: 0, b: 0 });
+				engine.advance(3, 1 / 60);
+				const data = engine.readField('dye').data;
+				for (let i = 0; i < data.length; i += 4) expect(data[i + 3]).toBe(data[i]);
+				if (config.sticky) expect(Math.max(...thickness(engine))).toBeCloseTo(DYE_SPLAT_DOSE, 3);
+				if (config.containerShape) expect(data[3]).toBe(0);
+				if (config.flow) expect(Math.max(...thickness(engine))).toBeLessThan(DYE_SPLAT_DOSE / 2);
+			} finally { engine.dispose(); }
+		}
+	});
 	it('decays thickness and preserves read alpha through resolution/aspect resize', () => {
 		const { engine } = setup({ densityDissipation: 2 });
 		try {
