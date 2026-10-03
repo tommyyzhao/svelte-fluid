@@ -157,3 +157,13 @@ proof remains unresolved and automatic settling is conservatively disabled while
 that visualization is active. Actual contributing-field convergence probes are
 outside this finite fallback change. No claim of zero-idle frames for all modes,
 arbitrary gain/contrast/optical settings or calibrated image convergence.
+
+Validation at `9c64676`: ordinary installed hardware Chrome, focused idle suite
+29/29, full browser suite 279/279 across 34 files, Node 869/869, check zero
+errors/warnings, build and prepack passed. Tests force WebGL1 at the existing
+canvas context seam and missing float capability per instance (not by disabling
+float simulation support globally). Coverage includes signed/HDR odd-edge flags,
+immutable snapshots, byte errors, cancellation/restore, wake/re-settle, retained
+presentation, and rendered sub-epsilon distortion/reveal counterexamples.
+Separate stage/readback wall-time counters are instrumentation, not a timing
+budget acceptance result; native GPU certification remains pending.
