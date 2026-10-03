@@ -162,8 +162,8 @@ yarn add svelte-fluid</code></pre>
 			<td>Caustic light over live content where the user acts.</td>
 		</tr>
 		<tr>
-			<td><code><a href="{base}/docs/components#foilswitch">&lt;FoilSwitch&gt;</a></code></td>
-			<td>Native switch drawn as a bistable metal arch.</td>
+			<td><code><a href="{base}/docs/components#liquidtoggle">&lt;LiquidToggle&gt;</a></code></td>
+			<td>Native checkbox switch with a sliding liquid lens.</td>
 		</tr>
 		<tr>
 			<td><code><a href="{base}/docs/components#enameltext">&lt;EnamelText&gt;</a></code></td>

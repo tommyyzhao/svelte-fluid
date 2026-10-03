@@ -199,7 +199,7 @@ per-frame bar. GPU workload/snapshot optimization remains separate work.
 
 Cheap surface/enamel/dropzone benches rerun DPR 2/3 at `1c154e4`, 2026-10-02,
 hardware Chrome, synced busy batches. Models were unchanged by this lane.
-InkPaper/FoilSwitch not rerun; rows retain historical evidence.
+InkPaper not rerun. FoilSwitch removed by owner 2026-10-02; its measurement is historical, not shipped evidence.
 
 | Component | Size (CSS) | DPR | Median ms / worst batch | Source |
 |---|---|---|---|---|
@@ -213,7 +213,7 @@ InkPaper/FoilSwitch not rerun; rows retain historical evidence.
 | LiquidCaustics busy | 720x400 | 3 | 0.40 / 0.41 | remeasured |
 | EnamelText held press | 96px bold / 64px two words | 2 | 0.74 / 0.81; 0.76 / 0.78 | remeasured |
 | EnamelText held press | same | 3 | 0.73 / 0.81; 0.73 / 0.74 | remeasured |
-| FoilSwitch | 96x48 / 192x96 | 2 / 3 | 0.012–0.015 (historical medians) | ADR 0096 |
+| Removed FoilSwitch (historical only) | 96x48 / 192x96 | 2 / 3 | 0.012–0.015 (historical medians) | ADR 0096 |
 
 ```sh
 SVELTE_FLUID_GPU_BENCH=1 SVELTE_FLUID_DPR=2 VITEST_CHROME_PATH=... \

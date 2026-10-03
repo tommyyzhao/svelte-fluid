@@ -58,3 +58,7 @@ stay legible over moving light and degrade to an ordinary control.
   them is budgeted.
 - Rejected: canvas-painted labels (no selection, translation or system text
   rendering); a custom radiogroup (re-implements native keyboard handling).
+
+## Component policy amendment (2026-10-02)
+
+`LiquidToggle` replaces the owner-rejected metal switch. It wraps a native checkbox with `role="switch"` in its visible DOM label, forwarding name/value/form and using `bind:checked` (including native reset). Its 96×48 CSS px track uses the existing segmented palette, rounded rectangle, lens target, damped spring and wave release unchanged. The target is the checked half of the track; Off/On text stays DOM-based, contrast-budgeted and visibly marks the selected endpoint. No new engine mode, stencil, solver or shader permutation. Reduced motion snaps the lens. CSS represents the checked endpoint without WebGL2; forced colours reveal a plain native checkbox. Focus uses the palette ring; consumer callbacks use `notifyHost`. Presentation retains fractional content-box sizing × actual DPR.
