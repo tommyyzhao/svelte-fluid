@@ -26,7 +26,8 @@ is set. Requires hardware Chrome; no unsafe GPU flags.
 - **Ordinary frame:** 200 warm-up frames, 12 batches of 20 fixed-60-Hz
   `update()` frames. A 1-px default-framebuffer `readPixels` brackets each
   batch, draining the queue. Report median per-frame time / worst batch.
-  This is synced throughput, an upper bound on GPU work, not a timer query.
+  This is synced batch throughput, a conservative upper bound on submitted GPU
+  work, not a timer query or full individually presented-frame certification.
 - **Probe CPU:** one warm-up probe, 24 checks. Time issuing the async PBO
   readback plus all polling attempts; scheduler delays excluded. The JSON
   `settleDrainMs` is the post-submit drain remainder, **not GPU elapsed time**.
@@ -109,7 +110,12 @@ ADR 0089. The harness retains old queries only as evidence of this artifact.
 
 ## Verdict vs 2 ms
 
-**The 1.0 bar is not established.** Latest full own-tier matrix: worst ordinary
+**GPU compliance is UNCERTIFIED; the 1.0 budget goal is not met until proved.**
+Wall throughput above 2 ms does not prove GPU execution alone exceeds 2 ms;
+favorable batch averages do not certify every individually presented frame.
+Independent GPU attribution is blocked; see
+[measurement blocker and resume protocol](gpu-measurement-blocker.md).
+Latest full own-tier matrix: worst ordinary
 median **LavaLamp 1.845 ms**, worst batch **LavaLamp 1.945 ms** (1440x900 DPR 3).
 Worst checked median **Karman 1.970 ms** (same). These favorable averages do not
 establish an every-frame bar. Earlier repeats must not be hidden:
@@ -121,10 +127,11 @@ establish an every-frame bar. Earlier repeats must not be hidden:
 | `7baa954` full matrix | 1.650 / 1.680 | 1.940 / 0.305 |
 | `b278b11` validated HEAD subset | 1.660 / 1.685 | 1.985 / 0.305 |
 
-GasFlare reached **>= 2 ms median** on both ordinary and checked repeats. No
-preset was tuned to hide it. Clock/contention/presentation variance is real;
-a favorable rerun does not erase the exceedance. Shared Karman also exceeds
-2 ms (below). No lower-end laptop GPU was tested.
+GasFlare reached **>= 2 ms wall-throughput median** on both ordinary and checked
+repeats. No preset was tuned to hide it. Clock/contention/presentation variance
+is real; a favorable rerun does not erase the exceedance. Shared Karman also
+exceeds 2 ms wall throughput (below), not proven GPU-only time. No lower-end
+laptop GPU was tested.
 
 ## Native DPR and dominant passes
 
@@ -150,9 +157,14 @@ Forced shared Karman, 1440x900 CSS, `7baa954`, fired (not awaited) presents:
 
 Snapshot/presentation scheduling makes these wall-throughput numbers volatile;
 they are **not clean GPU-only attribution**. Even the 30-frame averages exceed
-2 ms. Historical 800x500 shared Karman was ~2.37 ms at DPR 3 (ADR 0093); that
-is historical, not a final-HEAD measurement. Reduction parity tests cover both
-tiers. Shared-tier failure is not exempt from the 1.0 bar.
+2 ms wall throughput; this does not prove GPU execution alone exceeds 2 ms.
+Historical 800x500 shared Karman was ~2.37 ms at DPR 3 (ADR 0093); that is
+historical, not a final-HEAD measurement. Reduction parity tests cover both
+tiers. Shared-tier compliance remains UNCERTIFIED, not exempt from the 1.0 bar.
+Even the later synchronous 20-frame harness awaits jobs, not necessarily 20
+bitmap deliveries: `gl-host.ts` drops stale-sequence snapshots before
+`transferFromImageBitmap`. Such batches are conservative submitted-work upper
+bounds, not full individually presented-frame certification.
 
 ## Settled engines (ADR 0099)
 

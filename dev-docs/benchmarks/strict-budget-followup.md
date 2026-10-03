@@ -2,8 +2,11 @@
 
 ## Outcome
 
-**Release blocker remains:** the native-DPR shared tier exceeds 2 ms per instance
-per frame. No total/n or 30-frame cycle average is used to claim compliance.
+**Release blocker remains: GPU compliance is UNCERTIFIED.** Native-DPR shared
+wall throughput exceeds 2 ms; this does not prove GPU execution alone exceeds
+2 ms. The budget goal itself is not met until proved. Independent attribution
+is blocked; see [measurement blocker and resume protocol](gpu-measurement-blocker.md).
+No total/n or 30-frame cycle average is used to claim compliance.
 Staging reduces the settle snapshot frame's workload without changing its exact
 issue-time max result. It does not establish robust headroom or current-field
 quietness. Production bitmap transport is unchanged.
@@ -34,6 +37,10 @@ Warm 200 frames, paired ordinary/stage 20-frame busy throughput batches, 12
 repeats, seeded randomized order of presets/stages/pairs. Every submitted
 `presented()` job is collected and awaited, then a 1-pixel readback drains GPU
 before timing ends. GPU is drained before timing begins. No ANGLE timer queries.
+Awaiting jobs does **not** establish delivery of all 20 frames: `gl-host.ts`
+stale-sequence snapshots are dropped before `transferFromImageBitmap`. This is
+conservative submitted-work batch evidence, not full individually presented-frame
+certification.
 
 Each stage is replayed separately on an otherwise ordinary frame: both first
 snapshot draws; each individual velocity/dye tail draw; PBO reads/fence/flush.
@@ -45,9 +52,11 @@ validation/host entry work and can change submission boundaries. Original
 baseline evidence remains in `gpu-budget.md`; do not subtract these numbers as
 an exact before/after GPU delta.
 
-Reported wall-time throughput is an upper bound including CPU submission and
-bitmap delivery, not a literal single-frame GPU timer. Median/worst means
-median and worst **batch per-frame throughput**, not worst individual latency.
+Reported wall-time throughput is a conservative upper bound on submitted GPU
+work, including CPU submission and surviving bitmap delivery, not a literal
+single-frame GPU timer. A value above 2 ms cannot prove GPU-only failure.
+Median/worst means median and worst **batch per-frame throughput**, not worst
+individual latency.
 Thus passing batches cannot prove every individual frame <2 ms. Startup chain/PBO
 allocation is excluded from steady-state tables; no startup-spike exemption is
 claimed. Strict bar not certified. The later completed-fence poll and `getBufferSubData`
@@ -96,10 +105,11 @@ Bounded second run `e825b8f`, same 12-repeat protocol; no iterative tuning:
 GasFlare DPR1 outlier was not reproduced; retain it as negative evidence, not
 silently discard it. Second-run snapshot paired overhead 0.055–0.110 ms.
 
-## Shared tier — still over budget
+## Shared tier — wall throughput above 2 ms; GPU UNCERTIFIED
 
 Initial matrix, ms median / worst batch; all bitmap jobs awaited and final GPU
-drain included. These are actual individual instance frame workloads.
+drain included. These are submitted single-instance batch workloads, not proof
+of all 20 individual bitmap deliveries or GPU-only execution time.
 
 | Preset | DPR | Ordinary | Both snapshots | Readback issue |
 |---|---:|---:|---:|---:|
@@ -121,7 +131,8 @@ This measures resident-instance cost, not compositor frame scheduling fairness.
 The initial mixed run incorrectly limited dye/post field resolutions against CSS
 rather than native size on small DPR2/3 instances; the largest 1440×900 instances
 and all viewport matrices are unaffected. Thus the maxima below remain real
-failing large-instance evidence, but this is **not** a certified production-config
+large-instance wall-throughput exceedances, not GPU-only failure evidence;
+this is **not** a certified production-config
 small-instance matrix. Harness corrected afterward; no corrected mixed rerun
 claimed. Do not infer small-instance budget compliance from those rows.
 
@@ -157,9 +168,10 @@ CPU delivery and driver overlap can change when work is removed.
 | Karman | 3 | 2.925 / 3.085 | 1.760 / 1.805 | 1.940 / 2.075 | 1.055 | 0.990 |
 
 Native sizes 1440×900 / 2880×1800 / 4320×2700. Removing bitmap presentation
-puts these workloads below 2 ms; transport costs roughly 0.445–1.360 ms depending
-on native size/preset. Karman solver remains a material part of cost. No unsafe
-transfer, downsampling or lowered solver quality is justified by this diagnostic.
+puts these wall-throughput workloads below 2 ms; the paired transport wall-time
+delta is roughly 0.445–1.360 ms depending on native size/preset, not GPU
+attribution. Karman solver remains a material part of cost. No unsafe transfer,
+downsampling or lowered solver quality is justified by this diagnostic.
 Future same-output transport work must solve stability as well as actual cost.
 
 ## Bounded premultiply A/B — negative
