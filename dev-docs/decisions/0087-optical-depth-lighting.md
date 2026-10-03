@@ -2,7 +2,11 @@
 
 ## Status
 
-Accepted (2026-10-02).
+Superseded in part by [ADR 0100](./0100-independent-deposited-thickness.md)
+(2026-10-02): RGB-derived geometry and its fitted diffuse treatment are historical,
+not the current implementation. The measurements below apply only to that earlier
+optical-depth implementation; they do not establish current shaded parity or GPU
+certification. Opt-in optics remain, now using independent deposited thickness.
 
 ## Context
 
