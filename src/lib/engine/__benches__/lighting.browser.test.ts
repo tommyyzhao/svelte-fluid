@@ -184,6 +184,8 @@ describe('independent thickness transport', () => {
 				expect(Math.max(...thickness(engine)) * HEIGHT_SPECULAR_DISPLAY_BOUND).toBeLessThan(SETTLE_EPSILON);
 				expect(Math.max(...read(h))).toBeLessThanOrEqual(1);
 				expect(await quiet(h, bytes)).toBe(true);
+				engine.setConfig({ glass: true, containerShape: { type: 'circle', cx: 0.5, cy: 0.5, radius: 0.4 }, glassThickness: 100 });
+				expect(await quiet(h, bytes)).toBe(false); // unbounded glass amplification, even refraction=0
 			} finally { engine.dispose(); }
 			const black = setup();
 			try { black.engine.splat(0.5, 0.5, 200, 0, { r: 0, g: 0, b: 0 }); expect(await quiet(black.h, bytes)).toBe(true); }

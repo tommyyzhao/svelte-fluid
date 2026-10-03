@@ -33,6 +33,9 @@ describe('height visibility proof', () => {
 	it('default diffuse stays RGB-bounded; exposed black specular/refraction cannot false-idle', () => {
 		expect(heightVisibilityScale(DEFAULTS)).toBe(0);
 		expect(heightVisibilityScale(resolveConfig({ specular: 0.5, bloom: false, sunrays: false }, DEFAULTS))).toBeCloseTo(0.5 * HEIGHT_SPECULAR_DISPLAY_BOUND);
+		const glass = { specular: 1, glass: true, bloom: false, sunrays: false, refraction: 0, containerShape: { type: 'circle' as const, cx: 0.5, cy: 0.5, radius: 0.4 } };
+		expect(heightVisibilityScale(resolveConfig(glass, DEFAULTS))).toBe(-1);
+		expect(heightVisibilityScale(resolveConfig({ ...glass, distortion: true }, DEFAULTS))).toBe(HEIGHT_SPECULAR_DISPLAY_BOUND);
 		for (const patch of [{ specular: 1, reveal: true }, { specular: 1, toneMapping: 'agx' as const }, { refraction: 1, distortion: true }, { refraction: 1, glass: true, containerShape: { type: 'circle' as const, cx: 0.5, cy: 0.5, radius: 0.4 } }]) {
 			expect(heightVisibilityScale(resolveConfig(patch, DEFAULTS))).toBe(-1);
 		}
