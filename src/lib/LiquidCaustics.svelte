@@ -64,11 +64,6 @@
 		const observer = new MutationObserver((records) => {
 			if (records.some((record) => {
 				if (record.target === canvas || canvas.contains(record.target)) return false;
-				// The surface's own live class changes no authored colours.
-				if (record.target === root && record.attributeName === 'class') {
-					const authored = (value: string | null) => (value ?? '').split(/\s+/).filter((c) => c !== 'live').join(' ');
-					return authored(record.oldValue) !== authored(root.className);
-				}
 				return true;
 			})) invalidate();
 		});
