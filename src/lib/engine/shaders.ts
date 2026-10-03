@@ -461,11 +461,12 @@ ${DYE_GEOMETRY_GLSL}
     }
 
     void main () {
-        vec3 c = texture2D(uTexture, vUv).rgb;
+        vec4 dye = texture2D(uTexture, vUv);
+        vec3 c = dye.rgb;
 
     #if defined(SHADING) || defined(SPECULAR) || defined(REFRACTION)
         vec3 n = dyeNormal(vUv);
-        float h = dyeHeight(texture2D(uHeightTexture, vUv).a);
+        float h = dyeHeight(dye.a);
     #endif
     #ifdef SHADING
         // Artistic ambient/key ratio preserves the 0.8.0 0.7–1 envelope.
