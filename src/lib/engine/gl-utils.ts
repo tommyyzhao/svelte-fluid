@@ -377,7 +377,10 @@ export function createFBO(
 	gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, w, h, 0, format, type, null);
 
 	const fbo = gl.createFramebuffer();
-	if (!fbo) throw new Error('svelte-fluid: gl.createFramebuffer returned null');
+	if (!fbo) {
+		gl.deleteTexture(texture);
+		throw new Error('svelte-fluid: gl.createFramebuffer returned null');
+	}
 	gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
 	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
 	gl.viewport(0, 0, w, h);
