@@ -15,7 +15,7 @@ export function heightVisibilityScale(c: {
 	if (c.REFRACTION > 0 && (c.DISTORTION || (c.GLASS && c.CONTAINER_SHAPE && !c.REVEAL))) return -1;
 	if (c.SPECULAR <= 0) return 0;
 	// ponytail: arbitrary image/curve/composite amplification needs a separate bound.
-	if (c.REVEAL || c.TONE_MAPPING !== 'none' || c.BLOOM || c.SUNRAYS || c.MIN_CONTRAST > 1) return -1;
+	if (c.REVEAL || (!c.DISTORTION && c.GLASS && c.CONTAINER_SHAPE) || c.TONE_MAPPING !== 'none' || c.BLOOM || c.SUNRAYS || c.MIN_CONTRAST > 1) return -1;
 	return c.SPECULAR * HEIGHT_SPECULAR_DISPLAY_BOUND;
 }
 import type { FlowConfig } from './types.js';

@@ -46,7 +46,7 @@ Potentially visible thickness blocks idle conservatively; a tiny nonzero residua
 may idle without truncating the physical field. No extra reduction pass/target.
 
 Arbitrary refraction image frequency, reveal curves, tone mapping, postprocess
-amplification and contrast correction lack this bound. Where thickness is exposed
+amplification, active glass postprocessing and contrast correction lack this bound. Where thickness is exposed
 by those combinations, nonzero thickness blocks idle. Such opt-in scenes are not
 universally proven to settle: half-float decay may plateau. Flow visualization's
 existing unresolved convergence guard remains. Do not claim universal idle.
