@@ -154,7 +154,10 @@ These modes now require exactly zero dye on both paths, not a blanket never-idle
 rule. Nonzero half-float tails can therefore prevent settling. Non-dye flow
 visualization displays velocity/pressure/scalars independently of dye; its quiet
 proof remains unresolved and automatic settling is conservatively disabled while
-that visualization is active. Actual contributing-field convergence probes are
+that visualization is active. Exception: driver-free flow visualization may settle
+while `solverMayContainContent` is false, because initialized speed/pressure/scalar
+fields stay zero and `step()` skips all writes; nonempty flow still lacks a
+convergence proof. Actual contributing-field convergence probes are
 outside this finite fallback change. No claim of zero-idle frames for all modes,
 arbitrary gain/contrast/optical settings or calibrated image convergence.
 

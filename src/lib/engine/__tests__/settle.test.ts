@@ -7,6 +7,16 @@ const base = { AUTO_SPLAT_RATE: 0, FLOW: null, COLORFUL: false, INITIAL_DENSITY_
 
 describe('hasContinuousDriver', () => {
 	it('plain scene settles', () => expect(hasContinuousDriver(base, 100)).toBe(false));
+	it('empty flow visualization is not a driver; even zero prescribed fields remain drivers', () => {
+		for (const colorBy of ['speed', 'pressure', 'scalar'] as const) {
+			const FLOW = { visualization: { colorBy } };
+			expect(hasContinuousDriver({ ...base, FLOW }, 100)).toBe(false);
+			for (const prescribed of [
+				{ kind: 'grid' as const, velocity: { width: 1, height: 1, data: [0, 0] } },
+				{ kind: 'grid' as const, scalars: { temperature: { width: 1, height: 1, data: [0] } } }
+			]) expect(hasContinuousDriver({ ...base, FLOW: { ...FLOW, prescribed } }, 100)).toBe(true);
+		}
+	});
 	it('autoSplatRate blocks', () => expect(hasContinuousDriver({ ...base, AUTO_SPLAT_RATE: 0.2 }, 100)).toBe(true));
 	it('driving flow blocks', () =>
 		expect(

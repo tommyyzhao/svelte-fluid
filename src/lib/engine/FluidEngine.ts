@@ -3384,7 +3384,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			!this.autoStart || this.deterministicMode || this.config.PAUSED || this.hasPendingFrameInput() ||
 			this.pointers.some((p) => p.down) || hasContinuousDriver(this.config, this.elapsedSeconds()) ||
 			// ponytail: field-aware flow convergence needs pressure/scalar probes; dye cannot prove it.
-			this.flowVisualizationActive()
+			(this.flowVisualizationActive() && this.solverMayContainContent)
 		) {
 			this.settleFrames = 0;
 			this.settleQuietChecks = 0;
