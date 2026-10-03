@@ -469,9 +469,9 @@ ${DYE_GEOMETRY_GLSL}
         float h = dyeHeight(dye.a);
     #endif
     #ifdef SHADING
-        // Artistic ambient/key ratio preserves the 0.8.0 0.7–1 envelope.
-        // Only diffuse slopes are amplified, not the physical geometry.
-        float diffuse = clamp(0.7 + inversesqrt(1.0 + 10000.0 * dot(n.xy, n.xy) / max(n.z * n.z, 0.000001)), 0.7, 1.0);
+        // Artistic ambient/key ratio, true unit normal and the same studio
+        // light as specular. No legacy slope gain masquerading as geometry.
+        float diffuse = 0.7 + 0.3 * max(dot(n, normalize(vec3(-0.35, 0.45, 1.0))), 0.0);
         c *= diffuse;
     #endif
     #ifdef SPECULAR
