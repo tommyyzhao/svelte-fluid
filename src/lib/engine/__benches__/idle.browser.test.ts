@@ -275,8 +275,34 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		}
 	});
 
-	it('non-dye flow visualization is explicitly unsupported by dye-only quiet proof', () => {
+	it.each(['speed', 'pressure', 'scalar'] as const)('empty %s flow visualization settles on float and byte probes, then splat wakes', async (colorBy) => {
+		for (const bytes of [false, true]) {
+			const e = engine({ initialSplatCount: 0, autoSplatRate: 0, flow: { visualization: { colorBy } } });
+			const p = e as unknown as { solverMayContainContent: boolean; canReadSettleFloat(): boolean };
+			if (bytes) p.canReadSettleFloat = () => false;
+			await until(() => e.isSettled, 10_000);
+			expect(p.solverMayContainContent).toBe(false);
+			for (const field of ['velocity', 'pressure', 'dye', ...(colorBy === 'scalar' ? ['scalar'] as const : [])] as const) {
+				const data = e.readField(field, field === 'scalar' ? { components: 3 } : {}).data;
+				expect(data.every((v) => v === 0)).toBe(true);
+			}
+			expect(activeFrameSubscribers()).toBe(0);
+			const callbacks = await rafCount(250);
+			expect(callbacks).toBe(0);
+			e.splat(0.5, 0.5, 300, 0, { r: 0, g: 0, b: 0 });
+			expect(p.solverMayContainContent).toBe(true);
+			expect(e.isSettled).toBe(false);
+			expect(activeFrameSubscribers()).toBeGreaterThanOrEqual(1);
+			await sleep(200);
+			expect(e.isSettled).toBe(false);
+			console.info(`[idle empty ${colorBy} ${bytes ? 'byte' : 'float'}] raw fields zero, quiet callbacks ${callbacks}, black splat woke; nonempty flow remains active`);
+			e.dispose();
+		}
+	});
+
+	it('nonempty non-dye flow visualization is explicitly unsupported by dye-only quiet proof', () => {
 		const e = engine({ initialSplatCount: 0, flow: { visualization: { colorBy: 'speed' } } }, false);
+		e.splat(0.5, 0.5, 300, 0, { r: 0, g: 0, b: 0 });
 		const p = e as unknown as { autoStart: boolean; deterministicMode: boolean; trackSettle(): void; settleProbe: unknown };
 		p.autoStart = true; p.deterministicMode = false;
 		for (let i = 0; i < 100; i++) p.trackSettle();
