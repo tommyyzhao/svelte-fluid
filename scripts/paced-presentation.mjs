@@ -1,7 +1,10 @@
 // Measurement only. No runtime patch, timer query, unsafe flags, or GPU-budget verdict.
 import { chromium } from 'playwright';
 import { writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 
+const measuredSha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+const gitStatus = execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim();
 const url = 'http://127.0.0.1:5197';
 const out = process.env.PACED_BENCH_OUT || '/tmp/paced-presentation.json';
 const server = Bun.spawn(['bun', 'run', 'dev', '--host', '127.0.0.1', '--port', '5197', '--strictPort'], { stdout: 'ignore', stderr: 'inherit' });
@@ -131,7 +134,7 @@ try {
 					}
 				}, { preset, run });
 				rows.push(row);
-				await writeFile(out, JSON.stringify({ measuredSha: '3788960257b3c7e12c5576f15b829afd080a4502', scope: 'wall update + snapshot promise + actual bitmaprenderer transfer call + originating shared GL 1px readPixels; NOT compositor/raster completion or display scanout', rows }, null, 2));
+				await writeFile(out, JSON.stringify({ measuredSha, dirty: gitStatus !== '', gitStatus, scope: 'wall update + snapshot promise + actual bitmaprenderer transfer call + originating shared GL 1px readPixels; NOT compositor/raster completion or display scanout', rows }, null, 2));
 				console.log(JSON.stringify({ preset, dpr, run, counts: row.counts, stale: row.stale, medianMs: row.medianMs, p95Ms: row.p95Ms, maxMs: row.maxMs }));
 			}
 		}
