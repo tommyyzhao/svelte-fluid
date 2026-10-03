@@ -35,9 +35,9 @@ function shuffle<T>(values: T[]): T[] {
 	for (let i = result.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [result[i], result[j]] = [result[j], result[i]]; }
 	return result;
 }
-function config(base: FluidConfig, w: number, h: number): FluidConfig {
+function config(base: FluidConfig, w: number, h: number, dpr: number): FluidConfig {
 	const cfg = { ...base, pointerInput: false };
-	const max = Math.max(w, h);
+	const max = Math.max(Math.round(w * dpr), Math.round(h * dpr));
 	cfg.dyeResolution = Math.min(cfg.dyeResolution ?? 1024, max);
 	cfg.bloomResolution = Math.min(cfg.bloomResolution ?? 256, max);
 	cfg.sunraysResolution = Math.min(cfg.sunraysResolution ?? 196, max);
@@ -53,7 +53,7 @@ function build(preset: string, dpr: number, shared: boolean, cssW = CSS_W, cssH 
 	canvas.style.cssText = `width:${cssW}px;height:${cssH}px`;
 	document.body.append(canvas);
 	_setContextTier(shared ? 'shared' : 'own');
-	try { return new FluidEngine({ canvas, autoStart: false, config: config(PRESETS.find((p) => p.id === preset)!.config as FluidConfig, cssW, cssH) }); }
+	try { return new FluidEngine({ canvas, autoStart: false, config: config(PRESETS.find((p) => p.id === preset)!.config as FluidConfig, cssW, cssH, dpr) }); }
 	finally { _setContextTier('auto'); }
 }
 function frame(e: FluidEngine) {
