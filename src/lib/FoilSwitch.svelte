@@ -62,7 +62,7 @@
 		try {
 			pixels.observe(canvas, { box: 'device-pixel-content-box' });
 		} catch {
-			// Older browsers notify zoom through the window resize fallback.
+			// ponytail: legacy DPR changes need resize; add rearmed resolution matchMedia for screen moves.
 		}
 		window.addEventListener('resize', sync);
 		const intersect = new IntersectionObserver(([entry]) => {
