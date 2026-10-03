@@ -80,7 +80,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0084](./0084-jump-flood-mask-sdf.md) | GPU jump-flood SDF for pixel-width mask edges | Accepted |
 | [0085](./0085-reduced-motion-still-and-frame-failure.md) | Reduced-motion still frame and terminal frame-failure fallback | Accepted |
 | [0086](./0086-text-contrast-floor.md) | Opt-in WCAG contrast floor in the display pass; FluidText default 3:1 | Accepted |
-| [0087](./0087-optical-depth-lighting.md) | Lighting from optical-depth dye geometry; opt-in specular/refraction | Accepted |
+| [0087](./0087-optical-depth-lighting.md) | Lighting from optical-depth dye geometry; opt-in specular/refraction | Superseded in part by 0100; optical-depth measurements historical |
 | [0088](./0088-shared-gl-host-for-model-engines.md) | Shared WebGL2 host for model engines | Accepted |
 | [0089](./0089-native-dpr-default.md) | Native DPR by default, measured by synced throughput | Accepted |
 | [0090](./0090-pigment-model.md) | Pigment model: 12-band Kubelka–Munk, wet-to-deposited transfer, paper height | Accepted |
