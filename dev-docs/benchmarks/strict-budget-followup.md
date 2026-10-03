@@ -227,3 +227,17 @@ not a universal browser guarantee.
 - Visible solver/render output unchanged; GPU maxima parity is the appropriate
   before/after check. No production visible-render change requiring screenshot
   substitution for numerical parity.
+
+## Final verification
+
+`f15525d` runtime/test candidate: `bun run test && bun run check`, then hardware
+`VITEST_CHROME_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+bun run verify:release` passed: **867 Node tests, 268 browser tests, zero check
+errors/warnings, production build, package/publint and strict public declarations**.
+The later `19e8b35` change only corrects the opt-in benchmark's native field-size
+limit and evidence caveat; Node/check/prepack passed again. No production runtime
+change after the full hardware verification. Read-only review found no remaining
+concrete runtime defect after polling-order/error-attribution fixes.
+
+No push, merge, publish, preset tuning, DPR cap, selector or dependency change.
+The strict 2 ms GPU bar is **still blocked**, independently of passing tests.
