@@ -231,8 +231,10 @@
 			<td><code>shading</code></td>
 			<td><code>boolean</code></td>
 			<td><code>true</code></td>
-			<td>Diffuse relief lit from the dye's optical depth (a thin absorbing layer),
-				tuned to the 0.8.0 look. Recompiles the display program.</td>
+			<td>Diffuse relief from independently deposited thickness, not pigment brightness.
+				Equal splats, including black pigment, have equal geometry. This passive thin
+				layer is not a calibrated free-surface solve; shading intentionally differs
+				from 0.8.0. Recompiles the display program.</td>
 		</tr>
 		<tr>
 			<td><code>specular</code></td>
