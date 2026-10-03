@@ -92,7 +92,7 @@ import {
 import { type Rng, generateColor, mulberry32, normalizeColor, randomSeed } from './rng.js';
 import { fitDrawingBufferSize } from './resolution.js';
 import { flowCanDriveSolver } from './solver-activity.js';
-import { SETTLE_CHECKS, SETTLE_CHECK_INTERVAL, hasContinuousDriver, isQuiet, isQuietFlags } from './settle.js';
+import { SETTLE_CHECKS, SETTLE_CHECK_INTERVAL, hasContinuousDriver, heightVisibilityScale, isQuiet, isQuietFlags } from './settle.js';
 import { blurMaskData } from './sticky-blur.js';
 import { subscribeFrame } from './frame-scheduler.js';
 import { notifyHost } from './notify-host.js';
@@ -3437,7 +3437,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			this.prepareSettleChain(this.velocity.read, this.settleVelocityChain, bytes);
 			this.prepareSettleChain(this.dye.read, this.settleDyeChain, bytes);
 			this.settleReducePass(this.velocity.read, this.settleVelocityChain[0], 1, 1, 0, bytes ? 1 : 0);
-			this.settleReducePass(this.dye.read, this.settleDyeChain[0], 1, 1, 1, bytes ? 2 : 0);
+			this.settleReducePass(this.dye.read, this.settleDyeChain[0], 1, 1, 1, bytes ? 2 : 0, heightVisibilityScale(this.config));
 			this.checkSettleGl();
 			this.settleProbe = { sync: null, epoch: this.settleEpoch, velocityLevel: 1, dyeLevel: 1, bytes };
 		}); } catch (error) {
@@ -3549,7 +3549,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, this.settlePixels);
 			gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
 			this.checkSettleGl();
-			if (!Number.isFinite(this.settlePixels[0]) || !Number.isFinite(this.settlePixels[4])) return false;
+			if (!Number.isFinite(this.settlePixels[0]) || !Number.isFinite(this.settlePixels[4]) || this.settlePixels[4] === 65504) return false;
 			this.settleCheckCount++;
 			if (!Number.isFinite(this.config.DENSITY_DISSIPATION) || this.config.DENSITY_DISSIPATION < 0) return false;
 			// Arbitrary image frequency/power and reveal curves can amplify any nonzero dye.
@@ -3601,7 +3601,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		}
 	}
 
-	private settleReducePass(src: FBO, target: FBO, r: number, g: number, b: number, flagMode = 0): void {
+	private settleReducePass(src: FBO, target: FBO, r: number, g: number, b: number, flagMode = 0, heightVisibility = 0): void {
 		const gl = this.gl;
 		const program = this.settleMaxProgram;
 		gl.disable(gl.BLEND);
@@ -3610,6 +3610,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		gl.uniform2f(program.uniforms.uSourceTexel, src.texelSizeX, src.texelSizeY);
 		gl.uniform4f(program.uniforms.uChannels, r, g, b, 0);
 		gl.uniform1i(program.uniforms.uFlagMode, flagMode);
+		gl.uniform1f(program.uniforms.uHeightVisibility, heightVisibility);
 		gl.uniform1f(program.uniforms.uFade, 1 - 1 / (1 + this.config.DENSITY_DISSIPATION / 60));
 		this.blit(target);
 	}
@@ -4199,6 +4200,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		}
 		const gl = this.gl;
 		this.advectionProgram.bind();
+		gl.uniform1f(this.advectionProgram.uniforms.uHeightCeiling, 0);
 		this.bindInlineMaskUniforms(this.advectionProgram.uniforms, 2, 3);
 		gl.uniform1f(this.advectionProgram.uniforms.uMultiplicative, this.config.REVEAL || this.config.STICKY ? 1.0 : 0.0);
 		this.bindStickyMask();
@@ -4252,6 +4254,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		// borrowed transiently here: applyViscosity repopulates it AFTER advection
 		// (advect runs before viscosity in step()), so this reuse is safe.
 		this.advectionProgram.bind();
+		gl.uniform1f(this.advectionProgram.uniforms.uHeightCeiling, 0);
 		this.bindInlineMaskUniforms(this.advectionProgram.uniforms, 2, 3);
 		gl.uniform1f(this.advectionProgram.uniforms.uApplyInlineMask, 0.0);
 		gl.uniform1f(this.advectionProgram.uniforms.uMultiplicative, 0.0);
@@ -4305,6 +4308,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	private advectDye(dt: number): void {
 		const gl = this.gl;
 		this.advectionProgram.bind();
+		gl.uniform1f(this.advectionProgram.uniforms.uHeightCeiling, S.DYE_HEIGHT_CEILING);
 		this.bindInlineMaskUniforms(this.advectionProgram.uniforms, 2, 3);
 		gl.uniform1f(this.advectionProgram.uniforms.uMultiplicative, this.config.REVEAL || this.config.STICKY ? 1.0 : 0.0);
 		this.bindStickyMask();
@@ -4331,6 +4335,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		if (!this.scalar) return;
 		const gl = this.gl;
 		this.advectionProgram.bind();
+		gl.uniform1f(this.advectionProgram.uniforms.uHeightCeiling, 0);
 		this.bindInlineMaskUniforms(this.advectionProgram.uniforms, 2, 3);
 		gl.uniform1f(this.advectionProgram.uniforms.uMultiplicative, 0.0);
 		this.bindStickyMask();
