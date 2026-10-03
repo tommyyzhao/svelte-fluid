@@ -11,6 +11,7 @@
 // Transfer path intermittently loses the renderer/page; snapshot path survived
 // 28 isolated runs, then the host browser suite including all 24-instance loss
 // and restore checks. This is evidence for this environment, not all browsers.
+const params = new URL(location.href).searchParams;
 const status = document.querySelector('#status');
 const log = (message) => { status.textContent += message + '\n'; console.log(message); };
 const canvas = document.querySelector('canvas');
@@ -38,7 +39,7 @@ gl.attachShader(program, fs);
 gl.linkProgram(program);
 gl.useProgram(program);
 gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
-const snapshot = new URL(location.href).searchParams.has('snapshot');
+const snapshot = params.has('snapshot');
 canvas.getContext('bitmaprenderer').transferFromImageBitmap(
 	snapshot ? await createImageBitmap(surface) : surface.transferToImageBitmap()
 );
@@ -60,5 +61,35 @@ const restored = new Promise((resolve) => surface.addEventListener('webglcontext
 lose.restoreContext();
 await restored;
 await new Promise((r) => setTimeout(r, 300));
+// Keep the first bitmap displayed through loss/restore, then explicitly release.
+canvas.getContext('bitmaprenderer').transferFromImageBitmap(null);
+canvas.remove();
+log('released');
+// Bounded mount churn; ?mixed adds 24 differently sized visible bitmap canvases
+// sharing this diagnostic surface. Never part of production or normal tests.
+for (let mount = 0; mount < Number(params.get('churn') || 0); mount++) {
+	const source = new OffscreenCanvas(8, 8);
+	const context = source.getContext('webgl2');
+	context.clearColor(0.1, 0.2, 0.3, 0.5);
+	context.clear(context.COLOR_BUFFER_BIT);
+	const targets = [];
+	for (let i = 0; i < (params.has('mixed') ? 24 : 1); i++) {
+		source.width = 8 + i % 3 * 5; source.height = 8 + i % 4 * 3;
+		context.clear(context.COLOR_BUFFER_BIT);
+		const target = document.createElement('canvas');
+		target.width = source.width; target.height = source.height; document.body.append(target);
+		const bitmap = snapshot ? await createImageBitmap(source, { colorSpaceConversion: 'none' }) : source.transferToImageBitmap();
+		target.getContext('bitmaprenderer').transferFromImageBitmap(bitmap); bitmap.close(); targets.push(target);
+	}
+	const extension = context.getExtension('WEBGL_lose_context');
+	const lost = new Promise((resolve) => source.addEventListener('webglcontextlost', (event) => { event.preventDefault(); resolve(); }, { once: true }));
+	extension.loseContext(); await lost;
+	await new Promise((r) => setTimeout(r, 0));
+	const restored = new Promise((resolve) => source.addEventListener('webglcontextrestored', resolve, { once: true }));
+	extension.restoreContext(); await restored;
+	for (const target of targets) { target.getContext('bitmaprenderer').transferFromImageBitmap(null); target.remove(); }
+	extension.loseContext();
+	await new Promise((r) => setTimeout(r, 0));
+}
 log('completed');
 </script>
