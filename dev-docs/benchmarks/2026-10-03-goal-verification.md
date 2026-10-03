@@ -1,9 +1,9 @@
 # 1.0 goal verification — 2026-10-03
 
 **Evidence baseline: `c873fdf`. Not a declaration that all 1.0 goals are met.**
-Short SHAs identify repository commits; later docs do not retroactively certify runtime.
-This is durable metadata only. `/tmp` logs, manifests and PNGs are ephemeral local
-artifacts, **not durably preserved** by this commit; no source artifacts or binaries copied.
+Durable metadata only; short SHAs identify commits, not retroactive runtime certification.
+`/tmp` logs, manifests and PNGs are ephemeral, **not durably preserved** by this commit;
+no source artifacts or binaries copied.
 
 ## Combined release verification
 
@@ -18,7 +18,12 @@ Verified log totals: **52 Node files / 859 tests; check 470 files / 0 errors,
 Prepack includes publint and strict public-declaration checks.
 The log contains a Vite dependency-scan diagnostic; suites and final command passed.
 Reduced test count follows foil-exclusive deletion, not lost retained-feature coverage.
-One combined full-green run plus focused prior runs: **no repeated/no-flake guarantee**.
+Combined full-green runs plus focused prior runs: **no repeated/no-flake guarantee**.
+Final AA-inclusive lead run at `ea56a93`, same command, exit 0:
+`/tmp/verify-final-aa-main.log`; SHA256
+`03b9c4dffa928df675d9eae10ac93a9bf86914fcfe363fcd3f1fe0873aa30da6`.
+**52 Node files / 859 tests; 470 checked / 0 errors or warnings; 35 browser files /
+298 tests; build/prepack/publint/public declarations passed**. Earlier 296 remains historical.
 
 ## Independent geometry and visual evidence
 
@@ -60,8 +65,13 @@ Tests at `c873fdf`: `src/lib/engine/__tests__/lighting.test.ts`,
   `/tmp/native-aa-{before,after}-{foil,enamel,button}-{integer,fractional}.png`.
   Foil is historical, now deleted. Fractional button CSS **162.625×56.625**, DPR 3:
   before **489×171**, after **487×169**. `native-sizing.browser.test.ts` records behavior.
-  FluidText default **4.5 policy** is tested in `__tests__/contrast.test.ts` and
-  `__benches__/contrast.browser.test.ts`; **not a new actual-pixel small-text 4.5 measurement**.
+  FluidText actual-pixel proof `b4af8ee`, `__benches__/contrast.browser.test.ts`:
+  mounted **16px Arial**, full opaque halo outside zero glyph coverage, light/dark,
+  native DPR 1/2/3. Minimum **4.5422249596 / 4.5577683197** versus explicit-3 fixture
+  **3.03347 / 3.04483**; policy comparison, not a historical-build capture.
+  Evidence `/tmp/small-text-contrast/{light,dark}-dpr{1,2,3}-{previous-3,default-4.5}.png`
+  + matching theme/DPR JSON; six focused tests passed twice. Lead DPR-3 review:
+  stronger outline, unchanged glyph. `f11a5a8` (from `bd72c97`) only clarifies JSON metadata.
 - Caustics final guards: `a90ddae`; lead reports **29 hardware tests passed at each
   DPR 2 and DPR 3**. Logs `/tmp/caustics-aa-browser-dpr{2,3}-final.log`;
   tests `src/lib/engine/__benches__/caustics.browser.test.ts` at `c873fdf`.
@@ -85,6 +95,7 @@ Tests at `c873fdf`: `src/lib/engine/__tests__/lighting.test.ts`,
   exact-height guards. [ADR 0099](../decisions/0099-settle-visible-idle-fluid.md) and
   ADR 0100 limits remain; **no universal idle claim**.
 - Legacy DPR observer cannot guarantee unsupported screen-move notifications (`b2c4062`).
-- Actual FluidText pixel-AA evidence incomplete. Enamel and toggle final owner taste pending.
+- FluidText full opaque halo pixel-AA **scoped proven**; no AA-blended edge, interior
+  glyph, arbitrary font/background or universal WCAG claim. Enamel/toggle owner taste pending.
 - Declaration gate: `src/lib/engine/__tests__/public-surface.test.ts` and
   `scripts/check-public-declarations.mjs` at `c873fdf`; passing it is not goal completion.
