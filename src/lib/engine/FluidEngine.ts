@@ -92,7 +92,7 @@ import {
 import { type Rng, generateColor, mulberry32, normalizeColor, randomSeed } from './rng.js';
 import { fitDrawingBufferSize } from './resolution.js';
 import { flowCanDriveSolver } from './solver-activity.js';
-import { SETTLE_CHECKS, SETTLE_CHECK_INTERVAL, hasContinuousDriver, isQuiet } from './settle.js';
+import { SETTLE_CHECKS, SETTLE_CHECK_INTERVAL, hasContinuousDriver, isQuiet, isQuietFlags } from './settle.js';
 import { blurMaskData } from './sticky-blur.js';
 import { subscribeFrame } from './frame-scheduler.js';
 import { notifyHost } from './notify-host.js';
@@ -801,10 +801,16 @@ export class FluidEngine implements FluidHandle {
 	private settleDyeChain: FBO[] = [];
 	/** Async probe readback: 2 RGBA float pixels (velocity max, dye max). */
 	private settlePbo: WebGLBuffer | null = null;
-	private settleProbe: { sync: WebGLSync | null; epoch: number; velocityLevel: number; dyeLevel: number } | null = null;
+	private settleProbe: { sync: WebGLSync | null; epoch: number; velocityLevel: number; dyeLevel: number; bytes: boolean; ready?: boolean } | null = null;
 	/** Changed fields or eligibility invalidate any probe already in flight. */
 	private settleEpoch = 0;
 	private settlePixels = new Float32Array(8);
+	private settleBytes = new Uint8Array(8);
+	private settleByteTargets = new WeakSet<FBO>();
+	/** Internal capability seam; re-evaluated for every snapshot, including after restore. */
+	private canReadSettleFloat(): boolean {
+		return this.ext.isWebGL2 && this.gl.getExtension('EXT_color_buffer_float') !== null;
+	}
 	private pressure!: DoubleFBO;
 	private scalar: DoubleFBO | null = null;
 	private bloom: FBO | null = null;
@@ -3363,7 +3369,9 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	private trackSettle(): void {
 		if (
 			!this.autoStart || this.deterministicMode || this.config.PAUSED || this.hasPendingFrameInput() ||
-			this.pointers.some((p) => p.down) || hasContinuousDriver(this.config, this.elapsedSeconds())
+			this.pointers.some((p) => p.down) || hasContinuousDriver(this.config, this.elapsedSeconds()) ||
+			// ponytail: field-aware flow convergence needs pressure/scalar probes; dye cannot prove it.
+			this.flowVisualizationActive()
 		) {
 			this.settleFrames = 0;
 			this.settleQuietChecks = 0;
@@ -3408,17 +3416,16 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		if (this.settleProbe || this.disposed || this.contextLost || this.failed) return;
 		const t0 = performance.now();
 		try { this.withGl(() => {
-			// Only a float readback carries the thresholds; without it never settle.
-			if (!this.ext.isWebGL2 || this.gl.getExtension('EXT_color_buffer_float') === null) return;
-			const gl = this.gl as WebGL2RenderingContext;
+			const bytes = !this.canReadSettleFloat();
+			const gl = this.gl;
 			// Shared siblings' errors must not be attributed to this probe.
 			for (let i = 0; i < 16 && gl.getError() !== gl.NO_ERROR; i++);
-			this.prepareSettleChain(this.velocity.read, this.settleVelocityChain);
-			this.prepareSettleChain(this.dye.read, this.settleDyeChain);
-			this.settleReducePass(this.velocity.read, this.settleVelocityChain[0], 1, 1, 0);
-			this.settleReducePass(this.dye.read, this.settleDyeChain[0], 1, 1, 1);
+			this.prepareSettleChain(this.velocity.read, this.settleVelocityChain, bytes);
+			this.prepareSettleChain(this.dye.read, this.settleDyeChain, bytes);
+			this.settleReducePass(this.velocity.read, this.settleVelocityChain[0], 1, 1, 0, bytes ? 1 : 0);
+			this.settleReducePass(this.dye.read, this.settleDyeChain[0], 1, 1, 1, bytes ? 2 : 0);
 			this.checkSettleGl();
-			this.settleProbe = { sync: null, epoch: this.settleEpoch, velocityLevel: 1, dyeLevel: 1 };
+			this.settleProbe = { sync: null, epoch: this.settleEpoch, velocityLevel: 1, dyeLevel: 1, bytes };
 		}); } catch (error) {
 			this.cancelSettleProbe();
 			this.failTransition(error);
@@ -3429,7 +3436,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	/** At most one tail draw per frame, then queue the existing two-pixel readback. */
 	private advanceSettleProbe(): void {
 		const probe = this.settleProbe;
-		if (!probe || probe.sync || this.disposed || this.contextLost || this.failed) return;
+		if (!probe || probe.sync || probe.ready || this.disposed || this.contextLost || this.failed) return;
 		if (probe.epoch !== this.settleEpoch) { this.cancelSettleProbe(); return; }
 		const t0 = performance.now();
 		try { this.withGl(() => {
@@ -3437,18 +3444,31 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			for (let i = 0; i < 16 && gl.getError() !== gl.NO_ERROR; i++);
 			if (probe.velocityLevel < this.settleVelocityChain.length) {
 				const i = probe.velocityLevel++;
-				this.settleReducePass(this.settleVelocityChain[i - 1], this.settleVelocityChain[i], 1, 0, 0);
+				this.settleReducePass(this.settleVelocityChain[i - 1], this.settleVelocityChain[i], 1, probe.bytes ? 1 : 0, probe.bytes ? 1 : 0, probe.bytes ? 3 : 0);
 				this.checkSettleGl();
 				return;
 			}
 			if (probe.dyeLevel < this.settleDyeChain.length) {
 				const i = probe.dyeLevel++;
-				this.settleReducePass(this.settleDyeChain[i - 1], this.settleDyeChain[i], 1, 0, 0);
+				this.settleReducePass(this.settleDyeChain[i - 1], this.settleDyeChain[i], 1, probe.bytes ? 1 : 0, probe.bytes ? 1 : 0, probe.bytes ? 3 : 0);
 				this.checkSettleGl();
 				return;
 			}
 			const v = this.settleVelocityChain[this.settleVelocityChain.length - 1];
 			const d = this.settleDyeChain[this.settleDyeChain.length - 1];
+			if (probe.bytes) {
+				// Eight bytes limit transfer size, not the synchronous GPU stall.
+				this.settleBytes.fill(127);
+				if (this.ext.isWebGL2) gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+				gl.bindFramebuffer(gl.FRAMEBUFFER, v.fbo);
+				gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.settleBytes.subarray(0, 4));
+				gl.bindFramebuffer(gl.FRAMEBUFFER, d.fbo);
+				gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.settleBytes.subarray(4, 8));
+				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+				this.checkSettleGl();
+				probe.ready = true;
+				return;
+			}
 			if (!this.settlePbo) {
 				this.settlePbo = gl.createBuffer();
 				if (!this.settlePbo) throw new Error('svelte-fluid: settle PBO allocation failed');
@@ -3472,7 +3492,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			// Never turn an unsuccessful readback's zero-filled buffer into a quiet verdict.
 			this.withGl(() => {
 				const gl = this.gl as WebGL2RenderingContext;
-				gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+				if (this.ext.isWebGL2) gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
 			});
 			this.cancelSettleProbe();
 			this.failTransition(error);
@@ -3483,9 +3503,15 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	/** Quiet verdict of a finished probe; null while none is ready (or it went stale). */
 	private pollSettleProbe(): boolean | null {
 		const probe = this.settleProbe;
-		if (!probe?.sync || this.disposed || this.contextLost || this.failed) return null;
+		if (!probe || (!probe.sync && !probe.ready) || this.disposed || this.contextLost || this.failed) return null;
+		if (probe.bytes && probe.ready) {
+			this.settleProbe = null;
+			if (probe.epoch !== this.settleEpoch) return null;
+			this.settleCheckCount++;
+			return isQuietFlags(this.settleBytes, this.config.DISTORTION || this.config.REVEAL);
+		}
 		if (probe.epoch !== this.settleEpoch) { this.cancelSettleProbe(); return null; }
-		const sync = probe.sync;
+		const sync = probe.sync!;
 		const t0 = performance.now();
 		let result: boolean | null | undefined = null;
 		try { result = this.withGl(() => {
@@ -3508,11 +3534,13 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			this.checkSettleGl();
 			if (!Number.isFinite(this.settlePixels[0]) || !Number.isFinite(this.settlePixels[4])) return false;
 			this.settleCheckCount++;
+			// Arbitrary image frequency/power and reveal curves can amplify any nonzero dye.
+			if (this.config.DISTORTION || this.config.REVEAL) return this.settlePixels[4] === 0;
 			return isQuiet(this.settlePixels[0], this.settlePixels[4], this.config.DENSITY_DISSIPATION);
 		}); } catch (error) {
 			this.withGl(() => {
 				const gl = this.gl as WebGL2RenderingContext;
-				gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+				if (this.ext.isWebGL2) gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
 			});
 			this.cancelSettleProbe();
 			this.failTransition(error);
@@ -3526,16 +3554,18 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	 * into a 1x1 R16F target (returned). Binds every piece of state it reads
 	 * (shared tier).
 	 */
-	private prepareSettleChain(src: FBO, chain: FBO[]): void {
+	private prepareSettleChain(src: FBO, chain: FBO[], bytes = false): void {
 		const gl = this.gl;
 		const w0 = Math.ceil(src.width / 8);
 		const h0 = Math.ceil(src.height / 8);
-		if (chain[0]?.width !== w0 || chain[0]?.height !== h0) {
+		if (chain[0]?.width !== w0 || chain[0]?.height !== h0 || this.settleByteTargets.has(chain[0]) !== bytes) {
 			const candidate: FBO[] = [];
 			const fmt = this.ext.formatR;
 			try {
 				for (let w = w0, h = h0; ; w = Math.ceil(w / 8), h = Math.ceil(h / 8)) {
-					candidate.push(createFBO(gl, w, h, fmt.internalFormat, fmt.format, this.ext.halfFloatTexType, gl.NEAREST));
+					const target = createFBO(gl, w, h, bytes ? (this.ext.isWebGL2 ? (gl as WebGL2RenderingContext).RGBA8 : gl.RGBA) : fmt.internalFormat, bytes ? gl.RGBA : fmt.format, bytes ? gl.UNSIGNED_BYTE : this.ext.halfFloatTexType, gl.NEAREST);
+					candidate.push(target);
+					if (bytes) this.settleByteTargets.add(target);
 					if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
 						throw new Error('svelte-fluid: incomplete settle framebuffer');
 					}
@@ -3551,7 +3581,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		}
 	}
 
-	private settleReducePass(src: FBO, target: FBO, r: number, g: number, b: number): void {
+	private settleReducePass(src: FBO, target: FBO, r: number, g: number, b: number, flagMode = 0): void {
 		const gl = this.gl;
 		const program = this.settleMaxProgram;
 		gl.disable(gl.BLEND);
@@ -3559,6 +3589,8 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		gl.uniform1i(program.uniforms.uSource, src.attach(0));
 		gl.uniform2f(program.uniforms.uSourceTexel, src.texelSizeX, src.texelSizeY);
 		gl.uniform4f(program.uniforms.uChannels, r, g, b, 0);
+		gl.uniform1i(program.uniforms.uFlagMode, flagMode);
+		gl.uniform1f(program.uniforms.uFade, 1 - 1 / (1 + this.config.DENSITY_DISSIPATION / 60));
 		this.blit(target);
 	}
 
