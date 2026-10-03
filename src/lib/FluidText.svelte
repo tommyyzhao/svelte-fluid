@@ -7,13 +7,13 @@
   so the font appears the same visual size regardless of text length.
 
   Contrast: the canvas is transparent, so letterforms sit directly on the
-  page. `minContrast` defaults to 3 (WCAG AA for large text, 1.4.3): a thin
+  page. `minContrast` defaults to 4.5 (WCAG AA for all text sizes, 1.4.3): a thin
   ~1.5 CSS px SDF halo outlines the glyphs at that ratio against the page.
   Interior dye is untouched, WebGL1 included (the halo comes from the coverage
   mask there). The page colour is `contrastColor`, else the ancestors'
   backgrounds measured on mount (alpha composited; gradients need an explicit
   `contrastColor`, white/black per color-scheme at the root). Pass
-  `minContrast={1}` to opt out, or `4.5` for small text. See ADR-0086.
+  `minContrast={1}` to opt out, or `3` for large text. See ADR-0086.
 -->
 
 <script lang="ts" module>
@@ -35,7 +35,7 @@
 		lazy = false,
 		autoPause = true,
 		transparent = true,
-		minContrast = 3,
+		minContrast = 4.5,
 		contrastColor,
 		class: className,
 		style,

@@ -46,14 +46,19 @@
 			console.warn('svelte-fluid: foil unavailable; showing the vector switch', error);
 			return;
 		}
-		const sync = () => engine?.resize(canvas.clientWidth, canvas.clientHeight, devicePixelRatio);
-		const resize = new ResizeObserver(sync);
-		try {
-			// Also fires on a DPR change (zoom, moving screens).
-			resize.observe(canvas, { box: 'device-pixel-content-box' });
-		} catch {
-			resize.observe(canvas);
-		}
+		let canvasSize: DOMRectReadOnly | undefined;
+		const sync = () => {
+			const size = canvasSize ?? canvas.getBoundingClientRect();
+			engine?.resize(size.width, size.height, devicePixelRatio);
+		};
+		// Content-box observation also catches changes within the same rounded device pixel.
+		const resize = new ResizeObserver(([entry]) => {
+			canvasSize = entry.contentRect;
+			sync();
+		});
+		resize.observe(canvas);
+		const zoom = () => sync();
+		window.addEventListener('resize', zoom);
 		const intersect = new IntersectionObserver(([entry]) => {
 			onscreen = entry.isIntersecting;
 			visibility();
@@ -71,6 +76,7 @@
 			if (destroyed) return;
 			destroyed = true;
 			resize.disconnect();
+			window.removeEventListener('resize', zoom);
 			intersect.disconnect();
 			forced.removeEventListener('change', visibility);
 			document.removeEventListener('visibilitychange', visibility);

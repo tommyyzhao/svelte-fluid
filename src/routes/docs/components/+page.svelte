@@ -345,13 +345,13 @@ ${SCRIPT_CLOSE}
 		<tr><td><code>font</code></td><td><code>string</code></td><td><code>'bold 100px "Helvetica Neue", Arial, sans-serif'</code></td><td>CSS font string for mask rasterization.</td></tr>
 		<tr><td><code>maskResolution</code></td><td><code>number</code></td><td><code>512</code></td><td>Mask rasterization resolution.</td></tr>
 		<tr><td><code>height</code></td><td><code>number</code></td><td>—</td><td>Fixed height in CSS px.</td></tr>
-		<tr><td><code>minContrast</code></td><td><code>number</code></td><td><code>3</code></td><td>WCAG ratio the glyph outline keeps against the page. <code>3</code> = AA large text; use <code>4.5</code> for small text, <code>1</code> to disable (0.8.0 look).</td></tr>
+		<tr><td><code>minContrast</code></td><td><code>number</code></td><td><code>4.5</code></td><td>WCAG AA ratio the glyph outline keeps against the page at every text size. Explicit <code>3</code> is valid for large text; use <code>1</code> to disable (0.8.0 look).</td></tr>
 		<tr><td><code>contrastColor</code></td><td><code>RGB</code></td><td>nearest opaque ancestor background</td><td>Page colour (0–255) to guarantee contrast against. Measured once on mount; set it for gradients, images or theme switches.</td></tr>
 	</tbody>
 </table>
 
 <div class="callout">
-	<strong>Contrast:</strong> The canvas is transparent, so dim dye was indistinguishable from the page (measured 1.0:1 on every preset). A thin ~1.5 CSS px outline supplies at least 3:1 contrast against the page (WCAG halo technique); interior dye stays bit-identical. The existing jump-flood SDF keeps the band anti-aliased at native DPR. WebGL1 builds the same outline from the coverage mask. Page colour is measured on mount (any CSS colour syntax, alpha composited); consumer responsibility: page backgrounds that are images or gradients need an explicit <code>contrastColor</code> (ADR-0086).
+	<strong>Contrast:</strong> The canvas is transparent, so dim dye was indistinguishable from the page (measured 1.0:1 on every preset). A thin ~1.5 CSS px outline supplies at least 4.5:1 contrast against the page by default (WCAG halo technique); interior dye stays bit-identical. The existing jump-flood SDF keeps the band anti-aliased at native DPR. WebGL1 builds the same outline from the coverage mask. Page colour is measured on mount (any CSS colour syntax, alpha composited); consumer responsibility: page backgrounds that are images or gradients need an explicit <code>contrastColor</code> (ADR-0086).
 </div>
 
 <p>Also accepts <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, <code>fallback</code>, <code>poster</code>, <code>posterAlt</code>, <code>fallbackText</code>, <code>onReady</code>, <code>onError</code>, and all <a href="{base}/docs/configuration">FluidConfig</a> props. Defaults to <code>transparent=true</code>.</p>
