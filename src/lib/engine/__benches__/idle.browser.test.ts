@@ -203,13 +203,31 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		};
 		const original = p.gl.createTexture.bind(p.gl);
 		let n = 0;
-		p.gl.createTexture = () => ++n === 2 ? null : original();
+		p.gl.createTexture = (() => ++n === 2 ? null : original()) as typeof p.gl.createTexture;
 		try {
 			expect(() => p.settleReduce(p.velocity.read, p.settleVelocityChain, 1, 1, 0)).toThrow();
 			expect(p.settleVelocityChain).toHaveLength(0);
 		} finally { p.gl.createTexture = original; }
 		const reduced = p.settleReduce(p.velocity.read, p.settleVelocityChain, 1, 1, 0);
 		expect([reduced.width, reduced.height]).toEqual([1, 1]);
+	});
+
+	it('failed framebuffer allocation deletes its orphan texture', () => {
+		const e = engine({ simResolution: 16 }, false);
+		const p = e as unknown as {
+			gl: WebGL2RenderingContext; velocity: { read: unknown }; settleVelocityChain: unknown[];
+			settleReduce(src: unknown, chain: unknown[], r: number, g: number, b: number): unknown;
+		};
+		const create = p.gl.createFramebuffer.bind(p.gl);
+		const remove = p.gl.deleteTexture.bind(p.gl);
+		let deleted = 0;
+		p.gl.createFramebuffer = (() => null) as unknown as typeof p.gl.createFramebuffer;
+		p.gl.deleteTexture = (texture) => { deleted++; remove(texture); };
+		try {
+			expect(() => p.settleReduce(p.velocity.read, p.settleVelocityChain, 1, 1, 0)).toThrow();
+			expect(deleted).toBe(1);
+			expect(p.settleVelocityChain).toHaveLength(0);
+		} finally { p.gl.createFramebuffer = create; p.gl.deleteTexture = remove; }
 	});
 
 	it.each(['own', 'shared'] as const)('failed readPixels cannot become quiet (%s tier)', (tier) => {
