@@ -92,7 +92,7 @@ import {
 import { type Rng, generateColor, mulberry32, normalizeColor, randomSeed } from './rng.js';
 import { fitDrawingBufferSize } from './resolution.js';
 import { flowCanDriveSolver } from './solver-activity.js';
-import { SETTLE_CHECKS, SETTLE_CHECK_INTERVAL, hasContinuousDriver, heightVisibilityScale, isQuiet, isQuietFlags } from './settle.js';
+import { SETTLE_CHECKS, SETTLE_CHECK_INTERVAL, hasContinuousDriver, dyeVisibilityGain, heightVisibilityScale, isQuiet, isQuietFlags } from './settle.js';
 import { blurMaskData } from './sticky-blur.js';
 import { subscribeFrame } from './frame-scheduler.js';
 import { notifyHost } from './notify-host.js';
@@ -3437,7 +3437,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			this.prepareSettleChain(this.velocity.read, this.settleVelocityChain, bytes);
 			this.prepareSettleChain(this.dye.read, this.settleDyeChain, bytes);
 			this.settleReducePass(this.velocity.read, this.settleVelocityChain[0], 1, 1, 0, bytes ? 1 : 0);
-			this.settleReducePass(this.dye.read, this.settleDyeChain[0], 1, 1, 1, bytes ? 2 : 0, heightVisibilityScale(this.config));
+			this.settleReducePass(this.dye.read, this.settleDyeChain[0], 1, 1, 1, bytes ? 2 : 0, heightVisibilityScale(this.config), dyeVisibilityGain(this.config));
 			this.checkSettleGl();
 			this.settleProbe = { sync: null, epoch: this.settleEpoch, velocityLevel: 1, dyeLevel: 1, bytes };
 		}); } catch (error) {
@@ -3601,7 +3601,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		}
 	}
 
-	private settleReducePass(src: FBO, target: FBO, r: number, g: number, b: number, flagMode = 0, heightVisibility = 0): void {
+	private settleReducePass(src: FBO, target: FBO, r: number, g: number, b: number, flagMode = 0, heightVisibility = 0, dyeGain = 1): void {
 		const gl = this.gl;
 		const program = this.settleMaxProgram;
 		gl.disable(gl.BLEND);
@@ -3611,6 +3611,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		gl.uniform4f(program.uniforms.uChannels, r, g, b, 0);
 		gl.uniform1i(program.uniforms.uFlagMode, flagMode);
 		gl.uniform1f(program.uniforms.uHeightVisibility, heightVisibility);
+		gl.uniform1f(program.uniforms.uDyeVisibilityGain, dyeGain);
 		gl.uniform1f(program.uniforms.uFade, 1 - 1 / (1 + this.config.DENSITY_DISSIPATION / 60));
 		this.blit(target);
 	}
@@ -3952,7 +3953,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			rectH: source.height,
 			color,
 			radius: correctRadius(radius, aspect),
-				dose
+			dose
 		};
 	}
 
@@ -4108,6 +4109,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		if (batch.length === 0) return;
 		const gl = this.gl;
 		this.flowOutletProgram.bind();
+		gl.uniform1f(this.flowOutletProgram.uniforms.uHeightCeiling, target === this.dye ? S.DYE_HEIGHT_CEILING : 0);
 		gl.uniform1i(this.flowOutletProgram.uniforms.uTarget, target.read.attach(0));
 		gl.uniform1i(this.flowOutletProgram.uniforms.uCount, batch.length);
 

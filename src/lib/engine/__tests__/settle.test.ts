@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULTS, resolveConfig } from '../FluidEngine.js';
 import { PRESETS } from '../../presets/registry.js';
-import { HEIGHT_SPECULAR_DISPLAY_BOUND, SETTLE_EPSILON, hasContinuousDriver, heightVisibilityScale, isQuiet, isQuietFlags } from '../settle.js';
+import { HEIGHT_SPECULAR_DISPLAY_BOUND, SETTLE_EPSILON, hasContinuousDriver, dyeVisibilityGain, heightVisibilityScale, isQuiet, isQuietFlags } from '../settle.js';
 
 const base = { AUTO_SPLAT_RATE: 0, FLOW: null, COLORFUL: false, INITIAL_DENSITY_DISSIPATION_DURATION: 0 };
 
@@ -30,8 +30,19 @@ describe('hasContinuousDriver', () => {
 });
 
 describe('height visibility proof', () => {
+	it('bounds sunrays amplification without blocking ordinary residual dye forever', () => {
+		for (const weight of [-1, 0, 0.5, 1, 100]) {
+			const gain = dyeVisibilityGain({ SUNRAYS: true, SUNRAYS_WEIGHT: weight });
+			const exact = 0.7 * (1 + Math.max(weight, 0) * Array.from({ length: 16 }, (_, i) => 0.95 ** i).reduce((s, v) => s + v, 0));
+			expect(gain).toBeGreaterThanOrEqual(1);
+			expect(gain).toBeCloseTo(Math.max(1, exact), 10);
+			expect(isQuiet(50, SETTLE_EPSILON / (gain * 2), 1)).toBe(true);
+		}
+		expect(dyeVisibilityGain({ SUNRAYS: false, SUNRAYS_WEIGHT: 100 })).toBe(1);
+	});
 	it('default diffuse stays RGB-bounded; exposed black specular/refraction cannot false-idle', () => {
 		expect(heightVisibilityScale(DEFAULTS)).toBe(0);
+		for (const patch of [{ shading: true, toneMapping: 'agx' as const }, { shading: true, minContrast: 3 }, { shading: true, glass: true, containerShape: { type: 'circle' as const, cx: 0.5, cy: 0.5, radius: 0.4 } }]) expect(heightVisibilityScale(resolveConfig(patch, DEFAULTS))).toBe(-1);
 		expect(heightVisibilityScale(resolveConfig({ specular: 0.5, bloom: false, sunrays: false }, DEFAULTS))).toBeCloseTo(0.5 * HEIGHT_SPECULAR_DISPLAY_BOUND);
 		const glass = { specular: 1, glass: true, bloom: false, sunrays: false, refraction: 0, containerShape: { type: 'circle' as const, cx: 0.5, cy: 0.5, radius: 0.4 } };
 		expect(heightVisibilityScale(resolveConfig(glass, DEFAULTS))).toBe(-1);

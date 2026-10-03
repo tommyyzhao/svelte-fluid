@@ -171,6 +171,32 @@ describe('independent thickness transport', () => {
 			expect(Math.max(...thickness(engine))).toBeCloseTo(peak / (1 + 2 / 60), 3);
 		} finally { engine.dispose(); }
 	});
+	it('keeps thickness within its ceiling for invalid sticky/outlet multipliers', () => {
+		for (const config of [
+			{ sticky: true, stickyAmplify: -2, stickyMask: { d: 'M0 0H100V100H0Z', maskResolution: 32 } },
+			{ flow: { outlets: [{ edge: 'left' as const, width: 1, clearDye: 10 }] } },
+			{ flow: { outlets: [{ edge: 'left' as const, width: 1, clearDye: -10 }] } }
+		]) {
+			const { engine } = setup(config);
+			try {
+				engine.splat(0.5, 0.5, 0, 0, { r: 0, g: 0, b: 0 });
+				expect(thickness(engine).every((v) => v >= 0 && v <= DYE_HEIGHT_CEILING)).toBe(true);
+				engine.advance(1, 1 / 60);
+				expect(thickness(engine).every((v) => v >= 0 && v <= DYE_HEIGHT_CEILING)).toBe(true);
+			} finally { engine.dispose(); }
+		}
+	});
+	it('sunrays gain prevents a sub-byte RGB/height field from settling while visibly amplified', async () => {
+		for (const bytes of [false, true]) for (const weight of [100, 1e6]) {
+			const { engine, h } = setup({ sunrays: true, sunraysWeight: weight });
+			try {
+				engine.splat(0.5, 0.5, 20, 0, { r: 0.001, g: 0, b: 0 });
+				const pixels = read(h);
+				expect(Math.max(...pixels)).toBeGreaterThan(10);
+				expect(await quiet(h, bytes)).toBe(false);
+			} finally { engine.dispose(); }
+		}
+	});
 	it('black thickness is nonquiet when specular/refraction exposes it; tiny bounded specular and diffuse-only black settle', async () => {
 		for (const bytes of [false, true]) for (const config of [{ specular: 1 }, { refraction: 1, distortion: true, distortionPower: 0 }]) {
 			const { engine, h } = setup(config);
