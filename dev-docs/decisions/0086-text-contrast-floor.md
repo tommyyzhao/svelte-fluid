@@ -73,6 +73,39 @@ The halo colour is white or black (or the grey that just clears the ratio);
 when neither side reaches the ratio, the side with the higher achievable ratio
 wins (page L=0.30, 10:1 requested gives black at 7:1), not a false guarantee. Anti-aliased edge pixels are excluded from the solid-band measurement.
 
+### Small-text default evidence (2026-10-03)
+
+`FluidText` now defaults to 4.5; explicit `minContrast=3` remains the large-text
+opt-out. `contrast.browser.test.ts`, `FluidText actual small-text AA default`,
+mounts the real component with no `minContrast` or `contrastColor` override on
+measured white/black pages. Baseline: `c873fdf5d3763fba2d70145fccecdf873e6c03c5`.
+Fixture: `Fluid`, `16px Arial, sans-serif`, regular weight, CSS box
+34.671875 × 11.640625 px. The existing mask fitter uses 90% glyph padding, so
+visible glyphs are approximately 14.4 CSS px, not large text. Seed 42, two
+opening splats, reduced-motion still; no runtime rendering changes.
+
+Ordinary installed hardware Chrome, actual DPR 1/2/3, native backing sizes
+34×11 / 69×23 / 104×34: minimum default ratios **4.542224959605253:1** (light),
+**4.557768319672582:1** (dark), at every DPR. The identical mounted fixture
+with only `minContrast=3` changed measured **3.0334698257384747:1** /
+**3.0448346617620263:1**. Six tests passed (two themes per DPR).
+
+Sampling: WCAG relative luminance of the composited opaque perimeter foreground
+versus the measured adjacent uniform page background. Select full halo coverage
+(alpha 255), outside glyph coverage (reveal diagnostic alpha 0), where the same
+state with the halo disabled has alpha 0; 96 / 620 / 1485 samples per policy
+at DPR 1/2/3. This is a minimum, not a percentile or passing-pixel count.
+Partial antialiased edge coverage and interior dye are intentionally excluded.
+This proves this small-text halo envelope, not every font, page colour, theme
+transition, WebGL1, full-component accessibility, or visual approval.
+
+Twelve current canvas-composite PNGs and six raw JSON records are in
+`/tmp/small-text-contrast/` (not committed). `previous-3` versus `default-4.5`
+is a same-fixture **policy comparison**, not historical before/after build
+screenshots. Reproduce each DPR with
+`VITEST_CHROME_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' SVELTE_FLUID_DPR=1 bun run test:browser src/lib/engine/__benches__/contrast.browser.test.ts -t 'actual small-text'`
+(repeat with 2 and 3). Node tests, `bun run check`, `bun run prepack` passed.
+
 ## Consequences
 
 Easier: one prop gives a measurable AA guarantee; no new runtime deps.
