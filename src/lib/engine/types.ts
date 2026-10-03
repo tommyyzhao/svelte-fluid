@@ -515,7 +515,7 @@ export interface FluidConfig {
 	 * dark reference) or darkened keeping hue (against a light one) until they
 	 * pass; passing pixels are untouched. Values ≤ 1 / `undefined` disable it,
 	 * which is the `<Fluid>` default, so the 0.8.0 look is unchanged.
-	 * `<FluidText>` defaults it to 3 (AA for large text) using an outline halo. With a transparent
+	 * `<FluidText>` defaults it to 4.5 (AA for all text sizes) using an outline halo. With a transparent
 	 * canvas the reference is the page behind it, so set `contrastColor` to the
 	 * real page colour (`<FluidText>` measures it for you); without one it does nothing. Bucket B (keyword recompile on
 	 * enable/disable; the value is a hot uniform). See ADR-0086.

@@ -66,12 +66,19 @@ export function attachSurface(
 		console.warn('svelte-fluid: liquid surface unavailable; showing the native control', error);
 		return null;
 	}
+	let canvasSize: DOMRectReadOnly | undefined;
 	const sync = () => {
-		engine.resize(canvas.clientWidth, canvas.clientHeight, devicePixelRatio);
+		const size = canvasSize ?? canvas.getBoundingClientRect();
+		engine.resize(size.width, size.height, devicePixelRatio);
 		engine.setConfig(measure());
 	};
-	const resize = new ResizeObserver(sync);
+	const resize = new ResizeObserver((entries) => {
+		canvasSize = entries.find((entry) => entry.target === canvas)?.contentRect ?? canvasSize;
+		sync();
+	});
 	resize.observe(box);
+	resize.observe(canvas);
+	window.addEventListener('resize', sync);
 	const intersect = new IntersectionObserver(([entry]) => engine.setVisible(entry.isIntersecting));
 	intersect.observe(box);
 	const unwatch = watchReducedMotion((reducedMotion) => engine.setConfig({ reducedMotion }));
@@ -90,6 +97,7 @@ export function attachSurface(
 			if (destroyed) return;
 			destroyed = true;
 			resize.disconnect();
+			window.removeEventListener('resize', sync);
 			intersect.disconnect();
 			unwatch();
 			engine.dispose();

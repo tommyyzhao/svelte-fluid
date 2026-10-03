@@ -31,10 +31,12 @@
 		return { page, body, tone: resolved };
 	}
 
+	let canvasSize: DOMRectReadOnly | undefined;
 	function layout() {
 		if (!engine) return;
+		const size = canvasSize ?? canvas.getBoundingClientRect();
 		try {
-			engine.resize(canvas.clientWidth, canvas.clientHeight, devicePixelRatio);
+			engine.resize(size.width, size.height, devicePixelRatio);
 		} catch (error) {
 			// Text this treatment cannot reproduce exactly stays plain.
 			console.warn('svelte-fluid: EnamelText shows plain text', error);
@@ -62,8 +64,13 @@
 			console.warn('svelte-fluid: EnamelText unavailable; showing plain text', error);
 			return;
 		}
-		const resize = new ResizeObserver(layout);
-		resize.observe(root);
+		// Observe the canvas content box, not transformed visual bounds.
+		const resize = new ResizeObserver(([entry]) => {
+			canvasSize = entry.contentRect;
+			layout();
+		});
+		resize.observe(canvas);
+		window.addEventListener('resize', layout);
 		const intersect = new IntersectionObserver(([entry]) => engine?.setVisible(entry.isIntersecting));
 		intersect.observe(root);
 		const unwatch = watchReducedMotion((reducedMotion) => engine?.setConfig({ reducedMotion }));
@@ -102,6 +109,7 @@
 			removeEventListener('pointercancel', up);
 			document.fonts?.removeEventListener('loadingdone', layout);
 			resize.disconnect();
+			window.removeEventListener('resize', layout);
 			intersect.disconnect();
 			unwatch();
 			teardown();
