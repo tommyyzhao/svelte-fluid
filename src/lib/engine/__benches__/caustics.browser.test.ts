@@ -5,6 +5,7 @@ import { createRawSnippet, mount, unmount } from 'svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import LiquidCaustics from '../../LiquidCaustics.svelte';
 import { activeFrameSubscribers } from '../frame-scheduler.js';
+import { measureTextOverlayCap } from '../css-color.js';
 import { acquireGlHost } from '../gl-host.js';
 import { LABEL_MIN_CONTRAST, LOOKS, hexToSrgb, overlayCap, overlayContrast } from '../surface/look.js';
 import { SurfaceEngine } from '../surface/SurfaceEngine.js';
@@ -107,6 +108,113 @@ describe('LiquidCaustics', () => {
 		expect(peak).toBeLessThanOrEqual(cap + 1 / 255);
 		expect(peak).toBeGreaterThan(0);
 		expect(overlayContrast(hexToSrgb(text), hexToSrgb(page), peak, tone)).toBeGreaterThanOrEqual(LABEL_MIN_CONTRAST);
+	});
+
+	it.each(['light', 'dark'] as const)('%s: every native text run limits the overlay; mutation restores plain failing content', async (tone) => {
+		const { root, page, text } = caustics(tone);
+		const canvas = root.querySelector('canvas')!;
+		const link = root.querySelector('a')!;
+		const descendant = tone === 'light' ? '#585858' : '#919191';
+		link.style.color = descendant;
+		const label = document.createElement('label');
+		label.textContent = 'Native label';
+		label.style.cssText = `color:${descendant};background:${page}`;
+		root.prepend(document.createTextNode('Root text'), label);
+		await frames(3);
+		const cap = Math.min(overlayCap(undefined, hexToSrgb(text), hexToSrgb(page), tone), overlayCap(undefined, hexToSrgb(descendant), hexToSrgb(page), tone));
+		expect(cap).toBeGreaterThan(0);
+		expect(measureTextOverlayCap(root, canvas, undefined, tone)).toBeCloseTo(cap, 5);
+		link.focus();
+		expect(document.activeElement).toBe(link);
+		const selection = getSelection()!;
+		selection.selectAllChildren(label);
+		expect(selection.toString()).toBe('Native label');
+		selection.removeAllRanges();
+		let peak = 0;
+		for (let i = 0; i < 12; i++) {
+			await frames(3);
+			for (const k of strengthsUnder(canvas, link)) peak = Math.max(peak, k);
+		}
+		expect(peak).toBeGreaterThan(0);
+		expect(peak).toBeLessThanOrEqual(cap + 1 / 255);
+		link.style.color = page;
+		await frames(2);
+		expect(getComputedStyle(link).color).toBe(getComputedStyle(root.parentElement!).backgroundColor);
+		expect(measureTextOverlayCap(root, canvas, undefined, tone)).toBe(0);
+		expect(getComputedStyle(canvas).visibility).toBe('hidden');
+		link.style.color = descendant;
+		await frames(2);
+		expect(getComputedStyle(canvas).visibility).toBe('visible');
+		root.parentElement!.style.backgroundColor = descendant;
+		await frames(2);
+		expect(getComputedStyle(canvas).visibility).toBe('hidden');
+	});
+
+	it.each([
+		'background:linear-gradient(white,black)', 'background-image:url(data:image/png;base64,AA==)',
+		'filter:blur(1px)', 'opacity:0.9', 'text-shadow:0 0 1px black', 'mix-blend-mode:multiply',
+		'animation:unsupported 1s infinite', 'transition:color 1s', 'display:contents',
+		'position:relative;top:-30px', 'margin-top:-30px', 'display:grid', 'display:list-item'
+	])('unsupported %s disables the whole overlay without changing content', async (css) => {
+		const { root } = caustics('light');
+		const p = root.querySelector('p')!;
+		const original = p.textContent;
+		p.style.cssText += `;${css}`;
+		await frames(2);
+		const canvas = root.querySelector('canvas')!;
+		expect(measureTextOverlayCap(root, canvas, undefined, 'light')).toBe(0);
+		expect(getComputedStyle(canvas).visibility).toBe('hidden');
+		expect(p.textContent).toBe(original);
+	});
+
+	it('transparent page with a light dark declaration does not guess a Canvas background', async () => {
+		const htmlStyle = document.documentElement.style.cssText;
+		const bodyStyle = document.body.style.cssText;
+		live.push(() => { document.documentElement.style.cssText = htmlStyle; document.body.style.cssText = bodyStyle; });
+		document.documentElement.style.cssText = 'background:transparent;color-scheme:light dark';
+		document.body.style.background = 'transparent';
+		const { root } = caustics('dark');
+		root.parentElement!.style.background = 'transparent';
+		root.querySelector('a')!.style.color = '#999';
+		await frames(2);
+		const canvas = root.querySelector('canvas')!;
+		expect(measureTextOverlayCap(root, canvas, undefined, 'dark')).toBe(0);
+		expect(getComputedStyle(canvas).visibility).toBe('hidden');
+		expect(getComputedStyle(root.querySelector('a')!).color).toBe('rgb(153, 153, 153)');
+	});
+
+	it('generated, embedded and overflow content fail closed; resize remeasures', async () => {
+		const { root } = caustics('light');
+		const canvas = root.querySelector('canvas')!;
+		await frames(2);
+		root.style.width = '710px';
+		await frames(3);
+		expect(getComputedStyle(canvas).visibility).toBe('visible');
+		const sheet = document.createElement('style');
+		sheet.textContent = '.generated::before { content: "Unmeasured"; } .letter::first-letter { color: #aaa; } .line::first-line { color: #aaa; }';
+		document.head.append(sheet);
+		live.push(() => sheet.remove());
+		root.querySelector('p')!.className = 'generated';
+		await frames(2);
+		expect(getComputedStyle(canvas).visibility).toBe('hidden');
+		for (const className of ['letter', 'line']) {
+			root.querySelector('p')!.className = className;
+			await frames(2);
+			expect(getComputedStyle(canvas).visibility).toBe('hidden');
+		}
+		root.querySelector('p')!.className = '';
+		const custom = document.createElement('custom-text');
+		root.prepend(custom);
+		await frames(2);
+		expect(getComputedStyle(canvas).visibility).toBe('hidden');
+		custom.remove();
+		for (let i = 0; i < 129; i++) {
+			const span = document.createElement('span');
+			span.textContent = 'text ';
+			root.prepend(span);
+		}
+		await frames(2);
+		expect(getComputedStyle(canvas).visibility).toBe('hidden');
 	});
 
 	it.each(['light', 'dark'] as const)('%s: at rest nothing is drawn; a ripple settles back to nothing and zero subscriptions', async (tone) => {

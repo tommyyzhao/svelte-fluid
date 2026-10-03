@@ -5,6 +5,7 @@
  * does the alpha compositing, so no colour string is ever parsed by hand.
  */
 import type { RGB } from './types.js';
+import { overlayCap, type Srgb, type SurfaceTone } from './surface/look.js';
 
 let ctx: CanvasRenderingContext2D | null | undefined;
 let warnedGradient = false;
@@ -74,6 +75,91 @@ export function measurePageColor(start: Element | null): RGB {
 	}
 	const dark = getComputedStyle(document.documentElement).colorScheme.includes('dark');
 	return composite(dark ? { r: 0, g: 0, b: 0 } : { r: 255, g: 255, b: 255 }, layers.reverse());
+}
+
+/**
+ * Caustics support plain, static native text over solid ancestor backgrounds.
+ * Anything unmeasurable disables the whole overlay, never substitutes a colour.
+ * ponytail: 128 runs / 512 elements / 1024 nodes / 64 ancestors; larger or richer content stays native.
+ */
+export function measureTextOverlayCap(root: HTMLElement, canvas: HTMLCanvasElement, intensity: number | undefined, tone: SurfaceTone): number {
+	if (!get2d()) return 0;
+	const styles = new Map<Element, CSSStyleDeclaration>();
+	const style = (el: Element) => {
+		let cs = styles.get(el);
+		if (!cs) styles.set(el, (cs = getComputedStyle(el)));
+		return cs;
+	};
+	const unsupported = (el: Element) => {
+		const cs = style(el);
+		return el.localName.includes('-') || !!el.shadowRoot ||
+			/^(img|svg|canvas|video|audio|iframe|object|embed|input|textarea|select)$/.test(el.localName) ||
+			cs.backgroundImage !== 'none' || cs.filter !== 'none' ||
+			(cs.backdropFilter && cs.backdropFilter !== 'none') || cs.mixBlendMode !== 'normal' ||
+			cs.opacity !== '1' || cs.textShadow !== 'none' || cs.boxShadow !== 'none' ||
+			cs.transform !== 'none' || cs.backgroundClip === 'text' || cs.display === 'contents' ||
+			(cs.position === 'relative' && [cs.top, cs.right, cs.bottom, cs.left].some((offset) => offset !== 'auto' && parseFloat(offset) !== 0)) ||
+			[cs.marginTop, cs.marginRight, cs.marginBottom, cs.marginLeft].some((margin) => parseFloat(margin) < 0) ||
+			cs.display.includes('grid') || cs.display.includes('list-item') ||
+			(cs.getPropertyValue('-webkit-text-fill-color') && cs.getPropertyValue('-webkit-text-fill-color') !== cs.color) ||
+			parseFloat(cs.getPropertyValue('-webkit-text-stroke-width')) > 0 ||
+			cs.animationName.split(',').some((name) => name.trim() !== 'none') ||
+			cs.transitionDuration.split(',').some((duration) => parseFloat(duration) > 0) ||
+			['::first-letter', '::first-line'].some((pseudo) => {
+				const ps = getComputedStyle(el, pseudo);
+				return alphaOf(ps.backgroundColor) > 0 || ps.backgroundImage !== 'none' ||
+					['color', 'text-shadow', '-webkit-text-fill-color', '-webkit-text-stroke-width'].some((property) => ps.getPropertyValue(property) !== cs.getPropertyValue(property));
+			}) ||
+			['::before', '::after'].some((pseudo) => {
+				const content = getComputedStyle(el, pseudo).content;
+				return content !== 'none' && content !== 'normal';
+			});
+	};
+	const ancestors: Element[] = [];
+	for (let el: Element | null = root; el; el = el.parentElement) {
+		if (ancestors.length === 64 || unsupported(el)) return 0;
+		ancestors.push(el);
+	}
+	const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+	const runs: Element[] = [];
+	let elements = 0;
+	let nodes = 0;
+	for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+		if (++nodes > 1024) return 0;
+		if (node === canvas || canvas.contains(node)) continue;
+		if (node instanceof Element) {
+			if (++elements > 512 || unsupported(node)) return 0;
+			// Out-of-flow layers cannot be represented by an ancestor background stack.
+			if (['absolute', 'fixed', 'sticky'].includes(style(node).position)) return 0;
+		} else if (node.textContent?.trim() && node.parentElement) {
+			const el = node.parentElement;
+			if (style(el).visibility !== 'visible' || !el.getClientRects().length) continue;
+			if (runs.length === 128) return 0;
+			runs.push(el);
+		}
+	}
+	const backgrounds = new Map<Element, RGB>();
+	// No opaque page background means the browser Canvas colour is unknown here.
+	// Fail closed rather than guessing from the declared (possibly `light dark`) scheme.
+	if (!ancestors.some((el) => alphaOf(style(el).backgroundColor) === 255)) return 0;
+	const base = { r: 255, g: 255, b: 255 };
+	const background = (el: Element): RGB => {
+		let bg = backgrounds.get(el);
+		if (!bg) {
+			const layers: string[] = [];
+			for (let parent: Element | null = el; parent; parent = parent.parentElement) layers.push(style(parent).backgroundColor);
+			backgrounds.set(el, (bg = composite(base, layers.reverse())));
+		}
+		return bg;
+	};
+	const srgb = (c: RGB): Srgb => [c.r / 255, c.g / 255, c.b / 255];
+	let cap = 1;
+	for (const el of runs) {
+		const bg = background(el);
+		cap = Math.min(cap, overlayCap(intensity, srgb(cssColorToRgb(style(el).color, bg)), srgb(bg), tone));
+		if (!cap) return 0;
+	}
+	return runs.length ? cap : 0;
 }
 
 /** @internal Test hook. */

@@ -61,6 +61,18 @@ describe('caustics contrast proof', () => {
 		}
 	});
 
+	it.each(['light', 'dark'] as const)('%s: minimum text-run budget protects all passing pairs; zero margin disables', (tone) => {
+		const bg = hexToSrgb(PAIRS[tone].bg);
+		const pairs = [hexToSrgb(PAIRS[tone].text), hexToSrgb(tone === 'light' ? '#585858' : '#919191')];
+		const cap = Math.min(...pairs.map((text) => overlayCap(1, text, bg, tone)));
+		expect(cap).toBeGreaterThan(0);
+		for (const text of pairs) expect(overlayContrast(text, bg, cap, tone)).toBeGreaterThanOrEqual(4.5);
+		expect(overlayCap(1, bg, bg, tone)).toBe(0);
+		// Exactly 4.5 before encoding has no ±2-code safety margin: leave it untouched.
+		const grey = Math.pow(1.055 * Math.pow((1.05 / 4.5 - 0.05), 1 / 2.4) - 0.055, 1);
+		expect(overlayCap(1, [grey, grey, grey], [1, 1, 1], tone)).toBe(0);
+	});
+
 	it('overlayPixel is the CSS blend the canvas is composited with', () => {
 		// Dark: premultiplied (tint·k, k) under mix-blend-mode: screen = d + k·tint·(1 − d).
 		// Light: plain source-over = d·(1 − k) + k·tint.
