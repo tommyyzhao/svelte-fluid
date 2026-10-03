@@ -12,11 +12,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { notifyHost } from './engine/notify-host.js';
-	import { cssColorToRgb, measurePageColor } from './engine/css-color.js';
+	import { measureTextOverlayCap } from './engine/css-color.js';
 	import { attachSurface, rectIn, resolveTone } from './engine/surface/attach.js';
 	import type { SurfaceBinding } from './engine/surface/attach.js';
-	import { overlayCap } from './engine/surface/look.js';
-	import type { Srgb, SurfaceTone } from './engine/surface/look.js';
+	import type { SurfaceTone } from './engine/surface/look.js';
 	import { OVERLAY_RIPPLE } from './engine/surface/SurfaceEngine.js';
 	import { admitRipple } from './engine/surface/wave.js';
 	import type { LiquidCausticsProps } from './engine/types.js';
@@ -30,28 +29,57 @@
 	let binding: SurfaceBinding | null = null;
 	const gate = { t: -Infinity, x: -Infinity, y: -Infinity };
 
-	/** Peak overlay strength for the measured text and background colours. */
+	let invalidate = () => {};
+
+	/** Measured only at startup/update/resize, never during rendering. */
 	function strength(): number {
-		const bg = measurePageColor(root);
-		const text = cssColorToRgb(getComputedStyle(root).color, bg);
-		const srgb = (c: { r: number; g: number; b: number }): Srgb => [c.r / 255, c.g / 255, c.b / 255];
-		return overlayCap(intensity, srgb(text), srgb(bg), resolved);
+		return measureTextOverlayCap(root, canvas, intensity, resolved);
 	}
 
 	function measure() {
+		const overlay = strength();
+		canvas.style.visibility = overlay > 0 ? '' : 'hidden';
 		return {
 			control: 'overlay' as const,
 			tone: resolved,
 			rect: rectIn(root, canvas),
 			radius: parseFloat(getComputedStyle(root).borderTopLeftRadius) || 0,
-			overlay: strength()
+			overlay
 		};
 	}
 
 	onMount(() => {
 		resolved = resolveTone(tone, root);
 		binding = attachSurface(canvas, root, measure, (v) => (live = v));
-		return () => binding?.destroy();
+		let pending = 0;
+		invalidate = () => {
+			canvas.style.visibility = 'hidden';
+			if (pending) return;
+			pending = requestAnimationFrame(() => {
+				pending = 0;
+				resolved = resolveTone(tone, root);
+				binding?.update();
+			});
+		};
+		const observer = new MutationObserver((records) => {
+			if (records.some((record) => {
+				if (record.target === canvas || canvas.contains(record.target)) return false;
+				return true;
+			})) invalidate();
+		});
+		observer.observe(root, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'], attributeOldValue: true });
+		for (let el = root.parentElement; el; el = el.parentElement) observer.observe(el, { attributes: true, attributeFilter: ['class', 'style'], attributeOldValue: true });
+		const events = ['pointerover', 'pointerout', 'pointerdown', 'pointerup', 'focusin', 'focusout'] as const;
+		for (const event of events) root.addEventListener(event, invalidate, true);
+		document.fonts.addEventListener('loadingdone', invalidate);
+		return () => {
+			observer.disconnect();
+			cancelAnimationFrame(pending);
+			for (const event of events) root.removeEventListener(event, invalidate, true);
+			document.fonts.removeEventListener('loadingdone', invalidate);
+			invalidate = () => {};
+			binding?.destroy();
+		};
 	});
 
 	$effect(() => {
