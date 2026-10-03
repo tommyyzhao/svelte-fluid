@@ -68,24 +68,30 @@ function drain(e: FluidEngine) {
 		gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
 	});
 }
+function retire(e: FluidEngine) {
+	const h = e as unknown as Harness;
+	if (h.cancelSettleProbe) h.cancelSettleProbe();
+	else h.withGl(() => { if (h.settleProbe?.sync) h.gl.deleteSync(h.settleProbe.sync); h.settleProbe = null; });
+}
 function stages(e: FluidEngine): string[] {
 	const h = e as unknown as Harness;
 	h.issueSettleProbe();
+	if (!h.advanceSettleProbe) { retire(e); return ['ordinary', 'full-chain']; }
 	const labels = ['ordinary', 'snapshot'];
 	for (let i = 1; i < h.settleVelocityChain.length; i++) labels.push(`velocity-${i}`);
 	for (let i = 1; i < h.settleDyeChain.length; i++) labels.push(`dye-${i}`);
 	labels.push('readback', 'full-chain');
 	while (h.settleProbe && !h.settleProbe.sync) h.advanceSettleProbe();
-	h.cancelSettleProbe();
+	retire(e);
 	return labels;
 }
 function stage(e: FluidEngine, label: string) {
 	const h = e as unknown as Harness;
 	if (label === 'ordinary') return;
-	h.cancelSettleProbe();
+	retire(e);
 	if (label === 'snapshot' || label === 'full-chain') {
 		h.issueSettleProbe();
-		if (label === 'full-chain') while (h.settleProbe && !h.settleProbe.sync) h.advanceSettleProbe();
+		if (label === 'full-chain' && h.advanceSettleProbe) while (h.settleProbe && !h.settleProbe.sync) h.advanceSettleProbe();
 	} else {
 		h.settleProbe = { sync: null, epoch: h.settleEpoch, velocityLevel: h.settleVelocityChain.length, dyeLevel: h.settleDyeChain.length };
 		if (label.startsWith('velocity-')) h.settleProbe.velocityLevel = Number(label.split('-')[1]);
@@ -94,7 +100,7 @@ function stage(e: FluidEngine, label: string) {
 	}
 	// Busy replay only: retire the sync, not the command it fences. Queue order
 	// prevents later writes overtaking these reads. Production keeps one probe.
-	h.cancelSettleProbe();
+	retire(e);
 }
 async function batch(e: FluidEngine, label: string, frames = FRAMES): Promise<number> {
 	await e.presented(); drain(e);

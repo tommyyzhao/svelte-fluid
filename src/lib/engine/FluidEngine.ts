@@ -3469,8 +3469,10 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			gl.flush();
 		}); } catch (error) {
 			// Never turn an unsuccessful readback's zero-filled buffer into a quiet verdict.
-			const gl = this.gl as WebGL2RenderingContext;
-			gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+			this.withGl(() => {
+				const gl = this.gl as WebGL2RenderingContext;
+				gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+			});
 			this.cancelSettleProbe();
 			this.failTransition(error);
 		}
@@ -3487,7 +3489,9 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		let result: boolean | null | undefined = null;
 		try { result = this.withGl(() => {
 			const gl = this.gl as WebGL2RenderingContext;
-			if (gl.getSyncParameter(sync, gl.SYNC_STATUS) !== gl.SIGNALED) return null;
+			const status = gl.getSyncParameter(sync, gl.SYNC_STATUS);
+			this.checkSettleGl();
+			if (status !== gl.SIGNALED) return null;
 			gl.deleteSync(sync);
 			this.settleProbe = null;
 			// Field/config changes since issue invalidate the old quietness verdict.
@@ -3503,7 +3507,14 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			if (!Number.isFinite(this.settlePixels[0]) || !Number.isFinite(this.settlePixels[4])) return false;
 			this.settleCheckCount++;
 			return isQuiet(this.settlePixels[0], this.settlePixels[4], this.config.DENSITY_DISSIPATION);
-		}); } catch (error) { this.failTransition(error); }
+		}); } catch (error) {
+			this.withGl(() => {
+				const gl = this.gl as WebGL2RenderingContext;
+				gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+			});
+			this.cancelSettleProbe();
+			this.failTransition(error);
+		}
 		this.settleCheckMs += performance.now() - t0;
 		return result ?? null;
 	}

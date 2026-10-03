@@ -94,3 +94,37 @@ CSS DPR 3 cost 0.90 ms median CPU per check, max 1.20/1.20/1.10 ms,
 full matrix does not establish the 2 ms bar: earlier GasFlare checked frames
 measured 2.04 ms and shared-tier Karman remains above it. GL validation/read
 errors fail closed, candidate chains swap only after complete allocation.
+
+## Amendment (2026-10-02): staged immutable snapshots
+
+The synchronous issue frame's two complete chains plus PBO reads left too little
+headroom under the strict 2 ms **per-frame**, not amortized, GPU budget.
+
+`issueSettleProbe()` now allocates complete candidate chains transactionally and
+freezes **both** first-level maxima in the same frame/epoch. These instance-owned
+R16F FBOs are immutable until that probe is retired. No live ping-pong field is
+retained. Later eligible frames run **at most one** remaining reduction draw,
+velocity levels first, then dye levels. The following frame queues the unchanged
+two-pixel PBO reads, fence and flush; later frames poll without waiting. Exact
+8x8 source maxima and thresholds are unchanged; no sampling or shader change.
+
+One probe remains in flight. Check starts remain every 30 eligible frames;
+three consecutive accepted quiet snapshots still stop the loop. Splat, config,
+resize, pause/resume, ineligibility, loss and dispose cancel the probe immediately
+and reset its quiet streak. Shared stages rebind all consumed GL state. Failed
+allocation, reduction, readback or validation cannot become a quiet verdict.
+WebGL1/missing float readback remains conservative: no automatic settling.
+
+For the usual two velocity levels and four dye levels, four tail draws plus a
+readback-issue frame precede fence polling: about five extra frame intervals
+(~83 ms at 60 Hz), plus driver fence latency. Other resolutions differ. This
+preserves the **issue-time snapshot result**, not a mathematical proof that the
+current fields are quiet: ordinary simulation evolves velocity/dye without an
+external-input epoch change. That delayed-snapshot assumption already existed;
+staging extends its latency honestly. No claim of current-field equivalence.
+
+Hardware parity tests compare staged maxima against full issue-time readbacks at
+odd sizes on both tiers while fields continue evolving; each later stage is
+asserted to draw at most once. Cancellation is tested before and after fencing.
+Independent stage measurements and remaining release blockers are recorded in
+`dev-docs/benchmarks/strict-budget-followup.md`.

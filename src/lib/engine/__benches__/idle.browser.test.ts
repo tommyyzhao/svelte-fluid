@@ -270,6 +270,28 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		} finally { _setContextTier('auto'); }
 	});
 
+	it('failed fence polling and buffer reads unbind PBO and fail closed', async () => {
+		for (const operation of ['getSyncParameter', 'getBufferSubData'] as const) {
+			const e = engine({}, false);
+			const p = e as unknown as {
+				gl: WebGL2RenderingContext; issueSettleProbe(): void; advanceSettleProbe(): void;
+				pollSettleProbe(): boolean | null; settleProbe: { sync: WebGLSync | null } | null;
+				failed: boolean; settleCheckCount: number;
+			};
+			p.issueSettleProbe();
+			for (let i = 0; i < 12 && !p.settleProbe?.sync; i++) p.advanceSettleProbe();
+			await until(() => p.gl.getSyncParameter(p.settleProbe!.sync!, p.gl.SYNC_STATUS) === p.gl.SIGNALED, 5000);
+			const original = p.gl[operation];
+			(p.gl as unknown as Record<string, unknown>)[operation] = () => { p.gl.bindBuffer(-1, null); return null; };
+			try { expect(p.pollSettleProbe()).toBeNull(); }
+			finally { (p.gl as unknown as Record<string, unknown>)[operation] = original; }
+			expect(p.failed).toBe(true);
+			expect(p.settleProbe).toBeNull();
+			expect(p.settleCheckCount).toBe(0);
+			expect(p.gl.getParameter(p.gl.PIXEL_PACK_BUFFER_BINDING)).toBeNull();
+		}
+	});
+
 	it('FluidReveal auto-reveal is not deadlocked by settling', async () => {
 		const el = document.createElement('div');
 		el.style.cssText = 'width:200px;height:200px;position:relative';
