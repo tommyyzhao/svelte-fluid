@@ -66,14 +66,15 @@ export function attachSurface(
 		console.warn('svelte-fluid: liquid surface unavailable; showing the native control', error);
 		return null;
 	}
-	let canvasSize: DOMRectReadOnly | undefined;
+	let canvasSize: { width: number; height: number } | undefined;
 	const sync = () => {
 		const size = canvasSize ?? canvas.getBoundingClientRect();
 		engine.resize(size.width, size.height, devicePixelRatio);
 		engine.setConfig(measure());
 	};
 	const resize = new ResizeObserver((entries) => {
-		canvasSize = entries.find((entry) => entry.target === canvas)?.contentRect ?? canvasSize;
+		const size = entries.find((entry) => entry.target === canvas)?.contentRect;
+		if (size) canvasSize = { width: size.width, height: size.height };
 		sync();
 	});
 	resize.observe(box);

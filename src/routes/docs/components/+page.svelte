@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import { FoilSwitch, LiquidButton, LiquidCaustics, LiquidDropZone, LiquidSegmented, InkPaper, EnamelText } from '$lib/index.js';
+	import { LiquidToggle, LiquidButton, LiquidCaustics, LiquidDropZone, LiquidSegmented, InkPaper, EnamelText } from '$lib/index.js';
 
 	let segmented = $state('week');
-	let foilOn = $state(false);
+	let toggleOn = $state(false);
 	let dropped = $state('none yet');
 
 	const SCRIPT_OPEN = '<' + 'script lang="ts">';
@@ -55,12 +55,12 @@ ${SCRIPT_CLOSE}
   <h3>Tide tables</h3>
   <p>Move the pointer or tab into the block.</p>
 </LiquidCaustics>`;
-	const FOIL_EXAMPLE = `${SCRIPT_OPEN}
-  import { FoilSwitch } from 'svelte-fluid';
+	const TOGGLE_EXAMPLE = `${SCRIPT_OPEN}
+  import { LiquidToggle } from 'svelte-fluid';
   let notifications = $state(false);
 ${SCRIPT_CLOSE}
 
-<FoilSwitch bind:checked={notifications} onchange={(on) => save(on)}>Notifications</FoilSwitch>`;
+<LiquidToggle bind:checked={notifications} onchange={(on) => save(on)}>Notifications</LiquidToggle>`;
 	const ENAMEL_EXAMPLE = `${SCRIPT_OPEN}
   import { EnamelText } from 'svelte-fluid';
 ${SCRIPT_CLOSE}
@@ -100,7 +100,7 @@ ${SCRIPT_CLOSE}
 
 <svelte:head>
 	<title>Components — svelte-fluid</title>
-	<meta name="description" content="All thirteen svelte-fluid components — the six fluid components plus InkPaper, LiquidButton, LiquidSegmented, LiquidDropZone, LiquidCaustics, FoilSwitch and EnamelText." />
+	<meta name="description" content="All thirteen svelte-fluid components — the six fluid components plus InkPaper, LiquidButton, LiquidSegmented, LiquidDropZone, LiquidCaustics, LiquidToggle and EnamelText." />
 </svelte:head>
 
 <h1>Components</h1>
@@ -108,7 +108,7 @@ ${SCRIPT_CLOSE}
 
 <ul class="component-index">
 	<li>Fluid: <a href="#fluid">Fluid</a>, <a href="#fluidbackground">FluidBackground</a>, <a href="#fluidreveal">FluidReveal</a>, <a href="#fluiddistortion">FluidDistortion</a>, <a href="#fluidstick">FluidStick</a>, <a href="#fluidtext">FluidText</a></li>
-	<li>Interface primitives: <a href="#inkpaper">InkPaper</a>, <a href="#liquidbutton">LiquidButton</a>, <a href="#liquidsegmented">LiquidSegmented</a>, <a href="#liquiddropzone">LiquidDropZone</a>, <a href="#liquidcaustics">LiquidCaustics</a>, <a href="#foilswitch">FoilSwitch</a>, <a href="#enameltext">EnamelText</a></li>
+	<li>Interface primitives: <a href="#inkpaper">InkPaper</a>, <a href="#liquidbutton">LiquidButton</a>, <a href="#liquidsegmented">LiquidSegmented</a>, <a href="#liquiddropzone">LiquidDropZone</a>, <a href="#liquidcaustics">LiquidCaustics</a>, <a href="#liquidtoggle">LiquidToggle</a>, <a href="#enameltext">EnamelText</a></li>
 </ul>
 
 <!-- ============================================================ -->
@@ -523,34 +523,34 @@ ${SCRIPT_CLOSE}
 </div>
 
 <!-- ============================================================ -->
-<h2 id="foilswitch">&lt;FoilSwitch&gt;</h2>
+<h2 id="liquidtoggle">&lt;LiquidToggle&gt;</h2>
 
-<p>An on/off switch for settings, drawn as a metal arch that snaps between two stable states (arched is off, bowed is on).</p>
+<p>A native checkbox switch for settings. Its shallow liquid lens slides between Off and On, releasing a brief wake through the existing height-field surface. Space, label activation, form submission and reset remain native.</p>
 
 <div class="example">
-	<FoilSwitch bind:checked={foilOn} style="color: #e8ecf4">Notifications</FoilSwitch>
-	<p class="example-out">State: <code>{foilOn ? 'on' : 'off'}</code></p>
+	<LiquidToggle bind:checked={toggleOn}>Notifications</LiquidToggle>
+	<p class="example-out">State: <code>{toggleOn ? 'on' : 'off'}</code></p>
 </div>
 
-<pre><code>{FOIL_EXAMPLE}</code></pre>
+<pre><code>{TOGGLE_EXAMPLE}</code></pre>
 
 <table>
 	<thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
 	<tbody>
 		<tr><td><code>checked</code></td><td><code>boolean</code></td><td><code>false</code></td><td>On/off; <code>bind:checked</code>.</td></tr>
 		<tr><td><code>onchange</code></td><td><code>(checked: boolean) =&gt; void</code></td><td>—</td><td>Called with the new state after a user toggle. Exceptions are caught and logged.</td></tr>
-		<tr><td><code>tone</code></td><td><code>'light' | 'dark' | 'auto'</code></td><td><code>'auto'</code></td><td>Palette for the focus ring and vector fallback.</td></tr>
+		<tr><td><code>tone</code></td><td><code>'light' | 'dark' | 'auto'</code></td><td><code>'auto'</code></td><td>Liquid palette and native fallback.</td></tr>
 		<tr><td><code>disabled</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Disable the switch.</td></tr>
 		<tr><td><code>children</code></td><td><code>Snippet</code></td><td>—</td><td>Visible label; part of the accessible name.</td></tr>
-		<tr><td><code>...rest</code></td><td><code>HTMLButtonAttributes</code></td><td>—</td><td>Other button attributes are forwarded. <code>type</code>, <code>role</code> and <code>aria-checked</code> are fixed.</td></tr>
+		<tr><td><code>...rest</code></td><td><code>HTMLInputAttributes</code></td><td>—</td><td>Native input attributes including <code>name</code>, <code>value</code> and <code>form</code> are forwarded. <code>type</code>, <code>role</code> and <code>aria-checked</code> are fixed.</td></tr>
 	</tbody>
 </table>
 
 <div class="callout">
-	<strong>Input:</strong> a native <code>&lt;button type="button" role="switch"&gt;</code> with <code>aria-checked</code>. Click, tap, pen, Space and Enter toggle it; the state flips immediately, before <code>onchange</code>. The hit area is at least 48&times;48 CSS px and there is no border or chrome. The focus ring shows on <code>:focus-visible</code>.<br>
-	<strong>Reduced motion:</strong> the arch is drawn in its final state with no snap animation.<br>
-	<strong>Contrast:</strong> the arch carries the state, so the metal is clamped to at least 3:1 against the page in both tones (WCAG 1.4.11, ADR-0096).<br>
-	<strong>No WebGL2 / forced colours:</strong> an SVG arch of the same shape shows the state, in <code>ButtonText</code> under <code>forced-colors</code>. Shares one WebGL2 context per page with the other interface primitives (ADR-0088/0093), so many on one page do not hit the context cap.
+	<strong>Input:</strong> a native <code>&lt;input type="checkbox" role="switch"&gt;</code> inside its visible label. Space, click, tap and pen toggle immediately. Checked inputs submit their native name/value; form reset restores the initial state. The 96&times;48 CSS px track is the hit area, without an additional border or button shell. Keyboard focus draws a 2 px ring.<br>
+	<strong>Reduced motion:</strong> the lens snaps to the checked endpoint; Off/On remains visible.<br>
+	<strong>Contrast:</strong> the Off/On label boxes use the existing 4.5:1 surface budget; the DOM label uses the inherited page colour. The focus ring uses the existing tone palette (3:1 on its reference page).<br>
+	<strong>No WebGL2:</strong> the native checkbox still works; CSS shows the selected endpoint. <strong>Forced colours:</strong> a plain visible native checkbox and label, without canvas. The liquid uses the existing shared surface renderer, not a new solver.
 </div>
 
 <!-- ============================================================ -->
