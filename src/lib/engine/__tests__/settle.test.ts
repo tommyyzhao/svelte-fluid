@@ -67,6 +67,12 @@ describe('isQuiet', () => {
 	it('faded dye with no motion is quiet', () => expect(isQuiet(0, 0.03, 1)).toBe(true));
 	it('zero dissipation keeps any dye quiet', () => expect(isQuiet(0, 5, 0)).toBe(true));
 	it('epsilon is half an 8-bit step', () => expect(SETTLE_EPSILON).toBeCloseTo(0.5 / 255));
+	it('public dissipation filters nonfinite input but negative finite values remain nonquiet', () => {
+		expect(resolveConfig({ densityDissipation: NaN }, DEFAULTS).DENSITY_DISSIPATION).toBe(DEFAULTS.DENSITY_DISSIPATION);
+		const resolved = resolveConfig({ densityDissipation: -1 }, DEFAULTS);
+		expect(resolved.DENSITY_DISSIPATION).toBe(-1);
+		expect(isQuiet(0, 0, resolved.DENSITY_DISSIPATION)).toBe(false);
+	});
 });
 
 describe('RGBA8 quiet flags', () => {

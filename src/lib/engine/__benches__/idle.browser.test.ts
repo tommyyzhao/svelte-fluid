@@ -263,7 +263,7 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		for (const bytes of [false, true]) for (const dissipation of [NaN, -1]) {
 			const e = engine({ initialSplatCount: 0, reveal: true }, false);
 			const p = e as unknown as { config: { DENSITY_DISSIPATION: number }; canReadSettleFloat(): boolean; issueSettleProbe(): void; advanceSettleProbe(): void; pollSettleProbe(): boolean | null; settleProbe: { ready?: boolean; sync?: WebGLSync } | null };
-			// Public resolveConfig sanitizes these; exercise the internal fail-closed boundary directly.
+			// Direct injection isolates the internal fail-closed boundary from config resolution.
 			p.config.DENSITY_DISSIPATION = dissipation;
 			if (bytes) p.canReadSettleFloat = () => false;
 			p.issueSettleProbe();
