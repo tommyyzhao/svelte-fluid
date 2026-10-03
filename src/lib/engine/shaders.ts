@@ -154,24 +154,25 @@ export const checkerboardShader = `
     }
 `;
 
-/** Absorbing-layer geometry. Dye is concentration, NOT emitted RGB height (ADR-0087).
- * T_i = 1/(1+c_i), optical depth = -mean(log(T_i)). Height and XY distances
- * share canvas-height units; sampling the dye grid removes output-DPR dependence.
+/** Passive layer thickness in canvas-height units, stored independently in dye.a.
+ * No calibrated free-surface or wave coupling; XY uses the same units.
  */
+export const DYE_SPLAT_DOSE = 0.06;
+export const DYE_HEIGHT_CEILING = 0.24;
 export const DYE_GEOMETRY_GLSL = `
     uniform sampler2D uHeightTexture;
     uniform vec2 uHeightTexel;
     uniform float uHeightAspect;
 
-    float dyeHeight (vec3 concentration) {
-        return 0.06 * dot(log(vec3(1.0) + max(concentration, vec3(0.0))), vec3(1.0 / 3.0));
+    float dyeHeight (float thickness) {
+        return max(thickness, 0.0);
     }
 
     vec3 dyeNormal (vec2 uv) {
-        float l = dyeHeight(texture2D(uHeightTexture, uv - vec2(uHeightTexel.x, 0.0)).rgb);
-        float r = dyeHeight(texture2D(uHeightTexture, uv + vec2(uHeightTexel.x, 0.0)).rgb);
-        float b = dyeHeight(texture2D(uHeightTexture, uv - vec2(0.0, uHeightTexel.y)).rgb);
-        float t = dyeHeight(texture2D(uHeightTexture, uv + vec2(0.0, uHeightTexel.y)).rgb);
+        float l = dyeHeight(texture2D(uHeightTexture, uv - vec2(uHeightTexel.x, 0.0)).a);
+        float r = dyeHeight(texture2D(uHeightTexture, uv + vec2(uHeightTexel.x, 0.0)).a);
+        float b = dyeHeight(texture2D(uHeightTexture, uv - vec2(0.0, uHeightTexel.y)).a);
+        float t = dyeHeight(texture2D(uHeightTexture, uv + vec2(0.0, uHeightTexel.y)).a);
         vec2 slope = vec2(r - l, t - b) / (2.0 * uHeightTexel * vec2(uHeightAspect, 1.0));
         return normalize(vec3(-slope, 1.0));
     }
@@ -444,7 +445,7 @@ ${DYE_GEOMETRY_GLSL}
 
     #if defined(SHADING) || defined(SPECULAR) || defined(REFRACTION)
         vec3 n = dyeNormal(vUv);
-        float h = dyeHeight(c);
+        float h = dyeHeight(texture2D(uHeightTexture, vUv).a);
     #endif
     #ifdef SHADING
         // Artistic ambient/key ratio preserves the 0.8.0 0.7–1 envelope.
@@ -873,7 +874,7 @@ export const glassShaderSource = `
     // the container's glass optics. Never sample the framebuffer being written.
     vec4 layerScene (vec2 uv) {
         if (uRefraction <= 0.0) return texture2D(uScene, uv);
-        float h = dyeHeight(texture2D(uHeightTexture, uv).rgb);
+        float h = dyeHeight(texture2D(uHeightTexture, uv).a);
         vec2 shift = uRefraction * dyeRefraction(uv, dyeNormal(uv), h);
         return texture2D(uScene, clamp(uv + shift, 0.0, 1.0));
     }
@@ -1166,6 +1167,7 @@ export const splatShader = `
     uniform sampler2D uTarget;
     uniform float aspectRatio;
     uniform vec3 color;
+    uniform float uDose;
     uniform vec2 point;
     uniform float radius;
     uniform sampler2D uStickyMask;
@@ -1174,11 +1176,12 @@ export const splatShader = `
     void main () {
         vec2 p = vUv - point.xy;
         p.x *= aspectRatio;
-        vec3 splat = exp(-dot(p, p) / radius) * color;
+        float weight = exp(-dot(p, p) / radius);
         float stickyVal = texture2D(uStickyMask, vec2(vUv.x, 1.0 - vUv.y)).r;
-        splat *= 1.0 + stickyVal * uStickyAmplify;
-        vec3 base = texture2D(uTarget, vUv).xyz;
-        gl_FragColor = vec4(clamp(base + splat, -1000.0, 1000.0), 1.0);
+        weight *= 1.0 + stickyVal * uStickyAmplify;
+        vec4 base = texture2D(uTarget, vUv);
+        float thickness = uDose > 0.0 ? min(${DYE_HEIGHT_CEILING}, base.a + weight * uDose) : base.a;
+        gl_FragColor = vec4(clamp(base.rgb + weight * color, -1000.0, 1000.0), thickness);
     }
 `;
 
@@ -1198,6 +1201,7 @@ export const flowSourceShader = `
     uniform vec2 uTo[MAX_FLOW_SOURCE_BATCH];
     uniform vec4 uRect[MAX_FLOW_SOURCE_BATCH];
     uniform vec3 uColor[MAX_FLOW_SOURCE_BATCH];
+    uniform float uDose[MAX_FLOW_SOURCE_BATCH];
     uniform float uRadius[MAX_FLOW_SOURCE_BATCH];
     uniform sampler2D uStickyMask;
     uniform float uStickyAmplify;
@@ -1214,6 +1218,7 @@ export const flowSourceShader = `
 
     void main () {
         vec3 splat = vec3(0.0);
+        float dose = 0.0;
 
         for (int i = 0; i < MAX_FLOW_SOURCE_BATCH; i++) {
             if (i >= uCount) break;
@@ -1241,12 +1246,14 @@ export const flowSourceShader = `
 
             float amount = exp(-d2 / max(uRadius[i], 0.000001)) * profileWeight(uProfile[i], t);
             splat += amount * uColor[i];
+            dose += amount * uDose[i];
         }
 
         float stickyVal = texture2D(uStickyMask, vec2(vUv.x, 1.0 - vUv.y)).r;
-        splat *= 1.0 + stickyVal * uStickyAmplify;
-        vec3 base = texture2D(uTarget, vUv).xyz;
-        gl_FragColor = vec4(clamp(base + splat, -1000.0, 1000.0), 1.0);
+        float amplify = 1.0 + stickyVal * uStickyAmplify;
+        vec4 base = texture2D(uTarget, vUv);
+        float thickness = dose > 0.0 ? min(${DYE_HEIGHT_CEILING}, base.a + dose * amplify) : base.a;
+        gl_FragColor = vec4(clamp(base.rgb + splat * amplify, -1000.0, 1000.0), thickness);
     }
 `;
 
