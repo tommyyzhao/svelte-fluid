@@ -172,5 +172,7 @@ Review follow-up: velocity flags also preserve an invalid-component bit before
 max reduction; ordered per-component half-float bounds reject NaN/Infinity.
 Invalid dye writes all nonquiet flags. Both readback paths reject invalid internal
 dissipation even for exactly empty distortion/reveal. Public config resolution
-already sanitizes invalid dissipation; tests inject the internal boundary directly.
+filters nonfinite input through `withoutNonFiniteConfig` but accepts negative
+finite dissipation; direct test injection isolates the internal quiet-validation
+boundary for both cases.
 Focused hardware follow-up passed all four selected parity/flag tests.
