@@ -525,7 +525,7 @@ ${SCRIPT_CLOSE}
 <!-- ============================================================ -->
 <h2 id="liquidtoggle">&lt;LiquidToggle&gt;</h2>
 
-<p>A native checkbox switch for settings. Its shallow liquid lens slides between Off and On, releasing a brief wake through the existing height-field surface. Space, label activation, form submission and reset remain native.</p>
+<p>A native checkbox switch for settings. Its shallow liquid lens slides between Off and On, releasing a brief wake through the existing height-field surface. Space, label activation, form submission and reset remain native. Supply a visible <code>children</code> label (recommended) or an explicit <code>aria-label</code>; no generic accessible name is supplied.</p>
 
 <div class="example">
 	<LiquidToggle bind:checked={toggleOn}>Notifications</LiquidToggle>
