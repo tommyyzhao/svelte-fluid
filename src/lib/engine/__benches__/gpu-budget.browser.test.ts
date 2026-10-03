@@ -106,7 +106,13 @@ async function batch(e: FluidEngine, label: string, frames = FRAMES): Promise<nu
 	await e.presented(); drain(e);
 	const pending: Promise<void>[] = [];
 	const t0 = performance.now();
-	for (let i = 0; i < frames; i++) { frame(e); pending.push(e.presented()); stage(e, label); }
+	const stubs = e as unknown as Record<string, unknown>;
+	const method = label === 'no-present' ? 'present' : label === 'no-solver' ? 'simulateFrame' : null;
+	const original = method ? stubs[method] : null;
+	if (method) stubs[method] = () => {};
+	try {
+		for (let i = 0; i < frames; i++) { frame(e); pending.push(e.presented()); if (!method) stage(e, label); }
+	} finally { if (method) { if (original) stubs[method] = original; else delete stubs[method]; } }
 	await Promise.all(pending); drain(e);
 	return (performance.now() - t0) / frames;
 }
@@ -160,7 +166,10 @@ describe('strict GPU budget follow-up (measurement only)', () => {
 			try {
 				await warm(e);
 				const labels = stages(e);
-				for (const label of shuffle(labels)) {
+				if (SHARED) labels.push('no-present', 'no-solver');
+				const selected = String(import.meta.env.SVELTE_FLUID_GPU_BENCH_STAGES || '').split(',').filter(Boolean);
+				const measuredLabels = selected.length ? labels.filter((label) => selected.includes(label)) : labels;
+				for (const label of shuffle(measuredLabels)) {
 					const ordinary: number[] = [], checked: number[] = [], delta: number[] = [];
 					await batch(e, label);
 					for (let repeat = 0; repeat < BATCHES; repeat++) {
@@ -171,7 +180,7 @@ describe('strict GPU budget follow-up (measurement only)', () => {
 					}
 					rows.push({ kind: 'stage', preset, dpr, tier: SHARED ? 'shared' : 'own', stage: label, ...summary(checked), ordinary: summary(ordinary), delta: summary(delta) });
 				}
-				if (SHARED) {
+				if (SHARED && !selected.length) {
 					const values = { default: [] as number[], premultiply: [] as number[] };
 					for (let repeat = 0; repeat < BATCHES; repeat++) for (const choice of shuffle(['default', 'premultiply'] as const)) {
 						option(choice === 'premultiply'); values[choice].push(await batch(e, 'ordinary'));
@@ -182,7 +191,7 @@ describe('strict GPU budget follow-up (measurement only)', () => {
 			await flush();
 		}
 	});
-	if (SHARED) for (const n of [9, 16, 24]) it(`${n} mixed-size shared instances, per-instance frames`, { timeout: 600_000 }, async () => {
+	if (SHARED && !import.meta.env.SVELTE_FLUID_GPU_BENCH_STAGES) for (const n of [9, 16, 24]) it(`${n} mixed-size shared instances, per-instance frames`, { timeout: 600_000 }, async () => {
 		for (const dpr of [1, 2, 3]) {
 			const list: FluidEngine[] = [];
 			try {
