@@ -3372,6 +3372,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			return;
 		}
 		const quiet = this.pollSettleProbe();
+		if (this.failed) return;
 		if (quiet === false) this.settleQuietChecks = 0;
 		else if (quiet === true && ++this.settleQuietChecks >= SETTLE_CHECKS) {
 			this.settled = true;
@@ -3393,15 +3394,17 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	/** Reduce velocity and dye to one pixel each and queue their async readback. */
 	private issueSettleProbe(): void {
 		const t0 = performance.now();
-		this.withGl(() => {
+		try { this.withGl(() => {
 			// Only a float readback carries the thresholds; without it never settle.
 			if (!this.ext.isWebGL2 || this.gl.getExtension('EXT_color_buffer_float') === null) return;
 			const gl = this.gl as WebGL2RenderingContext;
+			// Shared siblings' errors must not be attributed to this probe.
+			for (let i = 0; i < 16 && gl.getError() !== gl.NO_ERROR; i++);
 			const v = this.settleReduce(this.velocity.read, this.settleVelocityChain, 1, 1, 0);
 			const d = this.settleReduce(this.dye.read, this.settleDyeChain, 1, 1, 1);
 			if (!this.settlePbo) {
 				this.settlePbo = gl.createBuffer();
-				if (!this.settlePbo) return; // Allocation failure cannot prove quietness.
+				if (!this.settlePbo) throw new Error('svelte-fluid: settle PBO allocation failed');
 				gl.bindBuffer(gl.PIXEL_PACK_BUFFER, this.settlePbo);
 				gl.bufferData(gl.PIXEL_PACK_BUFFER, this.settlePixels.byteLength, gl.STREAM_READ);
 			}
@@ -3413,10 +3416,15 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			// Every other readPixels in the engine targets client memory.
 			gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
 			gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+			this.checkSettleGl();
 			const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
-			if (sync) this.settleProbe = { sync, epoch: this.settleEpoch };
+			if (!sync) throw new Error('svelte-fluid: settle fence allocation failed');
+			this.settleProbe = { sync, epoch: this.settleEpoch };
 			gl.flush();
-		});
+		}); } catch (error) {
+			// Never turn an unsuccessful readback's zero-filled buffer into a quiet verdict.
+			this.failTransition(error);
+		}
 		this.settleCheckMs += performance.now() - t0;
 	}
 
@@ -3425,7 +3433,8 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		const probe = this.settleProbe;
 		if (!probe) return null;
 		const t0 = performance.now();
-		const result = this.withGl(() => {
+		let result: boolean | null | undefined = null;
+		try { result = this.withGl(() => {
 			const gl = this.gl as WebGL2RenderingContext;
 			if (gl.getSyncParameter(probe.sync, gl.SYNC_STATUS) !== gl.SIGNALED) return null;
 			gl.deleteSync(probe.sync);
@@ -3435,12 +3444,15 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 				this.settleQuietChecks = 0;
 				return null;
 			}
+			this.settlePixels.fill(NaN);
 			gl.bindBuffer(gl.PIXEL_PACK_BUFFER, this.settlePbo);
 			gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, this.settlePixels);
 			gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+			this.checkSettleGl();
+			if (!Number.isFinite(this.settlePixels[0]) || !Number.isFinite(this.settlePixels[4])) return false;
 			this.settleCheckCount++;
 			return isQuiet(this.settlePixels[0], this.settlePixels[4], this.config.DENSITY_DISSIPATION);
-		});
+		}); } catch (error) { this.failTransition(error); }
 		this.settleCheckMs += performance.now() - t0;
 		return result ?? null;
 	}
@@ -3455,13 +3467,23 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		const w0 = Math.ceil(src.width / 8);
 		const h0 = Math.ceil(src.height / 8);
 		if (chain[0]?.width !== w0 || chain[0]?.height !== h0) {
-			for (const fbo of chain) disposeFBO(gl, fbo);
-			chain.length = 0;
+			const candidate: FBO[] = [];
 			const fmt = this.ext.formatR;
-			for (let w = w0, h = h0; ; w = Math.ceil(w / 8), h = Math.ceil(h / 8)) {
-				chain.push(createFBO(gl, w, h, fmt.internalFormat, fmt.format, this.ext.halfFloatTexType, gl.NEAREST));
-				if (w === 1 && h === 1) break;
+			try {
+				for (let w = w0, h = h0; ; w = Math.ceil(w / 8), h = Math.ceil(h / 8)) {
+					candidate.push(createFBO(gl, w, h, fmt.internalFormat, fmt.format, this.ext.halfFloatTexType, gl.NEAREST));
+					if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+						throw new Error('svelte-fluid: incomplete settle framebuffer');
+					}
+					this.checkSettleGl();
+					if (w === 1 && h === 1) break;
+				}
+			} catch (error) {
+				for (const fbo of candidate) disposeFBO(gl, fbo);
+				throw error;
 			}
+			for (const fbo of chain) disposeFBO(gl, fbo);
+			chain.splice(0, chain.length, ...candidate);
 		}
 		const program = this.settleMaxProgram;
 		gl.disable(gl.BLEND);
@@ -3476,6 +3498,12 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			source = chain[i];
 		}
 		return source;
+	}
+
+	/** A failed max probe cannot prove quietness, on either context tier. */
+	private checkSettleGl(): void {
+		const error = this.gl.getError();
+		if (error !== this.gl.NO_ERROR) throw new Error(`svelte-fluid: GL error 0x${error.toString(16)} during settle probe`);
 	}
 
 	private update(): void {
