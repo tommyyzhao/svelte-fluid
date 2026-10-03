@@ -98,7 +98,7 @@ export function measureTextOverlayCap(root: HTMLElement, canvas: HTMLCanvasEleme
 			(cs.backdropFilter && cs.backdropFilter !== 'none') || cs.mixBlendMode !== 'normal' ||
 			cs.opacity !== '1' || cs.textShadow !== 'none' || cs.boxShadow !== 'none' ||
 			cs.transform !== 'none' || cs.backgroundClip === 'text' || cs.display === 'contents' ||
-			(cs.position === 'relative' && [cs.top, cs.right, cs.bottom, cs.left].some((offset) => offset !== 'auto')) ||
+			(cs.position === 'relative' && [cs.top, cs.right, cs.bottom, cs.left].some((offset) => offset !== 'auto' && parseFloat(offset) !== 0)) ||
 			[cs.marginTop, cs.marginRight, cs.marginBottom, cs.marginLeft].some((margin) => parseFloat(margin) < 0) ||
 			cs.display.includes('grid') || cs.display.includes('list-item') ||
 			(cs.getPropertyValue('-webkit-text-fill-color') && cs.getPropertyValue('-webkit-text-fill-color') !== cs.color) ||
