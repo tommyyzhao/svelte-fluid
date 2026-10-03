@@ -270,8 +270,53 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		} finally { _setContextTier('auto'); }
 	});
 
-	it('failed fence polling and buffer reads unbind PBO and fail closed', async () => {
-		for (const operation of ['getSyncParameter', 'getBufferSubData'] as const) {
+	it('shared polling rejects its own errors, not prior sibling GL errors', async () => {
+		_setContextTier('shared');
+		try {
+			const e = engine({}, false);
+			const sibling = engine({}, false);
+			const p = e as unknown as {
+				issueSettleProbe(): void; advanceSettleProbe(): void; pollSettleProbe(): boolean | null;
+				settleProbe: { sync: WebGLSync | null } | null; failed: boolean;
+			};
+			p.issueSettleProbe();
+			for (let i = 0; i < 12 && !p.settleProbe?.sync; i++) p.advanceSettleProbe();
+			const other = sibling as unknown as { gl: WebGL2RenderingContext; withGl(fn: () => void): void };
+			await until(() => {
+				other.withGl(() => other.gl.bindBuffer(-1, null));
+				p.pollSettleProbe();
+				expect(p.failed).toBe(false);
+				return p.settleProbe === null;
+			}, 5000);
+		} finally { _setContextTier('auto'); }
+	});
+
+	it('readback issue frame cannot poll its newly created fence', () => {
+		const e = engine({}, false);
+		const p = e as unknown as {
+			autoStart: boolean; gl: WebGL2RenderingContext; trackSettle(): void;
+			issueSettleProbe(): void; settleProbe: { sync: WebGLSync | null; velocityLevel: number; dyeLevel: number };
+			settleVelocityChain: unknown[]; settleDyeChain: unknown[];
+		};
+		p.autoStart = true;
+		p.issueSettleProbe();
+		p.settleProbe.velocityLevel = p.settleVelocityChain.length;
+		p.settleProbe.dyeLevel = p.settleDyeChain.length;
+		const original = p.gl.getSyncParameter;
+		let polls = 0;
+		p.gl.getSyncParameter = (() => { polls++; return p.gl.UNSIGNALED; }) as typeof original;
+		try {
+			p.trackSettle();
+			expect(p.settleProbe.sync).not.toBeNull();
+			expect(polls).toBe(0);
+			p.trackSettle();
+			expect(polls).toBe(1);
+		} finally { p.gl.getSyncParameter = original; }
+	});
+
+	it.each(['own', 'shared'] as const)('failed fence polling and buffer reads fail closed (%s tier)', async (tier) => {
+		_setContextTier(tier);
+		try { for (const operation of ['getSyncParameter', 'getBufferSubData'] as const) {
 			const e = engine({}, false);
 			const p = e as unknown as {
 				gl: WebGL2RenderingContext; issueSettleProbe(): void; advanceSettleProbe(): void;
@@ -289,7 +334,7 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 			expect(p.settleProbe).toBeNull();
 			expect(p.settleCheckCount).toBe(0);
 			expect(p.gl.getParameter(p.gl.PIXEL_PACK_BUFFER_BINDING)).toBeNull();
-		}
+		} } finally { _setContextTier('auto'); }
 	});
 
 	it('FluidReveal auto-reveal is not deadlocked by settling', async () => {

@@ -3371,7 +3371,6 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			this.cancelSettleProbe();
 			return;
 		}
-		this.advanceSettleProbe();
 		const quiet = this.pollSettleProbe();
 		if (this.failed) return;
 		if (quiet === false) this.settleQuietChecks = 0;
@@ -3381,6 +3380,8 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			this.resetPerformanceGovernor();
 			return;
 		}
+		this.advanceSettleProbe();
+		if (this.failed) return;
 		if (++this.settleFrames % SETTLE_CHECK_INTERVAL === 0 && !this.settleProbe) this.issueSettleProbe();
 	}
 
@@ -3489,6 +3490,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		let result: boolean | null | undefined = null;
 		try { result = this.withGl(() => {
 			const gl = this.gl as WebGL2RenderingContext;
+			for (let i = 0; i < 16 && gl.getError() !== gl.NO_ERROR; i++);
 			const status = gl.getSyncParameter(sync, gl.SYNC_STATUS);
 			this.checkSettleGl();
 			if (status !== gl.SIGNALED) return null;
