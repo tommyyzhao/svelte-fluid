@@ -1,5 +1,5 @@
 ---
-'svelte-fluid': minor
+'svelte-fluid': major
 ---
 
 Seven interface primitives are now exported (ADR-0090, 0091/0092, 0094, 0096, 0097). Each is a real native element with a decorative WebGL2 surface. They share one WebGL2 context per page (ADR-0088/0093), so they do not count against the browser's context cap. Without WebGL2 each falls back to a plain, fully styled native control. All honour `prefers-reduced-motion`.
