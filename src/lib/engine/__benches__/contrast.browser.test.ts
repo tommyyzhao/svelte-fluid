@@ -76,7 +76,7 @@ function over(px: Uint8Array, i: number, page: RGB): [number, number, number] {
 	];
 }
 
-async function saveComposite(name: string, px: Uint8Array, w: number, h: number, page: RGB) {
+async function saveComposite(name: string, px: Uint8Array, w: number, h: number, page: RGB, dir = DIR) {
 	const out = new Uint8ClampedArray(w * h * 4);
 	for (let i = 0; i < w * h * 4; i += 4) {
 		const c = over(px, i, page);
@@ -89,7 +89,7 @@ async function saveComposite(name: string, px: Uint8Array, w: number, h: number,
 	c.width = w;
 	c.height = h;
 	c.getContext('2d')!.putImageData(new ImageData(out, w, h), 0, 0);
-	await cmd.writeBenchBase64(`${DIR}/${name}.png`, c.toDataURL('image/png').split(',')[1]);
+	await cmd.writeBenchBase64(`${dir}/${name}.png`, c.toDataURL('image/png').split(',')[1]);
 }
 
 /* ------------------------------------------------------------------ FluidText */
@@ -385,6 +385,95 @@ describe('FluidText outline halo vs page (ADR-0086)', () => {
 				expect(worst).toBeGreaterThanOrEqual(3);
 			}
 			table[`FluidText/${name}`] = row;
+		});
+	}
+});
+
+describe('FluidText actual small-text AA default', () => {
+	for (const [theme, page] of [['light', WHITE], ['dark', BLACK]] as const) {
+		it(`${theme}: mounted 16px glyphs have a 4.5:1 full-coverage perimeter`, async () => {
+			await (commands as unknown as { emulateControlMedia(media: { reducedMotion: string }): Promise<void> }).emulateControlMedia({ reducedMotion: 'reduce' });
+			const font = '16px Arial, sans-serif';
+			const text = 'Fluid';
+			const measure = new OffscreenCanvas(1, 1).getContext('2d')!;
+			measure.font = font;
+			const metrics = measure.measureText(text);
+			const height = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+			const rows: Record<string, unknown>[] = [];
+			try {
+				for (const policy of ['previous-3', 'default-4.5'] as const) {
+					const target = document.createElement('div');
+					target.style.cssText = `background:rgb(${page.r} ${page.g} ${page.b});width:200px;padding:16px;font:${font}`;
+					document.body.append(target);
+					let live: FluidEngine | undefined;
+					const proto = FluidEngine.prototype as unknown as Harness;
+					const render = proto.renderCore;
+					const spy = vi.spyOn(proto, 'renderCore').mockImplementation(function (this: Harness, ...args: [null]) {
+						live = this as unknown as FluidEngine;
+						return render.apply(this, args);
+					});
+					const app = mount(FluidText, { target, props: {
+						text, font, height, seed: 42, initialSplatCount: 2,
+						simResolution: 32, dyeResolution: 64, bloom: false, sunrays: false,
+						...(policy === 'previous-3' ? { minContrast: 3 } : {})
+					} });
+					try {
+						const canvas = target.querySelector('canvas')!;
+						await vi.waitFor(() => {
+							const config = (live as unknown as { config: { CONTRAST_COLOR: RGB | null; MIN_CONTRAST: number } })?.config;
+							expect(config?.CONTRAST_COLOR).toEqual(page);
+							expect(config?.MIN_CONTRAST).toBe(policy === 'previous-3' ? 3 : 4.5);
+							expect(canvas.height).toBe(Math.floor(height * devicePixelRatio));
+						});
+						expect(target.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe(text);
+						expect(canvas.width).toBe(Math.floor(canvas.getBoundingClientRect().width * devicePixelRatio));
+						live!.pause();
+						const w = canvas.width, h = canvas.height;
+						const read = () => {
+							const harness = live as unknown as Harness;
+							render.call(harness, null);
+							const gl = harness.gl;
+							const raw = new Uint8Array(w * h * 4);
+							gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, raw);
+							const px = new Uint8Array(raw.length);
+							for (let y = 0; y < h; y++) px.set(raw.subarray((h - 1 - y) * w * 4, (h - y) * w * 4), y * w * 4);
+							return px;
+						};
+						const actual = read();
+						live!.setConfig({ minContrast: 1 });
+						const plain = read();
+						expect(plain.some((value, i) => i % 4 === 3 && value > 0)).toBe(true);
+						live!.setConfig({ reveal: true, revealSensitivity: 0 });
+						const coverage = read();
+						const ratios: number[] = [];
+						const lp = lumOf([page.r / 255, page.g / 255, page.b / 255]);
+						// WCAG foreground is the opaque outline defining the glyph; background
+						// is the measured uniform page beside it. Exclude blended AA edges,
+						// glyph interiors and dye: only full halo outside zero glyph coverage.
+						for (let i = 0; i < actual.length; i += 4) {
+							if (actual[i + 3] !== 255 || plain[i + 3] !== 0 || coverage[i + 3] !== 0) continue;
+							ratios.push(contrastRatio(lumOf(over(actual, i, page)), lp));
+						}
+						expect(ratios.length).toBeGreaterThan(0);
+						const minimum = Math.min(...ratios);
+						const name = `${theme}-dpr${devicePixelRatio}-${policy}`;
+						await saveComposite(name, actual, w, h, page, '/tmp/small-text-contrast');
+						rows.push({ policy, minimum, fullHaloSamples: ratios.length, font, text,
+							cssWidth: canvas.getBoundingClientRect().width, cssHeight: height,
+							actualDpr: devicePixelRatio, backingWidth: w, backingHeight: h, measuredPage: measurePageColor(target),
+							baseline: 'c873fdf5d3763fba2d70145fccecdf873e6c03c5' });
+						await cmd.writeBenchJson(`/tmp/small-text-contrast/${theme}-dpr${devicePixelRatio}.json`, JSON.stringify(rows, null, 2));
+						console.info('small-text contrast', name, minimum, ratios.length);
+						if (policy === 'default-4.5') expect(minimum).toBeGreaterThanOrEqual(4.5);
+					} finally {
+						await unmount(app);
+						spy.mockRestore();
+						target.remove();
+					}
+				}
+			} finally {
+				await (commands as unknown as { emulateControlMedia(media: { reducedMotion: string }): Promise<void> }).emulateControlMedia({ reducedMotion: 'no-preference' });
+			}
 		});
 	}
 });
