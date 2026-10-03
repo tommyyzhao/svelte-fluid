@@ -145,9 +145,13 @@ a soft ring and catches a 3-code cut.
   not a claim that authored content meets AA.
 - Unsupported content disables the whole overlay: gradients/images, filters,
   backdrop filters, non-normal blending, opacity, text fill/stroke differences,
-  shadows, transforms, CSS animations/transitions, generated content, shadow or
-  custom elements, embedded/replaced content and out-of-flow descendants.
-  Measurements cap at 128 text runs, 512 elements and 64 root ancestors;
+  shadows, transforms, CSS animations/transitions, styled first-letter/first-line
+  paint, generated content, shadow or
+  custom elements, embedded/replaced content, `display: contents` and out-of-flow
+  descendants, shifted relative boxes, negative margins, grid and list-item
+  layouts (overlap/marker content is unmeasured). A root without an opaque ancestor background also stays native;
+  the browser's Canvas colour is not guessed from `color-scheme` declarations.
+  Measurements cap at 128 text runs, 512 elements, 1024 nodes and 64 root ancestors;
   overflow stays native rather than truncating the proof.
 - Measurement happens at startup, update and resize, never per frame. Subtree
   text/child/class/style/hidden mutations, ancestor class/style theme changes,

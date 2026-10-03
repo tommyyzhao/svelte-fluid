@@ -153,7 +153,8 @@ describe('LiquidCaustics', () => {
 	it.each([
 		'background:linear-gradient(white,black)', 'background-image:url(data:image/png;base64,AA==)',
 		'filter:blur(1px)', 'opacity:0.9', 'text-shadow:0 0 1px black', 'mix-blend-mode:multiply',
-		'animation:unsupported 1s infinite', 'transition:color 1s'
+		'animation:unsupported 1s infinite', 'transition:color 1s', 'display:contents',
+		'position:relative;top:-30px', 'margin-top:-30px', 'display:grid', 'display:list-item'
 	])('unsupported %s disables the whole overlay without changing content', async (css) => {
 		const { root } = caustics('light');
 		const p = root.querySelector('p')!;
@@ -166,6 +167,22 @@ describe('LiquidCaustics', () => {
 		expect(p.textContent).toBe(original);
 	});
 
+	it('transparent page with a light dark declaration does not guess a Canvas background', async () => {
+		const htmlStyle = document.documentElement.style.cssText;
+		const bodyStyle = document.body.style.cssText;
+		live.push(() => { document.documentElement.style.cssText = htmlStyle; document.body.style.cssText = bodyStyle; });
+		document.documentElement.style.cssText = 'background:transparent;color-scheme:light dark';
+		document.body.style.background = 'transparent';
+		const { root } = caustics('dark');
+		root.parentElement!.style.background = 'transparent';
+		root.querySelector('a')!.style.color = '#999';
+		await frames(2);
+		const canvas = root.querySelector('canvas')!;
+		expect(measureTextOverlayCap(root, canvas, undefined, 'dark')).toBe(0);
+		expect(getComputedStyle(canvas).visibility).toBe('hidden');
+		expect(getComputedStyle(root.querySelector('a')!).color).toBe('rgb(153, 153, 153)');
+	});
+
 	it('generated, embedded and overflow content fail closed; resize remeasures', async () => {
 		const { root } = caustics('light');
 		const canvas = root.querySelector('canvas')!;
@@ -174,12 +191,17 @@ describe('LiquidCaustics', () => {
 		await frames(3);
 		expect(getComputedStyle(canvas).visibility).toBe('visible');
 		const sheet = document.createElement('style');
-		sheet.textContent = '.generated::before { content: "Unmeasured"; }';
+		sheet.textContent = '.generated::before { content: "Unmeasured"; } .letter::first-letter { color: #aaa; } .line::first-line { color: #aaa; }';
 		document.head.append(sheet);
 		live.push(() => sheet.remove());
 		root.querySelector('p')!.className = 'generated';
 		await frames(2);
 		expect(getComputedStyle(canvas).visibility).toBe('hidden');
+		for (const className of ['letter', 'line']) {
+			root.querySelector('p')!.className = className;
+			await frames(2);
+			expect(getComputedStyle(canvas).visibility).toBe('hidden');
+		}
 		root.querySelector('p')!.className = '';
 		const custom = document.createElement('custom-text');
 		root.prepend(custom);

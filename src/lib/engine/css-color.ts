@@ -80,7 +80,7 @@ export function measurePageColor(start: Element | null): RGB {
 /**
  * Caustics support plain, static native text over solid ancestor backgrounds.
  * Anything unmeasurable disables the whole overlay, never substitutes a colour.
- * ponytail: 128 text runs / 512 elements / 64 ancestors; larger or richer content stays native.
+ * ponytail: 128 runs / 512 elements / 1024 nodes / 64 ancestors; larger or richer content stays native.
  */
 export function measureTextOverlayCap(root: HTMLElement, canvas: HTMLCanvasElement, intensity: number | undefined, tone: SurfaceTone): number {
 	if (!get2d()) return 0;
@@ -97,11 +97,19 @@ export function measureTextOverlayCap(root: HTMLElement, canvas: HTMLCanvasEleme
 			cs.backgroundImage !== 'none' || cs.filter !== 'none' ||
 			(cs.backdropFilter && cs.backdropFilter !== 'none') || cs.mixBlendMode !== 'normal' ||
 			cs.opacity !== '1' || cs.textShadow !== 'none' || cs.boxShadow !== 'none' ||
-			cs.transform !== 'none' || cs.backgroundClip === 'text' ||
+			cs.transform !== 'none' || cs.backgroundClip === 'text' || cs.display === 'contents' ||
+			(cs.position === 'relative' && [cs.top, cs.right, cs.bottom, cs.left].some((offset) => offset !== 'auto')) ||
+			[cs.marginTop, cs.marginRight, cs.marginBottom, cs.marginLeft].some((margin) => parseFloat(margin) < 0) ||
+			cs.display.includes('grid') || cs.display.includes('list-item') ||
 			(cs.getPropertyValue('-webkit-text-fill-color') && cs.getPropertyValue('-webkit-text-fill-color') !== cs.color) ||
 			parseFloat(cs.getPropertyValue('-webkit-text-stroke-width')) > 0 ||
 			cs.animationName.split(',').some((name) => name.trim() !== 'none') ||
 			cs.transitionDuration.split(',').some((duration) => parseFloat(duration) > 0) ||
+			['::first-letter', '::first-line'].some((pseudo) => {
+				const ps = getComputedStyle(el, pseudo);
+				return alphaOf(ps.backgroundColor) > 0 || ps.backgroundImage !== 'none' ||
+					['color', 'text-shadow', '-webkit-text-fill-color', '-webkit-text-stroke-width'].some((property) => ps.getPropertyValue(property) !== cs.getPropertyValue(property));
+			}) ||
 			['::before', '::after'].some((pseudo) => {
 				const content = getComputedStyle(el, pseudo).content;
 				return content !== 'none' && content !== 'normal';
@@ -131,7 +139,10 @@ export function measureTextOverlayCap(root: HTMLElement, canvas: HTMLCanvasEleme
 		}
 	}
 	const backgrounds = new Map<Element, RGB>();
-	const base = style(document.documentElement).colorScheme.includes('dark') ? { r: 0, g: 0, b: 0 } : { r: 255, g: 255, b: 255 };
+	// No opaque page background means the browser Canvas colour is unknown here.
+	// Fail closed rather than guessing from the declared (possibly `light dark`) scheme.
+	if (!ancestors.some((el) => alphaOf(style(el).backgroundColor) === 255)) return 0;
+	const base = { r: 255, g: 255, b: 255 };
 	const background = (el: Element): RGB => {
 		let bg = backgrounds.get(el);
 		if (!bg) {
