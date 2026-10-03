@@ -128,3 +128,51 @@ odd sizes on both tiers while fields continue evolving; each later stage is
 asserted to draw at most once. Cancellation is tested before and after fencing.
 Independent stage measurements and remaining release blockers are recorded in
 `dev-docs/benchmarks/strict-budget-followup.md`.
+
+## Amendment (2026-10-02): byte threshold fallback and renderer limits
+
+WebGL1 and WebGL2 without float readback now use the same staged immutable
+snapshots, cadence, epoch cancellation and three-check streak. The first 8x8
+reductions write exact boolean flags into NEAREST RGBA8 targets: velocity
+`any(abs(rg) >= 0.5)`, dye `any(abs(rgb) >= 0.5/255)`, dye per-frame fading
+`any(abs(rgb) * (1 - 1/(1 + dissipation/60)) >= 0.5/255)`, and dye nonzero.
+Tail passes component-wise max/OR flags, never clamp HDR maxima into bytes.
+Two 1x1 RGBA/UNSIGNED_BYTE reads transfer eight bytes synchronously. Ordinary
+quiet is `!visible || (!moving && !fading)`, equivalent to the existing maxima
+predicate. Initialized nonquiet sentinels, invalid flags and GL errors fail
+closed. Complete candidate chains replace old chains only after validation;
+capability is re-probed after restore. Float-capable WebGL2 retains PBO/fence reads.
+
+Eight bytes do **not** prove GPU cost: synchronous readPixels may stall behind
+prior GPU work. `settleCheckStats.stageMs` and `readbackMs` expose separate CPU
+wall times; neither is native GPU certification. No Xcode capture is claimed.
+
+Dye-only ordinary thresholds do not prove convergence for arbitrary renderers.
+The display shader can amplify sub-epsilon dye: distortion displaces image UV by
+`power * normalize(velocity) * dye.r`; reveal applies `pow(dye * sensitivity, curve)`.
+These modes now require exactly zero dye on both paths, not a blanket never-idle
+rule. Nonzero half-float tails can therefore prevent settling. Non-dye flow
+visualization displays velocity/pressure/scalars independently of dye; its quiet
+proof remains unresolved and automatic settling is conservatively disabled while
+that visualization is active. Actual contributing-field convergence probes are
+outside this finite fallback change. No claim of zero-idle frames for all modes,
+arbitrary gain/contrast/optical settings or calibrated image convergence.
+
+Validation at `9c64676`: ordinary installed hardware Chrome, focused idle suite
+29/29, full browser suite 279/279 across 34 files, Node 869/869, check zero
+errors/warnings, build and prepack passed. Tests force WebGL1 at the existing
+canvas context seam and missing float capability per instance (not by disabling
+float simulation support globally). Coverage includes signed/HDR odd-edge flags,
+immutable snapshots, byte errors, cancellation/restore, wake/re-settle, retained
+presentation, and rendered sub-epsilon distortion/reveal counterexamples.
+Separate stage/readback wall-time counters are instrumentation, not a timing
+budget acceptance result; native GPU certification remains pending.
+
+Review follow-up: velocity flags also preserve an invalid-component bit before
+max reduction; ordered per-component half-float bounds reject NaN/Infinity.
+Invalid dye writes all nonquiet flags. Both readback paths reject invalid internal
+dissipation even for exactly empty distortion/reveal. Public config resolution
+filters nonfinite input through `withoutNonFiniteConfig` but accepts negative
+finite dissipation; direct test injection isolates the internal quiet-validation
+boundary for both cases.
+Focused hardware follow-up passed all four selected parity/flag tests.
