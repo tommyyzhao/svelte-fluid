@@ -7,12 +7,18 @@ import { DYE_SPLAT_DOSE } from './shaders.js';
  */
 export const HEIGHT_SPECULAR_DISPLAY_BOUND = 12.92 * (130 / (8 * Math.PI)) * 0.02001 / DYE_SPLAT_DOSE;
 
+/** sunraysMask alpha≤1; 16 ray taps, decay .95, exposure .7, convex blur. */
+export function dyeVisibilityGain(c: { SUNRAYS: boolean; SUNRAYS_WEIGHT: number }): number {
+	return c.SUNRAYS ? Math.max(1, 0.7 * (1 + Math.max(0, c.SUNRAYS_WEIGHT) * (1 - 0.95 ** 16) / 0.05)) : 1;
+}
+
 export function heightVisibilityScale(c: {
 	SHADING: boolean; SPECULAR: number; REFRACTION: number; GLASS: boolean; CONTAINER_SHAPE: unknown;
 	DISTORTION: boolean; REVEAL: boolean; TONE_MAPPING: string; BLOOM: boolean; SUNRAYS: boolean; MIN_CONTRAST: number;
 }): number {
 	// Diffuse alone multiplies RGB by [0.7,1], so the existing RGB bound holds.
 	if (c.REFRACTION > 0 && (c.DISTORTION || (c.GLASS && c.CONTAINER_SHAPE && !c.REVEAL))) return -1;
+	if (c.SHADING && !c.DISTORTION && !c.REVEAL && ((c.GLASS && c.CONTAINER_SHAPE) || c.TONE_MAPPING !== 'none' || c.MIN_CONTRAST > 1)) return -1;
 	if (c.SPECULAR <= 0) return 0;
 	// ponytail: arbitrary image/curve/composite amplification needs a separate bound.
 	if (c.REVEAL || (!c.DISTORTION && c.GLASS && c.CONTAINER_SHAPE) || c.TONE_MAPPING !== 'none' || c.BLOOM || c.SUNRAYS || c.MIN_CONTRAST > 1) return -1;

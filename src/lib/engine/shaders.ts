@@ -95,6 +95,7 @@ export const settleMaxShader = `
     uniform int uFlagMode;
     uniform float uFade;
     uniform float uHeightVisibility;
+    uniform float uDyeVisibilityGain;
 
     void main () {
         vec2 base = (floor(gl_FragCoord.xy) * 8.0 + 0.5) * uSourceTexel;
@@ -105,6 +106,7 @@ export const settleMaxShader = `
                 vec4 sampleValue = texture2D(uSource, base + vec2(float(x), float(y)) * uSourceTexel);
                 vec4 v = abs(sampleValue) * uChannels;
                 float value = max(max(v.r, v.g), max(v.b, v.a));
+                value = min(65504.0, value * uDyeVisibilityGain);
                 // Same reduction targets: a sentinel/boolean blocks quietness while
                 // height can expose black pigment or change an arbitrary image.
                 if (uHeightVisibility != 0.0) {
@@ -126,7 +128,7 @@ export const settleMaxShader = `
                     flags.r = max(flags.r, value < (0.5 / 255.0) ? 0.0 : 1.0);
                     flags.g = max(flags.g, value * uFade < (0.5 / 255.0) ? 0.0 : 1.0);
                     flags.b = max(flags.b, value == 0.0 ? 0.0 : 1.0);
-                    if (!valid) flags.rgb = vec3(1.0);
+                    if (!valid || value >= 65504.0) flags.rgb = vec3(1.0);
                 }
                 if (uFlagMode == 3) flags = max(flags, v);
             }
@@ -1201,7 +1203,7 @@ export const splatShader = `
         float stickyVal = texture2D(uStickyMask, vec2(vUv.x, 1.0 - vUv.y)).r;
         weight *= 1.0 + stickyVal * uStickyAmplify;
         vec4 base = texture2D(uTarget, vUv);
-        float thickness = uDose > 0.0 ? min(${DYE_HEIGHT_CEILING}, base.a + weight * uDose) : base.a;
+        float thickness = uDose > 0.0 ? clamp(base.a + weight * uDose, 0.0, ${DYE_HEIGHT_CEILING}) : base.a;
         gl_FragColor = vec4(clamp(base.rgb + weight * color, -1000.0, 1000.0), thickness);
     }
 `;
@@ -1273,7 +1275,7 @@ export const flowSourceShader = `
         float stickyVal = texture2D(uStickyMask, vec2(vUv.x, 1.0 - vUv.y)).r;
         float amplify = 1.0 + stickyVal * uStickyAmplify;
         vec4 base = texture2D(uTarget, vUv);
-        float thickness = dose > 0.0 ? min(${DYE_HEIGHT_CEILING}, base.a + dose * amplify) : base.a;
+        float thickness = dose > 0.0 ? clamp(base.a + dose * amplify, 0.0, ${DYE_HEIGHT_CEILING}) : base.a;
         gl_FragColor = vec4(clamp(base.rgb + splat * amplify, -1000.0, 1000.0), thickness);
     }
 `;
@@ -1292,6 +1294,7 @@ export const flowOutletShader = `
     uniform float uTo[MAX_FLOW_OUTLET_BATCH];
     uniform float uWidth[MAX_FLOW_OUTLET_BATCH];
     uniform float uKeep[MAX_FLOW_OUTLET_BATCH];
+    uniform float uHeightCeiling;
 
     void main () {
         vec4 value = texture2D(uTarget, vUv);
@@ -1313,6 +1316,7 @@ export const flowOutletShader = `
         }
 
         gl_FragColor = value * keepProduct;
+        if (uHeightCeiling > 0.0) gl_FragColor.a = clamp(gl_FragColor.a, 0.0, uHeightCeiling);
     }
 `;
 

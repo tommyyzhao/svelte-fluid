@@ -35,8 +35,12 @@ public prop, selector or root GL type.
 
 ## Idle proof and limits
 
-Diffuse shading multiplies pigment by `[0.7, 1]`; RGB invisibility bounds still
-hold, including black thickness. Independent specular can expose black. For the
+Diffuse shading multiplies pigment by `[0.7, 1]`. Before applying the RGB
+invisibility bound, the first dye reduction includes the sunrays upper gain:
+`max(1, 0.7 * (1 + max(weight, 0) * (1 - 0.95^16) / 0.05))`. Mask alpha is at
+most one, ray decay is 0.95 for 16 taps, exposure is 0.7 and blur is convex.
+Invalid raw fields are checked before weighting; overflow fails closed on float
+and byte paths. Ordinary residual RGB may still settle, including black thickness. Independent specular can expose black. For the
 fixed exponent 128/studio light, BRDF normalization is `130/(8*pi)`, Schlick
 Fresnel is below `0.02001`, dot products are at most one, and coverage is at most
 `h/0.06`. sRGB encode is at most `12.92` times linear intensity. The existing
