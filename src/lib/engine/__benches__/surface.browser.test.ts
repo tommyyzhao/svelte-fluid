@@ -69,6 +69,27 @@ function stubReducedMotion(initial: boolean) {
 }
 
 describe('SurfaceEngine', () => {
+	it('enabling reduced motion mid-slide snaps the unchanged target and stops frames', async () => {
+		const left = { x: 6, y: 6, width: 110, height: 56 };
+		const right = { ...left, x: 116 };
+		const e = engine({ ...PILL, control: 'segmented', lens: left });
+		await e.advance(1);
+		e.setConfig({ lens: right });
+		await e.advance(2);
+		e.setConfig({ reducedMotion: true });
+		await e.advance(1);
+		const snapped = pixels(e.canvas);
+		const reference = engine({ ...PILL, control: 'segmented', lens: right, reducedMotion: true });
+		await reference.advance(1);
+		const expected = pixels(reference.canvas);
+		let maxDifference = 0;
+		for (let i = 0; i < snapped.length; i++) maxDifference = Math.max(maxDifference, Math.abs(snapped[i] - expected[i]));
+		expect(maxDifference).toBeLessThanOrEqual(2);
+		await vi.waitFor(() => expect(e.running).toBe(false));
+		const count = e.frameCount;
+		await frames(3);
+		expect(e.frameCount).toBe(count);
+	});
 	it('compiles every program and presents a filled pill with no GL error', async () => {
 		const e = engine();
 		await e.advance(1);

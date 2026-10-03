@@ -28,7 +28,7 @@ This one is built for Svelte 5 from the ground up:
 - **5 container shapes** — circle, frame, roundedRect, annulus, and arbitrary SVG paths / text via mask texture
 - **Glass post-processing** — refraction, specular highlights, and chromatic aberration on any container shape
 - **Lazy loading + auto-pause** — defer engine creation until viewport entry
-- **Interface primitives** — `InkPaper`, `LiquidButton`, `LiquidSegmented`, `LiquidDropZone`, `LiquidCaustics`, `FoilSwitch` and `EnamelText`: native controls with a shared-WebGL2 surface and plain-control fallback
+- **Interface primitives** — `InkPaper`, `LiquidButton`, `LiquidSegmented`, `LiquidDropZone`, `LiquidCaustics`, `LiquidToggle` and `EnamelText`: native controls with a shared-WebGL2 surface and plain-control fallback
 - **Imperative API** — `splat()` and `randomSplats()` via `bind:this`
 
 ## Install
@@ -161,17 +161,17 @@ Full props, live examples and contrast notes: [docs/components](https://svelte-f
 | `LiquidSegmented` | Single-choice radio group on a liquid lens | `<LiquidSegmented name="r" legend="Range" options={[{ value: 'day', label: 'Day' }, { value: 'week', label: 'Week' }]} bind:value />` |
 | `LiquidDropZone` | File picker and drop target | `<LiquidDropZone accept="image/*" onfiles={(files) => upload(files)} />` |
 | `LiquidCaustics` | Caustic light over live content | `<LiquidCaustics tone="dark"><p>Content</p></LiquidCaustics>` |
-| `FoilSwitch` | On/off switch drawn as a metal arch | `<FoilSwitch bind:checked={on}>Notifications</FoilSwitch>` |
+| `LiquidToggle` | Native checkbox switch with a sliding liquid lens | `<LiquidToggle bind:checked={on}>Notifications</LiquidToggle>` |
 | `EnamelText` | Display heading in glazed enamel that gives under a press | `<h2><EnamelText text="Harbour" /></h2>` |
 
 ```svelte
 <script>
-  import { LiquidButton, FoilSwitch, EnamelText } from 'svelte-fluid';
+  import { LiquidButton, LiquidToggle, EnamelText } from 'svelte-fluid';
   let on = $state(false);
 </script>
 
 <LiquidButton onclick={() => console.log('saved')}>Save</LiquidButton>
-<FoilSwitch bind:checked={on}>Notifications</FoilSwitch>
+<LiquidToggle bind:checked={on}>Notifications</LiquidToggle>
 <h2><EnamelText text="Harbour" /></h2>
 ```
 

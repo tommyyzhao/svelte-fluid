@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount, unmount } from 'svelte';
-import FoilSwitch from '../../FoilSwitch.svelte';
+import LiquidToggle from '../../LiquidToggle.svelte';
 import EnamelText from '../../EnamelText.svelte';
 import LiquidButton from '../../LiquidButton.svelte';
 import fluidTextSrc from '../../FluidText.svelte?raw';
@@ -16,13 +16,13 @@ describe('native fractional component backing', () => {
 		expect(fluidTextSrc).toContain('{minContrast}');
 	});
 
-	for (const component of [FoilSwitch, EnamelText, LiquidButton]) {
+	for (const component of [LiquidToggle, EnamelText, LiquidButton]) {
 		it(`${component.name} retains fractional layout pixels through resize and transforms`, async () => {
 			const target = document.createElement('div');
 			target.style.cssText = 'font:32px Arial;color:#222;background:#fff';
 			document.body.append(target);
-			const app = component === FoilSwitch
-				? mount(FoilSwitch, { target, props: { checked: true } })
+			const app = component === LiquidToggle
+				? mount(LiquidToggle, { target, props: { checked: true } })
 				: component === EnamelText
 					? mount(EnamelText, { target, props: { text: 'Native' } })
 					: mount(LiquidButton, { target });
@@ -47,7 +47,7 @@ describe('native fractional component backing', () => {
 				expect(canvas.width).toBe(Math.floor(96.375 * devicePixelRatio));
 				expect(canvas.height).toBe(Math.floor(48.625 * devicePixelRatio));
 			});
-			if (component === FoilSwitch) expect(root.getAttribute('aria-checked')).toBe('true');
+			if (component === LiquidToggle) expect(target.querySelector('input')!.checked).toBe(true);
 			if (component === EnamelText) expect(root.textContent).toBe('Native');
 			expect(root.classList.contains('live')).toBe(true);
 		});
