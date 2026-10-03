@@ -46,8 +46,8 @@ interface Row {
 	/** ADR 0099 probe, main-thread ms (issue + poll), queue drained first: median / max. */
 	settleCheckMs: number;
 	settleCheckMaxMs: number;
-	/** Probe GPU reduction + readback, drained (includes ~0.1 ms drain round trip): median. */
-	settleCheckGpuMs: number;
+	/** Post-submit drain wall time only, not elapsed GPU time: median. */
+	settleDrainMs: number;
 	/** Per-frame ms of SETTLE_CHECK_INTERVAL-frame batches whose last frame issues and reads the probe. */
 	settleBatchMs: number;
 	canvas: string;
@@ -158,12 +158,13 @@ async function measure(preset: string, base: FluidConfig, dpr: number): Promise<
 		const probe = engine as unknown as { issueSettleProbe(): void; pollSettleProbe(): boolean | null };
 		// WebGL updates sync status only between tasks, so yield before polling.
 		const poll = async () => {
+			let totalMs = 0;
 			for (let spin = 0; spin < 100; spin++) {
 				await tick();
 				const t0 = performance.now();
 				const quiet = probe.pollSettleProbe();
-				const ms = performance.now() - t0;
-				if (quiet !== null) return ms;
+				totalMs += performance.now() - t0;
+				if (quiet !== null) return totalMs;
 			}
 			throw new Error('settle probe never signalled');
 		};
@@ -186,8 +187,8 @@ async function measure(preset: string, base: FluidConfig, dpr: number): Promise<
 			for (let f = 0; f < SETTLE_CHECK_INTERVAL; f++) frame(engine);
 			probe.issueSettleProbe();
 			drain();
-			settleBatches.push((performance.now() - t0) / SETTLE_CHECK_INTERVAL);
-			await poll();
+			const elapsed = performance.now() - t0;
+			settleBatches.push((elapsed + await poll()) / SETTLE_CHECK_INTERVAL);
 		}
 		// Paired busy throughput: enqueue the same reduction + PBO readback every
 		// frame, do not wait/poll in the measured span. Delta against ordinary
@@ -273,7 +274,7 @@ async function measure(preset: string, base: FluidConfig, dpr: number): Promise<
 		timerQueryMedianMs,
 		settleCheckMs: quantile(checks, 0.5),
 		settleCheckMaxMs: Math.max(...checks),
-		settleCheckGpuMs: quantile(checkGpu, 0.5),
+		settleDrainMs: quantile(checkGpu, 0.5),
 		settleBatchMs: quantile(settleBatches, 0.5),
 		canvas: `${w}x${h}`,
 		tier: SHARED ? 'shared' : 'own',
@@ -313,11 +314,11 @@ describe('GPU budget (measurement only)', () => {
 		const cell = (n: string, d: number) => {
 			const r = rows.find((x) => x.preset === n && x.dpr === d);
 			return r
-				? `${r.medianMs.toFixed(2)}/${r.worstBatchMs.toFixed(2)} s${r.settleBatchMs.toFixed(2)} c${r.settleCheckMs.toFixed(2)}/${r.settleCheckMaxMs.toFixed(2)} g${r.settleCheckGpuMs.toFixed(2)}`
+				? `${r.medianMs.toFixed(2)}/${r.worstBatchMs.toFixed(2)} s${r.settleBatchMs.toFixed(2)} c${r.settleCheckMs.toFixed(2)}/${r.settleCheckMaxMs.toFixed(2)} g${r.settleDrainMs.toFixed(2)}`
 				: '-';
 		};
 		const lines = [
-			`GPU budget [synced throughput] ${adapter} @ ${CSS_W}x${CSS_H} css, median/worst batch ms, s=per-frame with 1-in-${SETTLE_CHECK_INTERVAL} settle probe, c=probe CPU median/max, g=probe GPU`,
+			`GPU budget [synced throughput] ${adapter} @ ${CSS_W}x${CSS_H} css, median/worst batch ms, s=per-frame with 1-in-${SETTLE_CHECK_INTERVAL} settle probe, c=probe CPU median/max, g=post-submit drain`,
 			'preset'.padEnd(16) + DPRS.map((d) => `DPR${d}`.padStart(46)).join('')
 		];
 		for (const n of names) lines.push(n.padEnd(16) + DPRS.map((d) => cell(n, d).padStart(46)).join(''));
