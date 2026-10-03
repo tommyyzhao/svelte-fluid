@@ -801,7 +801,7 @@ export class FluidEngine implements FluidHandle {
 	private settleDyeChain: FBO[] = [];
 	/** Async probe readback: 2 RGBA float pixels (velocity max, dye max). */
 	private settlePbo: WebGLBuffer | null = null;
-	private settleProbe: { sync: WebGLSync; epoch: number } | null = null;
+	private settleProbe: { sync: WebGLSync | null; epoch: number; velocityLevel: number; dyeLevel: number } | null = null;
 	/** Changed fields or eligibility invalidate any probe already in flight. */
 	private settleEpoch = 0;
 	private settlePixels = new Float32Array(8);
@@ -1144,7 +1144,7 @@ export class FluidEngine implements FluidHandle {
 		// Conservatively activate even for a numerically zero splat. Proving a
 		// caller's future values are zero is not worth a false-idle solver.
 		this.wake();
-		this.settleEpoch++;
+		this.cancelSettleProbe();
 		this.solverMayContainContent = true;
 		const radius = this.config.SPLAT_RADIUS / 100.0;
 		this.withGl(() => {
@@ -1163,7 +1163,7 @@ export class FluidEngine implements FluidHandle {
 
 	/** Stop the animation loop. The GL context stays alive. Idempotent. */
 	pause(): void {
-		this.settleEpoch++;
+		this.cancelSettleProbe();
 		// Explicit pause wins over a settled state.
 		this.settled = false;
 		if (!this.rafRunning || this.disposed) return;
@@ -1173,7 +1173,7 @@ export class FluidEngine implements FluidHandle {
 
 	/** Restart the animation loop after a pause. Idempotent. */
 	resume(): void {
-		this.settleEpoch++;
+		this.cancelSettleProbe();
 		this.settled = false;
 		this.settleFrames = 0;
 		this.settleQuietChecks = 0;
@@ -1246,7 +1246,7 @@ export class FluidEngine implements FluidHandle {
 		const oldHeight = this.canvas.height;
 		if (oldWidth === nextWidth && oldHeight === nextHeight) return false;
 
-		this.settleEpoch++;
+		this.cancelSettleProbe();
 		this.canvas.width = nextWidth;
 		this.canvas.height = nextHeight;
 		this.invalidateRender();
@@ -1507,7 +1507,7 @@ export class FluidEngine implements FluidHandle {
 		});
 		if (preparedDisplayVariant === undefined) return;
 		this.config = b;
-		this.settleEpoch++;
+		this.cancelSettleProbe();
 		this.wake();
 		if (performanceResetChanged) this.resetPerformanceGovernor();
 		if (a.BACK_COLOR !== b.BACK_COLOR) {
@@ -1576,6 +1576,7 @@ export class FluidEngine implements FluidHandle {
 	private handleContextLost(e?: Event): void {
 		e?.preventDefault(); // Signals to the browser we intend to restore
 		this.contextLost = true;
+		this.cancelSettleProbe();
 		this.profiler?.rejectContextLost();
 		this.stopRaf();
 	}
@@ -1694,6 +1695,7 @@ export class FluidEngine implements FluidHandle {
 
 	dispose(): void {
 		if (this.disposed) return;
+		this.cancelSettleProbe();
 		this.disposed = true;
 
 		this.stopRaf();
@@ -1721,7 +1723,6 @@ export class FluidEngine implements FluidHandle {
 		for (const fbo of [...this.settleVelocityChain, ...this.settleDyeChain]) disposeFBO(gl, fbo);
 		this.settleVelocityChain = [];
 		this.settleDyeChain = [];
-		if (this.settleProbe) (gl as WebGL2RenderingContext).deleteSync(this.settleProbe.sync);
 		if (this.settlePbo) gl.deleteBuffer(this.settlePbo);
 		this.settleProbe = null;
 		this.settlePbo = null;
@@ -3354,11 +3355,10 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	}
 
 	/**
-	 * ADR 0099: stop the loop once velocity and dye are provably invisible.
-	 * Runs after the frame is presented, so the last frame is on screen. The
-	 * quiet probe is a GPU max-reduction read back asynchronously: issued every
-	 * SETTLE_CHECK_INTERVAL frames, consumed on a later frame once its fence
-	 * signals, so the check never stalls the pipeline.
+	 * ADR 0099: stop after three quiet issue-time snapshots, not a proof about
+	 * current fields. Freeze both first reductions every SETTLE_CHECK_INTERVAL
+	 * frames; finish one immutable-chain draw per later frame, then read back
+	 * asynchronously. This deliberately delays the existing snapshot verdict.
 	 */
 	private trackSettle(): void {
 		if (
@@ -3368,9 +3368,10 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			this.settleFrames = 0;
 			this.settleQuietChecks = 0;
 			// Drivers and pointers write fields without splat(); an in-flight probe missed that.
-			this.settleEpoch++;
+			this.cancelSettleProbe();
 			return;
 		}
+		this.advanceSettleProbe();
 		const quiet = this.pollSettleProbe();
 		if (this.failed) return;
 		if (quiet === false) this.settleQuietChecks = 0;
@@ -3391,8 +3392,19 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		return { checks: this.settleCheckCount, totalMs: this.settleCheckMs };
 	}
 
-	/** Reduce velocity and dye to one pixel each and queue their async readback. */
+	/** Forget a snapshot before input or lifecycle changes can make it stale. */
+	private cancelSettleProbe(): void {
+		this.settleEpoch++;
+		this.settleQuietChecks = 0;
+		if (this.settleProbe?.sync && !this.contextLost) {
+			this.withGl(() => (this.gl as WebGL2RenderingContext).deleteSync(this.settleProbe!.sync));
+		}
+		this.settleProbe = null;
+	}
+
+	/** Freeze both first reduced fields at one issue-time epoch; never retain live ping-pong fields. */
 	private issueSettleProbe(): void {
+		if (this.settleProbe || this.disposed || this.contextLost || this.failed) return;
 		const t0 = performance.now();
 		try { this.withGl(() => {
 			// Only a float readback carries the thresholds; without it never settle.
@@ -3400,8 +3412,42 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			const gl = this.gl as WebGL2RenderingContext;
 			// Shared siblings' errors must not be attributed to this probe.
 			for (let i = 0; i < 16 && gl.getError() !== gl.NO_ERROR; i++);
-			const v = this.settleReduce(this.velocity.read, this.settleVelocityChain, 1, 1, 0);
-			const d = this.settleReduce(this.dye.read, this.settleDyeChain, 1, 1, 1);
+			this.prepareSettleChain(this.velocity.read, this.settleVelocityChain);
+			this.prepareSettleChain(this.dye.read, this.settleDyeChain);
+			this.settleReducePass(this.velocity.read, this.settleVelocityChain[0], 1, 1, 0);
+			this.settleReducePass(this.dye.read, this.settleDyeChain[0], 1, 1, 1);
+			this.checkSettleGl();
+			this.settleProbe = { sync: null, epoch: this.settleEpoch, velocityLevel: 1, dyeLevel: 1 };
+		}); } catch (error) {
+			this.cancelSettleProbe();
+			this.failTransition(error);
+		}
+		this.settleCheckMs += performance.now() - t0;
+	}
+
+	/** At most one tail draw per frame, then queue the existing two-pixel readback. */
+	private advanceSettleProbe(): void {
+		const probe = this.settleProbe;
+		if (!probe || probe.sync || this.disposed || this.contextLost || this.failed) return;
+		if (probe.epoch !== this.settleEpoch) { this.cancelSettleProbe(); return; }
+		const t0 = performance.now();
+		try { this.withGl(() => {
+			const gl = this.gl as WebGL2RenderingContext;
+			for (let i = 0; i < 16 && gl.getError() !== gl.NO_ERROR; i++);
+			if (probe.velocityLevel < this.settleVelocityChain.length) {
+				const i = probe.velocityLevel++;
+				this.settleReducePass(this.settleVelocityChain[i - 1], this.settleVelocityChain[i], 1, 0, 0);
+				this.checkSettleGl();
+				return;
+			}
+			if (probe.dyeLevel < this.settleDyeChain.length) {
+				const i = probe.dyeLevel++;
+				this.settleReducePass(this.settleDyeChain[i - 1], this.settleDyeChain[i], 1, 0, 0);
+				this.checkSettleGl();
+				return;
+			}
+			const v = this.settleVelocityChain[this.settleVelocityChain.length - 1];
+			const d = this.settleDyeChain[this.settleDyeChain.length - 1];
 			if (!this.settlePbo) {
 				this.settlePbo = gl.createBuffer();
 				if (!this.settlePbo) throw new Error('svelte-fluid: settle PBO allocation failed');
@@ -3419,10 +3465,13 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			this.checkSettleGl();
 			const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
 			if (!sync) throw new Error('svelte-fluid: settle fence allocation failed');
-			this.settleProbe = { sync, epoch: this.settleEpoch };
+			probe.sync = sync;
 			gl.flush();
 		}); } catch (error) {
 			// Never turn an unsuccessful readback's zero-filled buffer into a quiet verdict.
+			const gl = this.gl as WebGL2RenderingContext;
+			gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+			this.cancelSettleProbe();
 			this.failTransition(error);
 		}
 		this.settleCheckMs += performance.now() - t0;
@@ -3431,13 +3480,15 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	/** Quiet verdict of a finished probe; null while none is ready (or it went stale). */
 	private pollSettleProbe(): boolean | null {
 		const probe = this.settleProbe;
-		if (!probe) return null;
+		if (!probe?.sync || this.disposed || this.contextLost || this.failed) return null;
+		if (probe.epoch !== this.settleEpoch) { this.cancelSettleProbe(); return null; }
+		const sync = probe.sync;
 		const t0 = performance.now();
 		let result: boolean | null | undefined = null;
 		try { result = this.withGl(() => {
 			const gl = this.gl as WebGL2RenderingContext;
-			if (gl.getSyncParameter(probe.sync, gl.SYNC_STATUS) !== gl.SIGNALED) return null;
-			gl.deleteSync(probe.sync);
+			if (gl.getSyncParameter(sync, gl.SYNC_STATUS) !== gl.SIGNALED) return null;
+			gl.deleteSync(sync);
 			this.settleProbe = null;
 			// Field/config changes since issue invalidate the old quietness verdict.
 			if (probe.epoch !== this.settleEpoch) {
@@ -3462,7 +3513,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	 * into a 1x1 R16F target (returned). Binds every piece of state it reads
 	 * (shared tier).
 	 */
-	private settleReduce(src: FBO, chain: FBO[], r: number, g: number, b: number): FBO {
+	private prepareSettleChain(src: FBO, chain: FBO[]): void {
 		const gl = this.gl;
 		const w0 = Math.ceil(src.width / 8);
 		const h0 = Math.ceil(src.height / 8);
@@ -3485,19 +3536,17 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			for (const fbo of chain) disposeFBO(gl, fbo);
 			chain.splice(0, chain.length, ...candidate);
 		}
+	}
+
+	private settleReducePass(src: FBO, target: FBO, r: number, g: number, b: number): void {
+		const gl = this.gl;
 		const program = this.settleMaxProgram;
 		gl.disable(gl.BLEND);
 		program.bind();
-		let source = src;
-		for (let i = 0; i < chain.length; i++) {
-			gl.uniform1i(program.uniforms.uSource, source.attach(0));
-			gl.uniform2f(program.uniforms.uSourceTexel, source.texelSizeX, source.texelSizeY);
-			if (i === 0) gl.uniform4f(program.uniforms.uChannels, r, g, b, 0);
-			else if (i === 1) gl.uniform4f(program.uniforms.uChannels, 1, 0, 0, 0);
-			this.blit(chain[i]);
-			source = chain[i];
-		}
-		return source;
+		gl.uniform1i(program.uniforms.uSource, src.attach(0));
+		gl.uniform2f(program.uniforms.uSourceTexel, src.texelSizeX, src.texelSizeY);
+		gl.uniform4f(program.uniforms.uChannels, r, g, b, 0);
+		this.blit(target);
 	}
 
 	/** A failed max probe cannot prove quietness, on either context tier. */

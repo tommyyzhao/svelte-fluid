@@ -134,7 +134,7 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		expect(diff).toBeLessThan(0.02);
 	}, 60_000);
 
-	it.each(['own', 'shared'] as const)('GPU max probe equals full readback maxima (%s tier)', (tier) => {
+	it.each(['own', 'shared'] as const)('staged GPU snapshot equals issue-time maxima while fields evolve (%s tier)', async (tier) => {
 		_setContextTier(tier);
 		try {
 		// Odd, non-multiple-of-8 sizes exercise partial reduction tiles.
@@ -142,26 +142,35 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		e.splat(0.13, 0.91, 900, -400, { r: 0.2, g: 1.7, b: 0.4 });
 		e.splat(0.97, 0.04, -300, 1200, { r: 0.05, g: 0.1, b: 2.3 });
 		const probe = e as unknown as {
-			withGl<T>(fn: () => T): T;
-			settleReduce(src: unknown, chain: unknown[], r: number, g: number, b: number): { fbo: WebGLFramebuffer };
-			gl: WebGL2RenderingContext;
-			settleVelocityChain: unknown[];
-			settleDyeChain: unknown[];
-			velocity: { read: unknown };
-			dye: { read: unknown };
+			issueSettleProbe(): void;
+			advanceSettleProbe(): void;
+			pollSettleProbe(): boolean | null;
+			settlePixels: Float32Array;
+			settleProbe: unknown;
+			blit(...args: unknown[]): void;
 		};
 		const cpuMax = (data: Float32Array) => data.reduce((m, x) => Math.max(m, Math.abs(x)), 0);
 		const v = cpuMax(e.readField('velocity').data);
 		const d = cpuMax(e.readField('dye', { components: 3 }).data);
-		const reduced = (src: unknown, chain: unknown[], r: number, g: number, b: number) =>
-			probe.withGl(() => {
-				const out = new Float32Array(4);
-				probe.gl.bindFramebuffer(probe.gl.FRAMEBUFFER, probe.settleReduce(src, chain, r, g, b).fbo);
-				probe.gl.readPixels(0, 0, 1, 1, probe.gl.RGBA, probe.gl.FLOAT, out);
-				return out[0];
-			});
-		const gv = reduced(probe.velocity.read, probe.settleVelocityChain, 1, 1, 0);
-		const gd = reduced(probe.dye.read, probe.settleDyeChain, 1, 1, 1);
+		probe.issueSettleProbe();
+		const original = probe.blit;
+		let draws = 0;
+		probe.blit = (...args) => { draws++; original(...args); };
+		try {
+			for (let i = 0; i < 12 && probe.settleProbe; i++) {
+				// Changes the ping-pong fields without external input/epoch invalidation.
+				e.advance(1, 1 / 60);
+				draws = 0;
+				probe.advanceSettleProbe();
+				expect(draws).toBeLessThanOrEqual(1);
+				await sleep(0);
+				probe.pollSettleProbe();
+			}
+		} finally { probe.blit = original; }
+		expect(probe.settleProbe).toBeNull();
+		const gv = probe.settlePixels[0];
+		const gd = probe.settlePixels[4];
+		expect(cpuMax(e.readField('dye', { components: 3 }).data)).not.toBe(d);
 		expect(v).toBeGreaterThan(1);
 		expect(d).toBeGreaterThan(0.5);
 		// Inputs are already half floats; the R16F chain re-rounds once (2^-11 relative).
@@ -172,43 +181,48 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		}
 	});
 
-	it('drops an async quiet probe after new splat or config input', async () => {
-		const e = engine({}, false);
-		const probe = e as unknown as {
-			issueSettleProbe(): void;
-			pollSettleProbe(): boolean | null;
-			settleProbe: unknown;
-			settleCheckCount: number;
-		};
-		// Empty fields: any accepted quiet verdict would be a stale false-idle.
-		for (const input of [
-			() => e.splat(0.5, 0.5, 300, 0, { r: 1, g: 0.2, b: 0.1 }),
-			() => e.setConfig({ densityDissipation: 0.1 })
-		]) {
+	it('cancels snapshots on splat, config, resize, pause, loss and dispose', async () => {
+		for (const when of ['snapshot', 'fenced']) for (const action of ['splat', 'config', 'resize', 'pause', 'loss', 'dispose']) {
+			const e = engine({}, false);
+			const probe = e as unknown as {
+				issueSettleProbe(): void;
+				advanceSettleProbe(): void;
+				pollSettleProbe(): boolean | null;
+				handleContextLost(): void;
+				settleProbe: { sync: WebGLSync | null } | null;
+				settleCheckCount: number;
+			};
 			probe.issueSettleProbe();
-			input();
-			await until(() => {
-				expect(probe.pollSettleProbe()).toBeNull();
-				return probe.settleProbe === null;
-			}, 5_000);
+			if (when === 'fenced') for (let i = 0; i < 12 && !probe.settleProbe?.sync; i++) probe.advanceSettleProbe();
+			expect(probe.settleProbe).not.toBeNull();
+			if (action === 'splat') e.splat(0.5, 0.5, 300, 0, { r: 1, g: 0.2, b: 0.1 });
+			else if (action === 'config') e.setConfig({ densityDissipation: 0.1 });
+			else if (action === 'resize') e.resize(131, 127);
+			else if (action === 'pause') e.pause();
+			else if (action === 'loss') probe.handleContextLost();
+			else e.dispose();
+			expect(probe.settleProbe).toBeNull();
+			expect(probe.pollSettleProbe()).toBeNull();
 			expect(probe.settleCheckCount).toBe(0);
+			e.dispose();
 		}
 	});
 
 	it('a partial reduction allocation leaves no truncated chain to reuse', () => {
 		const e = engine({ simResolution: 16 }, false);
 		const p = e as unknown as {
-			gl: WebGL2RenderingContext; velocity: { read: unknown }; settleVelocityChain: unknown[];
-			settleReduce(src: unknown, chain: unknown[], r: number, g: number, b: number): { width: number; height: number };
+			gl: WebGL2RenderingContext; velocity: { read: unknown }; settleVelocityChain: { width: number; height: number }[];
+			prepareSettleChain(src: unknown, chain: unknown[]): void;
 		};
 		const original = p.gl.createTexture.bind(p.gl);
 		let n = 0;
 		p.gl.createTexture = (() => ++n === 2 ? null : original()) as typeof p.gl.createTexture;
 		try {
-			expect(() => p.settleReduce(p.velocity.read, p.settleVelocityChain, 1, 1, 0)).toThrow();
+			expect(() => p.prepareSettleChain(p.velocity.read, p.settleVelocityChain)).toThrow();
 			expect(p.settleVelocityChain).toHaveLength(0);
 		} finally { p.gl.createTexture = original; }
-		const reduced = p.settleReduce(p.velocity.read, p.settleVelocityChain, 1, 1, 0);
+		p.prepareSettleChain(p.velocity.read, p.settleVelocityChain);
+		const reduced = p.settleVelocityChain[p.settleVelocityChain.length - 1];
 		expect([reduced.width, reduced.height]).toEqual([1, 1]);
 	});
 
@@ -216,7 +230,7 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		const e = engine({ simResolution: 16 }, false);
 		const p = e as unknown as {
 			gl: WebGL2RenderingContext; velocity: { read: unknown }; settleVelocityChain: unknown[];
-			settleReduce(src: unknown, chain: unknown[], r: number, g: number, b: number): unknown;
+			prepareSettleChain(src: unknown, chain: unknown[]): unknown;
 		};
 		const create = p.gl.createFramebuffer.bind(p.gl);
 		const remove = p.gl.deleteTexture.bind(p.gl);
@@ -224,7 +238,7 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		p.gl.createFramebuffer = (() => null) as unknown as typeof p.gl.createFramebuffer;
 		p.gl.deleteTexture = (texture) => { deleted++; remove(texture); };
 		try {
-			expect(() => p.settleReduce(p.velocity.read, p.settleVelocityChain, 1, 1, 0)).toThrow();
+			expect(() => p.prepareSettleChain(p.velocity.read, p.settleVelocityChain)).toThrow();
 			expect(deleted).toBe(1);
 			expect(p.settleVelocityChain).toHaveLength(0);
 		} finally { p.gl.createFramebuffer = create; p.gl.deleteTexture = remove; }
@@ -237,14 +251,18 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 			const p = e as unknown as {
 				gl: WebGL2RenderingContext;
 				issueSettleProbe(): void;
-				settleProbe: unknown; settleCheckCount: number; failed: boolean;
+				advanceSettleProbe(): void;
+				settleProbe: { sync: WebGLSync | null } | null; settleCheckCount: number; failed: boolean;
 			};
 			const original = p.gl.readPixels.bind(p.gl);
 			p.gl.readPixels = (() => {
 				// Real GL validation error; no JS exception, exactly the silent-zero failure.
 				p.gl.bindBuffer(-1, null);
 			}) as typeof p.gl.readPixels;
-			try { p.issueSettleProbe(); } finally { p.gl.readPixels = original; }
+			try {
+				p.issueSettleProbe();
+				for (let i = 0; i < 12 && p.settleProbe && !p.settleProbe.sync; i++) p.advanceSettleProbe();
+			} finally { p.gl.readPixels = original; }
 			expect(p.failed).toBe(true);
 			expect(p.settleProbe).toBeNull();
 			expect(p.settleCheckCount).toBe(0);
