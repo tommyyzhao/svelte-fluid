@@ -115,9 +115,9 @@ and reset its quiet streak. Shared stages rebind all consumed GL state. Failed
 allocation, reduction, readback or validation cannot become a quiet verdict.
 WebGL1/missing float readback remains conservative: no automatic settling.
 
-For the usual two velocity levels and four dye levels, four tail draws plus a
-readback-issue frame precede fence polling: about five extra frame intervals
-(~83 ms at 60 Hz), plus driver fence latency. Other resolutions differ. This
+For the measured three velocity levels and four dye levels, five tail draws plus
+a readback-issue frame precede fence polling: about six extra frame intervals
+(~100 ms at 60 Hz), plus driver fence latency. Other resolutions differ. This
 preserves the **issue-time snapshot result**, not a mathematical proof that the
 current fields are quiet: ordinary simulation evolves velocity/dye without an
 external-input epoch change. That delayed-snapshot assumption already existed;
