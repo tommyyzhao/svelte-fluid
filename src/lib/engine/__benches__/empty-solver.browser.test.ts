@@ -87,7 +87,9 @@ describe('provably empty solver skip', () => {
 		const skipped = countedEngine();
 		const control = countedEngine();
 		try {
-			control.engine.splat(0.5, 0.5, 0, 0, { r: 0, g: 0, b: 0 });
+			// A black splat now deposits real thickness, so activate the zero
+			// control explicitly instead of injecting material (ADR 0100).
+			(control.engine as unknown as { solverMayContainContent: boolean }).solverMayContainContent = true;
 			skipped.engine.advance(20, 1 / 120);
 			control.engine.advance(20, 1 / 120);
 			for (const engine of [skipped.engine, control.engine]) {
