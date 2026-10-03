@@ -57,8 +57,7 @@
 			sync();
 		});
 		resize.observe(canvas);
-		const zoom = () => sync();
-		window.addEventListener('resize', zoom);
+		window.addEventListener('resize', sync);
 		const intersect = new IntersectionObserver(([entry]) => {
 			onscreen = entry.isIntersecting;
 			visibility();
@@ -76,7 +75,7 @@
 			if (destroyed) return;
 			destroyed = true;
 			resize.disconnect();
-			window.removeEventListener('resize', zoom);
+			window.removeEventListener('resize', sync);
 			intersect.disconnect();
 			forced.removeEventListener('change', visibility);
 			document.removeEventListener('visibilitychange', visibility);
