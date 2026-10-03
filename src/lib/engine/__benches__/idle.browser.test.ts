@@ -241,6 +241,40 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		}
 	});
 
+	it('nonfinite velocity cannot settle invisible dye on either readback path', async () => {
+		for (const bytes of [false, true]) {
+			const e = engine({ initialSplatCount: 0 }, false);
+			const p = e as unknown as { gl: WebGL2RenderingContext; velocity: { read: FBO }; canReadSettleFloat(): boolean; issueSettleProbe(): void; advanceSettleProbe(): void; pollSettleProbe(): boolean | null; settleProbe: { ready?: boolean; sync?: WebGLSync } | null };
+			if (bytes) p.canReadSettleFloat = () => false;
+			const gl = p.gl;
+			gl.bindTexture(gl.TEXTURE_2D, p.velocity.read.texture);
+			gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 1, 1, gl.RG, gl.FLOAT, new Float32Array([Infinity, 0]));
+			expect(gl.getError()).toBe(gl.NO_ERROR);
+			p.issueSettleProbe();
+			for (let i = 0; i < 12 && !p.settleProbe?.ready && !p.settleProbe?.sync; i++) p.advanceSettleProbe();
+			let quiet: boolean | null = null;
+			await until(() => { quiet = p.pollSettleProbe(); return quiet !== null; }, 5000);
+			expect(quiet).toBe(false);
+			e.dispose();
+		}
+	});
+
+	it('invalid dissipation fails closed even for empty amplified modes on either readback path', async () => {
+		for (const bytes of [false, true]) for (const dissipation of [NaN, -1]) {
+			const e = engine({ initialSplatCount: 0, reveal: true }, false);
+			const p = e as unknown as { config: { DENSITY_DISSIPATION: number }; canReadSettleFloat(): boolean; issueSettleProbe(): void; advanceSettleProbe(): void; pollSettleProbe(): boolean | null; settleProbe: { ready?: boolean; sync?: WebGLSync } | null };
+			// Public resolveConfig sanitizes these; exercise the internal fail-closed boundary directly.
+			p.config.DENSITY_DISSIPATION = dissipation;
+			if (bytes) p.canReadSettleFloat = () => false;
+			p.issueSettleProbe();
+			for (let i = 0; i < 12 && !p.settleProbe?.ready && !p.settleProbe?.sync; i++) p.advanceSettleProbe();
+			let quiet: boolean | null = null;
+			await until(() => { quiet = p.pollSettleProbe(); return quiet !== null; }, 5000);
+			expect(quiet).toBe(false);
+			e.dispose();
+		}
+	});
+
 	it('non-dye flow visualization is explicitly unsupported by dye-only quiet proof', () => {
 		const e = engine({ initialSplatCount: 0, flow: { visualization: { colorBy: 'speed' } } }, false);
 		const p = e as unknown as { autoStart: boolean; deterministicMode: boolean; trackSettle(): void; settleProbe: unknown };
