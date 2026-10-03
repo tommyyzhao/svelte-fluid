@@ -1,4 +1,23 @@
 import { flowCanDriveSolver } from './solver-activity.js';
+import { DYE_SPLAT_DOSE } from './shaders.js';
+
+/** Fixed studio light / exponent in dyeSpecular: dot terms ≤1, Schlick <0.02001.
+ * sRGB encode has derivative ≤12.92; 1-exp(-h/.06) ≤h/.06.
+ * This bounds the whole highlight, including changing normals, not only fading.
+ */
+export const HEIGHT_SPECULAR_DISPLAY_BOUND = 12.92 * (130 / (8 * Math.PI)) * 0.02001 / DYE_SPLAT_DOSE;
+
+export function heightVisibilityScale(c: {
+	SHADING: boolean; SPECULAR: number; REFRACTION: number; GLASS: boolean; CONTAINER_SHAPE: unknown;
+	DISTORTION: boolean; REVEAL: boolean; TONE_MAPPING: string; BLOOM: boolean; SUNRAYS: boolean; MIN_CONTRAST: number;
+}): number {
+	// Diffuse alone multiplies RGB by [0.7,1], so the existing RGB bound holds.
+	if (c.REFRACTION > 0 && (c.DISTORTION || (c.GLASS && c.CONTAINER_SHAPE && !c.REVEAL))) return -1;
+	if (c.SPECULAR <= 0) return 0;
+	// ponytail: arbitrary image/curve/composite amplification needs a separate bound.
+	if (c.REVEAL || c.TONE_MAPPING !== 'none' || c.BLOOM || c.SUNRAYS || c.MIN_CONTRAST > 1) return -1;
+	return c.SPECULAR * HEIGHT_SPECULAR_DISPLAY_BOUND;
+}
 import type { FlowConfig } from './types.js';
 
 /** Below this max |value| (display units) a field cannot change a displayed 8-bit pixel. */

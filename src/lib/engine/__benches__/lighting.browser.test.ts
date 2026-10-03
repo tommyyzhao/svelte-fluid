@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { FluidEngine } from '../FluidEngine.js';
+import { FluidEngine, _setContextTier } from '../FluidEngine.js';
+import type { DoubleFBO } from '../internal-types.js';
+import { DYE_HEIGHT_CEILING, DYE_SPLAT_DOSE, advectionShader, splatShader, flowSourceShader } from '../shaders.js';
+import { HEIGHT_SPECULAR_DISPLAY_BOUND, SETTLE_EPSILON } from '../settle.js';
 import { compileShader, makeProgram } from '../gl-utils.js';
 import { baseVertexShader, displayShaderSource, glassShaderSource } from '../shaders.js';
 import type { FluidConfig } from '../types.js';
@@ -8,6 +11,13 @@ interface Harness {
 	gl: WebGL2RenderingContext;
 	renderCore(target: null): void;
 	distortionTexture: WebGLTexture;
+	dye: DoubleFBO;
+	issueSettleProbe(): void;
+	advanceSettleProbe(): void;
+	pollSettleProbe(): boolean | null;
+	settleProbe: { sync: WebGLSync | null; ready?: boolean } | null;
+	canReadSettleFloat(): boolean;
+	withGl<T>(fn: () => T): T;
 }
 
 function setup(config: FluidConfig = {}) {
@@ -46,6 +56,109 @@ function image(h: Harness) {
 	gl.bindTexture(gl.TEXTURE_2D, h.distortionTexture);
 	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 64, 64, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 }
+
+const thickness = (engine: FluidEngine) => {
+	const data = engine.readField('dye').data;
+	return Array.from({ length: data.length / 4 }, (_, i) => data[i * 4 + 3]);
+};
+
+async function quiet(h: Harness, bytes = false) {
+	if (bytes) h.canReadSettleFloat = () => false;
+	h.issueSettleProbe();
+	for (let i = 0; i < 12 && h.settleProbe && !h.settleProbe.sync && !h.settleProbe.ready; i++) h.advanceSettleProbe();
+	for (let i = 0; i < 50; i++) {
+		const result = h.pollSettleProbe();
+		if (result !== null) return result;
+		await new Promise((resolve) => setTimeout(resolve, 10));
+	}
+	throw new Error('height quiet probe timed out');
+}
+
+describe('independent thickness transport', () => {
+	it('same splat force/radius gives identical thickness across RGB including black, unchanged by render/sunrays', () => {
+		let expected: number[] | undefined;
+		for (const color of [{ r: 0, g: 0, b: 0 }, { r: 1, g: 0, b: 0 }, { r: 0, g: 3, b: 0 }, { r: 1, g: 1, b: 1 }]) {
+			const { engine, h } = setup({ sunrays: true });
+			try {
+				expect(thickness(engine).every((v) => v === 0)).toBe(true);
+				engine.splat(0.5, 0.5, 120, -80, color);
+				const deposited = thickness(engine);
+				expect(Math.max(...deposited)).toBeCloseTo(DYE_SPLAT_DOSE, 3);
+				read(h);
+				expect(thickness(engine)).toEqual(deposited);
+				engine.advance(3, 1 / 60);
+				const transported = thickness(engine);
+				if (expected) expect(transported).toEqual(expected);
+				else expected = transported;
+				read(h);
+				expect(thickness(engine)).toEqual(transported);
+				engine.splat(0.3, 0.6, 0, 0, color); // fully overwrites sunrays scratch, never swaps its alpha
+				expect(thickness(engine).every((v) => Number.isFinite(v) && v <= DYE_HEIGHT_CEILING)).toBe(true);
+			} finally { engine.dispose(); }
+		}
+	});
+	it('adds bounded thickness; force changes transport, not deposition; own/shared initialization is empty', () => {
+		for (const tier of ['own', 'shared'] as const) {
+			_setContextTier(tier);
+			const { engine, h } = setup();
+			try {
+				expect(thickness(engine).every((v) => v === 0)).toBe(true);
+				for (let i = 0; i < 12; i++) engine.splat(0.5, 0.5, i * 10, 0, { r: 0, g: 0, b: 0 });
+				expect(Math.max(...thickness(engine))).toBeCloseTo(DYE_HEIGHT_CEILING, 3);
+				expect(h.withGl(() => h.gl.getParameter(h.gl.COLOR_CLEAR_VALUE)[3])).toBe(1);
+			} finally { engine.dispose(); _setContextTier('auto'); }
+		}
+	});
+	it('flow dose scales with rate * dt, independent of RGB and substeps; invalid rates/radii deposit nothing', () => {
+		const source = { kind: 'point' as const, x: 0.5, y: 0.5, rate: 2, radius: 4, dye: { r: 0, g: 0, b: 0 } };
+		const a = setup({ flow: { sources: [source] } });
+		const b = setup({ flow: { sources: [{ ...source, dye: { r: 10, g: 3, b: 1 } }] } });
+		try {
+			a.engine.advance(1, 1 / 60);
+			b.engine.advance(2, 1 / 120);
+			const ah = thickness(a.engine), bh = thickness(b.engine);
+			expect(Math.max(...ah)).toBeCloseTo(DYE_SPLAT_DOSE * 2 / 60, 5);
+			expect(Math.max(...ah.map((v, i) => Math.abs(v - bh[i])))).toBeLessThan(0.000004);
+			for (const invalid of [{ rate: 0 }, { rate: -1 }, { rate: NaN }, { rate: Infinity }, { radius: 0 }, { radius: -1 }, { radius: Infinity }]) {
+				const empty = setup({ flow: { sources: [{ ...source, ...invalid }] } });
+				try { empty.engine.advance(1, 1 / 60); expect(thickness(empty.engine).every((v) => v === 0)).toBe(true); }
+				finally { empty.engine.dispose(); }
+			}
+		} finally { a.engine.dispose(); b.engine.dispose(); }
+	});
+	it('decays thickness and preserves read alpha through resolution/aspect resize', () => {
+		const { engine } = setup({ densityDissipation: 2 });
+		try {
+			engine.splat(0.5, 0.5, 0, 0, { r: 0, g: 0, b: 0 });
+			const peak = Math.max(...thickness(engine));
+			engine.advance(1, 1 / 60);
+			expect(Math.max(...thickness(engine))).toBeCloseTo(peak / (1 + 2 / 60), 4);
+			engine.setConfig({ dyeResolution: 256 });
+			expect(Math.max(...thickness(engine))).toBeCloseTo(peak / (1 + 2 / 60), 3);
+			engine.resize(120, 140);
+			expect(Math.max(...thickness(engine))).toBeCloseTo(peak / (1 + 2 / 60), 3);
+		} finally { engine.dispose(); }
+	});
+	it('black thickness is nonquiet when specular/refraction exposes it; tiny bounded specular and diffuse-only black settle', async () => {
+		for (const bytes of [false, true]) for (const config of [{ specular: 1 }, { refraction: 1, distortion: true, distortionPower: 0 }]) {
+			const { engine, h } = setup(config);
+			try { engine.splat(0.5, 0.5, 0, 0, { r: 0, g: 0, b: 0 }); expect(await quiet(h, bytes)).toBe(false); }
+			finally { engine.dispose(); }
+		}
+		for (const bytes of [false, true]) {
+			const { engine, h } = setup({ specular: 1, shading: false, flow: { sources: [{ kind: 'point', x: 0.5, y: 0.5, dye: { r: 0, g: 0, b: 0 }, rate: 0.001 }] } });
+			try {
+				engine.advance(1, 1 / 60);
+				expect(Math.max(...thickness(engine)) * HEIGHT_SPECULAR_DISPLAY_BOUND).toBeLessThan(SETTLE_EPSILON);
+				expect(Math.max(...read(h))).toBeLessThanOrEqual(1);
+				expect(await quiet(h, bytes)).toBe(true);
+			} finally { engine.dispose(); }
+			const black = setup();
+			try { black.engine.splat(0.5, 0.5, 200, 0, { r: 0, g: 0, b: 0 }); expect(await quiet(black.h, bytes)).toBe(true); }
+			finally { black.engine.dispose(); }
+		}
+	});
+});
 
 describe('geometry lighting', () => {
 	it('highlight is opt-in, finite, premultiplied; scalar changes and zero crossings allocate no targets', () => {
@@ -113,7 +226,10 @@ describe('geometry lighting', () => {
 			for (const [source, keywords] of [
 				[displayShaderSource, ['SHADING']],
 				[displayShaderSource, ['SHADING', 'SPECULAR', 'REFRACTION', 'DISTORTION']],
-				[glassShaderSource, []]
+				[glassShaderSource, []],
+				[splatShader, []],
+				[flowSourceShader, []],
+				[advectionShader, ['MANUAL_FILTERING']]
 			] as [string, string[]][]) {
 				const frag = compileShader(gl, gl.FRAGMENT_SHADER, source, keywords);
 				const program = makeProgram(gl, vertex, frag);

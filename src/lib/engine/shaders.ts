@@ -8,6 +8,10 @@
  * touches no GL state.
  */
 
+/** Passive thickness: canvas-height units, identical for every pigment. */
+export const DYE_SPLAT_DOSE = 0.06;
+export const DYE_HEIGHT_CEILING = 0.24;
+
 export const baseVertexShader = `
     precision highp float;
 
@@ -90,6 +94,7 @@ export const settleMaxShader = `
     uniform vec4 uChannels;
     uniform int uFlagMode;
     uniform float uFade;
+    uniform float uHeightVisibility;
 
     void main () {
         vec2 base = (floor(gl_FragCoord.xy) * 8.0 + 0.5) * uSourceTexel;
@@ -97,8 +102,19 @@ export const settleMaxShader = `
         vec4 flags = vec4(0.0);
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
-                vec4 v = abs(texture2D(uSource, base + vec2(float(x), float(y)) * uSourceTexel)) * uChannels;
+                vec4 sampleValue = texture2D(uSource, base + vec2(float(x), float(y)) * uSourceTexel);
+                vec4 v = abs(sampleValue) * uChannels;
                 float value = max(max(v.r, v.g), max(v.b, v.a));
+                // Same reduction targets: a sentinel/boolean blocks quietness while
+                // height can expose black pigment or change an arbitrary image.
+                if (uHeightVisibility != 0.0) {
+                    bool heightValid = sampleValue.a >= 0.0 && sampleValue.a <= ${DYE_HEIGHT_CEILING};
+                    bool heightVisible = sampleValue.a > 0.0 && (uHeightVisibility < 0.0 || value + sampleValue.a * uHeightVisibility >= (0.5 / 255.0));
+                    if (!heightValid || heightVisible) {
+                        m = 65504.0;
+                        flags.rgb = vec3(1.0);
+                    }
+                }
                 m = max(m, value);
                 // Half-float source fields cannot contain finite magnitudes above 65504.
                 bool valid = v.r >= 0.0 && v.r <= 65504.0 && v.g >= 0.0 && v.g <= 65504.0 && v.b >= 0.0 && v.b <= 65504.0 && v.a >= 0.0 && v.a <= 65504.0;
@@ -163,8 +179,6 @@ export const checkerboardShader = `
 /** Passive layer thickness in canvas-height units, stored independently in dye.a.
  * No calibrated free-surface or wave coupling; XY uses the same units.
  */
-export const DYE_SPLAT_DOSE = 0.06;
-export const DYE_HEIGHT_CEILING = 0.24;
 export const DYE_GEOMETRY_GLSL = `
     uniform sampler2D uHeightTexture;
     uniform vec2 uHeightTexel;
@@ -1452,6 +1466,7 @@ const inlineMaskGLSL = `
 export const advectionShader = `
     precision highp float;
     precision highp sampler2D;
+    uniform float uHeightCeiling;
 
     varying vec2 vUv;
     uniform sampler2D uVelocity;
@@ -1510,6 +1525,7 @@ ${inlineMaskGLSL}
             vec4 decay = vec4(1.0) + adjDissipation * dt;
             gl_FragColor = clamp(result / decay, -1000.0, 1000.0) * im;
         }
+        if (uHeightCeiling > 0.0) gl_FragColor.a = clamp(gl_FragColor.a, 0.0, uHeightCeiling);
     }
 `;
 
