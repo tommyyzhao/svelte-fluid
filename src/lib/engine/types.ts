@@ -467,11 +467,11 @@ export interface FluidConfig {
 	splatRadius?: number;
 	/** Splat impulse force. Default 6000. */
 	splatForce?: number;
-	/** Optical-depth surface diffuse, preserving the 0.8.0 shading envelope. Default true. */
+	/** Diffuse from independent deposited thickness; appearance intentionally differs from 0.8.0. Default true. */
 	shading?: boolean;
 	/**
 	 * Dielectric surface highlight intensity, 0–1. Default 0 (opt-in).
-	 * Uses an optical-depth height normal, normalized Blinn-Phong and Schlick Fresnel.
+	 * Uses the deposited-thickness unit normal, normalized Blinn-Phong and Schlick Fresnel.
 	 * Independent of `shading`. Crossing zero recompiles only the display shader;
 	 * positive intensity changes are hot uniforms, with no framebuffer allocation.
 	 */
