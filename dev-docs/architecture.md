@@ -255,7 +255,8 @@ the simulation fields have necessarily been reset.
 ## Trade-offs and known limitations
 
 - **Context tiers.** The first 8 live WebGL2 engines own a context; later
-  ones share one hidden context and program cache (`gl-host.ts`, ADR
+  shared-tier engines and model engines share one hidden context and program
+  cache (`gl-host.ts`, ADR
   [`0093`](./decisions/0093-fluid-engine-on-shared-gl-host.md)), so the
   browser's ~16-context cap no longer blanks canvases. Shared-tier instances
   pay a present copy (+0.45 ms at DPR 2, +0.7 ms at DPR 3 per frame), and one

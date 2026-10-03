@@ -9,6 +9,13 @@ from 0082.
 
 ## Decision
 
+This records the owner's delegated choice to retain the measured hybrid, not a
+claim that every engine shares compiled programs. WebGL2 engines in the first
+8 slots compile in their own contexts; compatible shared-host-tier engines and
+model engines use the host program cache. WebGL1 and
+`requireHardwareAcceleration` engines stay on their own contexts. No universal
+program-cache rewrite is implied.
+
 A new WebGL2 `FluidEngine` gets its **own context** while fewer than
 `OWN_CONTEXT_LIMIT` (K = 8) engines on the page hold one. Otherwise it goes on
 the **shared host** (`gl-host.ts`, the context the pigment and surface models
