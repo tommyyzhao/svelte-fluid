@@ -47,7 +47,7 @@ describe('independent deposited thickness', () => {
 		expect(displayShaderSource).not.toMatch(/length\([lrbt]c\)/);
 		expect(DYE_GEOMETRY_GLSL).not.toMatch(/log\(|concentration|\.rgb/);
 		expect(DYE_GEOMETRY_GLSL).toContain('float dyeHeight (float thickness)');
-		expect(displayShaderSource).toContain('dyeHeight(texture2D(uHeightTexture, vUv).a)');
+		expect(displayShaderSource).toContain('dyeHeight(dye.a)');
 		expect(glassShaderSource).toContain('dyeHeight(texture2D(uHeightTexture, uv).a)');
 		expect(DEFAULTS.SPECULAR).toBe(0);
 		expect(DEFAULTS.REFRACTION).toBe(0);

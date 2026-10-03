@@ -142,7 +142,7 @@ describe('independent thickness transport', () => {
 	});
 	it('sticky retention, physical masks and outlets remove/retain the full RGBA layer', () => {
 		for (const config of [
-			{ sticky: true, stickyStrength: 1, densityDissipation: 0.9, stickyMask: { d: 'M0 0H100V100H0Z', maskResolution: 32 } },
+			{ sticky: true, stickyStrength: 1, stickyAmplify: 0, densityDissipation: 0.9, stickyMask: { d: 'M0 0H100V100H0Z', maskResolution: 32 } },
 			{ containerShape: { type: 'circle' as const, cx: 0.5, cy: 0.5, radius: 0.2 } },
 			{ flow: { outlets: [{ edge: 'left' as const, width: 1, clearDye: 0 }] } }
 		]) {
