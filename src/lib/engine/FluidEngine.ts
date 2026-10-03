@@ -3538,6 +3538,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			this.checkSettleGl();
 			if (!Number.isFinite(this.settlePixels[0]) || !Number.isFinite(this.settlePixels[4])) return false;
 			this.settleCheckCount++;
+			if (!Number.isFinite(this.config.DENSITY_DISSIPATION) || this.config.DENSITY_DISSIPATION < 0) return false;
 			// Arbitrary image frequency/power and reveal curves can amplify any nonzero dye.
 			if (this.config.DISTORTION || this.config.REVEAL) return this.settlePixels[4] === 0;
 			return isQuiet(this.settlePixels[0], this.settlePixels[4], this.config.DENSITY_DISSIPATION);

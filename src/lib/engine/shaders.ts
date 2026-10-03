@@ -100,11 +100,17 @@ export const settleMaxShader = `
                 vec4 v = abs(texture2D(uSource, base + vec2(float(x), float(y)) * uSourceTexel)) * uChannels;
                 float value = max(max(v.r, v.g), max(v.b, v.a));
                 m = max(m, value);
-                if (uFlagMode == 1) flags.r = max(flags.r, value < 0.5 ? 0.0 : 1.0);
+                // Half-float source fields cannot contain finite magnitudes above 65504.
+                bool valid = v.r >= 0.0 && v.r <= 65504.0 && v.g >= 0.0 && v.g <= 65504.0 && v.b >= 0.0 && v.b <= 65504.0 && v.a >= 0.0 && v.a <= 65504.0;
+                if (uFlagMode == 1) {
+                    flags.r = max(flags.r, value < 0.5 ? 0.0 : 1.0);
+                    flags.g = max(flags.g, valid ? 0.0 : 1.0);
+                }
                 if (uFlagMode == 2) {
                     flags.r = max(flags.r, value < (0.5 / 255.0) ? 0.0 : 1.0);
                     flags.g = max(flags.g, value * uFade < (0.5 / 255.0) ? 0.0 : 1.0);
                     flags.b = max(flags.b, value == 0.0 ? 0.0 : 1.0);
+                    if (!valid) flags.rgb = vec3(1.0);
                 }
                 if (uFlagMode == 3) flags = max(flags, v);
             }

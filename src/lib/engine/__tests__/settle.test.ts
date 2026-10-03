@@ -47,7 +47,7 @@ describe('RGBA8 quiet flags', () => {
 		}
 	});
 	it('invalid buffers and maxima fail closed', () => {
-		for (const bytes of [[], Array(8).fill(0), Array(8).fill(127), [NaN, 0, 0, 255, 0, 0, 0, 255]]) expect(isQuietFlags(bytes)).toBe(false);
+		for (const bytes of [[], Array(8).fill(0), Array(8).fill(127), [NaN, 0, 0, 255, 0, 0, 0, 255], [255, 255, 0, 255, 0, 0, 0, 255]]) expect(isQuietFlags(bytes)).toBe(false);
 		for (const n of [NaN, Infinity, -1]) {
 			expect(isQuiet(n, 0, 1)).toBe(false);
 			expect(isQuiet(0, n, 1)).toBe(false);
