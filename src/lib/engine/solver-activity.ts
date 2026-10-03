@@ -11,9 +11,11 @@ export function flowCanDriveSolver(flow: FlowConfig | null | undefined): boolean
 		return true;
 	}
 	const hasSource = flow?.sources?.some((source) => {
-		if (source.rate === 0) return false;
+		const rate = source.rate ?? 60;
+		if (!Number.isFinite(rate) || rate <= 0) return false;
 		if (source.velocity && (source.velocity.x !== 0 || source.velocity.y !== 0)) return true;
-		if (source.dye && (source.dye.r !== 0 || source.dye.g !== 0 || source.dye.b !== 0)) return true;
+		// Black pigment still deposits thickness.
+		if (source.dye) return true;
 		return Object.values(source.scalars ?? {}).some((value) => value !== undefined && value !== 0);
 	});
 	if (hasSource) return true;

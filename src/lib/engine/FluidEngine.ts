@@ -219,6 +219,7 @@ interface FlowSourceBatchEntry {
 	rectH: number;
 	color: RGB;
 	radius: number;
+	dose: number;
 }
 
 interface FlowOutletBatchEntry {
@@ -849,6 +850,7 @@ export class FluidEngine implements FluidHandle {
 	private flowSourceBatchRect = new Float32Array(FLOW_SOURCE_BATCH_SIZE * 4);
 	private flowSourceBatchColor = new Float32Array(FLOW_SOURCE_BATCH_SIZE * 3);
 	private flowSourceBatchRadius = new Float32Array(FLOW_SOURCE_BATCH_SIZE);
+	private flowSourceBatchDose = new Float32Array(FLOW_SOURCE_BATCH_SIZE);
 	private flowOutletBatchEdge = new Int32Array(FLOW_OUTLET_BATCH_SIZE);
 	private flowOutletBatchFrom = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
 	private flowOutletBatchTo = new Float32Array(FLOW_OUTLET_BATCH_SIZE);
@@ -1126,7 +1128,7 @@ export class FluidEngine implements FluidHandle {
 		return this.config.INITIAL_DENSITY_DISSIPATION * (1 - t) + this.config.DENSITY_DISSIPATION * t;
 	}
 
-	private splatTo(target: DoubleFBO, x: number, y: number, color: RGB, radius: number, stickyAmplify = 0): void {
+	private splatTo(target: DoubleFBO, x: number, y: number, color: RGB, radius: number, stickyAmplify = 0, dose = 0): void {
 		const gl = this.gl;
 		this.splatProgram.bind();
 		this.bindStickyMask();
@@ -1136,6 +1138,7 @@ export class FluidEngine implements FluidHandle {
 		gl.uniform1f(this.splatProgram.uniforms.aspectRatio, this.canvas.width / this.canvas.height);
 		gl.uniform2f(this.splatProgram.uniforms.point, x, y);
 		gl.uniform3f(this.splatProgram.uniforms.color, color.r, color.g, color.b);
+		gl.uniform1f(this.splatProgram.uniforms.uDose, dose);
 		gl.uniform1f(this.splatProgram.uniforms.radius, correctRadius(radius, this.canvas.width / this.canvas.height));
 		this.blit(target.write);
 		target.swap();
@@ -1151,12 +1154,13 @@ export class FluidEngine implements FluidHandle {
 		// caller's future values are zero is not worth a false-idle solver.
 		this.wake();
 		this.cancelSettleProbe();
-		this.solverMayContainContent = true;
 		const radius = this.config.SPLAT_RADIUS / 100.0;
+		if (!Number.isFinite(radius) || radius <= 0) return;
+		this.solverMayContainContent = true;
 		this.withGl(() => {
 			this.splatTo(this.velocity, x, y, { r: dx, g: dy, b: 0 }, radius, 0);
 			this.dyeMayContainContent = true;
-			this.splatTo(this.dye, x, y, color, radius, this.config.STICKY ? this.config.STICKY_AMPLIFY : 0);
+			this.splatTo(this.dye, x, y, color, radius, this.config.STICKY ? this.config.STICKY_AMPLIFY : 0, S.DYE_SPLAT_DOSE);
 		});
 		this.invalidateRender();
 	}
@@ -1314,6 +1318,8 @@ export class FluidEngine implements FluidHandle {
 	 * Useful for deterministic regression tests that need CPU-side reductions.
 	 * `readField` intentionally avoids touching Svelte state and uses an
 	 * instance-owned staging buffer so repeated calls do not allocate.
+	 * Dye RGBA is pigment RGB plus passive thickness in canvas-height units,
+	 * NOT display coverage. The byte fallback quantizes/clips this readback.
 	 */
 	readField(field: ReadField, options: ReadFieldOptions = {}): ReadFieldResult {
 		if (this.disposed || this.contextLost) {
@@ -2325,21 +2331,28 @@ export class FluidEngine implements FluidHandle {
 
 		gl.disable(gl.BLEND);
 
-		if (mode === 'fresh' || this.dye == null) {
-			this.dye = createDoubleFBO(gl, dyeRes.width, dyeRes.height, rgba.internalFormat, rgba.format, texType, filtering);
-		} else {
-			this.dye = resizeDoubleFBO(
-				gl,
-				this.dye,
-				dyeRes.width,
-				dyeRes.height,
-				rgba.internalFormat,
-				rgba.format,
-				texType,
-				filtering,
-				this.copyProgram,
-				this.blit
-			);
+		// createFBO clears with current GL state. Only dye owns thickness; other
+		// fields retain their historical alpha. Resize copies the full read RGBA.
+		gl.clearColor(0, 0, 0, 0);
+		try {
+			if (mode === 'fresh' || this.dye == null) {
+				this.dye = createDoubleFBO(gl, dyeRes.width, dyeRes.height, rgba.internalFormat, rgba.format, texType, filtering);
+			} else {
+				this.dye = resizeDoubleFBO(
+					gl,
+					this.dye,
+					dyeRes.width,
+					dyeRes.height,
+					rgba.internalFormat,
+					rgba.format,
+					texType,
+					filtering,
+					this.copyProgram,
+					this.blit
+				);
+			}
+		} finally {
+			gl.clearColor(0, 0, 0, 1);
 		}
 		this.syncScalarFramebuffer(mode);
 	}
@@ -3846,7 +3859,10 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		for (const source of flow.sources) {
 			const sourceThickness = source.kind === 'line' ? source.thickness : undefined;
 			const radius = (source.radius ?? sourceThickness ?? this.config.SPLAT_RADIUS) / 100.0;
-			const scaleBase = (source.rate ?? 60) * dt;
+			const rate = source.rate ?? 60;
+			if (!Number.isFinite(rate) || rate <= 0 || !Number.isFinite(radius) || radius <= 0) continue;
+			const scaleBase = rate * dt;
+			if (!Number.isFinite(scaleBase) || scaleBase <= 0) continue;
 			if (includeVelocity && source.velocity) {
 				velocityBatch.push(
 					this.flowSourceBatchEntry(
@@ -3870,7 +3886,8 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 							g: source.dye.g * scaleBase,
 							b: source.dye.b * scaleBase
 						},
-						radius
+						radius,
+						S.DYE_SPLAT_DOSE * scaleBase
 					)
 				);
 			}
@@ -3884,7 +3901,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		if (this.scalar) this.applyFlowSourceBatches(this.scalar, scalarBatch, 0);
 	}
 
-	private flowSourceBatchEntry(source: FlowSource, color: RGB, radius: number): FlowSourceBatchEntry {
+	private flowSourceBatchEntry(source: FlowSource, color: RGB, radius: number, dose = 0): FlowSourceBatchEntry {
 		const aspect = this.canvas.width / this.canvas.height;
 		if (source.kind === 'point') {
 			return {
@@ -3899,7 +3916,8 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 				rectW: 0,
 				rectH: 0,
 				color,
-				radius: correctRadius(radius, aspect)
+				radius: correctRadius(radius, aspect),
+				dose
 			};
 		}
 		if (source.kind === 'line') {
@@ -3915,7 +3933,8 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 				rectW: 0,
 				rectH: 0,
 				color,
-				radius: correctRadius(radius, aspect)
+				radius: correctRadius(radius, aspect),
+				dose
 			};
 		}
 		return {
@@ -3930,7 +3949,8 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			rectW: source.width,
 			rectH: source.height,
 			color,
-			radius: correctRadius(radius, aspect)
+			radius: correctRadius(radius, aspect),
+				dose
 		};
 	}
 
@@ -3979,6 +3999,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			this.flowSourceBatchColor[i * 3 + 1] = entry?.color.g ?? 0;
 			this.flowSourceBatchColor[i * 3 + 2] = entry?.color.b ?? 0;
 			this.flowSourceBatchRadius[i] = entry?.radius ?? 0;
+			this.flowSourceBatchDose[i] = entry?.dose ?? 0;
 		}
 
 		gl.uniform1iv(this.arrayUniform(this.flowSourceProgram.uniforms, 'uKind'), this.flowSourceBatchKind);
@@ -3988,6 +4009,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		gl.uniform4fv(this.arrayUniform(this.flowSourceProgram.uniforms, 'uRect'), this.flowSourceBatchRect);
 		gl.uniform3fv(this.arrayUniform(this.flowSourceProgram.uniforms, 'uColor'), this.flowSourceBatchColor);
 		gl.uniform1fv(this.arrayUniform(this.flowSourceProgram.uniforms, 'uRadius'), this.flowSourceBatchRadius);
+		gl.uniform1fv(this.arrayUniform(this.flowSourceProgram.uniforms, 'uDose'), this.flowSourceBatchDose);
 
 		this.blit(target.write);
 		target.swap();
