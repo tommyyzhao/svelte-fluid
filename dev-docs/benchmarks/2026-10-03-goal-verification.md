@@ -25,6 +25,18 @@ Final AA-inclusive lead run at `ea56a93`, same command, exit 0:
 **52 Node files / 859 tests; 470 checked / 0 errors or warnings; 35 browser files /
 298 tests; build/prepack/publint/public declarations passed**. Earlier 296 remains historical.
 
+Combined lead verification at `6bfdfcf`, command exit 0:
+```sh
+VITEST_CHROME_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' bun run verify:release
+```
+Ephemeral log: `/tmp/verify-stationary-main-2026-10-04.log`; SHA256
+`7dd717816de8e1a410bbbb592f8f3b50e54058771276646c38bb76b27c8fd692`.
+**52 Node files / 863 tests; 35 hardware-browser files / 310 tests; check, build,
+prepack, publint and strict public-declaration checks passed.** This lead result supersedes
+the lane's 309-test count, which predates an additional HDR test. The log includes an
+existing dependency-scan diagnostic and `import.meta.env` packaging advisory; command
+succeeded. This is a combined verification, not a repeated/no-flake guarantee.
+
 ## Independent geometry and visual evidence
 
 Current contract: [ADR 0100](../decisions/0100-independent-deposited-thickness.md).
@@ -90,10 +102,15 @@ Tests at `c873fdf`: `src/lib/engine/__tests__/lighting.test.ts`,
 - `svelte-fluid-dv2`: geometry implemented; hybrid cache scope narrowly accepted via
   owner delegation, not universal shared compilation. See amended
   [ADR 0093](../decisions/0093-fluid-engine-on-shared-gl-host.md) at `c873fdf`.
-- Ordinary idle and byte fallback implemented; non-dye flow convergence unresolved.
-  Arbitrary-height refraction/glass/tone/contrast combinations can remain awake under
-  exact-height guards. [ADR 0099](../decisions/0099-settle-visible-idle-fluid.md) and
-  ADR 0100 limits remain; **no universal idle claim**.
+- Empty-flow fix `26511d7`; narrow inert fixed point `ff138e7` + `6bfdfcf`
+  implemented: exact-zero velocity, actual power-of-two grids, no driver/mask/scalar,
+  inert coefficients and finite/clamp-valid fields. Conservative unsupported cases
+  still remain awake; **no universal idle claim**. Tests cover float/byte/manual
+  WebGL1/MacCormack and rectangular HDR with `pressureIterations: 3`, shared visible
+  retention 250ms, zero RAF/subscribers. Async texture wakes only where source-reviewed.
+  [ADR 0099](../decisions/0099-settle-visible-idle-fluid.md) and ADR 0100 limits remain.
+  No appearance change or preset recapture needed for this lifecycle change; no new
+  before/after owner approval or GPU certification claimed.
 - Legacy DPR observer cannot guarantee unsupported screen-move notifications (`b2c4062`).
 - FluidText full opaque halo pixel-AA **scoped proven**; no AA-blended edge, interior
   glyph, arbitrary font/background or universal WCAG claim. Enamel/toggle owner taste pending.
