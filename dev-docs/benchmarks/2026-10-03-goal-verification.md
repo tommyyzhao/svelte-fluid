@@ -37,6 +37,29 @@ the lane's 309-test count, which predates an additional HDR test. The log includ
 existing dependency-scan diagnostic and `import.meta.env` packaging advisory; command
 succeeded. This is a combined verification, not a repeated/no-flake guarantee.
 
+2026-10-04 DPR revision: local `main` at `607912b` reviewed (`07ec7d5` + `607912b`).
+`Fluid` rearms resolution `matchMedia` using the latest DPR, including fractional CSS
+sizing and cap scheduling. Fixed-field dimensions remain identity; default adaptive dye
+resolution changes **96→289→192**, with state resampled, not spatially identical.
+Deterministic callback tests verify wiring, not physical-screen/zoom notification behavior.
+Two completed `verify:release` runs at the same revision, both exit 0:
+
+| Log (ephemeral) | SHA256 | Results |
+|---|---|---|
+| `/tmp/verify-dpr-main-2026-10-04-run1.log` | `5bcf2e3433eeaae903b73ba778ca370f4b00b32afc12042d49dcb90a4b4eafc7` | 52 Node files / 863 tests; 35 hardware-browser files / 315 tests; 470 checked files / 0 errors or warnings; build, prepack, publint and public declarations passed |
+| `/tmp/verify-dpr-main-2026-10-04-repeat.log` | `d3b219d235ae3ded9370481b1a5793b40f5991c137db39affc3f39b61e35c423` | 52 Node files / 863 tests; 35 hardware-browser files / 315 tests; 470 checked files / 0 errors or warnings; build, prepack, publint and public declarations passed |
+
+Command for each run:
+```sh
+VITEST_CHROME_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' bun run verify:release
+```
+The interrupted `/tmp/verify-dpr-main-2026-10-04-run2.log` has SHA256
+`709302debb9568e4a8ecaa5afba32da678743e1bcd3252ed6c9d3ac76309f3ff`:
+Node/check passed, but browser startup was stopped by the lead's 10-minute command
+time limit (`SIGTERM`). It is neither a completed pass nor a test failure. Logs are
+ephemeral, not durable artifacts; existing scan/advisory warnings persist. Two completed
+green runs provide limited repeated evidence, not a universal no-flake guarantee.
+
 ## Independent geometry and visual evidence
 
 Current contract: [ADR 0100](../decisions/0100-independent-deposited-thickness.md).
@@ -112,7 +135,7 @@ Tests at `c873fdf`: `src/lib/engine/__tests__/lighting.test.ts`,
   [ADR 0099](../decisions/0099-settle-visible-idle-fluid.md) and ADR 0100 limits remain.
   No appearance change or preset recapture needed for this lifecycle change; no new
   before/after owner approval or GPU certification claimed.
-- Legacy DPR observer cannot guarantee unsupported screen-move notifications (`b2c4062`).
+- `Fluid` now rearms its DPR observer callback; actual physical-screen/zoom notification behavior remains unmeasured. Other components' legacy observer still cannot guarantee unsupported screen-move notifications (`b2c4062`).
 - FluidText full opaque halo pixel-AA **scoped proven**; no AA-blended edge, interior
   glyph, arbitrary font/background or universal WCAG claim. Enamel/toggle owner taste pending.
 - Declaration gate: `src/lib/engine/__tests__/public-surface.test.ts` and
