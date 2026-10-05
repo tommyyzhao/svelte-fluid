@@ -80,11 +80,18 @@ browser-generated screen-change events. No companion pixel observer is added.
 
 Backing dimensions still use fractional CSS dimensions × latest actual DPR,
 subject to the explicit `maxPixelRatio` cap and existing drawing-buffer limits.
-The existing resize path preserves same-aspect fields/programs, rerenders reduced
-motion stills, and respects visibility. Unmount removes the current media listener
-and cancels pending resize work; stale callbacks cannot rearm it. Browsers without
-`matchMedia` or modern media-query change listeners retain CSS-resize-driven DPR
-updates only. No polling or legacy listener shim is introduced.
+The existing resize path preserves field identities when their actual resolved
+dimensions stay unchanged; programs remain unchanged. Default adaptive dye or
+canvas-size caps can change field dimensions, rebuilding the owning fields while
+resampling their state. Flooring fractional CSS × DPR can also change integer
+backing aspect despite a fixed CSS aspect. The path rerenders reduced-motion
+stills and respects visibility. Unmount removes the current media listener
+and cancels pending resize work; stale callbacks cannot rearm it. With `matchMedia`
+absent, or resolution notifications unavailable, DPR updates remain driven by CSS
+resize. This is not whole-browser legacy-listener support: the existing
+reduced-motion watcher requires modern change-listener methods when `matchMedia`
+is present. Tests isolate absent resolution methods while retaining those
+reduced-motion methods. No polling or legacy listener shim is introduced.
 
 ## Consequences
 

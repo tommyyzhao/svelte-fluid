@@ -17,7 +17,7 @@ afterEach(async () => {
 
 describe('native fractional component backing', () => {
 	for (const absent of [true, false]) {
-		it(`Fluid starts without resolution change events, matchMedia absent ${absent}`, async () => {
+		it(`Fluid starts with ${absent ? 'matchMedia absent' : 'resolution listeners absent; reduced-motion listeners available'}`, async () => {
 			vi.stubGlobal('matchMedia', absent ? undefined : (query: string) => ({
 				matches: false,
 				...(query.includes('prefers-reduced-motion') ? {
@@ -37,8 +37,8 @@ describe('native fractional component backing', () => {
 		});
 	}
 
-	for (const maxPixelRatio of [null, 2]) {
-		it(`Fluid follows fixed-CSS DPR changes, cap ${maxPixelRatio}, without waking its still`, async () => {
+	for (const [maxPixelRatio, dyeResolution] of [[null, 32], [2, 32], [null, undefined]] as const) {
+		it(`Fluid follows fixed-CSS DPR changes, cap ${maxPixelRatio}, dye ${dyeResolution ?? 'default'}, without waking its still`, async () => {
 			vi.stubGlobal('devicePixelRatio', 1);
 			const queries: { query: string; listeners: Set<() => void>; removed: (() => void)[] }[] = [];
 			vi.stubGlobal('matchMedia', (query: string) => {
@@ -63,7 +63,7 @@ describe('native fractional component backing', () => {
 			const programs = vi.spyOn(WebGL2RenderingContext.prototype, 'createProgram');
 			const app = mount(Fluid, { target, props: {
 				width: 96.375, height: 96.375, maxPixelRatio,
-				simResolution: 32, dyeResolution: 32, initialSplatCount: 1, seed: 7, onReady
+				simResolution: 32, dyeResolution, initialSplatCount: 1, seed: 7, onReady
 			} });
 			let mounted = true;
 			cleanup.push(async () => { if (mounted) await unmount(app); target.remove(); });
@@ -75,9 +75,19 @@ describe('native fractional component backing', () => {
 			programs.mockClear();
 			render.mockClear();
 			const engine = still.mock.instances.at(-1) as unknown as {
-				velocity: { read: { fbo: unknown } }; dye: { read: { fbo: unknown } };
+				readField(field: 'dye'): { data: Float32Array };
+				velocity: { read: { fbo: unknown } }; dye: { width: number; read: { fbo: unknown } };
 			};
 			const fields = [engine.velocity.read.fbo, engine.dye.read.fbo];
+			const dyeMean = () => {
+				const data = engine.readField('dye').data;
+				return data.reduce((sum, value) => sum + Math.abs(value), 0) / data.length;
+			};
+			const initialDye = dyeResolution === undefined ? dyeMean() : 0;
+			if (dyeResolution === undefined) {
+				expect(engine.dye.width).toBe(96);
+				expect(initialDye).toBeGreaterThan(0);
+			}
 			for (const dpr of [3, 2]) {
 				vi.stubGlobal('devicePixelRatio', dpr);
 				const resizeCount = resize.mock.calls.length;
@@ -94,7 +104,14 @@ describe('native fractional component backing', () => {
 				expect(dprQueries().at(-1)?.query).toBe(`(resolution: ${dpr}dppx)`);
 				expect(dprQueries().filter(({ listeners }) => listeners.size)).toHaveLength(1);
 				expect(engine.velocity.read.fbo).toBe(fields[0]);
-				expect(engine.dye.read.fbo).toBe(fields[1]);
+				if (dyeResolution === undefined) {
+					expect(engine.dye.width).toBe(pixels);
+					expect(engine.dye.read.fbo).not.toBe(fields[1]);
+					const retained = dyeMean();
+					expect(Number.isFinite(retained)).toBe(true);
+					expect(retained).toBeGreaterThan(initialDye * 0.8);
+					expect(retained).toBeLessThan(initialDye * 1.2);
+				} else expect(engine.dye.read.fbo).toBe(fields[1]);
 				expect(activeFrameSubscribers()).toBe(0);
 			}
 			expect(resize).toHaveBeenCalledTimes(2);
