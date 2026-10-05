@@ -25,7 +25,7 @@ Final AA-inclusive lead run at `ea56a93`, same command, exit 0:
 **52 Node files / 859 tests; 470 checked / 0 errors or warnings; 35 browser files /
 298 tests; build/prepack/publint/public declarations passed**. Earlier 296 remains historical.
 
-Combined lead verification at `6bfdfcf`, command exit 0:
+2026-10-04 combined lead verification at `6bfdfcf`, command exit 0:
 ```sh
 VITEST_CHROME_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' bun run verify:release
 ```
@@ -107,7 +107,8 @@ Tests at `c873fdf`: `src/lib/engine/__tests__/lighting.test.ts`,
   inert coefficients and finite/clamp-valid fields. Conservative unsupported cases
   still remain awake; **no universal idle claim**. Tests cover float/byte/manual
   WebGL1/MacCormack and rectangular HDR with `pressureIterations: 3`, shared visible
-  retention 250ms, zero RAF/subscribers. Async texture wakes only where source-reviewed.
+  retention 250ms, zero RAF/subscribers. Async texture wake behavior was source-reviewed,
+  not separately hardware-tested.
   [ADR 0099](../decisions/0099-settle-visible-idle-fluid.md) and ADR 0100 limits remain.
   No appearance change or preset recapture needed for this lifecycle change; no new
   before/after owner approval or GPU certification claimed.
