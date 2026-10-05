@@ -67,3 +67,30 @@ existing unresolved convergence guard remains. Do not claim universal idle.
   exactly volume-conservative; wave/height coupling is not added. Sticky behavior
   is illustrative material retention/removal.
 - No RGB-proxy compatibility branch; simpler representation before a new field.
+
+## Amendment (2026-10-04): stationary thickness and proven stopping
+
+User chose **proven stopping**. Nonzero thickness is not a perpetual veto when
+field invariants prove its entire transport is identity. ADR 0099's inert-solver
+predicate requires no flow/scalar/forcing, masks or multiplicative modes; zero
+density dissipation after the ramp, pressure retention, curl, viscosity and wall
+friction; finite nonnegative velocity decay; and power-of-two **actual** velocity
+and dye dimensions after aspect scaling. Exact zero velocity then preserves
+texel-centre dye RGBA through hardware or manual filtering, finite decay,
+projection and bounded advection clamps. `pressureIterations: 0` still subtracts
+a stored pressure gradient, so `pressure: 0` remains required. Renderer uniforms
+have no time dependence; dither is spatial. No solver behavior changes.
+
+Only this predicate plus exact-zero velocity bypasses height visibility. Raw
+RGB/alpha/velocity validity remains unconditional on float and byte probes;
+RGB outside `[-1000,1000]` and thickness outside finite `[0,0.24]` cannot pass the
+inert proof. Byte velocity B preserves any nonzero component without a threshold.
+The existing cadence/streak/cancellation/error behavior and wrapper wake contract
+remain. No output-history/hash/sampled-image machinery. Browser readbacks confirm
+retained nonzero black thickness and identical repeated images on tested paths;
+that empirical check supplements the source invariant, not universal convergence.
+
+Visually static scenes with evolving hidden fields remain active when the
+renderer cannot prove invariance. Non-power-of-two transport, masks, residual
+pressure retention and flow/scalar forcing remain unproven by this bypass.
+No universal visual-idle claim or change to ordinary threshold heuristics.

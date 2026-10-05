@@ -3374,8 +3374,8 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	}
 
 	/**
-	 * ADR 0099: stop after three quiet issue-time snapshots, not a proof about
-	 * current fields. Freeze both first reductions every SETTLE_CHECK_INTERVAL
+	 * ADR 0099: three quiet issue-time snapshots; inert exact-zero transport is
+	 * a fixed point, ordinary thresholds retain their snapshot limits. Freeze both first reductions every SETTLE_CHECK_INTERVAL
 	 * frames; finish one immutable-chain draw per later frame, then read back
 	 * asynchronously. This deliberately delays the existing snapshot verdict.
 	 */
@@ -3615,7 +3615,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		gl.uniform1i(program.uniforms.uFlagMode, flagMode);
 		gl.uniform1f(program.uniforms.uHeightVisibility, heightVisibility);
 		gl.uniform1f(program.uniforms.uDyeVisibilityGain, dyeGain);
-		gl.uniform1f(program.uniforms.uInertSolver, inert ? 1 : 0);
+			gl.uniform1f(program.uniforms.uInertSolver, inert ? 1 : 0);
 		gl.uniform1f(program.uniforms.uFade, 1 - 1 / (1 + this.config.DENSITY_DISSIPATION / 60));
 		this.blit(target);
 	}
