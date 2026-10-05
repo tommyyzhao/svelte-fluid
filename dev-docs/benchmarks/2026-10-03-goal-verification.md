@@ -135,7 +135,7 @@ Tests at `c873fdf`: `src/lib/engine/__tests__/lighting.test.ts`,
   [ADR 0099](../decisions/0099-settle-visible-idle-fluid.md) and ADR 0100 limits remain.
   No appearance change or preset recapture needed for this lifecycle change; no new
   before/after owner approval or GPU certification claimed.
-- `Fluid` now rearms its DPR observer callback; actual physical-screen/zoom notification behavior remains unmeasured. Other components' legacy observer still cannot guarantee unsupported screen-move notifications (`b2c4062`).
+- `Fluid` now rearms its resolution media-query listener; actual physical-screen/zoom notification behavior remains unmeasured. This does not expand legacy-browser support; existing reduced-motion listener requirements remain. Other components' legacy observer still cannot guarantee unsupported screen-move notifications (`b2c4062`).
 - FluidText full opaque halo pixel-AA **scoped proven**; no AA-blended edge, interior
   glyph, arbitrary font/background or universal WCAG claim. Enamel/toggle owner taste pending.
 - Declaration gate: `src/lib/engine/__tests__/public-surface.test.ts` and
