@@ -179,3 +179,49 @@ filters nonfinite input through `withoutNonFiniteConfig` but accepts negative
 finite dissipation; direct test injection isolates the internal quiet-validation
 boundary for both cases.
 Focused hardware follow-up passed all four selected parity/flag tests.
+
+## Amendment (2026-10-04): proven stopping for inert transport
+
+User decision: **proven stopping**, not output-history buffers, frame hashes or
+sampled-image comparisons. A stationary deposited layer need not vanish to stop.
+`isInertSolver` admits only null flow (thus no scalar/buoyancy/source/outlet or
+prescribed driver), zero auto-splat rate, no container/obstruction/sticky masks,
+no reveal/sticky multiplicative transport, zero density dissipation after the
+initial ramp, zero pressure retention/curl/viscosity/wall friction, and finite
+nonnegative velocity dissipation. Runtime also rejects lingering mask/scalar
+resources. **All four actual velocity/dye dimensions after aspect scaling must
+be powers of two**; requested resolutions alone do not prove this.
+
+For those grids, zero velocity leaves departure coordinates at exact texel
+centres. Hardware filtering returns the same half-float dye texel; manual
+WebGL1 bilerp has integer `uv / texelSize - 0.5`, zero fractional weight and
+returns the same texel. RGB must remain in advection's identity clamp range
+`[-1000,1000]`; thickness must be finite in `[0,0.24]`. Zero velocity remains
+zero under finite decay, including MacCormack's zero correction/limiter. Zero
+divergence and `PRESSURE: 0` produce zero pressure/gradient for zero, single or
+paired Jacobi iterations. **`pressureIterations: 0` alone does not disable
+projection**: it decays stored pressure and still subtracts its gradient.
+Solver semantics are unchanged. Display has no clock uniform; dithering is
+spatial. Async texture readiness still invalidates/wakes the engine.
+
+An inert issue-time probe suppresses the height-visibility bound, never raw
+RGB/alpha/velocity validation. Float verdict requires max velocity **exactly
+zero**; RGBA8 velocity B carries `any(velocity != 0)`, distinct from the ordinary
+0.5 threshold. Dye invalidity still blocks both paths. Three checks, 30-frame
+cadence, staged immutable reductions, epoch cancellation and fail-closed GL
+errors remain. No native-size history buffers or extra reductions are added.
+The fixed-point proof makes delayed snapshots safe in this narrowly admitted
+case; repeated-frame field/image equality in browser tests is corroboration,
+not the proof. Float, forced-byte, forced-manual WebGL1 and MacCormack tests
+retain black thickness, stop every subscriber/RAF, then wake/re-settle on splat
+and config. Colored finite HDR is also checked on rectangular actual power-of-two
+grids with paired plus single pressure iterations (`PRESSURE: 0`), including a
+250 ms unchanged visible shared-canvas capture after presentation. Async image
+and dither wake behavior is source-reviewed, not separately hardware-tested by
+this amendment. `Fluid.svelte` retains `engine.isPaused && !engine.isSettled`.
+
+Remaining limitation: visually static scenes with evolving hidden fields keep
+running where their renderer needs this proof. Non-power-of-two transport grids,
+nonzero pressure retention, masks, scalar/flow models and other unproven cases
+are excluded from the inert bypass. Existing ordinary threshold settling is
+unchanged, not upgraded to a universal mathematical visual-idle guarantee.

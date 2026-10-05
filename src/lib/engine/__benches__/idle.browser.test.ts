@@ -174,17 +174,69 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		} finally { disposeFBO(gl, target); disposeFBO(gl, dyeTarget); }
 	}, 40_000);
 
+	it('colored HDR fixed point retains the visible shared canvas on rectangular power-of-two grids with projection', async () => {
+		_setContextTier('shared');
+		try {
+			for (const bytes of [false, true]) {
+				const canvas = document.createElement('canvas');
+				const e = engine({ ...INERT, pressureIterations: 3, distortion: false, specular: 1 }, false, canvas);
+				const p = e as unknown as InertProbe;
+				if (bytes) p.canReadSettleFloat = () => false;
+				e.resize(256, 128);
+				expect(e.sharedContext).toBe(true);
+				expect([p.velocity.width, p.velocity.height, p.dye.width, p.dye.height]).toEqual([128, 64, 512, 256]);
+				await until(() => p.ditheringTexture.width === 64, 5000);
+				// Nonzero valid stored pressure is cleared by PRESSURE=0 with paired + single Jacobi.
+				(e as unknown as { withGl(fn: () => void): void }).withGl(() => {
+					p.gl.bindTexture(p.gl.TEXTURE_2D, p.pressure.read.texture);
+					p.gl.texSubImage2D(p.gl.TEXTURE_2D, 0, 20, 20, 1, 1, p.gl.RED, p.gl.FLOAT, new Float32Array([1]));
+					expect(p.gl.getError()).toBe(p.gl.NO_ERROR);
+				});
+				e.splat(0.5, 0.5, 0, 0, { r: 12, g: 3, b: 0.4 });
+				const deposit = e.readField('dye').data;
+				const maximum = deposit.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
+				expect(maximum).toBeGreaterThan(1);
+				expect(maximum).toBeLessThan(1000);
+				e.advance(40, 1 / 60);
+				expect(e.readField('dye').data).toEqual(deposit);
+				expect(e.readField('velocity').data.every((v) => v === 0)).toBe(true);
+				expect(e.readField('pressure').data.every((v) => v === 0)).toBe(true);
+				p.autoStart = true; p.deterministicMode = false; e.resume();
+				await until(() => e.isSettled, 10_000);
+				await e.presented();
+				const capture = document.createElement('canvas'); capture.width = 256; capture.height = 128;
+				const context = capture.getContext('2d')!;
+				const visible = () => {
+					context.clearRect(0, 0, 256, 128);
+					context.drawImage(canvas, 0, 0);
+					return context.getImageData(0, 0, 256, 128).data;
+				};
+				const before = visible();
+				expect(before.some((v, i) => i % 4 !== 3 && v > 0)).toBe(true);
+				expect(activeFrameSubscribers()).toBe(0);
+				expect(await rafCount(250)).toBe(0);
+				expect(visible()).toEqual(before);
+				expect(e.readField('dye').data).toEqual(deposit);
+				e.dispose();
+			}
+		} finally { _setContextTier('auto'); }
+	}, 30_000);
+
 	it.each([false, true])('inert proof rejects moving/forced/masked/unproven scenes (byte=%s)', async (bytes) => {
 		for (const patch of [
 			{}, { pressure: 0.8 }, { densityDissipation: 0.01 },
 			{ containerShape: { type: 'circle' as const, cx: 0.5, cy: 0.5, radius: 0.4 } },
 			{ flow: { outlets: [{ edge: 'left' as const, clearDye: 0 }] } },
 			{ flow: { forces: [{ kind: 'gravity' as const, vector: { x: 0, y: -1 } }] } },
-			{ autoSplatRate: 0.001 }, { dyeResolution: 255 }, { simResolution: 63 }
+			{ autoSplatRate: 0.001 }, { dyeResolution: 255 }, { simResolution: 63 }, { simResolution: 64, dyeResolution: 256 }
 		]) {
 			const e = engine({ ...INERT, ...patch }, false);
 			const p = e as unknown as InertProbe;
 			if (bytes) p.canReadSettleFloat = () => false;
+			if (patch.simResolution === 64) {
+				e.resize(160, 128); // Requested powers of two become 80×64 / 320×256.
+				expect([p.velocity.width, p.velocity.height, p.dye.width, p.dye.height]).toEqual([80, 64, 320, 256]);
+			}
 			e.splat(0.5, 0.5, 0, 0, { r: 0, g: 0, b: 0 });
 			if (Object.keys(patch).length === 0) {
 				p.gl.bindTexture(p.gl.TEXTURE_2D, p.velocity.read.texture);
