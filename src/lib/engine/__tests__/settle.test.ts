@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULTS, resolveConfig } from '../FluidEngine.js';
 import { PRESETS } from '../../presets/registry.js';
-import { HEIGHT_SPECULAR_DISPLAY_BOUND, SETTLE_EPSILON, hasContinuousDriver, dyeVisibilityGain, heightVisibilityScale, isQuiet, isQuietFlags } from '../settle.js';
+import { HEIGHT_SPECULAR_DISPLAY_BOUND, SETTLE_EPSILON, hasContinuousDriver, dyeVisibilityGain, heightVisibilityScale, isInertSolver, isQuiet, isQuietFlags } from '../settle.js';
 
 const base = { AUTO_SPLAT_RATE: 0, FLOW: null, COLORFUL: false, INITIAL_DENSITY_DISSIPATION_DURATION: 0 };
 
@@ -37,6 +37,46 @@ describe('hasContinuousDriver', () => {
 		expect(hasContinuousDriver(c, 2)).toBe(false);
 	});
 	it('COLORFUL does not block', () => expect(hasContinuousDriver({ ...base, COLORFUL: true }, 100)).toBe(false));
+});
+
+describe('inert solver proof', () => {
+	const inert = resolveConfig({ initialSplatCount: 0, autoSplatRate: 0, densityDissipation: 0,
+		pressure: 0, pressureIterations: 0, curl: 0, viscosity: 0, wallFriction: 0,
+		flow: null, sticky: false, reveal: false, distortion: true, distortionPower: 0,
+		refraction: 1, bloom: false, sunrays: false }, DEFAULTS);
+	const grid = [64, 64, 256, 256];
+	it('admits only identity transport, regardless of static display amplification', () => {
+		expect(isInertSolver(inert, 1, grid)).toBe(true);
+		for (const PRESSURE_ITERATIONS of [0, 1, 20]) for (const VELOCITY_DISSIPATION of [0, 0.2, 100]) {
+			expect(isInertSolver({ ...inert, PRESSURE_ITERATIONS, VELOCITY_DISSIPATION }, 1, grid)).toBe(true);
+		}
+		expect(isInertSolver({ ...inert, INITIAL_DENSITY_DISSIPATION_DURATION: 1 }, 1, grid)).toBe(true);
+	});
+	it('every changing or unproven condition vetoes the proof', () => {
+		for (const patch of [
+			{ FLOW: {} }, { FLOW: { outlets: [{ edge: 'left' as const }] } },
+			{ FLOW: { forces: [{ kind: 'buoyancy' as const, scalar: 'temperature', strength: 1 }] } },
+			{ AUTO_SPLAT_RATE: 1 }, { CONTAINER_SHAPE: { type: 'circle' as const, cx: 0.5, cy: 0.5, radius: 0.4 } },
+			{ OBSTRUCTIONS: [] }, { STICKY_MASK: { d: 'M0 0H1V1Z' } }, { REVEAL: true }, { STICKY: true },
+			{ DENSITY_DISSIPATION: 0.1 }, { PRESSURE: 0.8 }, { CURL: 1 }, { VISCOSITY: 1 }, { WALL_FRICTION: 1 },
+			{ INITIAL_DENSITY_DISSIPATION_DURATION: 2 }, { INITIAL_DENSITY_DISSIPATION_DURATION: NaN },
+			{ VELOCITY_DISSIPATION: -1 }, { VELOCITY_DISSIPATION: NaN }, { VELOCITY_DISSIPATION: Infinity }
+		]) expect(isInertSolver({ ...inert, ...patch }, 1, grid)).toBe(false);
+		for (const elapsed of [NaN, Infinity, -1]) expect(isInertSolver(inert, elapsed, grid)).toBe(false);
+		for (let i = 0; i < 4; i++) for (const n of [0, -1, 63, 257, 0.5, NaN, Infinity]) {
+			const dimensions = [...grid]; dimensions[i] = n;
+			expect(isInertSolver(inert, 1, dimensions)).toBe(false);
+		}
+		expect(isInertSolver(inert, 1, [])).toBe(false);
+	});
+	it('byte proof requires exact zero velocity plus unconditional field validity', () => {
+		const valid = [0, 0, 0, 255, 255, 0, 255, 255];
+		expect(isQuietFlags(valid, true, true)).toBe(true);
+		for (const i of [1, 2, 5]) {
+			const bytes = [...valid]; bytes[i] = 255;
+			expect(isQuietFlags(bytes, true, true)).toBe(false);
+		}
+	});
 });
 
 describe('height visibility proof', () => {

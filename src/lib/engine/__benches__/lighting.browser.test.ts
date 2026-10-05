@@ -197,9 +197,9 @@ describe('independent thickness transport', () => {
 			} finally { engine.dispose(); }
 		}
 	});
-	it('black thickness is nonquiet when specular/refraction exposes it; tiny bounded specular and diffuse-only black settle', async () => {
+	it('non-inert black thickness is nonquiet when specular/refraction exposes it; tiny bounded specular and diffuse-only black settle', async () => {
 		for (const bytes of [false, true]) for (const config of [{ specular: 1 }, { refraction: 1, distortion: true, distortionPower: 0 }]) {
-			const { engine, h } = setup(config);
+			const { engine, h } = setup({ ...config, densityDissipation: 0.1 });
 			try { engine.splat(0.5, 0.5, 0, 0, { r: 0, g: 0, b: 0 }); expect(await quiet(h, bytes)).toBe(false); }
 			finally { engine.dispose(); }
 		}

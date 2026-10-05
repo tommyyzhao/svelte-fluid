@@ -1,5 +1,6 @@
 import { flowCanDriveSolver } from './solver-activity.js';
 import { DYE_SPLAT_DOSE } from './shaders.js';
+import type { ResolvedConfig } from './internal-types.js';
 
 /** Fixed studio light / exponent in dyeSpecular: dot terms ≤1, Schlick <0.02001.
  * sRGB encode has derivative ≤12.92; 1-exp(-h/.06) ≤h/.06.
@@ -73,10 +74,27 @@ export function isQuiet(maxVelocity: number, maxDye: number, dissipation: number
 	return maxVelocity < SETTLE_VELOCITY && perFrameFade < SETTLE_EPSILON;
 }
 
+/** Exact-zero velocity is a fixed point only with identity dye transport.
+ * ponytail: power-of-two actual grids make texel-centre interpolation exact,
+ * including manual bilerp; other grids need a separate numerical proof.
+ */
+export function isInertSolver(c: ResolvedConfig, elapsedSec: number, dimensions: readonly number[]): boolean {
+	return c.FLOW === null && c.AUTO_SPLAT_RATE === 0 && c.CONTAINER_SHAPE === null &&
+		c.OBSTRUCTIONS === null && c.STICKY_MASK === null && !c.REVEAL && !c.STICKY &&
+		c.DENSITY_DISSIPATION === 0 && c.PRESSURE === 0 && c.CURL === 0 &&
+		c.VISCOSITY === 0 && c.WALL_FRICTION === 0 &&
+		Number.isFinite(c.VELOCITY_DISSIPATION) && c.VELOCITY_DISSIPATION >= 0 &&
+		Number.isFinite(elapsedSec) && elapsedSec >= 0 &&
+		Number.isFinite(c.INITIAL_DENSITY_DISSIPATION_DURATION) && c.INITIAL_DENSITY_DISSIPATION_DURATION >= 0 &&
+		elapsedSec >= c.INITIAL_DENSITY_DISSIPATION_DURATION && dimensions.length === 4 &&
+		dimensions.every((n) => Number.isInteger(n) && n > 0 && Number.isInteger(Math.log2(n)));
+}
+
 /** RGBA8 exact boolean reduction; untouched, partial or invalid readbacks fail closed. */
-export function isQuietFlags(bytes: ArrayLike<number>, exactDye = false): boolean {
+export function isQuietFlags(bytes: ArrayLike<number>, exactDye = false, inertSolver = false): boolean {
 	if (bytes.length !== 8 || bytes[3] !== 255 || bytes[7] !== 255) return false;
 	if (![bytes[0], bytes[1], bytes[2], bytes[4], bytes[5], bytes[6]].every((v) => v === 0 || v === 255)) return false;
 	if (bytes[1] !== 0) return false;
+	if (inertSolver) return bytes[2] === 0 && bytes[5] === 0;
 	return exactDye ? bytes[6] === 0 : bytes[4] === 0 || (bytes[0] === 0 && bytes[5] === 0);
 }
