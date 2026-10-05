@@ -4,13 +4,118 @@ import LiquidToggle from '../../LiquidToggle.svelte';
 import EnamelText from '../../EnamelText.svelte';
 import LiquidButton from '../../LiquidButton.svelte';
 import fluidTextSrc from '../../FluidText.svelte?raw';
+import Fluid from '../../Fluid.svelte';
+import { FluidEngine } from '../FluidEngine.js';
+import { activeFrameSubscribers } from '../frame-scheduler.js';
 
 const cleanup: (() => Promise<void>)[] = [];
 afterEach(async () => {
 	for (const dispose of cleanup.splice(0).reverse()) await dispose();
+	vi.unstubAllGlobals();
+	vi.restoreAllMocks();
 });
 
 describe('native fractional component backing', () => {
+	for (const absent of [true, false]) {
+		it(`Fluid starts without resolution change events, matchMedia absent ${absent}`, async () => {
+			vi.stubGlobal('matchMedia', absent ? undefined : (query: string) => ({
+				matches: false,
+				...(query.includes('prefers-reduced-motion') ? {
+					addEventListener() {}, removeEventListener() {}
+				} : {})
+			}));
+			const target = document.createElement('div');
+			document.body.append(target);
+			const onReady = vi.fn();
+			const app = mount(Fluid, { target, props: {
+				width: 96.375, height: 96.375, simResolution: 32, dyeResolution: 32,
+				initialSplatCount: 0, onReady
+			} });
+			cleanup.push(async () => { await unmount(app); target.remove(); });
+			await vi.waitFor(() => expect(onReady).toHaveBeenCalledTimes(1));
+			expect(target.querySelector('canvas')!.width).toBe(Math.floor(96.375 * devicePixelRatio));
+		});
+	}
+
+	for (const maxPixelRatio of [null, 2]) {
+		it(`Fluid follows fixed-CSS DPR changes, cap ${maxPixelRatio}, without waking its still`, async () => {
+			vi.stubGlobal('devicePixelRatio', 1);
+			const queries: { query: string; listeners: Set<() => void>; removed: (() => void)[] }[] = [];
+			vi.stubGlobal('matchMedia', (query: string) => {
+				const record = { query, listeners: new Set<() => void>(), removed: [] as (() => void)[] };
+				queries.push(record);
+				return {
+					media: query,
+					matches: query.includes('prefers-reduced-motion'),
+					addEventListener: (_: string, listener: () => void) => record.listeners.add(listener),
+					removeEventListener: (_: string, listener: () => void) => {
+						record.listeners.delete(listener);
+						record.removed.push(listener);
+					}
+				};
+			});
+			const target = document.createElement('div');
+			document.body.append(target);
+			const onReady = vi.fn();
+			const still = vi.spyOn(FluidEngine.prototype, 'settleStill');
+			const resize = vi.spyOn(FluidEngine.prototype, 'resize');
+			const render = vi.spyOn(FluidEngine.prototype, 'renderOnce');
+			const programs = vi.spyOn(WebGL2RenderingContext.prototype, 'createProgram');
+			const app = mount(Fluid, { target, props: {
+				width: 96.375, height: 96.375, maxPixelRatio,
+				simResolution: 32, dyeResolution: 32, initialSplatCount: 1, seed: 7, onReady
+			} });
+			let mounted = true;
+			cleanup.push(async () => { if (mounted) await unmount(app); target.remove(); });
+			await vi.waitFor(() => expect(onReady).toHaveBeenCalledTimes(1));
+			const canvas = target.querySelector('canvas')!;
+			expect(canvas.width).toBe(96);
+			const dprQueries = () => queries.filter(({ query }) => query.includes('resolution:'));
+			expect(dprQueries().at(-1)?.query).toBe('(resolution: 1dppx)');
+			programs.mockClear();
+			render.mockClear();
+			const engine = still.mock.instances.at(-1) as unknown as {
+				velocity: { read: { fbo: unknown } }; dye: { read: { fbo: unknown } };
+			};
+			const fields = [engine.velocity.read.fbo, engine.dye.read.fbo];
+			for (const dpr of [3, 2]) {
+				vi.stubGlobal('devicePixelRatio', dpr);
+				const resizeCount = resize.mock.calls.length;
+				const previous = dprQueries().at(-1)!;
+				const listener = [...previous.listeners][0];
+				// Duplicate notification coalesces into one resize using the latest DPR.
+				listener();
+				listener();
+				const pixels = Math.floor(96.375 * Math.min(dpr, maxPixelRatio ?? dpr));
+				await vi.waitFor(() => expect(resize).toHaveBeenCalledTimes(resizeCount + 1));
+				expect(canvas.width).toBe(pixels);
+				expect(canvas.height).toBe(pixels);
+				expect(previous.listeners.size).toBe(0);
+				expect(dprQueries().at(-1)?.query).toBe(`(resolution: ${dpr}dppx)`);
+				expect(dprQueries().filter(({ listeners }) => listeners.size)).toHaveLength(1);
+				expect(engine.velocity.read.fbo).toBe(fields[0]);
+				expect(engine.dye.read.fbo).toBe(fields[1]);
+				expect(activeFrameSubscribers()).toBe(0);
+			}
+			expect(resize).toHaveBeenCalledTimes(2);
+			// resize renders changed buffers; the existing config refresh also renders the still.
+			expect(render.mock.calls.length).toBeGreaterThanOrEqual(maxPixelRatio === null ? 2 : 1);
+			expect(programs).not.toHaveBeenCalled();
+			expect(onReady).toHaveBeenCalledTimes(1);
+			const pending = [...dprQueries().at(-1)!.listeners][0];
+			pending();
+			await unmount(app);
+			mounted = false;
+			const queryCount = queries.length;
+			const resizeCount = resize.mock.calls.length;
+			for (const { removed } of dprQueries()) for (const listener of removed) listener();
+			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+			expect(queries).toHaveLength(queryCount);
+			expect(resize).toHaveBeenCalledTimes(resizeCount);
+			expect(queries.every(({ listeners }) => listeners.size === 0)).toBe(true);
+		});
+	}
+
 	it('defaults small text to AA without removing the explicit large-text override', () => {
 		expect(fluidTextSrc).toContain('minContrast = 4.5,');
 		expect(fluidTextSrc).toContain('{minContrast}');

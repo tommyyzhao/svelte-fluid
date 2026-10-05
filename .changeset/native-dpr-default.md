@@ -8,3 +8,4 @@ Rendering now uses the native device pixel ratio by default (`maxPixelRatio` def
 - Cost: measured on an M1 Max, every preset stays under 2 ms per frame at a full 1440×900 viewport on DPR 3 (worst is GasFlare at 1.76 ms). See `dev-docs/benchmarks/gpu-budget.md`.
 - To keep the old behaviour, pass `maxPixelRatio={2}` to `<Fluid>` or to any wrapper or preset. This is worth doing for full-bleed backgrounds on low-end integrated GPUs.
 - An invalid cap (`0`, a negative number or `NaN`) now falls back to native DPR, the new default, instead of 2.
+- Mounted Fluid canvases follow DPR changes at unchanged fractional CSS dimensions through rearmed resolution media queries; explicit caps remain respected. Browsers without media-query change events still update DPR only when CSS dimensions change.

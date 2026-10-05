@@ -570,6 +570,23 @@
 		});
 		ro.observe(container);
 
+		// A CSS content-box notification need not accompany a screen/zoom DPR change.
+		let mounted = true;
+		let resolutionMedia: MediaQueryList | undefined;
+		const onDprChange = () => {
+			if (!mounted) return;
+			watchDpr();
+			scheduleResize();
+		};
+		const watchDpr = () => {
+			resolutionMedia?.removeEventListener?.('change', onDprChange);
+			if (typeof window.matchMedia !== 'function') return;
+			resolutionMedia = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+			resolutionMedia.addEventListener?.('change', onDprChange);
+		};
+		// ponytail: browsers without MediaQueryList change events update DPR on CSS resize only.
+		watchDpr();
+
 		// --- Scroll visibility ---
 		// `lazy` mode: full teardown/rebuild when scrolling out/into view.
 		// `autoPause` mode (without lazy): pause/resume the RAF loop.
@@ -617,6 +634,8 @@
 		}
 
 		return () => {
+			mounted = false;
+			resolutionMedia?.removeEventListener?.('change', onDprChange);
 			stopReduced();
 			ro.disconnect();
 			io?.disconnect();
