@@ -7,6 +7,7 @@ import type { FluidConfig } from '../types.js';
 import { dyeVisibilityGain, isQuiet, isQuietFlags } from '../settle.js';
 import { createFBO, disposeFBO } from '../gl-utils.js';
 import type { FBO } from '../internal-types.js';
+import { DYE_HEIGHT_CEILING } from '../shaders.js';
 
 /* ADR 0099: a decayed visible engine stops scheduling frames until input. */
 
@@ -21,6 +22,42 @@ function engine(config: FluidConfig = {}, autoStart = true, canvas = document.cr
 	const e = new FluidEngine({ canvas, autoStart, config: { ...CONFIG, ...config } });
 	live.push(e);
 	return e;
+}
+
+const INERT = { initialSplatCount: 0, autoSplatRate: 0, densityDissipation: 0, pressure: 0,
+	pressureIterations: 0, curl: 0, viscosity: 0, wallFriction: 0, velocityDissipation: 0,
+	flow: null, containerShape: null, sticky: false, reveal: false,
+	distortion: true, distortionPower: 0, refraction: 1, bloom: false, sunrays: false } satisfies FluidConfig;
+
+interface InertProbe {
+	gl: WebGL2RenderingContext;
+	velocity: { read: FBO; width: number; height: number };
+	dye: { read: FBO; width: number; height: number };
+	pressure: { read: FBO };
+	ext: { supportLinearFiltering: boolean; isWebGL2: boolean };
+	distortionTexture: WebGLTexture;
+	ditheringTexture: { width: number };
+	autoStart: boolean;
+	deterministicMode: boolean;
+	canReadSettleFloat(): boolean;
+	issueSettleProbe(): void;
+	advanceSettleProbe(): void;
+	pollSettleProbe(): boolean | null;
+	trackSettle(): void;
+	renderCore(target: FBO): void;
+	copyProgram: { bind(): void; uniforms: Record<string, WebGLUniformLocation> };
+	blit(target: FBO): void;
+	settleProbe: { ready?: boolean; sync?: WebGLSync; inert: boolean } | null;
+	settleBytes: Uint8Array;
+	settlePixels: Float32Array;
+}
+
+async function probeQuiet(p: InertProbe): Promise<boolean | null> {
+	p.issueSettleProbe();
+	for (let i = 0; i < 12 && !p.settleProbe?.ready && !p.settleProbe?.sync; i++) p.advanceSettleProbe();
+	let quiet: boolean | null = null;
+	await until(() => { quiet = p.pollSettleProbe(); return quiet !== null; }, 5000);
+	return quiet;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -63,6 +100,132 @@ afterEach(() => {
 });
 
 describe('settle visible idle fluid (ADR 0099)', () => {
+	it.each(['float', 'byte', 'webgl1-manual', 'maccormack'] as const)('%s inert black deposit proves a fixed point, stops frames, wakes and re-settles', async (mode) => {
+		const canvas = document.createElement('canvas');
+		if (mode === 'webgl1-manual') {
+			const get = canvas.getContext.bind(canvas) as (t: string, ...args: unknown[]) => unknown;
+			(canvas as unknown as { getContext: unknown }).getContext = (t: string, ...args: unknown[]) => {
+				if (t === 'webgl2' || t === 'bitmaprenderer') return null;
+				const gl = get(t, ...args) as WebGLRenderingContext | null;
+				if (gl) {
+					const extension = gl.getExtension.bind(gl);
+					gl.getExtension = ((name: string) => name === 'OES_texture_half_float_linear' ? null : extension(name)) as typeof gl.getExtension;
+				}
+				return gl;
+			};
+		}
+		const e = engine({ ...INERT, advectionScheme: mode === 'maccormack' ? 'maccormack' : 'semilagrangian' }, false, canvas);
+		const p = e as unknown as InertProbe;
+		if (mode === 'byte') p.canReadSettleFloat = () => false;
+		expect([p.velocity.width, p.velocity.height, p.dye.width, p.dye.height]).toEqual([64, 64, 256, 256]);
+		if (mode === 'webgl1-manual') expect(p.ext.supportLinearFiltering).toBe(false);
+		const gl = p.gl;
+		const target = createFBO(gl, 128, 128, p.ext.isWebGL2 ? gl.RGBA8 : gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, gl.NEAREST);
+		const dyeTarget = createFBO(gl, 256, 256, p.ext.isWebGL2 ? gl.RGBA8 : gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, gl.NEAREST);
+		const read = (fbo: FBO) => {
+			const pixels = new Uint8Array(fbo.width * fbo.height * 4);
+			gl.bindFramebuffer(gl.FRAMEBUFFER, fbo.fbo);
+			gl.readPixels(0, 0, fbo.width, fbo.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+			expect(gl.getError()).toBe(gl.NO_ERROR);
+			return pixels;
+		};
+		const dye = () => {
+			if (p.ext.isWebGL2) return e.readField('dye').data;
+			p.copyProgram.bind();
+			gl.uniform1i(p.copyProgram.uniforms.uTexture, p.dye.read.attach(0));
+			p.blit(dyeTarget);
+			return read(dyeTarget);
+		};
+		try {
+			await until(() => p.ditheringTexture.width === 64, 5000);
+			const pixels = new Uint8Array(64 * 64 * 4);
+			for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) pixels.set([(x >> 2) % 2 ? 255 : 0, (y >> 2) % 2 ? 255 : 0, 80, 255], (y * 64 + x) * 4);
+			gl.bindTexture(gl.TEXTURE_2D, p.distortionTexture);
+			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 64, 64, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+			e.splat(0.5, 0.5, 0, 0, { r: 0, g: 0, b: 0 });
+			const deposited = dye();
+			expect(deposited.some((v, i) => i % 4 === 3 && v > 0)).toBe(true);
+			p.renderCore(target);
+			const before = read(target);
+			// Empirical identity check supplements, never replaces, the source proof.
+			e.advance(40, 1 / 60);
+			expect(dye()).toEqual(deposited);
+			p.renderCore(target);
+			expect(read(target)).toEqual(before);
+			p.autoStart = true; p.deterministicMode = false; e.resume();
+			await until(() => e.isSettled, 10_000);
+			expect(e.settleCheckStats.checks).toBe(3);
+			expect(activeFrameSubscribers()).toBe(0);
+			expect(await rafCount(250)).toBe(0);
+			expect(dye()).toEqual(deposited);
+			expect(read(target)).toEqual(before);
+			p.renderCore(target);
+			expect(read(target)).toEqual(before);
+			if (mode === 'byte' || mode === 'webgl1-manual') expect(p.settleBytes[2]).toBe(0);
+			else expect(p.settlePixels[0]).toBe(0);
+			for (const wake of [() => e.splat(0.3, 0.6, 0, 0, { r: 0, g: 0, b: 0 }), () => e.setConfig({ refraction: 0.5 })]) {
+				wake();
+				expect(e.isSettled).toBe(false);
+				expect(activeFrameSubscribers()).toBe(1);
+				await until(() => e.isSettled, 10_000);
+				expect(activeFrameSubscribers()).toBe(0);
+			}
+			console.info(`[idle fixed point ${mode}] retained thickness, exact transport/display, three probes, zero subscribers/RAF, splat/config wake`);
+		} finally { disposeFBO(gl, target); disposeFBO(gl, dyeTarget); }
+	}, 40_000);
+
+	it.each([false, true])('inert proof rejects moving/forced/masked/unproven scenes (byte=%s)', async (bytes) => {
+		for (const patch of [
+			{}, { pressure: 0.8 }, { densityDissipation: 0.01 },
+			{ containerShape: { type: 'circle' as const, cx: 0.5, cy: 0.5, radius: 0.4 } },
+			{ flow: { outlets: [{ edge: 'left' as const, clearDye: 0 }] } },
+			{ flow: { forces: [{ kind: 'gravity' as const, vector: { x: 0, y: -1 } }] } },
+			{ autoSplatRate: 0.001 }, { dyeResolution: 255 }, { simResolution: 63 }
+		]) {
+			const e = engine({ ...INERT, ...patch }, false);
+			const p = e as unknown as InertProbe;
+			if (bytes) p.canReadSettleFloat = () => false;
+			e.splat(0.5, 0.5, 0, 0, { r: 0, g: 0, b: 0 });
+			if (Object.keys(patch).length === 0) {
+				p.gl.bindTexture(p.gl.TEXTURE_2D, p.velocity.read.texture);
+				p.gl.texSubImage2D(p.gl.TEXTURE_2D, 0, 0, 0, 1, 1, p.gl.RG, p.gl.FLOAT, new Float32Array([2 ** -20, 0]));
+			}
+			if (patch.pressure) {
+				p.gl.bindTexture(p.gl.TEXTURE_2D, p.pressure.read.texture);
+				p.gl.texSubImage2D(p.gl.TEXTURE_2D, 0, 20, 20, 1, 1, p.gl.RED, p.gl.FLOAT, new Float32Array([1]));
+			}
+			expect(p.gl.getError()).toBe(p.gl.NO_ERROR);
+			for (let check = 0; check < 3; check++) expect(await probeQuiet(p)).toBe(false);
+			p.autoStart = true; p.deterministicMode = false;
+			p.trackSettle();
+			expect(e.isSettled).toBe(false);
+			if (patch.pressure) {
+				e.advance(1, 1 / 60);
+				expect(e.readField('velocity').data.some((v) => v !== 0)).toBe(true);
+			}
+			e.dispose();
+		}
+	});
+
+	it.each([false, true])('inert bypass never masks invalid raw fields or a changing RGB clamp (byte=%s)', async (bytes) => {
+		for (const [field, value] of [
+			['dye', [0, 0, 0, -1]], ['dye', [0, 0, 0, DYE_HEIGHT_CEILING * 2]],
+			['dye', [0, 0, 0, Infinity]], ['dye', [0, 0, 0, NaN]],
+			['dye', [Infinity, 0, 0, 0]], ['dye', [1001, 0, 0, 0]],
+			['velocity', [Infinity, 0]], ['velocity', [NaN, 0]]
+		] as const) {
+			const e = engine(INERT, false);
+			const p = e as unknown as InertProbe;
+			if (bytes) p.canReadSettleFloat = () => false;
+			p.gl.bindTexture(p.gl.TEXTURE_2D, p[field].read.texture);
+			p.gl.texSubImage2D(p.gl.TEXTURE_2D, 0, 0, 0, 1, 1, field === 'dye' ? p.gl.RGBA : p.gl.RG, p.gl.FLOAT, new Float32Array(value));
+			expect(p.gl.getError()).toBe(p.gl.NO_ERROR);
+			expect(await probeQuiet(p)).toBe(false);
+			expect(e.isSettled).toBe(false);
+			e.dispose();
+		}
+	});
+
 	it('default engine settles to zero frame subscribers, then renders no rAF, wake + re-settle', async () => {
 		const e = engine({ densityDissipation: 4 });
 		expect(activeFrameSubscribers()).toBeGreaterThanOrEqual(1);
@@ -139,7 +302,7 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		p.issueSettleProbe();
 		for (let i = 0; i < 12 && !p.settleProbe?.ready; i++) { e.advance(1, 1 / 60); p.advanceSettleProbe(); }
 		expect(p.pollSettleProbe()).toBe(expected);
-		expect([...p.settleBytes]).toEqual([255, 0, 0, 255, 255, 255, 255, 255]);
+		expect([...p.settleBytes]).toEqual([255, 0, 255, 255, 255, 255, 255, 255]);
 	});
 
 	it('restored context re-probes capability and builds byte targets', async () => {

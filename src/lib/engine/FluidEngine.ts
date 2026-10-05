@@ -92,7 +92,7 @@ import {
 import { type Rng, generateColor, mulberry32, normalizeColor, randomSeed } from './rng.js';
 import { fitDrawingBufferSize } from './resolution.js';
 import { flowCanDriveSolver } from './solver-activity.js';
-import { SETTLE_CHECKS, SETTLE_CHECK_INTERVAL, hasContinuousDriver, dyeVisibilityGain, heightVisibilityScale, isQuiet, isQuietFlags } from './settle.js';
+import { SETTLE_CHECKS, SETTLE_CHECK_INTERVAL, hasContinuousDriver, dyeVisibilityGain, heightVisibilityScale, isInertSolver, isQuiet, isQuietFlags } from './settle.js';
 import { blurMaskData } from './sticky-blur.js';
 import { subscribeFrame } from './frame-scheduler.js';
 import { notifyHost } from './notify-host.js';
@@ -802,7 +802,7 @@ export class FluidEngine implements FluidHandle {
 	private settleDyeChain: FBO[] = [];
 	/** Async probe readback: 2 RGBA float pixels (velocity max, dye max). */
 	private settlePbo: WebGLBuffer | null = null;
-	private settleProbe: { sync: WebGLSync | null; epoch: number; velocityLevel: number; dyeLevel: number; bytes: boolean; ready?: boolean } | null = null;
+	private settleProbe: { sync: WebGLSync | null; epoch: number; velocityLevel: number; dyeLevel: number; bytes: boolean; inert: boolean; ready?: boolean } | null = null;
 	/** Changed fields or eligibility invalidate any probe already in flight. */
 	private settleEpoch = 0;
 	private settlePixels = new Float32Array(8);
@@ -3431,15 +3431,17 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		const t0 = performance.now();
 		try { this.withGl(() => {
 			const bytes = !this.canReadSettleFloat();
+			const inert = isInertSolver(this.config, this.elapsedSeconds(), [this.velocity.width, this.velocity.height, this.dye.width, this.dye.height]) &&
+				!this.maskTexture && !this.obstructionMaskTexture && !this.solidMaskTexture && !this.stickyMaskTexture && !this.scalar;
 			const gl = this.gl;
 			// Shared siblings' errors must not be attributed to this probe.
 			for (let i = 0; i < 16 && gl.getError() !== gl.NO_ERROR; i++);
 			this.prepareSettleChain(this.velocity.read, this.settleVelocityChain, bytes);
 			this.prepareSettleChain(this.dye.read, this.settleDyeChain, bytes);
 			this.settleReducePass(this.velocity.read, this.settleVelocityChain[0], 1, 1, 0, bytes ? 1 : 0);
-			this.settleReducePass(this.dye.read, this.settleDyeChain[0], 1, 1, 1, bytes ? 2 : 0, heightVisibilityScale(this.config), dyeVisibilityGain(this.config));
+			this.settleReducePass(this.dye.read, this.settleDyeChain[0], 1, 1, 1, bytes ? 2 : 0, inert ? 0 : heightVisibilityScale(this.config), inert ? 1 : dyeVisibilityGain(this.config), inert);
 			this.checkSettleGl();
-			this.settleProbe = { sync: null, epoch: this.settleEpoch, velocityLevel: 1, dyeLevel: 1, bytes };
+			this.settleProbe = { sync: null, epoch: this.settleEpoch, velocityLevel: 1, dyeLevel: 1, bytes, inert };
 		}); } catch (error) {
 			this.cancelSettleProbe();
 			this.failTransition(error);
@@ -3525,7 +3527,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			if (probe.epoch !== this.settleEpoch) return null;
 			this.settleCheckCount++;
 			if (!Number.isFinite(this.config.DENSITY_DISSIPATION) || this.config.DENSITY_DISSIPATION < 0) return false;
-			return isQuietFlags(this.settleBytes, this.config.DISTORTION || this.config.REVEAL);
+			return isQuietFlags(this.settleBytes, this.config.DISTORTION || this.config.REVEAL, probe.inert);
 		}
 		if (probe.epoch !== this.settleEpoch) { this.cancelSettleProbe(); return null; }
 		const sync = probe.sync!;
@@ -3552,6 +3554,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			if (!Number.isFinite(this.settlePixels[0]) || !Number.isFinite(this.settlePixels[4]) || this.settlePixels[0] === 65504 || this.settlePixels[4] === 65504) return false;
 			this.settleCheckCount++;
 			if (!Number.isFinite(this.config.DENSITY_DISSIPATION) || this.config.DENSITY_DISSIPATION < 0) return false;
+			if (probe.inert) return this.settlePixels[0] === 0;
 			// Arbitrary image frequency/power and reveal curves can amplify any nonzero dye.
 			if (this.config.DISTORTION || this.config.REVEAL) return this.settlePixels[4] === 0;
 			return isQuiet(this.settlePixels[0], this.settlePixels[4], this.config.DENSITY_DISSIPATION);
@@ -3601,7 +3604,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		}
 	}
 
-	private settleReducePass(src: FBO, target: FBO, r: number, g: number, b: number, flagMode = 0, heightVisibility = 0, dyeGain = 1): void {
+	private settleReducePass(src: FBO, target: FBO, r: number, g: number, b: number, flagMode = 0, heightVisibility = 0, dyeGain = 1, inert = false): void {
 		const gl = this.gl;
 		const program = this.settleMaxProgram;
 		gl.disable(gl.BLEND);
@@ -3612,6 +3615,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		gl.uniform1i(program.uniforms.uFlagMode, flagMode);
 		gl.uniform1f(program.uniforms.uHeightVisibility, heightVisibility);
 		gl.uniform1f(program.uniforms.uDyeVisibilityGain, dyeGain);
+		gl.uniform1f(program.uniforms.uInertSolver, inert ? 1 : 0);
 		gl.uniform1f(program.uniforms.uFade, 1 - 1 / (1 + this.config.DENSITY_DISSIPATION / 60));
 		this.blit(target);
 	}

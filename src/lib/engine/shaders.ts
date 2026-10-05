@@ -96,6 +96,7 @@ export const settleMaxShader = `
     uniform float uFade;
     uniform float uHeightVisibility;
     uniform float uDyeVisibilityGain;
+    uniform float uInertSolver;
 
     void main () {
         vec2 base = (floor(gl_FragCoord.xy) * 8.0 + 0.5) * uSourceTexel;
@@ -104,26 +105,32 @@ export const settleMaxShader = `
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
                 vec4 sampleValue = texture2D(uSource, base + vec2(float(x), float(y)) * uSourceTexel);
-                vec4 v = abs(sampleValue) * uChannels;
+                vec4 raw = abs(sampleValue);
+                // Validate raw channels before masking: NaN * 0 is not a validity test.
+                bool valid = raw.r >= 0.0 && raw.r <= 65504.0 && raw.g >= 0.0 && raw.g <= 65504.0 && raw.b >= 0.0 && raw.b <= 65504.0 && raw.a >= 0.0 && raw.a <= 65504.0;
+                bool dye = uChannels.b > 0.0 && uFlagMode != 3;
+                if (dye) valid = valid && sampleValue.a >= 0.0 && sampleValue.a <= ${DYE_HEIGHT_CEILING};
+                // Inert transport must not change RGB through advection's ±1000 clamp.
+                if (dye && uInertSolver > 0.5) valid = valid && raw.r <= 1000.0 && raw.g <= 1000.0 && raw.b <= 1000.0;
+                vec4 v = raw * uChannels;
                 float value = max(max(v.r, v.g), max(v.b, v.a));
                 value = min(65504.0, value * uDyeVisibilityGain);
                 // Same reduction targets: a sentinel/boolean blocks quietness while
                 // height can expose black pigment or change an arbitrary image.
                 if (uHeightVisibility != 0.0) {
-                    bool heightValid = sampleValue.a >= 0.0 && sampleValue.a <= ${DYE_HEIGHT_CEILING};
                     bool heightVisible = sampleValue.a > 0.0 && (uHeightVisibility < 0.0 || value + sampleValue.a * uHeightVisibility >= (0.5 / 255.0));
-                    if (!heightValid || heightVisible) {
+                    if (heightVisible) {
                         m = 65504.0;
                         flags.rgb = vec3(1.0);
                     }
                 }
                 m = max(m, value);
                 // Half-float source fields cannot contain finite magnitudes above 65504.
-                bool valid = v.r >= 0.0 && v.r <= 65504.0 && v.g >= 0.0 && v.g <= 65504.0 && v.b >= 0.0 && v.b <= 65504.0 && v.a >= 0.0 && v.a <= 65504.0;
                 if (!valid) m = 65504.0;
                 if (uFlagMode == 1) {
                     flags.r = max(flags.r, value < 0.5 ? 0.0 : 1.0);
                     flags.g = max(flags.g, valid ? 0.0 : 1.0);
+                    flags.b = max(flags.b, any(notEqual(sampleValue.xy, vec2(0.0))) ? 1.0 : 0.0);
                 }
                 if (uFlagMode == 2) {
                     flags.r = max(flags.r, value < (0.5 / 255.0) ? 0.0 : 1.0);
