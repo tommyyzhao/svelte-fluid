@@ -65,6 +65,27 @@ nothing.
    `mediump`, low-resolution display plus upscale) are not needed for the
    budget, and each one risks the look.
 
+## Amendment — mounted DPR changes (2026-10-04)
+
+`Fluid` rearms a `(resolution: <current DPR>dppx)` media query after each
+change, then uses its existing coalesced resize path. CSS content-box observation
+alone cannot guarantee a notification when CSS dimensions stay fixed. An ordinary
+installed-Chrome CDP emulation probe produced only the initial
+`device-pixel-content-box` notification during DPR 1→3→2; this is emulation
+evidence, not a physical-screen-move measurement. The same CDP override did not
+emit a resolution media-query change either; neither probe establishes physical
+screen/zoom notification behavior. Mounted hardware-browser regressions inject
+deterministic media callbacks, verifying resize/rearming/cleanup rather than
+browser-generated screen-change events. No companion pixel observer is added.
+
+Backing dimensions still use fractional CSS dimensions × latest actual DPR,
+subject to the explicit `maxPixelRatio` cap and existing drawing-buffer limits.
+The existing resize path preserves same-aspect fields/programs, rerenders reduced
+motion stills, and respects visibility. Unmount removes the current media listener
+and cancels pending resize work; stale callbacks cannot rearm it. Browsers without
+`matchMedia` or modern media-query change listeners retain CSS-resize-driven DPR
+updates only. No polling or legacy listener shim is introduced.
+
 ## Consequences
 
 - DPR 3 phones and laptops get crisp edges with no configuration.
