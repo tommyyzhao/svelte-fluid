@@ -584,7 +584,7 @@
 			resolutionMedia = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
 			resolutionMedia.addEventListener?.('change', onDprChange);
 		};
-		// ponytail: browsers without MediaQueryList change events update DPR on CSS resize only.
+		// ponytail: absent resolution notifications leave DPR updates CSS-resize-driven.
 		watchDpr();
 
 		// --- Scroll visibility ---
