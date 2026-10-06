@@ -1418,3 +1418,25 @@ Additional provenance SHA256s:
 - run2 client census: `574b39b808a2e32eaccc780b419e511f1d707604f2206077136857eb15945e03`.
 - `/tmp/post-opt-matrix/check.log`: `eeb7a1149cc141585c9950716e87e9d389b213269dd99257418d6c001d264e1b`.
 - `/tmp/post-opt-matrix/prepack.log`: `cde34c9d98421d34ca7c3adef1459abec579faf9cc16da17977618c135b31bf1`.
+
+## Stable protocol full matrix (ADR 0105) — 2026-10-06
+
+### WIP: registered capture started
+
+Measurement checkout **`fbec39a59fd39c3bdae40bdb7add2103d7104a5e`**, branch
+`lane-stable-matrix`; unchanged script SHA256
+`5984c5e9125ce48a151fe1191e88fef56f757f607cf024c7966b27c883b947c4`.
+The exact 43-case `GPU_CAPTURE_CASES` above is used verbatim, default **N=600,
+R=3, warm-up 200, seed 5**, native DPR 2, no protocol overrides. Output remains
+`/tmp/stable-matrix/`, not Git. Harness self-check passed before capture.
+
+GPU lock acquired before launch. Full pre-run process census retained in
+`/tmp/stable-matrix/clients-before.txt`; user Chrome browser **4386**, GPU **4411**,
+WindowServer **397**, ghostty **14036** remain foreign and untouched. No foreign
+process signalled. At launch `/tmp` had **392 GiB** available. Script handles its
+own bounded GPU-exit/contention retries; no selected/manual repeat planned.
+No built-in capture resume exists: should the driver abort, preserve the partial
+capture and run only missing cases under the same protocol, recording the split.
+No runtime, preset, script, tracker, install, push or merge changes.
+
+Capture in progress; no full-matrix verdict or completeness claim yet.
