@@ -73,7 +73,8 @@ function sceneVerdicts(results, requiredRuns = 1) {
 		return { ...s, requiredRuns, cleanRepeats: clean.length, complete, spread, verdict: clean.some((r) => r.verdict === 'FAIL') ? 'FAIL' : complete ? 'PASS' : 'INCONCLUSIVE' };
 	});
 }
-const options = captureOptions(process.argv.slice(2));
+const workerMode = process.argv[2] === '--analyse-worker';
+const options = captureOptions(workerMode ? [] : process.argv.slice(2));
 if (options.help) { console.log(USAGE); process.exit(0); }
 const { frames: FRAMES, runs: RUNS, seeds } = options;
 // Three-RAF pacing is 30 s for 600 frames at 60 Hz, not 10 s. Allow 2× that
@@ -207,6 +208,18 @@ async function analyse(trace, gpuPid, marks, backing, signal) {
 	};
 }
 
+if (workerMode) {
+	const input = JSON.parse(await readFile(process.argv[3], 'utf8'));
+	await writeFile(process.argv[4], JSON.stringify(await analyse(input.trace, input.pid, input.marks, input.backing)));
+	process.exit(0);
+}
+async function analyseWorker(trace, pid, marks, backing, signal) {
+	const input = `${trace}.analysis-input.json`, output = `${trace}.analysis.json`;
+	await writeFile(input, JSON.stringify({ trace, pid, marks, backing }));
+	await execAsync(process.execPath, [process.argv[1], '--analyse-worker', input, output], { timeout: 60000, signal, maxBuffer: 1 << 20 });
+	return JSON.parse(await readFile(output, 'utf8'));
+}
+
 // Runnable self-check; replay permits metadata/ceiling derivation from existing /tmp traces.
 if (options['self-check']) {
 	assert.equal(union([[0, 3], [1, 2], [2, 5], [7, 8]]), 6);
@@ -270,7 +283,7 @@ if (options.replay) {
 			r.originalAlignErrMs = r.alignErrMs;
 		}
 		if (r.measuredFrames !== undefined && r.marks.length !== r.measuredFrames) { r.verdict = 'INCONCLUSIVE'; continue; }
-		const a = await analyse(r.trace, r.gpuPid, r.marks, r.backing);
+		const a = await analyseWorker(r.trace, r.gpuPid, r.marks, r.backing);
 		const { frames, ...summary } = a;
 		Object.assign(r, summary);
 		r.foreignOverlapMs = frames.reduce((s, f) => s + Object.entries(f.overlap).filter(([k]) => !/^WindowServer \(/.test(k)).reduce((t, [, v]) => t + v, 0), 0);
@@ -320,7 +333,9 @@ try {
 		try {
 			await attemptDeadline(async () => {
 				await startServer(bootstrapPhase);
+				bootstrap.parentRssBytes = process.memoryUsage().rss;
 				bootstrapPhase('browser launch');
+				console.log(JSON.stringify({ run, phase: 'browser launch', parentRssBytes: bootstrap.parentRssBytes }));
 				browser = await chromium.launch({ executablePath: CHROME, headless: false, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'], timeout: 30000 }); rememberOwned();
 				const chromePid = census().find((r) => r.ppid === process.pid && r.command.startsWith(CHROME))?.pid;
 				gpuPid = () => census().find((r) => r.ppid === chromePid && r.command.includes('--type=gpu-process'))?.pid;
@@ -348,7 +363,7 @@ try {
 					r = await attemptDeadline(async (signal) => {
 						await startServer(phase);
 						if (!browser) {
-							phase('browser relaunch'); browser = await chromium.launch({ executablePath: CHROME, headless: false, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'], timeout: 30000 }); rememberOwned();
+							state.parentRssBytes = process.memoryUsage().rss; phase('browser relaunch'); console.log(JSON.stringify({ run, phase: 'browser relaunch', parentRssBytes: state.parentRssBytes })); browser = await chromium.launch({ executablePath: CHROME, headless: false, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'], timeout: 30000 }); rememberOwned();
 							const chromePid = census().find((r) => r.ppid === process.pid && r.command.startsWith(CHROME))?.pid;
 							gpuPid = () => census().find((r) => r.ppid === chromePid && r.command.includes('--type=gpu-process'))?.pid;
 						}
@@ -573,7 +588,7 @@ async function capture(page, c, name, attempt, phase, signal, state) {
 	else await page.evaluate(() => { globalThis.__cap.e.dispose(); document.body.replaceChildren(); delete globalThis.__cap; });
 	signal.throwIfAborted();
 	phase('trace export');
-	const a = run.marks.length === FRAMES ? await analyse(trace, pid, run.marks, setup.backing, signal) : { aligned: false, clusters: 0, framesWithPresentWrite: 0, strays: null, medianMs: NaN, p95Ms: NaN, maxMs: NaN, frames: [], error: run.error };
+	const a = run.marks.length === FRAMES ? await analyseWorker(trace, pid, run.marks, setup.backing, signal) : { aligned: false, clusters: 0, framesWithPresentWrite: 0, strays: null, medianMs: NaN, p95Ms: NaN, maxMs: NaN, frames: [], error: run.error };
 	const { frames, ...summary } = a;
 	return { ...c, name, trace, gpuPid: pid, command: `env DEVELOPER_DIR=${XCODE.DEVELOPER_DIR} ${cmd.join(' ')}`, measuredFrames: FRAMES, warmupFrames: WARM, recordingWallMs, ...setup, error: run.error, visibility: run.visibility, completedFrames: run.marks.length, transfers: run.transfers, settled: run.settled, transfersOk: run.transfersOk, marks: run.marks, ...summary, frameDetail: frames, perFrameGpuMs: frames.map((f) => +f.gpuMs.toFixed(4)) };
 }
