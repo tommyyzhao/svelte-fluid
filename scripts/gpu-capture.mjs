@@ -237,7 +237,17 @@ async function capture(page, c, name, attempt) {
 				const canvas = document.createElement('canvas');
 				canvas.style.cssText = `display:block;width:${w}px;height:${h}px`;
 				let e;
-				if (preset.startsWith('model-enamel')) {
+				if (preset === 'model-inkpaper') {
+					const { PigmentEngine } = await import('/src/lib/engine/pigment/PigmentEngine.ts');
+					document.body.append(canvas);
+					e = new PigmentEngine({ canvas, paper: '#f4ecdc', seed: 5, openingWash: false });
+					e.resize(w, h, devicePixelRatio);
+					e.setResist([{ x: 340, y: 200, w: 120, h: 100 }]);
+					e.paint([{ x: 200, y: 250, r: 200, water: 1, pigment: [0.4, 0.2, 0.1, 0] }]);
+					e.sleep(); e.wake = () => {};
+					// ADR0090 workload: one full solver step and display, held wet, one resist.
+					e.busyFrames = (frames) => { for (let i = 0; i < frames; i++) { e.queue.wetSteps = 600; e.host.run(e, (gl) => e.step(gl)); e.host.run(e, (gl) => e.display(gl)); } };
+				} else if (preset.startsWith('model-enamel')) {
 					const host = document.createElement('div'), source = document.createElement('span');
 					host.style.cssText = `position:relative;display:inline-block;font:${preset.endsWith('96') ? '700 96px/1.1 system-ui' : '700 64px/1.1 system-ui'}`;
 					source.textContent = preset.endsWith('96') ? 'Enamel' : 'Soft enamel';
