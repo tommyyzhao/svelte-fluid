@@ -181,9 +181,9 @@ class Host implements GlHost {
 		// (ADR-0088). createImageBitmap snapshots the drawing buffer now and
 		// resolves later; a newer present or a release drops the stale bitmap.
 		const seq = ++presenter.seq;
-		// Surface and canvas are both sRGB: the default colour-space conversion
-		// only costs a full-frame pass (measured ~1.3 ms at 1600×1000, ADR-0093).
-		return createImageBitmap(this.surface, { colorSpaceConversion: 'none' }).then(
+		// The sRGB, premultiplied snapshot needs no transform. Chrome's 'none'
+		// option forces another raster blit merely to strip its colour-space tag.
+		return createImageBitmap(this.surface).then(
 			(bitmap) => {
 				if (presenter.seq !== seq || this.instances.get(instance) !== presenter || this.gl.isContextLost()) {
 					bitmap.close();
