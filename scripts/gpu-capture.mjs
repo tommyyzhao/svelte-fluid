@@ -144,7 +144,7 @@ try {
 	const ps = () => execFileSync('ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' }).split('\n').map((l) => l.trim().split(/\s+/));
 	const chromePid = Number(ps().find((f) => +f[1] === process.pid && f.slice(2).join(' ').startsWith(CHROME))?.[0]);
 	gpuPid = () => Number(ps().find((f) => +f[1] === chromePid && f.join(' ').includes('--type=gpu-process'))?.[0]);
-	const probe = await browser.newPage();
+	const probe = await (await browser.newContext({ viewport: null })).newPage();
 	const machineDpr = await probe.evaluate(() => devicePixelRatio);
 	await probe.close();
 	const CASES = (process.env.GPU_CAPTURE_CASES || PRESETS.flatMap((p) => [`${p}@1440x900:own:${machineDpr}`, `${p}@800x500:own:${machineDpr}`]).join(','))
@@ -189,6 +189,51 @@ async function capture(page, c, name, attempt) {
 		await page.bringToFront();
 		const setup = await page.evaluate(async ({ preset, w, h, tier }) => {
 			if (document.visibilityState !== 'visible') throw new Error('Foreground visibility required');
+			if (preset.startsWith('model-')) {
+				const { acquireGlHost } = await import('/src/lib/engine/gl-host.ts');
+				const { SurfaceEngine } = await import('/src/lib/engine/surface/SurfaceEngine.ts');
+				const { EnamelEngine } = await import('/src/lib/engine/enamel/EnamelEngine.ts');
+				const canvas = document.createElement('canvas');
+				canvas.style.cssText = `display:block;width:${w}px;height:${h}px`;
+				let e;
+				if (preset.startsWith('model-enamel')) {
+					const host = document.createElement('div'), source = document.createElement('span');
+					host.style.cssText = `position:relative;display:inline-block;font:${preset.endsWith('96') ? '700 96px/1.1 system-ui' : '700 64px/1.1 system-ui'}`;
+					source.textContent = preset.endsWith('96') ? 'Enamel' : 'Soft enamel';
+					canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%';
+					host.append(source, canvas); document.body.append(host);
+					e = new EnamelEngine({ canvas, source });
+					const r = host.getBoundingClientRect(); w = r.width; h = r.height;
+				} else {
+					document.body.append(canvas);
+					const key = preset.slice(6);
+					const config = key === 'button' ? { control: 'button', tone: 'light', rect: { x: 6, y: 6, width: 220, height: 56 }, radius: 28 }
+						: key === 'wide-button' ? { control: 'button', tone: 'dark', rect: { x: 6, y: 6, width: 480, height: 64 }, radius: 32, focus: true }
+						: key === 'segmented' ? { control: 'segmented', tone: 'dark', rect: { x: 6, y: 6, width: 360, height: 56 }, radius: 28, lens: { x: 6, y: 6, width: 120, height: 56 }, labels: [{ x: 40, y: 24, width: 50, height: 20 }, { x: 160, y: 24, width: 50, height: 20 }, { x: 280, y: 24, width: 50, height: 20 }] }
+						: key === 'dropzone' ? { control: 'dropzone', tone: 'dark', rect: { x: 6, y: 6, width: 480, height: 200 }, radius: 18, drag: { x: -10, y: 100 }, labels: [{ x: 160, y: 96, width: 170, height: 20 }] }
+						: key === 'caustics' ? { control: 'overlay', tone: 'dark', rect: { x: 0, y: 0, width: 720, height: 400 }, radius: 16, overlay: 0.3 }
+						: null;
+					if (!config) throw new Error('Unknown model case');
+					e = new SurfaceEngine({ canvas, config });
+				}
+				e.resize(w, h, devicePixelRatio);
+				// Bench busyFrames drives the documented worst-case workload; suppress automatic RAF.
+				e.unsubscribe?.(); e.unsubscribe = null; e.schedule = () => {};
+				const host = acquireGlHost(e), gl = host.gl;
+				const counts = { requested: 0, delivered: 0 };
+				const snap = globalThis.createImageBitmap, transfer = ImageBitmapRenderingContext.prototype.transferFromImageBitmap;
+				globalThis.createImageBitmap = function (...a) { counts.requested++; return snap.apply(this, a); };
+				ImageBitmapRenderingContext.prototype.transferFromImageBitmap = function (b) { transfer.call(this, b); if (this.canvas === canvas) counts.delivered++; };
+				let pending;
+				const frame = () => { e.busyFrames(1); pending = host.present(e); };
+				for (let i = 0; i < 200; i++) e.busyFrames(1);
+				pending = host.present(e); await pending;
+				gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+				const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+				const wrapper = { sharedContext: true, presented: () => pending, dispose: () => e.dispose(), settled: false };
+				globalThis.__cap = { e: wrapper, frame, counts, restore: () => { globalThis.createImageBitmap = snap; ImageBitmapRenderingContext.prototype.transferFromImageBitmap = transfer; } };
+				return { dprActual: devicePixelRatio, cssActual: [w, h], backing: [canvas.width, canvas.height], adapter: dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : 'unknown', ua: navigator.userAgent, config: { model: preset } };
+			}
 			const { FluidEngine, _setContextTier } = await import('/src/lib/engine/FluidEngine.ts');
 			const { PRESETS } = await import('/src/lib/presets/registry.ts');
 			const { cssQualityPolicy, canvasPixelSize } = await import('/src/lib/engine/resolution.ts');
