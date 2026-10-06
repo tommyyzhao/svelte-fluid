@@ -4,6 +4,7 @@
 // Defaults: 600 measured frames / 3 independent browser runs / seed 5. Env: GPU_CAPTURE_FRAMES, GPU_CAPTURE_RUNS.
 // Env: GPU_CAPTURE_CASES='Karman@1440x900:own:2,...' (preset@CSS:tier:DPR; default = full
 // preset matrix at the machine DPR), GPU_CAPTURE_DIR (default /tmp/gpu-capture; traces stay there).
+// Env: GPU_CAPTURE_OVERRIDE='{"pressureIterations":26}' (test-only quality overrides).
 // Hardware Chrome with ordinary flags: Playwright's default --enable-unsafe-swiftshader is removed.
 import { chromium } from 'playwright';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
@@ -74,6 +75,15 @@ function captureOptions(args, env = process.env) {
 	if (values.legacy && (values.frames !== undefined || values.runs !== undefined)) throw new Error('--legacy cannot be combined with --frames or --runs');
 	return { ...values, frames: positiveInteger(values.legacy ? '60' : values.frames ?? env.GPU_CAPTURE_FRAMES ?? '600', '--frames / GPU_CAPTURE_FRAMES'), runs: positiveInteger(values.legacy ? '1' : values.runs ?? env.GPU_CAPTURE_RUNS ?? '3', '--runs / GPU_CAPTURE_RUNS'), seeds: parseSeeds(values.seed) };
 }
+
+function captureOverride(value) {
+	const override = value === undefined ? {} : JSON.parse(value);
+	if (!override || Array.isArray(override) || typeof override !== 'object' || Object.entries(override).some(([key, n]) => !['pressureIterations', 'simResolution', 'dyeResolution'].includes(key) || !Number.isSafeInteger(n) || n < (key === 'pressureIterations' ? 0 : 1))) throw new Error('GPU_CAPTURE_OVERRIDE requires a JSON object of nonnegative pressureIterations or positive simResolution/dyeResolution integers');
+	return Object.fromEntries(Object.entries(override).sort(([a], [b]) => a.localeCompare(b)));
+}
+const override = captureOverride(process.env.GPU_CAPTURE_OVERRIDE);
+const overrideSuffix = Object.keys(override).length ? `-override-${Object.entries(override).map(([k, v]) => `${k}${v}`).join('-')}` : '';
+const CAPTURE_FILE = `${DIR}/capture${overrideSuffix}.json`;
 
 function parseSeeds(value = '5') {
 	const seeds = value.split(',').map((s) => /^\d+$/.test(s) ? Number(s) : NaN);
@@ -281,7 +291,9 @@ if (options['self-check']) {
 	assert.throws(() => captureOptions(['--runs', '0'], {}));
 	assert.throws(() => captureOptions(['--legacy', '--frames', '600'], {}));
 	assert.throws(() => captureOptions(['--replay', 'capture.json', '--runs', '3'], {}));
-	assert.deepEqual(parseSeeds(), [5]);
+	assert.deepEqual(captureOverride('{"pressureIterations":26,"dyeResolution":768}'), { dyeResolution: 768, pressureIterations: 26 });
+		for (const value of ['null', '[]', '{"seed":5}', '{"pressureIterations":-1}', '{"dyeResolution":0}']) assert.throws(() => captureOverride(value));
+		assert.deepEqual(parseSeeds(), [5]);
 	assert.deepEqual(parseSeeds('0,5,4294967295'), [0, 5, 4294967295]);
 	for (const value of ['', '-1', '1.5', '4294967296', '5,5', '1,2,3,4,5,6']) assert.throws(() => parseSeeds(value));
 	const clean = { aligned: true, p95Ms: 1.9, maxMs: 3, transfersOk: true, contended: false };
@@ -389,7 +401,7 @@ await mkdir(DIR, { recursive: true });
 const owned = [], results = [];
 const census = () => execFileSync('ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' }).split('\n').map((l) => { const m = l.match(/^\s*(\d+)\s+(\d+)\s+(.*)$/); return m && { pid: +m[1], ppid: +m[2], command: m[3] }; }).filter(Boolean);
 let browser, gpuPid, server, machineDpr;
-const save = () => writeFileSync(`${DIR}/capture.json`, JSON.stringify({ sha, machineDpr, chrome: CHROME, seeds, protocol, results, scenes: sceneVerdicts(results, RUNS, seeds) }, null, 2));
+const save = () => writeFileSync(CAPTURE_FILE, JSON.stringify({ sha, machineDpr, chrome: CHROME, seeds, protocol, override, results, scenes: sceneVerdicts(results, RUNS, seeds) }, null, 2));
 const exactOwned = new Map();
 function rememberOwned() {
 	const rows = census(), ids = new Set([process.pid]);
@@ -446,12 +458,12 @@ try {
 			save(); completed(); continue;
 		}
 		CASES ??= (process.env.GPU_CAPTURE_CASES || PRESETS.flatMap((p) => [`${p}@1440x900:own:${machineDpr}`, `${p}@800x500:own:${machineDpr}`]).join(','))
-			.split(',').map((s) => { const match = s.match(/^(.+)@([\d.]+)x([\d.]+):(own|shared):([\d.]+)$/); if (!match) throw new Error(`Invalid GPU_CAPTURE_CASES: ${s}`); const [, preset, w, h, tier, dpr] = match; return { preset, w: +w, h: +h, tier, dpr: +dpr }; })
+			.split(',').map((s) => { const match = s.match(/^(.+)@([\d.]+)x([\d.]+):(own|shared):([\d.]+)$/); if (!match) throw new Error(`Invalid GPU_CAPTURE_CASES: ${s}`); const [, preset, w, h, tier, dpr] = match; return { preset, w: +w, h: +h, tier, dpr: +dpr, override }; })
 			.flatMap((c) => c.preset.startsWith('model-') ? [{ ...c, seed: c.preset === 'model-inkpaper' ? 5 : 'not applicable (model)' }] : seeds.map((seed) => ({ ...c, seed })));
 		let page, pageDpr;
 		for (const c of CASES) {
 			const allowances = { gpuExits: 0, contention: 0 };
-			const name = `${c.preset.replace(/\W/g, '')}-${c.w}x${c.h}-${c.tier}-dpr${c.dpr}${c.preset.startsWith('model-') ? '' : `-seed${c.seed}`}${options.legacy ? '' : `-r${run}`}`;
+			const name = `${c.preset.replace(/\W/g, '')}-${c.w}x${c.h}-${c.tier}-dpr${c.dpr}${c.preset.startsWith('model-') ? '' : `-seed${c.seed}`}${options.legacy ? '' : `-r${run}`}${overrideSuffix}`;
 			for (let attempt = 1; ; attempt++) {
 				const state = { phase: 'page setup', marks: [], visibility: [] };
 				const phase = (p) => { state.phase = p; writeFileSync(`${DIR}/${name}-a${attempt}.progress.json`, JSON.stringify(state)); };
@@ -506,7 +518,7 @@ async function capture(page, c, name, attempt, phase, signal, state) {
 		signal.throwIfAborted();
 		await abortable(page.bringToFront(), signal);
 		await abortable(page.evaluate((v) => { globalThis.__passLog = v; }, process.env.GPU_CAPTURE_PASS_LOG === '1'), signal);
-		const setup = await abortable(page.evaluate(async ({ preset, w, h, tier, seed, warmupFrames }) => {
+		const setup = await abortable(page.evaluate(async ({ preset, w, h, tier, seed, warmupFrames, override }) => {
 			if (document.visibilityState !== 'visible') throw new Error('Foreground visibility required');
 			if (preset.startsWith('model-')) {
 				const { acquireGlHost } = await import('/src/lib/engine/gl-host.ts');
@@ -572,7 +584,7 @@ async function capture(page, c, name, attempt, phase, signal, state) {
 			canvas.style.cssText = `display:block;width:${w}px;height:${h}px`;
 			document.body.append(canvas);
 			// Config derivation identical to gpu-budget.browser.test.ts / paced-presentation.mjs.
-			const cfg = { ...(preset === '(default)' ? {} : PRESETS.find((p) => p.id === preset).config), pointerInput: false, seed };
+			const cfg = { ...(preset === '(default)' ? {} : PRESETS.find((p) => p.id === preset).config), ...override, pointerInput: false, seed };
 			const max = Math.max(canvas.width, canvas.height);
 			cfg.dyeResolution = Math.min(cfg.dyeResolution ?? 1024, max);
 			cfg.bloomResolution = Math.min(cfg.bloomResolution ?? 256, max);
