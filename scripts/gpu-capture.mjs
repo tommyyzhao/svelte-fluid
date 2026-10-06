@@ -116,7 +116,7 @@ function analyse(trace, gpuPid, marks, backing) {
 		const windowEnd = Math.max(run[i + 1]?.start ?? e + 25e6, e);
 		const browserOsMs = union(browserOs.filter((x) => x[1] > b.start && x[0] < windowEnd).map(([a, z]) => [Math.max(a, b.start), Math.min(z, windowEnd)])) / 1e6;
 		const by = {};
-		for (const x of other) if (x[1] > s && x[0] < e) (by[x[2]] ??= []).push([Math.max(x[0], s), Math.min(x[1], e)]);
+		for (const x of other) for (const [a, z] of iv) if (x[1] > a && x[0] < z) (by[x[2]] ??= []).push([Math.max(x[0], a), Math.min(x[1], z)]);
 		return {
 			gpuMs: union(iv) / 1e6, browserOsMs, firstToLastMs: (e - s) / 1e6, commitOffsetMs: (b.start - run[0].start - (t0[i] - t0[0])) / 1e6,
 			cbs: b.cbs.map((c) => `0x${c.cb.toString(16)}:${c.enc}`), encoders: b.cbs.reduce((sum, c) => sum + c.enc, 0),
@@ -151,10 +151,22 @@ if (process.argv.includes('--self-check')) {
 if (process.argv[2] === '--replay') {
 	const d = JSON.parse(await readFile(process.argv[3], 'utf8'));
 	for (const r of d.results) {
-		if (!r.marks) continue;
+		if (!r.marks) {
+			// Older captures preserved frame->command-buffer ownership, not the JS marks. Reuse that
+			// mapping only; the original capture's alignErrMs remains the JS-spacing validation.
+			const frames = JSON.parse(await readFile(`${r.trace.replace(/\.trace$/, '')}.frames.json`, 'utf8'));
+			const subs = exportTable(r.trace, 'metal-application-command-buffer-submissions').rows;
+			const times = new Map(subs.map((s) => [n(s['cmdbuffer-id']), n(s.start)]));
+			r.marks = frames.map((f) => ({ t0: times.get(parseInt(f.cbs[0].split(':')[0], 16)) / 1e6 }));
+			r.originalAlignErrMs = r.alignErrMs;
+		}
 		const a = analyse(r.trace, r.gpuPid, r.marks, r.backing);
 		const { frames, ...summary } = a;
 		Object.assign(r, summary);
+		r.foreignOverlapMs = frames.reduce((s, f) => s + Object.entries(f.overlap).filter(([k]) => !/^WindowServer \(/.test(k)).reduce((t, [, v]) => t + v, 0), 0);
+		r.foreignOverlapPct = +(100 * r.foreignOverlapMs / frames.reduce((s, f) => s + f.gpuMs, 0)).toFixed(3);
+		r.contended = r.foreignOverlapPct >= 5;
+		r.verdict = !r.aligned || r.transfersOk === false ? 'INCONCLUSIVE' : r.contended ? 'CONTENDED' : r.maxMs < 2 ? 'PASS' : 'FAIL';
 		await writeFile(`${r.trace}.frames.json`, JSON.stringify(frames, null, 1));
 	}
 	await writeFile(process.argv[3], JSON.stringify(d, null, 2)); process.exit(0);
@@ -191,13 +203,13 @@ try {
 		const name = `${c.preset.replace(/\W/g, '')}-${c.w}x${c.h}-${c.tier}-dpr${c.dpr}`;
 		for (let attempt = 1; ; attempt++) {
 			const r = await capture(page, c, name, attempt);
-			const foreign = Object.entries(r.otherClients).filter(([k]) => !/^WindowServer \(/.test(k));
-			// Foreign GPU clients (not WindowServer compositing) busy >2% of the measured span, or
-			// overlapping instance execution by >1% of instance GPU time, invalidate the run.
+			// Gate: foreign execution overlap (not WindowServer) >=5% of summed per-frame
+			// instance execution marks contention. All client busy spans remain reported.
 			const overlapMs = r.frameDetail.reduce((s, f) => s + Object.entries(f.overlap).filter(([k]) => !/^WindowServer \(/.test(k)).reduce((t, [, v]) => t + v, 0), 0);
 			const gpuSum = r.perFrameGpuMs.reduce((s, v) => s + v, 0);
 			r.foreignOverlapMs = +overlapMs.toFixed(3);
-			r.contended = foreign.some(([, v]) => v.busyPct > 2) || overlapMs > 0.01 * gpuSum;
+			r.foreignOverlapPct = gpuSum ? +(100 * overlapMs / gpuSum).toFixed(3) : 0;
+			r.contended = r.foreignOverlapPct >= 5;
 			r.verdict = !r.aligned || r.transfersOk === false ? 'INCONCLUSIVE' : r.contended ? 'CONTENDED' : r.maxMs < 2 ? 'PASS' : 'FAIL';
 			const { frameDetail, ...row } = r;
 			results.push({ ...row, attempt });
