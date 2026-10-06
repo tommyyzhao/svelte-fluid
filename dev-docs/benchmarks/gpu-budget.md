@@ -1762,3 +1762,39 @@ and foreign Chrome-for-Testing48063/GPU48074 still alive, untouched. Full before
 after census retained. Worktree and ignored dependency symlink retained because
 work is not preserved remotely; no blanket cleanup, install, tracker writes,
 push or merge. Traces intentionally remain ephemeral in `/tmp`.
+
+## Per-preset quality sweep
+
+Owner-authorized measurement-only lane, based on local **`0796515`**. Preset
+registry defaults and production/runtime code remain unchanged; quality adoption
+and its ADR await the owner's visual decision. Harness override implementation
+**`2818c74`** records the requested override in the capture JSON, every result,
+and JSON/trace filenames. Only `pressureIterations`, `simResolution` and
+`dyeResolution` accept validated integer overrides; seed/input remain fixed.
+
+Screening: N600/R1/W200/seed5, Karman own1440×900, TeslaValve own1440×900,
+GasFlare shared1440×900, native DPR2. Pressure ladders are tried mildest first
+(Karman30/26/24, TeslaValve26/24, GasFlare22/20); stop on a clean p95≤1.85ms.
+If pressure alone cannot clear the margin, reduce dye (Karman768,
+TeslaValve/GasFlare512), retry baseline pressure then its approved ladder in
+mildest-first order. This second phase tests whether the dye cut can avoid or
+minimize the pressure cut. No simResolution changes authorized or attempted.
+Screening is not certification. Any candidate reaching the screening margin
+gets the complete ADR0105 N600/R3/W200/seed5 protocol across the failing
+size/tier set, including Karman shared1440×900. Every clean run must have
+p95 strictly <2ms; no favorable retry or averaging.
+
+WIP evidence: `/tmp/quality-sweep/summary.json`, capture directories under
+`/tmp/quality-sweep/{screen,certify}/`. First Karman pressure30 screening:
+median **2.131206**, p95 **2.956169**, max **3.251914ms**, clean **FAIL**.
+Remaining measurement in progress; no candidate certified yet.
+
+GPU lock held by the exact `quality-sweep` owner PID recorded in
+`/tmp/quality-sweep/owner-pid`; full pre-run census
+`/tmp/quality-sweep/clients-before.txt`. Ordinary installed Chrome, fresh temporary
+profile per attempt, no unsafe GPU flags, explicit Xcode environment on every
+xcrun invocation. Foreign user/Chrome-for-Testing processes untouched.
+
+Initial checks: harness self-check, **864 Node tests /52 files**, Svelte check,
+prepack passed. Logs `/tmp/quality-sweep/{test,check,prepack}.log`.
+Clips and final cleanup proof pending. No tracker writes, installs, push or merge.
