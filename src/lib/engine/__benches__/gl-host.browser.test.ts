@@ -85,6 +85,17 @@ function pixels(canvas: HTMLCanvasElement): Uint8ClampedArray {
 	return ctx.getImageData(0, 0, canvas.width, canvas.height).data;
 }
 
+function composite(canvas: HTMLCanvasElement, background: string, colorSpace: 'srgb' | 'display-p3'): Uint8ClampedArray {
+	const copy = document.createElement('canvas');
+	copy.width = canvas.width;
+	copy.height = canvas.height;
+	const ctx = copy.getContext('2d', { colorSpace })!;
+	ctx.fillStyle = background;
+	ctx.fillRect(0, 0, copy.width, copy.height);
+	ctx.drawImage(canvas, 0, 0);
+	return ctx.getImageData(0, 0, copy.width, copy.height).data;
+}
+
 function expectSolid(canvas: HTMLCanvasElement, rgb: [number, number, number], stripes = false): void {
 	const px = pixels(canvas);
 	for (let i = 0; i < px.length; i += 4) {
@@ -196,19 +207,11 @@ void main () {
 		expect(pixels(b.canvas)).toEqual(pixels(a.canvas));
 		// Native compositing must also agree, not just unpremultiplied readback.
 		for (const colorSpace of ['srgb', 'display-p3'] as const) for (const background of ['#fff', '#172331']) {
-			const composite = (canvas: HTMLCanvasElement) => {
-				const copy = document.createElement('canvas');
-				copy.width = canvas.width;
-				copy.height = canvas.height;
-				const ctx = copy.getContext('2d', { colorSpace })!;
-				ctx.fillStyle = background;
-				ctx.fillRect(0, 0, copy.width, copy.height);
-				ctx.drawImage(canvas, 0, 0);
-				return ctx.getImageData(0, 0, copy.width, copy.height).data;
-			};
-			expect(composite(b.canvas)).toEqual(composite(a.canvas));
+			expect(composite(b.canvas, background, colorSpace)).toEqual(composite(a.canvas, background, colorSpace));
 		}
-		expect(Array.from(pixels(a.canvas)).filter((_, i) => i % 4 === 3)).toContain(128);
+		const center = (12 * a.canvas.width + 20) * 4;
+		expect(Array.from(pixels(a.canvas).slice(center, center + 4))).toEqual([203, 102, 52, 128]);
+		expect(Array.from(composite(a.canvas, '#fff', 'srgb').slice(center, center + 4))).toEqual([229, 178, 153, 255]);
 		expect(host.gl.getError()).toBe(host.gl.NO_ERROR);
 	});
 
@@ -236,6 +239,8 @@ void main () {
 					finally { reference.close(); }
 					await engine.presented();
 					expect(pixels(a.canvas)).toEqual(pixels(b.canvas));
+					for (const colorSpace of ['srgb', 'display-p3'] as const) for (const background of ['#fff', '#172331'])
+						expect(composite(a.canvas, background, colorSpace)).toEqual(composite(b.canvas, background, colorSpace));
 					expect(pixels(a.canvas).some((v, i) => i % 4 === 3 && v > 0 && v < 255)).toBe(true);
 				} finally {
 					_setContextTier('auto');
