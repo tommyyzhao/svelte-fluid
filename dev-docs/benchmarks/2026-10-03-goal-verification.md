@@ -119,23 +119,30 @@ Tests at `c873fdf`: `src/lib/engine/__tests__/lighting.test.ts`,
 
 ## Remaining open / ceilings
 
-- `svelte-fluid-7n8`: **target changed to p95 <2 ms by the owner on 2026-10-06;
-  optimisation pending**. [ADR 0101](../decisions/0101-p95-gpu-budget.md) records
-  the post hoc decision, made after seeing the native Metal results in `aec018e`,
-  not a pre-registered metric or a waiver. Existing 43 scene rows give
-  **28 PASS / 15 FAIL under p95**; all 15 failures still need optimisation.
-  Local-main WebGL2 runtime `9df58fc`, M1 Max at native DPR 2, 200 warm / 60 paced
-  frames per capture. With 60 frames, p95 is roughly the 3rd-worst frame
-  (recorded index 56 is exactly 4th-worst); no sustained-percentile guarantee.
-  The strict-max table remains history: **18 PASS / 25 FAIL**, max still reported
-  alongside median/p95. No new captures or runtime tuning. Shared Karman 1440×900
-  CSS: median **2.775**, p95 **3.150**, max **3.433 ms**. Foreign overlap >=5%
-  marks contention; ambiguous attempts excluded, bounded retries preserved.
-  Scanout of every frame and per-shader shares remain unproved; this concerns
-  attributed instance command-buffer GPU execution, not wall time or total OS
-  compositor cost. See [p95 re-tabulation](gpu-budget.md#owner-adopted-p95-verdict--2026-10-06)
-  and [native Metal results](gpu-budget.md#native-metal-execution-measurement--2026-10-0506)
-  for numbers, browser/OS ceilings, commands and exported-table SHA256s.
+- `svelte-fluid-7n8`: **p95 <2 ms goal remains open after the optimisation round**.
+  [ADR 0101](../decisions/0101-p95-gpu-budget.md)'s owner-adopted target was post hoc,
+  not pre-registered or a waiver. Merged local-main WebGL2 `21041a0` includes
+  [ADR 0103](../decisions/0103-untransformed-shared-snapshots.md) shared copy removal
+  and [ADR 0104](../decisions/0104-pigment-pressure-pairing.md) InkPaper pressure
+  pairing; [ADR 0102](../decisions/0102-solver-display-optimisation-rejected.md)
+  solver/display candidates were rejected. Two independent full 43-scene seed-5
+  invocations on M1 Max, native DPR 2: **18 PASS / 25 FAIL** under every-clean-repeat
+  accounting; **15 PASS have two clean repeats**, three PASS rows lack a second clean
+  repeat (Aurora own 800×500, Venturi own 800×500, LiquidDropZone). All 86 attempts
+  retained: 40 PASS / 40 FAIL / 6 INCONCLUSIVE / 0 CONTENDED. Foreign overlap >=5%
+  marks contention; observed maximum 2.214% on Aurora own 1440×900 from foreign
+  Chrome, counted as clean FAIL. No foreign client signalled; GPU lock released,
+  owned Chrome/xctrace/Vite closed. Historical selected p95 result remains
+  **28 PASS / 15 FAIL**, strict-max **18 PASS / 25 FAIL**, not replaced or erased.
+  All 15 historical p95 failures persist; ten new failures use the **unchanged
+  own-tier runtime**, so variance/seed/repeat differences do not establish an
+  optimisation regression. Worst post-opt p95: shared Karman **4.613166 ms**
+  (gap **2.613166 ms**); InkPaper **2.268207 ms** (gap **0.268207 ms**).
+  200 warm / 60 paced frames per attempt; index-56 p95 is exactly 4th-worst,
+  no sustained-percentile guarantee. Median/p95/max, every attempt, unchanged-path
+  variance ranges and export SHA256s appear in the
+  [post-optimisation full matrix](gpu-budget.md#post-optimisation-full-matrix--2026-10-06).
+  Scanout, per-shader shares and total browser/OS-cost compliance remain unproved.
 - `svelte-fluid-dv2`: geometry implemented; hybrid cache scope narrowly accepted via
   owner delegation, not universal shared compilation. See amended
   [ADR 0093](../decisions/0093-fluid-engine-on-shared-gl-host.md) at `c873fdf`.
