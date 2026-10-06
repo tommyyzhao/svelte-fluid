@@ -70,7 +70,7 @@ function sceneVerdicts(results, requiredRuns = 1) {
 			const v = clean.map((r) => r[key]), min = v.length ? Math.min(...v) : null, max = v.length ? Math.max(...v) : null;
 			return [key, { min, max, range: v.length ? max - min : null }];
 		}));
-		return { ...s, requiredRuns, cleanRepeats: clean.length, complete, spread, verdict: clean.some((r) => r.verdict === 'FAIL') ? 'FAIL' : complete ? 'PASS' : 'INCONCLUSIVE' };
+		return { ...s, requiredRuns, cleanRepeats: clean.length, complete, spread, verdict: requiredRuns > 1 && !complete ? 'INCOMPLETE' : clean.some((r) => r.verdict === 'FAIL') ? 'FAIL' : complete ? 'PASS' : 'INCONCLUSIVE' };
 	});
 }
 const workerMode = process.argv[2] === '--analyse-worker';
@@ -253,10 +253,10 @@ if (options['self-check']) {
 	assert.equal(sceneVerdicts([{ ...clean, verdict: 'INCONCLUSIVE' }])[0].verdict, 'INCONCLUSIVE');
 	const repeats = [1, 2, 3].map((run) => ({ ...clean, seed: 5, run, verdict: 'PASS', medianMs: 1 + run / 10, p95Ms: 1.5 + run / 10, maxMs: 3 + run / 10 }));
 	assert.equal(sceneVerdicts(repeats, 3)[0].verdict, 'PASS');
-	assert.equal(sceneVerdicts(repeats.slice(0, 2), 3)[0].verdict, 'INCONCLUSIVE');
+	assert.equal(sceneVerdicts(repeats.slice(0, 2), 3)[0].verdict, 'INCOMPLETE');
 	assert.equal(sceneVerdicts([...repeats, { ...repeats[0], verdict: 'FAIL', p95Ms: 2 }], 3)[0].verdict, 'FAIL');
-	assert.equal(sceneVerdicts([...repeats, { ...repeats[0], seed: 42 }], 3)[0].verdict, 'INCONCLUSIVE');
-	assert.equal(sceneVerdicts([repeats[0], repeats[0], repeats[0]], 3)[0].verdict, 'INCONCLUSIVE');
+	assert.equal(sceneVerdicts([...repeats, { ...repeats[0], seed: 42 }], 3)[0].verdict, 'INCOMPLETE');
+	assert.equal(sceneVerdicts([repeats[0], repeats[0], repeats[0]], 3)[0].verdict, 'INCOMPLETE');
 	assert.ok(Math.abs(sceneVerdicts(repeats, 3)[0].spread.p95Ms.range - 0.2) < 1e-12);
 	const complete = { ...clean, measuredFrames: 600, clusters: 600, framesWithPresentWrite: 600, strays: 0 };
 	assert.equal(verdict(complete), 'PASS');
@@ -336,7 +336,7 @@ try {
 				bootstrap.parentRssBytes = process.memoryUsage().rss;
 				bootstrapPhase('browser launch');
 				console.log(JSON.stringify({ run, phase: 'browser launch', parentRssBytes: bootstrap.parentRssBytes }));
-				browser = await chromium.launch({ executablePath: CHROME, headless: false, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'], timeout: 30000 }); rememberOwned();
+				browser = await chromium.launch({ executablePath: CHROME, headless: false, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'], args: ['--enable-logging=stderr', '--v=0'], timeout: 30000 }); rememberOwned();
 				const chromePid = census().find((r) => r.ppid === process.pid && r.command.startsWith(CHROME))?.pid;
 				gpuPid = () => census().find((r) => r.ppid === chromePid && r.command.includes('--type=gpu-process'))?.pid;
 				bootstrapPhase('DPR probe');
@@ -355,7 +355,7 @@ try {
 		let page, pageDpr;
 		for (const c of CASES) {
 			const name = `${c.preset.replace(/\W/g, '')}-${c.w}x${c.h}-${c.tier}-dpr${c.dpr}${c.preset.startsWith('model-') ? '' : `-seed${c.seed}`}${options.legacy ? '' : `-r${run}`}`;
-			for (let attempt = 1; attempt <= RETRIES; attempt++) {
+			for (let attempt = 1; attempt <= 3; attempt++) {
 				const state = { phase: 'page setup', marks: [], visibility: [] };
 				const phase = (p) => { state.phase = p; writeFileSync(`${DIR}/${name}-a${attempt}.progress.json`, JSON.stringify(state)); };
 				let r;
@@ -363,7 +363,7 @@ try {
 					r = await attemptDeadline(async (signal) => {
 						await startServer(phase);
 						if (!browser) {
-							state.parentRssBytes = process.memoryUsage().rss; phase('browser relaunch'); console.log(JSON.stringify({ run, phase: 'browser relaunch', parentRssBytes: state.parentRssBytes })); browser = await chromium.launch({ executablePath: CHROME, headless: false, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'], timeout: 30000 }); rememberOwned();
+							state.parentRssBytes = process.memoryUsage().rss; phase('browser relaunch'); console.log(JSON.stringify({ run, phase: 'browser relaunch', parentRssBytes: state.parentRssBytes })); browser = await chromium.launch({ executablePath: CHROME, headless: false, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'], args: ['--enable-logging=stderr', '--v=0'], timeout: 30000 }); rememberOwned();
 							const chromePid = census().find((r) => r.ppid === process.pid && r.command.startsWith(CHROME))?.pid;
 							gpuPid = () => census().find((r) => r.ppid === chromePid && r.command.includes('--type=gpu-process'))?.pid;
 						}
@@ -373,11 +373,14 @@ try {
 							await page.route('**/__gpu_capture__', (r) => r.fulfill({ contentType: 'text/html', body: '<!doctype html><html><body style="margin:0;overflow:hidden;background:#000"></body></html>' }));
 							await page.goto(`${URL}/__gpu_capture__`, { timeout: 15000 }); pageDpr = c.dpr;
 						}
-						return await capture(page, c, name, attempt, phase, signal, state);
+						const result = await capture(page, c, name, attempt, phase, signal, state);
+						phase('attempt browser cleanup'); await browser?.close(); browser = null; page = null; pageDpr = null;
+						Bun.gc(true);
+						return result;
 					}, cleanupOwned, state);
 				} catch (error) {
-					cleanupOwned(); page = null; pageDpr = null;
-					r = { ...c, name, trace: `${DIR}/${name}-a${attempt}.trace`, measuredFrames: FRAMES, completedFrames: state.marks.length, marks: state.marks, visibility: state.visibility, error: String(error.message), phase: state.phase, aligned: false, clusters: 0, framesWithPresentWrite: 0, p95Ms: NaN, medianMs: NaN, maxMs: NaN, frameDetail: [], perFrameGpuMs: [], transfersOk: false };
+					cleanupOwned(); page = null; pageDpr = null; Bun.gc(true);
+					r = { ...c, name, trace: `${DIR}/${name}-a${attempt}.trace`, measuredFrames: FRAMES, completedFrames: state.marks.length, marks: state.marks, visibility: state.visibility, error: state.error ?? String(error.message), phase: state.phase, aligned: false, clusters: 0, framesWithPresentWrite: 0, p95Ms: NaN, medianMs: NaN, maxMs: NaN, frameDetail: [], perFrameGpuMs: [], transfersOk: false };
 				}
 				const overlapMs = r.frameDetail.reduce((s, f) => s + Object.entries(f.overlap).filter(([k]) => !/^WindowServer \(/.test(k)).reduce((t, [, v]) => t + v, 0), 0);
 				const gpuSum = r.perFrameGpuMs.reduce((s, v) => s + v, 0);
@@ -385,7 +388,8 @@ try {
 				const { frameDetail, ...row } = r; results.push({ ...row, run, attempt }); save(); completed();
 				writeFileSync(`${DIR}/${name}-a${attempt}.frames.json`, JSON.stringify(frameDetail, null, 1));
 				console.log(JSON.stringify({ name, run, attempt, verdict: r.verdict, error: r.error, phase: r.phase, p95: r.p95Ms, aligned: r.aligned, alignErrMs: r.alignErrMs, clusters: r.clusters, presentWrites: r.framesWithPresentWrite, completedFrames: r.completedFrames }));
-				if (r.verdict !== 'CONTENDED' || attempt === RETRIES) break;
+				const gpuExit = /GPU process exited/.test(r.error ?? '');
+				if (!(gpuExit && attempt < 3 || r.verdict === 'CONTENDED' && attempt < RETRIES)) break;
 				await Bun.sleep(RETRY_WAIT_MS);
 			}
 		}
@@ -395,6 +399,8 @@ try {
 } finally {
 	clearTimeout(watchdog); save(); cleanupOwned();
 }
+process.exit(0); // terminated Playwright transports must not retain a completed driver
+
 
 async function capture(page, c, name, attempt, phase, signal, state) {
 		phase('warm-up');
@@ -582,8 +588,8 @@ async function capture(page, c, name, attempt, phase, signal, state) {
 	signal.throwIfAborted();
 	phase('page cleanup');
 	if (run.error) {
-		if (page.isClosed() || !browser?.isConnected()) cleanupOwned();
-		else await page.close({ runBeforeUnload: false });
+		state.error = run.error;
+		cleanupOwned();
 	}
 	else await page.evaluate(() => { globalThis.__cap.e.dispose(); document.body.replaceChildren(); delete globalThis.__cap; });
 	signal.throwIfAborted();
