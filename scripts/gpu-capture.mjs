@@ -451,11 +451,12 @@ async function capture(page, c, name, attempt) {
 	// Individually paced frames: three RAFs apart so each frame's GPU burst is
 	// isolated in the trace; presentation verified per frame (transferFromImageBitmap).
 	const progress = { marks: [], visibility: [], transfers: { requested: 0, delivered: 0 }, transfersOk: false };
-	await page.exposeFunction('__captureProgress', (event) => {
+	await page.exposeFunction(`__captureProgress${attempt}${name.replace(/\W/g, '')}`, (event) => {
 		if (event.mark) progress.marks.push(event.mark);
 		if (event.visibility) progress.visibility.push(event.visibility);
 		if (event.transfers) progress.transfers = event.transfers;
 	});
+	await page.evaluate((key) => { globalThis.__captureProgress = globalThis[key]; }, `__captureProgress${attempt}${name.replace(/\W/g, '')}`);
 	let timer;
 	const run = await Promise.race([
 		page.evaluate(async ({ FRAMES, timeoutMs }) => {
@@ -493,7 +494,6 @@ async function capture(page, c, name, attempt) {
 	]).catch((e) => ({ ...progress, error: String(e.message ?? e), transfersOk: false }));
 	clearTimeout(timer);
 	await writeFile(`${trace}.progress.json`, JSON.stringify(progress, null, 2));
-	await page.removeExposedFunction('__captureProgress').catch(() => {});
 	await Bun.sleep(500); // let the last frame's GPU execution and display dependencies complete
 	rec.kill('SIGINT'); // early stop; --time-limit is the hard ceiling
 	const code = await rec.exited;
