@@ -46,7 +46,10 @@ async function attemptDeadline(work, cleanup, state, timeoutMs) {
 		else controller.abort(); // release phase monitors on normal completion/error too
 	}
 }
-const attemptLimitMs = (recordingSeconds) => (recordingSeconds + 60) * 1000;
+// Reserve recorder finalisation separately from all three exports and parser slack.
+const EXPORT_LIMIT_MS = 90000, ANALYSIS_LIMIT_MS = 3 * EXPORT_LIMIT_MS + 30000;
+const FINALISATION_LIMIT_MS = 180000;
+const attemptLimitMs = (recordingSeconds) => (recordingSeconds + 60) * 1000 + FINALISATION_LIMIT_MS + ANALYSIS_LIMIT_MS;
 const watchdogLimitMs = (recordingSeconds) => Math.max(300000, attemptLimitMs(recordingSeconds) + 60000);
 function retryAllowed(r, allowances) {
 	if (/GPU process exited/.test(r.error ?? '')) return allowances.gpuExits++ < 2;
@@ -116,7 +119,7 @@ const protocol = { measuredFrames: FRAMES, runs: RUNS, warmupFrames: WARM, p95In
 // --- xctrace export parsing (id/ref-deduplicated XML rows) -------------------------------
 async function exportTable(trace, schema, signal) {
 	signal?.throwIfAborted();
-	const { stdout: xml } = await execAsync('env', [`DEVELOPER_DIR=${XCODE.DEVELOPER_DIR}`, 'xcrun', 'xctrace', 'export', '--input', trace, '--xpath', `/trace-toc/run[@number="1"]/data/table[@schema="${schema}"]`], { env: XCODE, encoding: 'utf8', maxBuffer: 1 << 30, timeout: 15000, signal });
+	const { stdout: xml } = await execAsync('env', [`DEVELOPER_DIR=${XCODE.DEVELOPER_DIR}`, 'xcrun', 'xctrace', 'export', '--input', trace, '--xpath', `/trace-toc/run[@number="1"]/data/table[@schema="${schema}"]`], { env: XCODE, encoding: 'utf8', maxBuffer: 1 << 30, timeout: EXPORT_LIMIT_MS, signal });
 	const ids = new Map(), stack = [], rows = [], cols = [];
 	const dec = (s) => s.replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 	const re = /<\?[^>]*\?>|<(\/)?([\w:-]+)((?:\s+[\w:-]+=(?:"[^"]*"|'[^']*'))*)\s*(\/)?>|([^<]+)/g;
@@ -255,7 +258,7 @@ async function analyseWorker(trace, pid, marks, backing, signal) {
 	const input = `${trace}.analysis-input.json`, output = `${trace}.analysis.json`;
 	await writeFile(input, JSON.stringify({ trace, pid, marks, backing }));
 	signal?.throwIfAborted();
-	await execAsync(process.execPath, [process.argv[1], '--analyse-worker', input, output], { timeout: 60000, signal, maxBuffer: 1 << 20 });
+	await execAsync(process.execPath, [process.argv[1], '--analyse-worker', input, output], { timeout: ANALYSIS_LIMIT_MS, signal, maxBuffer: 1 << 20 });
 	return JSON.parse(await readFile(output, 'utf8'));
 }
 
@@ -342,8 +345,16 @@ if (options['self-check']) {
 	// review: large-frame-attempt-deadline
 	assert.ok(attemptLimitMs(610) > 610000);
 	assert.ok(watchdogLimitMs(610) > attemptLimitMs(610));
-	assert.equal(watchdogLimitMs(70), 300000);
-	console.log('GPU capture self-check passed: zero-interval-coverage, gpu-watch-and-error-gate, cancelled-startup-settles-without-creation, bootstrap-metadata-analysis-guard, missing-requested-seed, mixed-infrastructure-contention-retries, large-frame-attempt-deadline'); process.exit(0);
+	assert.equal(watchdogLimitMs(70), attemptLimitMs(70) + 60000);
+	// review: nested-export-finalisation-bounds
+	assert.ok(EXPORT_LIMIT_MS > 24258.628);
+	assert.ok(ANALYSIS_LIMIT_MS > 3 * EXPORT_LIMIT_MS);
+	assert.ok(FINALISATION_LIMIT_MS > 109000);
+	for (const seconds of [10, 70, 610]) {
+		assert.equal(attemptLimitMs(seconds), seconds * 1000 + 60000 + FINALISATION_LIMIT_MS + ANALYSIS_LIMIT_MS);
+		assert.ok(watchdogLimitMs(seconds) > attemptLimitMs(seconds));
+	}
+	console.log('GPU capture self-check passed: zero-interval-coverage, gpu-watch-and-error-gate, cancelled-startup-settles-without-creation, bootstrap-metadata-analysis-guard, missing-requested-seed, mixed-infrastructure-contention-retries, large-frame-attempt-deadline, nested-export-finalisation-bounds'); process.exit(0);
 }
 if (options.replay) {
 	const d = JSON.parse(await readFile(options.replay, 'utf8'));

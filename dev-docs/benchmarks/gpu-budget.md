@@ -1421,6 +1421,17 @@ Additional provenance SHA256s:
 
 ## Stable protocol full matrix (ADR 0105) — 2026-10-06
 
+**Post-matrix bounds note — 2026-10-06:** harness exports now allow 90 s
+(previously 15 s); analysis worker 300 s (previously 60 s); default attempt
+610 s (previously 130 s), reserving 180 s finalisation plus analysis;
+default watchdog 670 s (previously 300 s). See ADR 0105's dated amendment.
+Karman shared r2 spent approximately 109 s in recorder finalisation before
+its attempt deadline, after 600 marks; recorder completion time is unknown.
+SvgPathFluid own 800×500 r1 offline replay completed exports/analysis in
+66.858676 s, diagnostic p95 1.285122 ms, verdict **INCONCLUSIVE** because the
+recorded error/failed transfer gate remains. **DIAGNOSTIC only; all live matrix
+tables, verdicts and measurement gates below remain unchanged.**
+
 ### WIP: registered capture started
 
 Measurement checkout **`fbec39a59fd39c3bdae40bdb7add2103d7104a5e`**, branch

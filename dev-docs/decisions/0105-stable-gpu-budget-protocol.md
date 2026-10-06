@@ -233,3 +233,34 @@ One fresh Karman-only 600×3 invocation: **3/3 clean, zero GPU exits/retries**, 
 Tests/check/prepack/self-check/diff-check passed; exact owned processes closed,
 GPU lock released, user Chrome untouched. No matrix, metric or threshold change.
 Evidence `/tmp/stable-review-{replay-summary.json,replay.log,pilot/}`.
+
+### Post-matrix harness bounds amendment — 2026-10-06
+
+Bounds only; matrix verdicts unchanged. SvgPathFluid own 800×500 r1's
+`metal-gpu-intervals` export exceeded 15 s; the same trace exported successfully
+untimed in **24.258628 s**, 41,821,177 bytes. Each export now allows **90 s**;
+the analysis worker allows **300 s** (three exports plus 30 s parser/I/O slack).
+The attempt deadline now reserves **180 s recorder-finalisation slack** plus
+that worker budget, in addition to the existing recorder ceiling and 60 s
+startup/cleanup slack: default **130 → 610 s**. The unchanged watchdog formula
+`max(300 s, attempt deadline + 60 s)` therefore becomes **670 s** by default.
+All limits remain finite and nested; `nested-export-finalisation-bounds` checks
+the arithmetic for legacy, default and large-frame ceilings.
+
+Karman shared 1440×900 r2 saved phase `recorder finalisation`, 600 marks spanning
+**16.7428 s**, not trace export. Progress file times place finalisation at
+12:41:18 PDT; attempt start 12:40:57, failed frames file 12:43:07: approximately
+**109 s waiting in finalisation** before the 130 s outer deadline. These are
+filesystem-derived estimates, not a measured successful recorder exit; its
+completion duration is unknown. The saved progress also has only 599 delivered
+transfers and `transfersOk: false`; more time cannot waive that gate.
+
+Offline CLI replay of a separate diagnostic JSON completed exports/analysis in
+**66.858676 s**, with 600 aligned clusters, complete execution coverage, p95
+**1.285122 ms**, alignment **0.229917 ms**. Its verdict remains **INCONCLUSIVE**
+(DIAGNOSTIC only): replay retains the original recorded error and failed transfer
+gate. A separately timed bounded GPU-interval export took **21.925466 s**,
+exit 0, the same 41,821,177 bytes. Self-check, 52 Node files / 864 tests,
+471 checked files / zero errors or warnings, prepack and diff-check passed.
+No live matrix row, retry rule, GPU-exit/error/coverage gate, alignment
+threshold or measurement logic changed. No new capture, browser or GPU lock.
