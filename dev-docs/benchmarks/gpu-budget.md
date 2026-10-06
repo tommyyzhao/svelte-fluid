@@ -474,6 +474,76 @@ three-RAF pacing, Metal interval-union attribution, complete native writes, 60
 shared transfers and the >=5% foreign-overlap contention gate. No new capture or
 runtime optimisation was performed for this protocol update.
 
+### Shared snapshot investigation — 2026-10-06
+
+[ADR 0103](../decisions/0103-untransformed-shared-snapshots.md) removes only the
+redundant colour-tag transform: `createImageBitmap(surface)` retains the safe
+snapshot transport. No solver, shader, pigment, preset or capture-script changes.
+The five target shared scenes still **FAIL** p95 <2 ms across clean repeats.
+
+M1 Max, Chrome 154.0.8037.98, ANGLE Metal, actual native DPR 2. Baseline runtime
+is unchanged from `76bdaa2` (capture SHA `e3f9e1d`, tests-only WIP); candidate
+capture SHA `d948732`. Same seed **5**, unchanged script, 200 warm-up / 60 paced
+frames, native Metal interval union. The four 1440×900 presets use 2880×1800
+backing; InkPaper 800×500 uses 1600×1000; button 232×68 uses 464×136; enamel
+actual 322.3125×105.59375 uses 644×211. Cases interleave own then shared twice
+per preset, then InkPaper/button/enamel twice. Both invocations retain 22 rows.
+Raw evidence: `/tmp/opt-shared/{baseline,candidate}/capture.json`, matching
+per-attempt `.trace`/`.frames.json` and three native export hashes per row.
+No contended attempt; foreign overlap at most 0.040% baseline, 0.014% candidate.
+Every accepted row has 60 native-write bursts; every shared/model attempt has
+60 requested / 60 delivered transfers, including attribution-inconclusive ones.
+
+**Every attempt below remains visible.** Values are native median / p95 / max
+milliseconds; `a1` and `a2` are repeats, not selected best rows. A clean FAIL
+cannot be erased by a PASS. `—` is attribution-inconclusive, not zero execution.
+
+| Scene / tier | Baseline a1 | Baseline a2 | Candidate a1 | Candidate a2 | Candidate all-clean-repeat verdict |
+|---|---|---|---|---|---|
+| Karman / own | 2.258 / 3.214 / 3.583 (FAIL) | 2.280 / 3.550 / 4.798 (FAIL) | 2.308 / 3.301 / 4.569 (FAIL) | 2.360 / 3.165 / 3.717 (FAIL) | FAIL |
+| Karman / shared | 2.442 / 4.388 / 4.826 (FAIL) | 2.597 / 4.219 / 5.202 (FAIL) | 2.390 / 3.656 / 5.756 (FAIL) | 2.355 / 3.666 / 4.718 (FAIL) | FAIL |
+| GasFlare / own | 1.932 / 2.912 / 3.921 (FAIL) | 1.875 / 2.469 / 2.678 (FAIL) | 1.918 / 3.325 / 4.679 (FAIL) | 1.984 / 3.036 / 4.440 (FAIL) | FAIL |
+| GasFlare / shared | 2.130 / 3.649 / 4.327 (FAIL) | 2.098 / 2.723 / 4.299 (FAIL) | 1.971 / 2.522 / 4.601 (FAIL) | — (INCONCLUSIVE) | FAIL |
+| LavaLamp / own | 1.429 / 1.844 / 3.388 (PASS) | 2.122 / 3.433 / 3.835 (FAIL) | 1.508 / 2.252 / 4.065 (FAIL) | 1.631 / 2.542 / 3.687 (FAIL) | FAIL |
+| LavaLamp / shared | 1.893 / 2.563 / 3.197 (FAIL) | 1.589 / 2.049 / 3.857 (FAIL) | 1.528 / 2.455 / 3.594 (FAIL) | 1.595 / 2.454 / 3.101 (FAIL) | FAIL |
+| (default) / own | — (INCONCLUSIVE) | 1.710 / 2.353 / 2.949 (FAIL) | — (INCONCLUSIVE) | 1.693 / 2.430 / 3.590 (FAIL) | FAIL |
+| (default) / shared | 1.883 / 2.314 / 3.551 (FAIL) | 1.783 / 3.005 / 3.965 (FAIL) | 1.812 / 2.721 / 5.092 (FAIL) | 1.677 / 2.779 / 4.509 (FAIL) | FAIL |
+| model-inkpaper / shared | 1.807 / 3.986 / 4.065 (FAIL) | 1.846 / 2.438 / 2.465 (FAIL) | — (INCONCLUSIVE) | 1.772 / 3.850 / 4.036 (FAIL) | FAIL |
+| model-button / shared | 0.662 / 0.742 / 0.802 (PASS) | 0.699 / 0.764 / 0.907 (PASS) | 0.645 / 0.743 / 0.785 (PASS) | 0.635 / 0.748 / 0.790 (PASS) | PASS |
+| model-enamel96 / shared | 0.478 / 0.506 / 0.622 (PASS) | 0.468 / 0.597 / 2.183 (PASS) | 0.448 / 0.461 / 0.469 (PASS) | 0.452 / 0.537 / 0.644 (PASS) | PASS |
+
+Paired **shared minus immediately preceding own** native statistics (median /
+p95 / max ms); same seed, scene, native size, run order. These quantify observed
+tier differences, **not isolated snapshot time**: unchanged own and shared
+execution vary substantially. Negative deltas expose that limit rather than
+being clipped or interpreted as a free snapshot.
+
+| Preset | Baseline pair 1 | Baseline pair 2 | Candidate pair 1 | Candidate pair 2 |
+|---|---|---|---|---|
+| Karman | 0.184 / 1.174 / 1.243 | 0.317 / 0.668 / 0.404 | 0.081 / 0.355 / 1.187 | -0.004 / 0.500 / 1.001 |
+| GasFlare | 0.198 / 0.737 / 0.406 | 0.223 / 0.254 / 1.621 | 0.053 / -0.802 / -0.078 | INCONCLUSIVE |
+| LavaLamp | 0.464 / 0.719 / -0.191 | -0.533 / -1.385 / 0.021 | 0.020 / 0.203 / -0.471 | -0.035 / -0.087 / -0.587 |
+| (default) | INCONCLUSIVE | 0.073 / 0.651 / 1.016 | INCONCLUSIVE | -0.016 / 0.349 / 0.918 |
+
+Attribution failures retained: baseline default-own a1 spacing error 11.712 ms;
+candidate default-own a1 14.515 ms, GasFlare-shared a2 4.101 ms, InkPaper a1
+4.072 ms (gate <4 ms). No invented replacement marks or relaxed gate.
+
+Native copy evidence: Karman shared a1 baseline 41 encoders in 59/60 frames,
+candidate 40 in 59/60. Frame 5: baseline two full-native-size raster copies,
+IOSurfaces 229→238→254; candidate one, 94→637. Detailed buffer identities in
+ADR 0103. Necessary snapshot copy remains; no per-shader time ranking claimed.
+The code removes demonstrably redundant work, but these variable tails do not
+prove a universal GPU-time improvement or certify the open p95 goal.
+
+Same-seed before/after PNGs and manifests stay under `/tmp/opt-shared/visual/`.
+Hardware tests cover explicit-none reference parity, saturated/translucent
+sRGB and display-p3 composites on light/dark backgrounds, every tone map and
+transparent/reveal/distortion output; existing 24-instance, overlapping/stale
+snapshot, forced-loss restore and lazy/churn coverage remains. No profile
+setting changed; preserving a tagged sRGB canvas is independent of a monitor
+profile, not a claim to have exercised every OS profile.
+
 ### Hot-pass attribution — bounded negative result
 
 No truthful per-shader top-three GPU shares could be derived. Native labels are
