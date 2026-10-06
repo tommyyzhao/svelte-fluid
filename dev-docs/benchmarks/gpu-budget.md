@@ -625,6 +625,47 @@ immediately after its operation. No user Chrome or other lane process signalled.
 Worktree and untracked dependency symlink retained (not pushed/remotely preserved);
 no installs, tracker writes, push or merge.
 
+### InkPaper pressure-pairing lane — 2026-10-06
+
+Candidate 4 ([ADR 0104](../decisions/0104-pigment-pressure-pairing.md)): fold
+warm-start pressure decay into paired Jacobi, retain 16 iterations and all field
+precisions. Pressure draws **17 → 8**; held-wet steady step+display **24 → 15**.
+No capture-script, preset, host or FluidEngine edits.
+
+Same-seed native comparison uses unchanged `bun scripts/gpu-capture.mjs`,
+`GPU_CAPTURE_CASES='model-inkpaper@800x500:shared:2'`, seed 5, 1600×1000 native
+backing, GPU lock held. Existing 200 warm-up/60 paced frame protocol, attribution,
+transfer and foreign-contention gates, all-clean-repeats rule unchanged.
+
+| Revision / capture | Median ms | p95 ms | Max ms | Verdict | Foreign overlap |
+|---|---:|---:|---:|---|---|
+| Base `76bdaa2`, `/tmp/opt-pigment/before/`, attempt 1 | 1.837372 | 2.636584 | 4.208206 | FAIL | 0 ms / 0% |
+| Paired, `/tmp/opt-pigment/after/`, attempt 1 | 1.631124 | 2.278959 | 2.745042 | FAIL | 0 ms / 0% |
+| Paired, `/tmp/opt-pigment/after-repeat2/`, attempt 1 | 1.601794 | 2.236915 | 4.021416 | FAIL | 0 ms / 0% |
+
+All three captures aligned (0.476917/0.286375/0.521292 ms error), zero strays,
+60 native writes and 60/60 requested/delivered transfers. Both clean after
+repeats improve p95 against baseline by 13.6–15.2%; **all-repeats verdict remains
+FAIL**. Worst after-p95 **2.278959 ms**, gap **0.278959 ms (13.95%)** above the
+2 ms threshold. Pairing reduces cost but does not meet ADR 0101. Raw trace/frame
+metadata and SHA256 export hashes retained in each directory's `capture.json`.
+Historical InkPaper 1.617/2.453/2.771 ms remains above, not replaced by this run.
+No per-shader GPU share inferred from draw counts.
+
+Hardware pigment suite **14/14 passes**: old/new pressure parity (including odd
+counts and edges) ≤2e-6 fp32 / <0.002 fp16 on the bounded fixture; painting fields
+≤1e-5, mass <1e-5 relative; isolated settling/evaporation mass <1e-6 relative;
+resist/drying, fixed-step resize and sibling isolation, context-loss replay ≤1e-6
+per cell. fp16 bound accounts for omitted intermediate rounding, not precision
+reduction. Existing semi-Lagrangian transport is not claimed globally conservative.
+Same-seed wet steps 1/30/120 and final dry PNGs at native DPR are untracked under
+`/tmp/opt-pigment/visual/manifest.json` (paths/SHA256s/differences). Wet stages
+1/30/120 pixel-identical; dry changes only 3/1,600,000 pixels by 1 RGB LSB,
+mean absolute RGB error 6.25e-7 LSB. Dry frames visually inspected with unchanged
+grain/rim/resist. Required Node 863/863, check 0 errors/warnings, prepack and diff
+whitespace checks pass. All owned Chrome/xctrace/Vite handles closed; locks
+released, user Chrome untouched, no tracker writes/installs/push/merge.
+
 ### Hot-pass attribution — bounded negative result
 
 No truthful per-shader top-three GPU shares could be derived. Native labels are

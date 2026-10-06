@@ -697,6 +697,20 @@ export class PigmentEngine implements GlHostInstance {
 		}
 	}
 
+	private solvePressure(gl: WebGL2RenderingContext, iterations: number): void {
+		const f = this.fields!;
+		// Fold warm-start decay into the first pair; keep all solver iterations (ADR-0104).
+		for (let i = 0; i < iterations; i += 2) {
+			const paired = i + 1 < iterations;
+			this.pass(gl, paired ? 'pigment-jacobi2' : 'pigment-jacobi', paired ? S.JACOBI2 : S.JACOBI, [f.pressure[1]], {
+				uP: f.pressure[0].tex,
+				uDiv: f.div.tex,
+				uScale: i === 0 ? 0.8 : 1
+			});
+			swap(f.pressure);
+		}
+	}
+
 	private step(gl: WebGL2RenderingContext): void {
 		const f = this.fields!;
 		this.landOpening();
@@ -718,12 +732,7 @@ export class PigmentEngine implements GlHostInstance {
 		this.pass(gl, 'pigment-vorticity', S.VORTICITY, [f.vel[1]], { uVel: f.vel[0].tex, uCurl: f.curl.tex, uStrength: 0.12 });
 		swap(f.vel);
 		this.pass(gl, 'pigment-divergence', S.DIVERGENCE, [f.div], { uVel: f.vel[0].tex });
-		this.pass(gl, 'pigment-scale', S.SCALE, [f.pressure[1]], { uSrc: f.pressure[0].tex, uScale: 0.8 });
-		swap(f.pressure);
-		for (let i = 0; i < JACOBI; i++) {
-			this.pass(gl, 'pigment-jacobi', S.JACOBI, [f.pressure[1]], { uP: f.pressure[0].tex, uDiv: f.div.tex });
-			swap(f.pressure);
-		}
+		this.solvePressure(gl, JACOBI);
 		this.pass(gl, 'pigment-gradient', S.GRADIENT, [f.vel[1]], { uP: f.pressure[0].tex, uVel: f.vel[0].tex, uWater: f.water[0].tex, uEta: 0.35 });
 		swap(f.vel);
 		this.pass(gl, 'pigment-transport', S.TRANSPORT, [f.water[1], f.susp[1], f.dep[1]], {
