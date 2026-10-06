@@ -5,7 +5,8 @@
 // preset matrix at the machine DPR), GPU_CAPTURE_DIR (default /tmp/gpu-capture; traces stay there).
 // Hardware Chrome with ordinary flags: Playwright's default --enable-unsafe-swiftshader is removed.
 import { chromium } from 'playwright';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile } from 'node:fs/promises';
+import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 
@@ -65,9 +66,11 @@ function analyse(trace, gpuPid, marks, backing) {
 	const io = exportTable(trace, 'metal-io-surface-access');
 	const hashes = { 'metal-gpu-intervals': sha256(gpu.xml), 'metal-application-command-buffer-submissions': sha256(subs.xml), 'metal-io-surface-access': sha256(io.xml) };
 	const exec = new Map(); // cmdbuffer-id -> [start,end] ns, Chrome GPU process only
+	const browserOs = []; // measured Chrome GPU process + WindowServer, not foreign Chrome clients
 	const other = []; // [start,end,label] for non-instance processes
 	for (const r of gpu.rows) {
 		const s = n(r.start), e = s + n(r.duration), pid = pidOf(r.process);
+		if (pid === gpuPid || /^WindowServer \(/.test(r.process?.attrs.fmt ?? '')) browserOs.push([s, e]);
 		if (pid === gpuPid) { const cb = n(r['cmdbuffer-id']); if (!exec.has(cb)) exec.set(cb, []); exec.get(cb).push([s, e]); }
 		else other.push([s, e, r.process ? r.process.attrs.fmt : 'unattributed']);
 	}
@@ -108,10 +111,14 @@ function analyse(trace, gpuPid, marks, backing) {
 		const iv = b.cbs.flatMap((c) => exec.get(c.cb) ?? []);
 		const s = Math.min(...iv.map((x) => x[0])), e = Math.max(...iv.map((x) => x[1]));
 		const sizes = new Set(b.cbs.flatMap((c) => [...(writes.get(c.cb) ?? [])]));
+		// Ceiling: all measured Chrome GPU-process + WindowServer execution in this frame window,
+		// including execution beyond the next commit if this instance has not completed yet.
+		const windowEnd = Math.max(run[i + 1]?.start ?? e + 25e6, e);
+		const browserOsMs = union(browserOs.filter((x) => x[1] > b.start && x[0] < windowEnd).map(([a, z]) => [Math.max(a, b.start), Math.min(z, windowEnd)])) / 1e6;
 		const by = {};
 		for (const x of other) if (x[1] > s && x[0] < e) (by[x[2]] ??= []).push([Math.max(x[0], s), Math.min(x[1], e)]);
 		return {
-			gpuMs: union(iv) / 1e6, firstToLastMs: (e - s) / 1e6, commitOffsetMs: (b.start - run[0].start - (t0[i] - t0[0])) / 1e6,
+			gpuMs: union(iv) / 1e6, browserOsMs, firstToLastMs: (e - s) / 1e6, commitOffsetMs: (b.start - run[0].start - (t0[i] - t0[0])) / 1e6,
 			cbs: b.cbs.map((c) => `0x${c.cb.toString(16)}:${c.enc}`), encoders: b.cbs.reduce((sum, c) => sum + c.enc, 0),
 			presentWrite: sizes.has(`${backing[0]}x${backing[1]}`), otherWrites: [...sizes].filter((z) => z !== `${backing[0]}x${backing[1]}`),
 			overlap: Object.fromEntries(Object.entries(by).map(([k, v]) => [k, union(v) / 1e6]))
@@ -127,8 +134,30 @@ function analyse(trace, gpuPid, marks, backing) {
 		aligned, alignErrMs: best.err / 1e6, bursts: bursts.length, strays, spanMs,
 		medianMs: g.length ? rank(g, 0.5) : NaN, p95Ms: g.length ? rank(g, 0.95) : NaN, maxMs: g.length ? Math.max(...g) : NaN,
 		framesWithPresentWrite: frames.filter((f) => f.presentWrite).length,
+		browserOsMedianMs: g.length ? rank(frames.map((f) => f.browserOsMs), 0.5) : NaN,
+		browserOsP95Ms: g.length ? rank(frames.map((f) => f.browserOsMs), 0.95) : NaN,
+		browserOsMaxMs: g.length ? Math.max(...frames.map((f) => f.browserOsMs)) : NaN,
 		otherClients, hashes, frames
 	};
+}
+
+// Runnable self-check; replay permits metadata/ceiling derivation from existing /tmp traces.
+if (process.argv.includes('--self-check')) {
+	assert.equal(union([[0, 3], [1, 2], [2, 5], [7, 8]]), 6);
+	assert.equal(rank(Array.from({ length: 60 }, (_, i) => i), 0.5), 30);
+	assert.equal(rank(Array.from({ length: 60 }, (_, i) => i), 0.95), 56);
+	console.log('GPU capture self-check passed'); process.exit(0);
+}
+if (process.argv[2] === '--replay') {
+	const d = JSON.parse(await readFile(process.argv[3], 'utf8'));
+	for (const r of d.results) {
+		if (!r.marks) continue;
+		const a = analyse(r.trace, r.gpuPid, r.marks, r.backing);
+		const { frames, ...summary } = a;
+		Object.assign(r, summary);
+		await writeFile(`${r.trace}.frames.json`, JSON.stringify(frames, null, 1));
+	}
+	await writeFile(process.argv[3], JSON.stringify(d, null, 2)); process.exit(0);
 }
 
 // --- capture --------------------------------------------------------------------------------
@@ -310,5 +339,5 @@ async function capture(page, c, name, attempt) {
 	await page.evaluate(() => { globalThis.__cap.e.dispose(); document.body.replaceChildren(); delete globalThis.__cap; });
 	const a = analyse(trace, pid, run.marks, setup.backing);
 	const { frames, ...summary } = a;
-	return { ...c, name, trace, gpuPid: pid, command: cmd.join(' '), ...setup, transfers: run.transfers, settled: run.settled, transfersOk: run.transfersOk, ...summary, frameDetail: frames, perFrameGpuMs: frames.map((f) => +f.gpuMs.toFixed(4)) };
+	return { ...c, name, trace, gpuPid: pid, command: cmd.join(' '), ...setup, transfers: run.transfers, settled: run.settled, transfersOk: run.transfersOk, marks: run.marks, ...summary, frameDetail: frames, perFrameGpuMs: frames.map((f) => +f.gpuMs.toFixed(4)) };
 }
