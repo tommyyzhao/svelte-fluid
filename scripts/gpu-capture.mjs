@@ -91,7 +91,7 @@ function sceneVerdicts(results, requiredRuns = 1, expectedSeeds) {
 	}
 	return [...scenes.values()].map((s) => {
 		const clean = s.repeats.filter((r) => r.verdict === 'PASS' || r.verdict === 'FAIL');
-		const requested = s.preset?.startsWith('model-') ? [s.preset === 'model-inkpaper' ? 5 : 'not applicable (model)'] : expectedSeeds ?? [...new Set(s.repeats.map((r) => r.seed))];
+		const requested = expectedSeeds && s.preset?.startsWith('model-') ? [s.preset === 'model-inkpaper' ? 5 : 'not applicable (model)'] : expectedSeeds ?? [...new Set(s.repeats.map((r) => r.seed))];
 		const complete = requested.every((seed) => {
 			const repeats = clean.filter((r) => r.seed === seed);
 			return new Set(repeats.map((r) => r.run ?? r.trace)).size >= requiredRuns;
@@ -329,6 +329,7 @@ if (options['self-check']) {
 	assert.equal(replayReady({ error: 'browser launch failed', verdict: 'INCONCLUSIVE' }), false);
 	// review: missing-requested-seed
 	assert.equal(sceneVerdicts(repeats, 3, [5, 42])[0].verdict, 'INCOMPLETE');
+	assert.equal(sceneVerdicts([{ ...clean, preset: 'model-button', seed: 'unseeded (historical)', verdict: 'PASS', trace: 'old.trace' }])[0].verdict, 'PASS');
 	// review: mixed-infrastructure-contention-retries
 	const allowances = { gpuExits: 0, contention: 0 };
 	assert.equal(retryAllowed({ error: 'GPU process exited' }, allowances), true);
