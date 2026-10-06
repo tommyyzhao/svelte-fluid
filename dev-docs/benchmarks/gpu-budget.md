@@ -1778,7 +1778,16 @@ GasFlare shared1440×900, native DPR2. Pressure ladders are tried mildest first
 If pressure alone cannot clear the margin, reduce dye (Karman768,
 TeslaValve/GasFlare512), retry baseline pressure then its approved ladder in
 mildest-first order. This second phase tests whether the dye cut can avoid or
-minimize the pressure cut. No simResolution changes authorized or attempted.
+minimize the pressure cut. Initial scope excludes simResolution changes.
+
+Scope extension from the lead after the owner selected **“Screen sim 160/128”**:
+Karman/TeslaValve only, try sim160 then128 at original pressure/dye. If neither
+clears ≤1.85ms, combine sim128 with the approved pressure ladder, then the
+reduced-dye ladder, mildest pressure first; ceiling sim128/pressure24/reduced dye.
+GasFlare keeps its original sim160. No other config settings change. Any candidate
+meeting screening margin must still pass every failing size/tier R3. A clean
+certification FAIL is retained; a deeper approved setting is a new candidate,
+not a retry of that failure. GPU lock remains held through this second round.
 Screening is not certification. Any candidate reaching the screening margin
 gets the complete ADR0105 N600/R3/W200/seed5 protocol across the failing
 size/tier set, including Karman shared1440×900. Every clean run must have
