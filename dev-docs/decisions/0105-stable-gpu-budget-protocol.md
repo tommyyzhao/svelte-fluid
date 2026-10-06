@@ -146,3 +146,35 @@ than yielding a budget verdict. These gates validate this paced workload, not a
 mathematical proof against every possible coincident misassignment. A thin gap
 margin primarily increases the inconclusive rate; never relax the alignment gate
 to conceal it. Fresh validation remains required.
+
+Mechanical harness hardening before any sweep: a 90 s outer attempt deadline
+covers navigation, warm-up, recording, export and cleanup; AbortController cancels
+async export/analysis, exact owned PID+command census cleanup retains all foreign
+processes. Every phase writes progress; partial attempts remain INCONCLUSIVE and
+advance. No completed attempt for five minutes saves partial results, cleans owned
+resources and exits nonzero. Self-check simulates a never-resolving phase and
+asserts deadline cleanup. Attached GPU PID disappearance is checked during
+startup and measurement and reported as INCONCLUSIVE, not an attribution failure.
+Exports use async `execFile` with a 15 s bound. Parsing each trace in a short-lived
+Bun child prevents ~2 GiB XML/parser RSS accumulating in the Chrome-owning parent;
+log parent RSS before each browser launch. Two earlier third-run attempts stalled
+or lost targets (one trace ended at 70 s after submissions stopped, another at
+1.393218 s with “Target app exited”); memory pressure is a hypothesis, not proved
+causation. Preserve all
+failed pilot attempts and revalidate the hardened harness on Karman only.
+
+### Pre-sweep infrastructure retry amendment
+
+Fixed before any matrix data: **GPU-process-exit attempts are infrastructure
+INCONCLUSIVE and may be retried at most twice extra per run slot** (three total
+attempts, 30 s wait). Preserve and report every attempt. Never retry a clean
+FAIL to erase it, never discard a clean result. A scene requires **R=3 distinct
+clean run slots per requested seed**; otherwise report **INCOMPLETE**, with
+observed clean failures retained separately. CONTENDED retains the existing
+one-extra-attempt bound. Fresh Playwright temporary profile/browser per attempt
+(no shared user-data-dir); close owned context/browser after each, `Bun.gc(true)`.
+Record parent RSS before launch and ordinary Chrome stderr logging; no GPU-behavior
+flags. Run six Karman-only slots to diagnose the repeated third-slot exit pattern,
+not a quality sweep. DiagnosticReports inspection found no matching Chrome crash/
+hang report at the pilot times; the Chrome Helper report dated 06:32 is an earlier
+user-Chrome disk-write advisory, unrelated and untouched.
