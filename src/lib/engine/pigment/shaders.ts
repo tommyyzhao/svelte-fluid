@@ -178,21 +178,36 @@ void main() {
 	o = 0.5 * (R - L + T - B);
 }`;
 
-/** Pressure warm start: last step's pressure, decayed. */
-export const SCALE = `${HEAD}
-uniform sampler2D uSrc;
-uniform float uScale;
-out vec4 o;
-void main() { o = texture(uSrc, vUv) * uScale; }`;
-
 export const JACOBI = `${HEAD}
 uniform sampler2D uP, uDiv;
+uniform float uScale;
 out float o;
 void main() {
 	float L = texture(uP, vUv - vec2(texel.x, 0.0)).r;
 	float R = texture(uP, vUv + vec2(texel.x, 0.0)).r;
 	float B = texture(uP, vUv - vec2(0.0, texel.y)).r;
 	float T = texture(uP, vUv + vec2(0.0, texel.y)).r;
+	o = 0.25 * ((L + R + B + T) * uScale - texture(uDiv, vUv).r);
+}`;
+
+/** Two iterations; clamp inner positions to reproduce the intermediate texture's edge. */
+export const JACOBI2 = `${HEAD}
+uniform sampler2D uP, uDiv;
+uniform float uScale;
+out float o;
+float inner(vec2 uv) {
+	float L = texture(uP, uv - vec2(texel.x, 0.0)).r;
+	float R = texture(uP, uv + vec2(texel.x, 0.0)).r;
+	float B = texture(uP, uv - vec2(0.0, texel.y)).r;
+	float T = texture(uP, uv + vec2(0.0, texel.y)).r;
+	return 0.25 * ((L + R + B + T) * uScale - texture(uDiv, uv).r);
+}
+vec2 center(vec2 uv) { return clamp(uv, 0.5 * texel, vec2(1.0) - 0.5 * texel); }
+void main() {
+	float L = inner(center(vUv - vec2(texel.x, 0.0)));
+	float R = inner(center(vUv + vec2(texel.x, 0.0)));
+	float B = inner(center(vUv - vec2(0.0, texel.y)));
+	float T = inner(center(vUv + vec2(0.0, texel.y)));
 	o = 0.25 * (L + R + B + T - texture(uDiv, vUv).r);
 }`;
 

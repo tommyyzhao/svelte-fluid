@@ -7,6 +7,7 @@ import { PigmentEngine } from '../pigment/PigmentEngine.js';
 import type { PigmentEngineOptions } from '../pigment/PigmentEngine.js';
 import { bloom } from '../pigment/brush.js';
 import type { Dab } from '../pigment/brush.js';
+import * as S from '../pigment/shaders.js';
 
 /* ADR-0090: PigmentEngine and InkPaper on hardware WebGL2. */
 
@@ -62,6 +63,116 @@ function sum(field: { data: Float32Array } | null, channel = -1): number {
 	for (let i = 0; i < field.data.length; i += 4) s += channel < 0 ? field.data[i] + field.data[i + 1] + field.data[i + 2] + field.data[i + 3] : field.data[i + channel];
 	return s;
 }
+
+type Target = { tex: WebGLTexture; w: number; h: number };
+type Pair = [Target, Target];
+type PressureHook = {
+	host: { run(e: PigmentEngine, fn: (gl: WebGL2RenderingContext) => void): boolean };
+	f32: boolean;
+	fields: { simW: number; simH: number; pressure: Pair; div: Target };
+	pass(gl: WebGL2RenderingContext, name: string, shader: string, out: Target[], inputs: Record<string, WebGLTexture | number>): void;
+	bindTargets(gl: WebGL2RenderingContext, out: Target[]): void;
+	solvePressure(gl: WebGL2RenderingContext, iterations: number): void;
+	step(gl: WebGL2RenderingContext): void;
+};
+const pressureHook = (e: PigmentEngine) => e as unknown as PressureHook;
+const OLD_JACOBI = S.JACOBI.replace('(L + R + B + T) * uScale', 'L + R + B + T');
+const OLD_SCALE = `#version 300 es
+precision highp float;
+precision highp sampler2D;
+in vec2 vUv;
+uniform sampler2D uSrc;
+out float o;
+void main() { o = texture(uSrc, vUv).r * 0.8; }`;
+function oldPressure(e: PigmentEngine, gl: WebGL2RenderingContext, iterations: number): void {
+	const h = pressureHook(e), f = h.fields;
+	const swap = () => f.pressure.reverse();
+	h.pass(gl, 'pigment-test-old-scale', OLD_SCALE, [f.pressure[1]], { uSrc: f.pressure[0].tex });
+	swap();
+	for (let i = 0; i < iterations; i++) {
+		h.pass(gl, 'pigment-test-old-jacobi', OLD_JACOBI, [f.pressure[1]], { uP: f.pressure[0].tex, uDiv: f.div.tex });
+		swap();
+	}
+}
+function fixedStep(e: PigmentEngine): void {
+	pressureHook(e).host.run(e, (gl) => pressureHook(e).step(gl));
+}
+
+describe('Pigment pressure pairing (ADR-0104)', () => {
+	it('matches scale + single Jacobi at edges, odd counts, fp32 and fp16', () => {
+		for (const half of [false, true]) for (const iterations of [1, 2, 15, 16, 17]) {
+			const e = engine();
+			e.setVisible(false);
+			const h = pressureHook(e);
+			if (half) h.f32 = false;
+			e.resize(51, 33, 2);
+			const f = h.fields, gl = hostGl(e);
+			const input = new Float32Array(f.simW * f.simH);
+			const div = Float32Array.from(input, (_, i) => Math.sin(i * 1.7) * 0.2);
+			for (let i = 0; i < input.length; i++) input[i] = Math.cos(i * 0.3) * 0.4;
+			const upload = (target: Target, data: Float32Array) => {
+				gl.bindTexture(gl.TEXTURE_2D, target.tex);
+				gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, f.simW, f.simH, gl.RED, gl.FLOAT, data);
+			};
+			const read = () => {
+				h.bindTargets(gl, [f.pressure[0]]);
+				const out = new Float32Array(input.length * 4);
+				gl.readPixels(0, 0, f.simW, f.simH, gl.RGBA, gl.FLOAT, out);
+				return Float32Array.from(input, (_, i) => out[i * 4]);
+			};
+			h.host.run(e, () => {
+				upload(f.pressure[0], input); upload(f.div, div);
+				oldPressure(e, gl, iterations); const old = read();
+				upload(f.pressure[0], input);
+				const draw = vi.spyOn(gl, 'drawElements');
+				h.solvePressure(gl, iterations);
+				expect(draw).toHaveBeenCalledTimes(Math.ceil(iterations / 2)); draw.mockRestore();
+				const next = read();
+				// fp16 unit roundoff is 2^-11; omitted scale/intermediate stores
+				// accumulate across <=17 nonexpansive stencil iterations. 0.002
+				// absolute covers this bounded |p|<0.4 fixture, not arbitrary fields.
+				const tolerance = half ? 0.002 : 0.000002;
+				for (let i = 0; i < old.length; i++) expect(Math.abs(old[i] - next[i])).toBeLessThan(tolerance);
+				expect(gl.getError()).toBe(gl.NO_ERROR);
+			});
+			e.dispose();
+		}
+	});
+
+	it('preserves wet/dry mass, resist, resize/replay determinism and sibling isolation', () => {
+		const make = (legacy = false) => {
+			const e = engine(); e.setVisible(false); e.resize(120, 90, 2);
+			e.setResist([{ x: 75, y: 30, w: 30, h: 30 }]);
+			if (legacy) pressureHook(e).solvePressure = (gl, iterations) => oldPressure(e, gl, iterations);
+			e.paint([{ x: 42, y: 45, r: 28, water: 0.3, pigment: [0.2, 0.1, 0, 0], vx: 2 }]);
+			return e;
+		};
+		const a = make(), b = make(true), replay = make(), sibling = make();
+		const same = (x: PigmentEngine, y: PigmentEngine, tolerance: number) => {
+			for (const field of ['water', 'wet', 'deposited'] as const) {
+				const left = x.readField(field)!, right = y.readField(field)!;
+				for (let i = 0; i < left.data.length; i++) expect(Math.abs(left.data[i] - right.data[i])).toBeLessThanOrEqual(tolerance);
+			}
+		};
+		for (let i = 0; i < 30; i++) { fixedStep(a); fixedStep(b); fixedStep(replay); }
+		same(a, b, 0.00001); same(a, replay, 0);
+		const mass = (e: PigmentEngine) => sum(e.readField('wet')) + sum(e.readField('deposited'));
+		expect(Math.abs(mass(a) - mass(b))).toBeLessThan(mass(b) * 0.00001);
+		const frozen = sibling.readField('water')!.data.slice();
+		a.resize(150, 105, 2); b.resize(150, 105, 2); replay.resize(150, 105, 2);
+		a.settle(); b.settle(); replay.settle();
+		same(a, b, 0.00001); same(a, replay, 0);
+		expect(sibling.readField('water')!.data).toEqual(frozen);
+		expect(mass(a)).toBeGreaterThan(1);
+		expect(sum(a.readField('water'), 0)).toBe(0);
+		expect(sum(a.readField('wet'))).toBe(0);
+		const dep = a.readField('deposited')!;
+		for (let y = 0; y < dep.height; y++) for (let x = 0; x < dep.width; x++) {
+			const cssX = (x + 0.5) * 150 / dep.width, cssY = 105 - (y + 0.5) * 105 / dep.height;
+			if (cssX > 79 && cssX < 101 && cssY > 34 && cssY < 56) expect(dep.data[(y * dep.width + x) * 4]).toBe(0);
+		}
+	});
+});
 
 describe('PigmentEngine (ADR-0090)', () => {
 	it('compiles, paints, dries and reads back at DPR 1, 2 and 3', async () => {
