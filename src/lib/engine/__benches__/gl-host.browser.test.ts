@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { FluidEngine, _setContextTier } from '../FluidEngine.js';
 import { activeFrameSubscribers } from '../frame-scheduler.js';
 import { acquireGlHost, releaseGlHost } from '../gl-host.js';
 import type { GlHost, GlHostInstance } from '../gl-host.js';
@@ -185,7 +186,7 @@ void main () {
 		});
 		expect(host.gl.getContextAttributes()?.premultipliedAlpha).toBe(true);
 		const pending = host.present(a);
-		const bitmap = await createImageBitmap(host.gl.canvas, { colorSpaceConversion: 'default' });
+		const bitmap = await createImageBitmap(host.gl.canvas, { colorSpaceConversion: 'none' });
 		try {
 			b.canvas.getContext('bitmaprenderer')!.transferFromImageBitmap(bitmap);
 		} finally {
@@ -194,12 +195,12 @@ void main () {
 		await pending;
 		expect(pixels(b.canvas)).toEqual(pixels(a.canvas));
 		// Native compositing must also agree, not just unpremultiplied readback.
-		for (const background of ['#fff', '#172331']) {
+		for (const colorSpace of ['srgb', 'display-p3'] as const) for (const background of ['#fff', '#172331']) {
 			const composite = (canvas: HTMLCanvasElement) => {
 				const copy = document.createElement('canvas');
 				copy.width = canvas.width;
 				copy.height = canvas.height;
-				const ctx = copy.getContext('2d')!;
+				const ctx = copy.getContext('2d', { colorSpace })!;
 				ctx.fillStyle = background;
 				ctx.fillRect(0, 0, copy.width, copy.height);
 				ctx.drawImage(canvas, 0, 0);
@@ -210,6 +211,39 @@ void main () {
 		expect(Array.from(pixels(a.canvas)).filter((_, i) => i % 4 === 3)).toContain(128);
 		expect(host.gl.getError()).toBe(host.gl.NO_ERROR);
 	});
+
+	for (const toneMapping of ['none', 'neutral', 'agx'] as const) {
+		for (const output of ['transparent', 'reveal', 'distortion'] as const) {
+			it(`preserves visible sRGB ${output} ${toneMapping} snapshots against none conversion`, async () => {
+				const a = instance(160, 100);
+				const b = instance(160, 100);
+				_setContextTier('shared');
+				let engine: FluidEngine | undefined;
+				try {
+					engine = new FluidEngine({ canvas: a.canvas, autoStart: false, config: {
+						seed: 5, pointerInput: false, initialSplatCount: 0, dyeResolution: 128,
+						simResolution: 32, transparent: true, toneMapping,
+						reveal: output === 'reveal', distortion: output === 'distortion'
+					} });
+					const host = acquireGlHost(engine as unknown as GlHostInstance);
+					acquireGlHost(b);
+					for (const [x, color] of [[0.25, { r: 10, g: 0, b: 0 }], [0.5, { r: 0, g: 10, b: 0 }], [0.75, { r: 0, g: 0, b: 10 }]] as const)
+						engine.splat(x, 0.5, 0, 0, color);
+					engine.advance(3, 1 / 60);
+					engine.renderOnce();
+					const reference = await createImageBitmap(host.gl.canvas, { colorSpaceConversion: 'none' });
+					try { b.canvas.getContext('bitmaprenderer')!.transferFromImageBitmap(reference); }
+					finally { reference.close(); }
+					await engine.presented();
+					expect(pixels(a.canvas)).toEqual(pixels(b.canvas));
+					expect(pixels(a.canvas).some((v, i) => i % 4 === 3 && v > 0 && v < 255)).toBe(true);
+				} finally {
+					_setContextTier('auto');
+					engine?.dispose();
+				}
+			});
+		}
+	}
 
 	it('compiles define variants after the GLSL 300 version directive', async () => {
 		const a = instance(12, 9);

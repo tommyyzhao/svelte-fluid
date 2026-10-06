@@ -67,6 +67,16 @@ async function setup() {
 }
 
 describe('gl-host (ADR-0088)', () => {
+	it('requests an untransformed native snapshot, retaining its sRGB premultiplied tag', async () => {
+		const { acquireGlHost, releaseGlHost, instance, snapshots, surfaces } = await setup();
+		const a = instance();
+		const pending = acquireGlHost(a).present(a);
+		expect(createImageBitmap).toHaveBeenCalledExactlyOnceWith(surfaces[0]);
+		snapshots[0].resolve();
+		await pending;
+		releaseGlHost(a);
+	});
+
 	it('presents only the newest overlapping snapshot, closing stale bitmaps', async () => {
 		const { acquireGlHost, releaseGlHost, instance, presents, snapshots } = await setup();
 		const a = instance();
