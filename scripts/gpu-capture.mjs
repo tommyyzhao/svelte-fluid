@@ -13,7 +13,7 @@ const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const XCODE = { ...process.env, DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer' };
 const DIR = process.env.GPU_CAPTURE_DIR || '/tmp/gpu-capture';
 const PORT = 5198, URL = `http://127.0.0.1:${PORT}`;
-const FRAMES = 60, WARM = 200;
+const FRAMES = 60, WARM = 200, RETRIES = 2, RETRY_WAIT_MS = 30000;
 const PRESETS = ['(default)', 'LavaLamp', 'Plasma', 'InkInWater', 'FrozenSwirl', 'Aurora', 'CircularFluid', 'FrameFluid', 'AnnularFluid', 'SvgPathFluid', 'Toroidal', 'GasFlare', 'Venturi', 'Karman', 'TeslaValve'];
 const sha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 await mkdir(DIR, { recursive: true });
@@ -72,44 +72,62 @@ function analyse(trace, gpuPid, marks, backing) {
 		else other.push([s, e, r.process ? r.process.attrs.fmt : 'unattributed']);
 	}
 	const commits = subs.rows.filter((r) => pidOf(r.process) === gpuPid).map((r) => ({ t: n(r.start), cb: n(r['cmdbuffer-id']), enc: n(r['num-encoders']) || 0 })).sort((a, b) => a.t - b.t);
-	const writes = new Map();
-	for (const r of io.rows) if (Number(r.pid?.text) === gpuPid && n(r.width) === backing[0] && n(r.height) === backing[1] && r['access-type']?.text === '1') writes.set(n(r['cmdbuffer-id']), true);
-	// Align JS frame marks (ms) to trace time (ns): choose the offset that places the most
-	// encoder-bearing GPU-process commits inside [t0, t0 + cpu + 1 ms] of some measured frame.
-	const work = commits.filter((c) => c.enc > 0);
-	const t0 = marks.map((m) => m.t0 * 1e6), cpu = marks.map((m) => m.cpuMs * 1e6);
-	let best = { score: -1, off: 0 };
-	for (const c of work) {
-		const off = c.t - t0[0] - 0.05e6;
-		let score = 0, j = 0;
-		for (const w of work) {
-			while (j < t0.length - 1 && w.t >= t0[j + 1] + off - 0.5e6) j++;
-			if (w.t >= t0[j] + off - 0.5e6 && w.t <= t0[j] + off + cpu[j] + 1e6) score++;
-		}
-		if (score > best.score) best = { score, off };
+	const writes = new Map(); // cmdbuffer-id -> IOSurface sizes written by the Chrome GPU process
+	for (const r of io.rows) if (Number(r.pid?.text) === gpuPid && r['access-type']?.text === '1') {
+		const cb = n(r['cmdbuffer-id']);
+		if (!writes.has(cb)) writes.set(cb, new Set());
+		writes.get(cb).add(`${n(r.width)}x${n(r.height)}`);
 	}
-	const lo = t0[0] + best.off - 0.5e6, hi = t0.at(-1) + best.off + 16.7e6;
-	const inSpan = work.filter((c) => c.t >= lo && c.t < hi).length;
-	const frames = t0.map((start, i) => {
-		const a = start + best.off - 0.5e6, b = i + 1 < t0.length ? t0[i + 1] + best.off - 0.5e6 : hi;
-		const cbs = commits.filter((c) => c.t >= a && c.t < b);
-		const iv = cbs.flatMap((c) => exec.get(c.cb) ?? []);
-		const end = iv.length ? Math.max(...iv.map((x) => x[1])) : a;
-		// Non-instance GPU work overlapping this frame's commit window through its last instance execution.
-		const ws = other.filter((x) => x[1] > a && x[0] < Math.max(b, end));
+	// Frame windows: the page is otherwise static, so each paced frame appears as one burst of
+	// GPU-process commits separated from the next by most of a vsync. Cluster encoder-bearing
+	// commits on CPU commit-time gaps > GAP; the measured run must yield exactly one burst per
+	// JS mark, with burst-to-burst spacing matching the JS mark spacing.
+	const GAP = 6e6;
+	const bursts = [];
+	for (const c of commits) {
+		if (c.enc === 0) continue;
+		const last = bursts.at(-1);
+		if (last && c.t - last.end < GAP) { last.cbs.push(c); last.end = c.t; }
+		else bursts.push({ start: c.t, end: c.t, cbs: [c] });
+	}
+	// Choose the run of marks.length consecutive bursts whose start spacing best matches marks.
+	const t0 = marks.map((m) => m.t0 * 1e6);
+	let best = { err: Infinity, k: -1 };
+	for (let k = 0; k + t0.length <= bursts.length; k++) {
+		let err = 0;
+		for (let i = 1; i < t0.length; i++) err = Math.max(err, Math.abs((bursts[k + i].start - bursts[k].start) - (t0[i] - t0[0])));
+		if (err < best.err) best = { err, k };
+	}
+	const aligned = best.k >= 0 && best.err < 4e6; // every burst within 4 ms of its mark-relative time
+	const run = aligned ? bursts.slice(best.k, best.k + t0.length) : [];
+	const spanLo = run[0]?.start ?? 0, spanHi = run.length ? Math.max(...run.at(-1).cbs.flatMap((c) => (exec.get(c.cb) ?? []).map((x) => x[1])), run.at(-1).end) : 0;
+	// Any GPU-process burst between/around measured ones that is not a measured frame (e.g. a
+	// browser-compositor-only redraw) is counted, not silently assigned to the instance.
+	const strays = aligned ? bursts.filter((b) => b.start >= spanLo && b.start <= spanHi && !run.includes(b)).length : null;
+	const frames = run.map((b, i) => {
+		const iv = b.cbs.flatMap((c) => exec.get(c.cb) ?? []);
+		const s = Math.min(...iv.map((x) => x[0])), e = Math.max(...iv.map((x) => x[1]));
+		const sizes = new Set(b.cbs.flatMap((c) => [...(writes.get(c.cb) ?? [])]));
 		const by = {};
-		for (const x of ws) (by[x[2]] ??= []).push([Math.max(x[0], a), Math.min(x[1], Math.max(b, end))]);
-		return { gpuMs: union(iv) / 1e6, cbs: cbs.length, encoders: cbs.reduce((s, c) => s + c.enc, 0), presentWrite: cbs.some((c) => writes.get(c.cb)), other: Object.fromEntries(Object.entries(by).map(([k, v]) => [k, union(v) / 1e6])) };
+		for (const x of other) if (x[1] > s && x[0] < e) (by[x[2]] ??= []).push([Math.max(x[0], s), Math.min(x[1], e)]);
+		return {
+			gpuMs: union(iv) / 1e6, firstToLastMs: (e - s) / 1e6, commitOffsetMs: (b.start - run[0].start - (t0[i] - t0[0])) / 1e6,
+			cbs: b.cbs.map((c) => `0x${c.cb.toString(16)}:${c.enc}`), encoders: b.cbs.reduce((sum, c) => sum + c.enc, 0),
+			presentWrite: sizes.has(`${backing[0]}x${backing[1]}`), otherWrites: [...sizes].filter((z) => z !== `${backing[0]}x${backing[1]}`),
+			overlap: Object.fromEntries(Object.entries(by).map(([k, v]) => [k, union(v) / 1e6]))
+		};
 	});
+	// Contention: union of each non-Chrome-GPU-process client's execution inside the measured span.
+	const clients = {};
+	for (const x of other) if (x[1] > spanLo && x[0] < spanHi) (clients[x[2]] ??= []).push([Math.max(x[0], spanLo), Math.min(x[1], spanHi)]);
+	const spanMs = (spanHi - spanLo) / 1e6;
+	const otherClients = Object.fromEntries(Object.entries(clients).map(([k, v]) => [k, { busyMs: +(union(v) / 1e6).toFixed(3), busyPct: +((100 * union(v)) / (spanHi - spanLo)).toFixed(2) }]));
 	const g = frames.map((f) => f.gpuMs);
-	const otherKeys = [...new Set(frames.flatMap((f) => Object.keys(f.other)))];
 	return {
-		medianMs: rank(g, 0.5), p95Ms: rank(g, 0.95), maxMs: Math.max(...g), minMs: Math.min(...g),
-		framesWithWork: frames.filter((f) => f.encoders > 0).length, framesWithPresentWrite: frames.filter((f) => f.presentWrite).length,
-		alignment: { matchedCommits: best.score, encoderCommitsInSpan: inSpan },
-		nonInstanceMedianMs: Object.fromEntries(otherKeys.map((k) => [k, rank(frames.map((f) => f.other[k] ?? 0), 0.5)])),
-		nonInstanceMaxMs: Object.fromEntries(otherKeys.map((k) => [k, Math.max(...frames.map((f) => f.other[k] ?? 0))])),
-		hashes, frames
+		aligned, alignErrMs: best.err / 1e6, bursts: bursts.length, strays, spanMs,
+		medianMs: g.length ? rank(g, 0.5) : NaN, p95Ms: g.length ? rank(g, 0.95) : NaN, maxMs: g.length ? Math.max(...g) : NaN,
+		framesWithPresentWrite: frames.filter((f) => f.presentWrite).length,
+		otherClients, hashes, frames
 	};
 }
 
@@ -141,8 +159,34 @@ try {
 			await page.goto(`${URL}/__gpu_capture__`);
 			pageDpr = c.dpr;
 		}
-		await page.bringToFront();
 		const name = `${c.preset.replace(/\W/g, '')}-${c.w}x${c.h}-${c.tier}-dpr${c.dpr}`;
+		for (let attempt = 1; ; attempt++) {
+			const r = await capture(page, c, name, attempt);
+			const foreign = Object.entries(r.otherClients).filter(([k]) => !/^WindowServer \(/.test(k));
+			// Foreign GPU clients (not WindowServer compositing) busy >2% of the measured span, or
+			// overlapping instance execution by >1% of instance GPU time, invalidate the run.
+			const overlapMs = r.frameDetail.reduce((s, f) => s + Object.entries(f.overlap).filter(([k]) => !/^WindowServer \(/.test(k)).reduce((t, [, v]) => t + v, 0), 0);
+			const gpuSum = r.perFrameGpuMs.reduce((s, v) => s + v, 0);
+			r.foreignOverlapMs = +overlapMs.toFixed(3);
+			r.contended = foreign.some(([, v]) => v.busyPct > 2) || overlapMs > 0.01 * gpuSum;
+			r.verdict = !r.aligned || r.transfersOk === false ? 'INCONCLUSIVE' : r.contended ? 'CONTENDED' : r.maxMs < 2 ? 'PASS' : 'FAIL';
+			const { frameDetail, ...row } = r;
+			results.push({ ...row, attempt });
+			await writeFile(`${DIR}/capture.json`, JSON.stringify({ sha, machineDpr, chrome: CHROME, results }, null, 2));
+			await writeFile(`${DIR}/${name}-a${attempt}.frames.json`, JSON.stringify(frameDetail, null, 1));
+			console.log(JSON.stringify({ name, attempt, verdict: r.verdict, backing: r.backing, median: +r.medianMs.toFixed(3), p95: +r.p95Ms.toFixed(3), max: +r.maxMs.toFixed(3), aligned: r.aligned, alignErrMs: +r.alignErrMs.toFixed(3), strays: r.strays, presentWrites: r.framesWithPresentWrite, transfers: r.transfers, otherClients: r.otherClients, foreignOverlapMs: r.foreignOverlapMs }));
+			if (r.verdict !== 'CONTENDED' || attempt >= RETRIES) break;
+			await Bun.sleep(RETRY_WAIT_MS);
+		}
+	}
+} finally {
+	clearTimeout(deadline);
+	await browser?.close();
+	for (const p of owned.reverse()) { p.kill(); await p.exited; }
+}
+
+async function capture(page, c, name, attempt) {
+		await page.bringToFront();
 		const setup = await page.evaluate(async ({ preset, w, h, tier }) => {
 			if (document.visibilityState !== 'visible') throw new Error('Foreground visibility required');
 			const { FluidEngine, _setContextTier } = await import('/src/lib/engine/FluidEngine.ts');
@@ -183,9 +227,9 @@ try {
 			return { dprActual: devicePixelRatio, backing: [canvas.width, canvas.height], adapter: dbg ? String(e.gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : 'unknown', ua: navigator.userAgent, config: { sim: cfg.simResolution ?? 128, dye: cfg.dyeResolution, pressureIterations: cfg.pressureIterations ?? null, bloom: cfg.bloom ?? null, sunrays: cfg.sunrays ?? null } };
 		}, c);
 		const pid = gpuPid();
-		const trace = `${DIR}/${name}.trace`;
+		const trace = `${DIR}/${name}-a${attempt}.trace`;
 		execFileSync('rm', ['-rf', trace]);
-		const note = `svelte-fluid.gpu-capture.${process.pid}.${results.length}`;
+		const note = `svelte-fluid.gpu-capture.${process.pid}.${name}.${attempt}`;
 		const started = Bun.spawn(['/usr/bin/notifyutil', '-1', note], { stdout: 'ignore' });
 		owned.push(started);
 		const cmd = ['xcrun', 'xctrace', 'record', '--template', 'Metal System Trace', '--attach', String(pid), '--time-limit', '10s', '--no-prompt', '--notify-tracing-started', note, '--output', trace];
@@ -194,37 +238,30 @@ try {
 		await Promise.race([started.exited, Bun.sleep(6000)]);
 		started.kill();
 		await Bun.sleep(300); // quiet lead-in
-		// 60 individually paced frames: RAF wait outside the span, one 1/60 s update, then the
-		// frame's presentation promise (shared tier: the actual transferFromImageBitmap).
-		const run = await page.evaluate(async (FRAMES) => {
-			const { e, frame, counts, restore } = globalThis.__cap;
-			const before = { ...counts }, marks = [];
-			try {
-				for (let i = 0; i < FRAMES; i++) {
-					await new Promise(requestAnimationFrame);
-					const r0 = counts.requested, d0 = counts.delivered, t0 = performance.now();
-					frame();
-					const cpuMs = performance.now() - t0;
-					await e.presented();
-					marks.push({ t0, cpuMs });
-					if (e.sharedContext && (counts.requested !== r0 + 1 || counts.delivered !== d0 + 1)) throw new Error(`frame ${i}: transfer not delivered`);
-				}
-				await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
-				return { marks, transfers: { requested: counts.requested - before.requested, delivered: counts.delivered - before.delivered }, settled: e.settled };
-			} finally { restore(); e.dispose(); document.body.replaceChildren(); delete globalThis.__cap; }
-		}, FRAMES);
-		await Bun.sleep(300);
-		rec.kill('SIGINT'); // early stop; --time-limit 10s is the hard ceiling
-		const code = await rec.exited;
-		if (code !== 0) throw new Error(`xctrace exit ${code}: ${await new Response(rec.stderr).text()}`);
-		const a = analyse(trace, pid, run.marks, setup.backing);
-		const { frames, ...summary } = a;
-		results.push({ ...c, name, trace, gpuPid: pid, command: cmd.join(' '), ...setup, transfers: run.transfers, settled: run.settled, ...summary, perFrameGpuMs: frames.map((f) => +f.gpuMs.toFixed(4)) });
-		await writeFile(`${DIR}/capture.json`, JSON.stringify({ sha, machineDpr, chrome: CHROME, results }, null, 2));
-		console.log(JSON.stringify({ name, backing: setup.backing, median: a.medianMs.toFixed(3), p95: a.p95Ms.toFixed(3), max: a.maxMs.toFixed(3), work: a.framesWithWork, presentWrites: a.framesWithPresentWrite, align: a.alignment, transfers: run.transfers, other: a.nonInstanceMedianMs }));
-	}
-} finally {
-	clearTimeout(deadline);
-	await browser?.close();
-	for (const p of owned.reverse()) { p.kill(); await p.exited; }
+	// 60 individually paced frames: three RAFs apart so each frame's GPU burst is
+	// isolated in the trace; presentation verified per frame (transferFromImageBitmap).
+	const run = await page.evaluate(async (FRAMES) => {
+		const { e, frame, counts, restore } = globalThis.__cap;
+		const before = { ...counts }, marks = [];
+		try {
+			for (let i = 0; i < FRAMES; i++) {
+				for (let raf = 0; raf < 3; raf++) await new Promise(requestAnimationFrame);
+				const shared = !!e.sharedContext;
+				const r0 = counts.requested, d0 = counts.delivered, t0 = performance.now();
+				frame();
+				const cpuMs = performance.now() - t0;
+				await e.presented();
+				marks.push({ t0, cpuMs });
+				if (shared && (counts.requested !== r0 + 1 || counts.delivered !== d0 + 1)) throw new Error(`frame ${i}: transfer not delivered`);
+			}
+			return { marks, transfers: { requested: counts.requested - before.requested, delivered: counts.delivered - before.delivered }, settled: e.settled, transfersOk: runOk() };
+			function runOk() { return !e.sharedContext || (counts.requested - before.requested === FRAMES && counts.delivered - before.delivered === FRAMES); }
+		} finally { restore(); e.dispose(); document.body.replaceChildren(); delete globalThis.__cap; }
+	}, FRAMES);
+	rec.kill('SIGINT'); // early stop; --time-limit 10s is the hard ceiling
+	const code = await rec.exited;
+	if (code !== 0) throw new Error(`xctrace exit ${code}: ${await new Response(rec.stderr).text()}`);
+	const a = analyse(trace, pid, run.marks, setup.backing);
+	const { frames, ...summary } = a;
+	return { ...c, name, trace, gpuPid: pid, command: cmd.join(' '), ...setup, transfers: run.transfers, settled: run.settled, transfersOk: run.transfersOk, ...summary, frameDetail: frames, perFrameGpuMs: frames.map((f) => +f.gpuMs.toFixed(4)) };
 }
