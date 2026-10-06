@@ -1981,63 +1981,63 @@ Files/trace names encode overrides; raw traces/frame arrays remain ephemeral.
 
 | Capture JSON | Slot | GPU PID | Alignment ms | Clusters/writes/strays | Transfers | Foreign overlap% | Gate |
 |---|---|---:|---:|---|---|---:|---|
-| screen/Karman-pressureIterations30/capture-override-pressureIterations30.json | r1/a1 | 46912 | 0.388167 | 600/600/0 | 0:0 | 0.000000 | clean |
-| screen/Karman-pressureIterations26/capture-override-pressureIterations26.json | r1/a1 | 47690 | 1.376542 | 600/600/0 | 0:0 | 0.000000 | clean |
-| screen/Karman-pressureIterations24/capture-override-pressureIterations24.json | r1/a1 | 48664 | 0.281334 | 600/600/0 | 0:0 | 0.000000 | clean |
-| screen/Karman-pressureIterations34-dyeResolution768/capture-override-dyeResolution768-pressureIterations34.json | r1/a1 | 63967 | 0.252500 | 600/600/0 | 0:0 | 0.000000 | clean |
-| screen/Karman-pressureIterations30-dyeResolution768/capture-override-dyeResolution768-pressureIterations30.json | r1/a1 | 65644 | 0.205250 | 600/600/0 | 0:0 | 0.000000 | clean |
-| screen/Karman-pressureIterations26-dyeResolution768/capture-override-dyeResolution768-pressureIterations26.json | r1/a1 | 66803 | 0.342500 | 600/600/0 | 0:0 | 0.000000 | clean |
-| screen/Karman-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24.json | r1/a1 | 74594 | 0.385917 | 600/600/0 | 0:0 | 0.000000 | clean |
-| screen/TeslaValve-pressureIterations26/capture-override-pressureIterations26.json | r1/a1 | 76109 | 0.292792 | 600/600/0 | 0:0 | 0.000000 | clean |
-| screen/TeslaValve-pressureIterations24/capture-override-pressureIterations24.json | r1/a1 | 76938 | 0.258958 | 600/600/0 | 0:0 | 0.001000 | clean |
-| screen/TeslaValve-pressureIterations30-dyeResolution512/capture-override-dyeResolution512-pressureIterations30.json | r1/a1 | 81278 | 0.274917 | 600/600/0 | 0:0 | 0.000000 | clean |
-| screen/TeslaValve-pressureIterations26-dyeResolution512/capture-override-dyeResolution512-pressureIterations26.json | r1/a1 | 82637 | 0.233167 | 600/600/0 | 0:0 | 0.000000 | clean |
-| screen/TeslaValve-pressureIterations24-dyeResolution512/capture-override-dyeResolution512-pressureIterations24.json | r1/a1 | 90631 | 0.297250 | 600/600/0 | 0:0 | 0.000000 | clean |
-| screen/GasFlare-pressureIterations22/capture-override-pressureIterations22.json | r1/a1 | 92591 | 10.463459 | 0/0/— | 600:600 | 0.000000 | <4ms alignment gate failed |
-| screen/GasFlare-pressureIterations20/capture-override-pressureIterations20.json | r1/a1 | 93882 | 11.838209 | 0/0/— | 600:600 | 0.000000 | <4ms alignment gate failed |
-| screen/GasFlare-pressureIterations24-dyeResolution512/capture-override-dyeResolution512-pressureIterations24.json | r1/a1 | 1305 | 0.221584 | 600/600/0 | 600:600 | 0.396000 | clean |
-| screen/GasFlare-pressureIterations22-dyeResolution512/capture-override-dyeResolution512-pressureIterations22.json | r1/a1 | 8948 | 34.418834 | 0/0/— | 600:600 | 0.000000 | <4ms alignment gate failed |
-| screen/GasFlare-pressureIterations20-dyeResolution512/capture-override-dyeResolution512-pressureIterations20.json | r1/a1 | 12828 | 0.195750 | 600/600/0 | 600:600 | 1.376000 | clean |
-| grid-screen/Karman-simResolution160/capture-override-simResolution160.json | r1/a1 | 18046 | 32.972916 | 0/0/— | 0:0 | 0.000000 | <4ms alignment gate failed |
-| grid-screen/Karman-simResolution128/capture-override-simResolution128.json | r1/a1 | 19621 | 10.687709 | 0/0/— | 0:0 | 0.000000 | <4ms alignment gate failed |
-| grid-screen/Karman-simResolution128-pressureIterations30/capture-override-pressureIterations30-simResolution128.json | r1/a1 | 22281 | 0.221042 | 600/600/0 | 0:0 | 0.746000 | clean |
-| grid-screen/Karman-simResolution128-pressureIterations26/capture-override-pressureIterations26-simResolution128.json | r1/a1 | 24640 | 0.411667 | 600/600/0 | 0:0 | 0.944000 | clean |
-| grid-screen/Karman-simResolution128-pressureIterations24/capture-override-pressureIterations24-simResolution128.json | r1/a1 | 30774 | 0.340958 | 600/600/0 | 0:0 | 4.040000 | clean |
-| grid-screen/Karman-simResolution128-pressureIterations34-dyeResolution768/capture-override-dyeResolution768-pressureIterations34-simResolution128.json | r1/a1 | 32134 | 0.304459 | 600/600/0 | 0:0 | 2.669000 | clean |
-| grid-screen/Karman-simResolution128-pressureIterations30-dyeResolution768/capture-override-dyeResolution768-pressureIterations30-simResolution128.json | r1/a1 | — | — | 0/0/— | —:— | 0.000000 | Attempt timeout in recorder finalisation |
-| grid-screen/Karman-simResolution128-pressureIterations26-dyeResolution768/capture-override-dyeResolution768-pressureIterations26-simResolution128.json | r1/a1 | 59414 | 0.250208 | 600/600/0 | 0:0 | 2.245000 | clean |
-| grid-screen/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | r1/a1 | 69365 | 0.282000 | 600/600/0 | 0:0 | 1.795000 | clean |
-| grid-screen/TeslaValve-simResolution160/capture-override-simResolution160.json | r1/a1 | 72788 | 0.340583 | 600/600/0 | 0:0 | 2.169000 | clean |
-| grid-screen/TeslaValve-simResolution128/capture-override-simResolution128.json | r1/a1 | 75883 | 0.376666 | 600/600/0 | 0:0 | 1.890000 | clean |
-| grid-screen/TeslaValve-simResolution128-pressureIterations26/capture-override-pressureIterations26-simResolution128.json | r1/a1 | 78698 | 0.377750 | 600/600/0 | 0:0 | 1.872000 | clean |
-| grid-screen/TeslaValve-simResolution128-pressureIterations24/capture-override-pressureIterations24-simResolution128.json | r1/a1 | 81664 | 0.269375 | 600/600/0 | 0:0 | 2.028000 | clean |
-| grid-screen/TeslaValve-simResolution128-pressureIterations30-dyeResolution512/capture-override-dyeResolution512-pressureIterations30-simResolution128.json | r1/a1 | 84873 | 0.269083 | 600/600/0 | 0:0 | 1.660000 | clean |
-| grid-screen/TeslaValve-simResolution128-pressureIterations26-dyeResolution512/capture-override-dyeResolution512-pressureIterations26-simResolution128.json | r1/a1 | 4175 | 0.238167 | 600/600/0 | 0:0 | 1.199000 | clean |
-| grid-screen/TeslaValve-simResolution128-pressureIterations24-dyeResolution512/capture-override-dyeResolution512-pressureIterations24-simResolution128.json | r1/a1 | 6856 | 0.349708 | 600/600/0 | 0:0 | 1.755000 | clean |
-| certify/TeslaValve-simResolution128-pressureIterations26-dyeResolution512/capture-override-dyeResolution512-pressureIterations26-simResolution128.json | r1/a1 | 61199 | 0.280167 | 600/600/0 | 0:0 | 0.361000 | clean |
-| certify/TeslaValve-simResolution128-pressureIterations26-dyeResolution512/capture-override-dyeResolution512-pressureIterations26-simResolution128.json | r1/a1 | 64042 | 0.339125 | 600/600/0 | 0:0 | 0.276000 | clean |
-| certify/TeslaValve-simResolution128-pressureIterations26-dyeResolution512/capture-override-dyeResolution512-pressureIterations26-simResolution128.json | r2/a1 | 69306 | 0.382125 | 600/600/0 | 0:0 | 0.216000 | clean |
-| certify/TeslaValve-simResolution128-pressureIterations26-dyeResolution512/capture-override-dyeResolution512-pressureIterations26-simResolution128.json | r2/a1 | 71948 | 0.231542 | 600/600/0 | 0:0 | 0.573000 | clean |
-| certify/TeslaValve-simResolution128-pressureIterations26-dyeResolution512/capture-override-dyeResolution512-pressureIterations26-simResolution128.json | r3/a1 | 74896 | 0.244541 | 600/600/0 | 0:0 | 0.692000 | clean |
-| certify/TeslaValve-simResolution128-pressureIterations26-dyeResolution512/capture-override-dyeResolution512-pressureIterations26-simResolution128.json | r3/a1 | 81468 | 0.311250 | 600/600/0 | 0:0 | 0.171000 | clean |
-| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | r1/a1 | 88058 | 0.426542 | 600/600/0 | 0:0 | 0.307000 | clean |
-| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | r1/a1 | 90254 | 0.333667 | 600/600/0 | 0:0 | 0.284000 | clean |
-| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | r1/a1 | 92263 | 0.288125 | 600/600/0 | 0:0 | 0.161000 | clean |
-| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | r1/a1 | 94182 | 0.863542 | 600/600/0 | 600:600 | 0.000000 | clean |
-| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | r2/a1 | 95817 | 0.358792 | 600/600/0 | 0:0 | 0.000000 | clean |
-| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | r2/a1 | 97632 | 0.446083 | 600/600/0 | 0:0 | 0.000000 | clean |
-| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | r2/a1 | 99771 | 0.383208 | 600/600/0 | 0:0 | 0.000000 | clean |
-| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | r2/a1 | 1972 | 0.191000 | 600/600/0 | 600:600 | 0.000000 | clean |
-| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | r3/a1 | 3588 | 40.818459 | 0/0/— | 0:0 | 0.000000 | <4ms alignment gate failed |
-| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | r3/a1 | 5323 | 0.308083 | 600/600/0 | 0:0 | 0.000000 | clean |
-| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | r3/a1 | 6773 | 0.282834 | 600/600/0 | 0:0 | 0.000000 | clean |
-| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | r3/a1 | 8518 | 1.268541 | 600/600/0 | 600:600 | 0.000000 | clean |
-| gas-grid-screen/GasFlare-simResolution128/capture-override-simResolution128.json | r1/a1 | 10382 | 0.270875 | 600/600/0 | 600:600 | 0.010000 | clean |
-| gas-grid-screen/GasFlare-simResolution128-pressureIterations22/capture-override-pressureIterations22-simResolution128.json | r1/a1 | 11991 | 0.217709 | 600/600/0 | 600:600 | 0.177000 | clean |
-| gas-grid-screen/GasFlare-simResolution128-pressureIterations20/capture-override-pressureIterations20-simResolution128.json | r1/a1 | 13577 | 0.237916 | 600/600/0 | 600:600 | 0.000000 | clean |
-| gas-grid-screen/GasFlare-simResolution128-pressureIterations24-dyeResolution512/capture-override-dyeResolution512-pressureIterations24-simResolution128.json | r1/a1 | 15214 | 0.157417 | 600/600/0 | 600:600 | 0.000000 | clean |
-| gas-grid-screen/GasFlare-simResolution128-pressureIterations22-dyeResolution512/capture-override-dyeResolution512-pressureIterations22-simResolution128.json | r1/a1 | 17076 | 0.242917 | 600/600/0 | 600:600 | 0.012000 | clean |
-| gas-grid-screen/GasFlare-simResolution128-pressureIterations20-dyeResolution512/capture-override-dyeResolution512-pressureIterations20-simResolution128.json | r1/a1 | 18828 | 0.143834 | 600/600/0 | 600:600 | 0.000000 | clean |
+| screen/Karman-pressureIterations30/capture-override-pressureIterations30.json | own 1440×900; r1/a1 | 46912 | 0.388167 | 600/600/0 | 0:0 | 0.000000 | clean |
+| screen/Karman-pressureIterations26/capture-override-pressureIterations26.json | own 1440×900; r1/a1 | 47690 | 1.376542 | 600/600/0 | 0:0 | 0.000000 | clean |
+| screen/Karman-pressureIterations24/capture-override-pressureIterations24.json | own 1440×900; r1/a1 | 48664 | 0.281334 | 600/600/0 | 0:0 | 0.000000 | clean |
+| screen/Karman-pressureIterations34-dyeResolution768/capture-override-dyeResolution768-pressureIterations34.json | own 1440×900; r1/a1 | 63967 | 0.252500 | 600/600/0 | 0:0 | 0.000000 | clean |
+| screen/Karman-pressureIterations30-dyeResolution768/capture-override-dyeResolution768-pressureIterations30.json | own 1440×900; r1/a1 | 65644 | 0.205250 | 600/600/0 | 0:0 | 0.000000 | clean |
+| screen/Karman-pressureIterations26-dyeResolution768/capture-override-dyeResolution768-pressureIterations26.json | own 1440×900; r1/a1 | 66803 | 0.342500 | 600/600/0 | 0:0 | 0.000000 | clean |
+| screen/Karman-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24.json | own 1440×900; r1/a1 | 74594 | 0.385917 | 600/600/0 | 0:0 | 0.000000 | clean |
+| screen/TeslaValve-pressureIterations26/capture-override-pressureIterations26.json | own 1440×900; r1/a1 | 76109 | 0.292792 | 600/600/0 | 0:0 | 0.000000 | clean |
+| screen/TeslaValve-pressureIterations24/capture-override-pressureIterations24.json | own 1440×900; r1/a1 | 76938 | 0.258958 | 600/600/0 | 0:0 | 0.001000 | clean |
+| screen/TeslaValve-pressureIterations30-dyeResolution512/capture-override-dyeResolution512-pressureIterations30.json | own 1440×900; r1/a1 | 81278 | 0.274917 | 600/600/0 | 0:0 | 0.000000 | clean |
+| screen/TeslaValve-pressureIterations26-dyeResolution512/capture-override-dyeResolution512-pressureIterations26.json | own 1440×900; r1/a1 | 82637 | 0.233167 | 600/600/0 | 0:0 | 0.000000 | clean |
+| screen/TeslaValve-pressureIterations24-dyeResolution512/capture-override-dyeResolution512-pressureIterations24.json | own 1440×900; r1/a1 | 90631 | 0.297250 | 600/600/0 | 0:0 | 0.000000 | clean |
+| screen/GasFlare-pressureIterations22/capture-override-pressureIterations22.json | shared 1440×900; r1/a1 | 92591 | 10.463459 | 0/0/— | 600:600 | 0.000000 | <4ms alignment gate failed |
+| screen/GasFlare-pressureIterations20/capture-override-pressureIterations20.json | shared 1440×900; r1/a1 | 93882 | 11.838209 | 0/0/— | 600:600 | 0.000000 | <4ms alignment gate failed |
+| screen/GasFlare-pressureIterations24-dyeResolution512/capture-override-dyeResolution512-pressureIterations24.json | shared 1440×900; r1/a1 | 1305 | 0.221584 | 600/600/0 | 600:600 | 0.396000 | clean |
+| screen/GasFlare-pressureIterations22-dyeResolution512/capture-override-dyeResolution512-pressureIterations22.json | shared 1440×900; r1/a1 | 8948 | 34.418834 | 0/0/— | 600:600 | 0.000000 | <4ms alignment gate failed |
+| screen/GasFlare-pressureIterations20-dyeResolution512/capture-override-dyeResolution512-pressureIterations20.json | shared 1440×900; r1/a1 | 12828 | 0.195750 | 600/600/0 | 600:600 | 1.376000 | clean |
+| grid-screen/Karman-simResolution160/capture-override-simResolution160.json | own 1440×900; r1/a1 | 18046 | 32.972916 | 0/0/— | 0:0 | 0.000000 | <4ms alignment gate failed |
+| grid-screen/Karman-simResolution128/capture-override-simResolution128.json | own 1440×900; r1/a1 | 19621 | 10.687709 | 0/0/— | 0:0 | 0.000000 | <4ms alignment gate failed |
+| grid-screen/Karman-simResolution128-pressureIterations30/capture-override-pressureIterations30-simResolution128.json | own 1440×900; r1/a1 | 22281 | 0.221042 | 600/600/0 | 0:0 | 0.746000 | clean |
+| grid-screen/Karman-simResolution128-pressureIterations26/capture-override-pressureIterations26-simResolution128.json | own 1440×900; r1/a1 | 24640 | 0.411667 | 600/600/0 | 0:0 | 0.944000 | clean |
+| grid-screen/Karman-simResolution128-pressureIterations24/capture-override-pressureIterations24-simResolution128.json | own 1440×900; r1/a1 | 30774 | 0.340958 | 600/600/0 | 0:0 | 4.040000 | clean |
+| grid-screen/Karman-simResolution128-pressureIterations34-dyeResolution768/capture-override-dyeResolution768-pressureIterations34-simResolution128.json | own 1440×900; r1/a1 | 32134 | 0.304459 | 600/600/0 | 0:0 | 2.669000 | clean |
+| grid-screen/Karman-simResolution128-pressureIterations30-dyeResolution768/capture-override-dyeResolution768-pressureIterations30-simResolution128.json | own 1440×900; r1/a1 | — | — | 0/0/— | —:— | 0.000000 | Attempt timeout in recorder finalisation |
+| grid-screen/Karman-simResolution128-pressureIterations26-dyeResolution768/capture-override-dyeResolution768-pressureIterations26-simResolution128.json | own 1440×900; r1/a1 | 59414 | 0.250208 | 600/600/0 | 0:0 | 2.245000 | clean |
+| grid-screen/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | own 1440×900; r1/a1 | 69365 | 0.282000 | 600/600/0 | 0:0 | 1.795000 | clean |
+| grid-screen/TeslaValve-simResolution160/capture-override-simResolution160.json | own 1440×900; r1/a1 | 72788 | 0.340583 | 600/600/0 | 0:0 | 2.169000 | clean |
+| grid-screen/TeslaValve-simResolution128/capture-override-simResolution128.json | own 1440×900; r1/a1 | 75883 | 0.376666 | 600/600/0 | 0:0 | 1.890000 | clean |
+| grid-screen/TeslaValve-simResolution128-pressureIterations26/capture-override-pressureIterations26-simResolution128.json | own 1440×900; r1/a1 | 78698 | 0.377750 | 600/600/0 | 0:0 | 1.872000 | clean |
+| grid-screen/TeslaValve-simResolution128-pressureIterations24/capture-override-pressureIterations24-simResolution128.json | own 1440×900; r1/a1 | 81664 | 0.269375 | 600/600/0 | 0:0 | 2.028000 | clean |
+| grid-screen/TeslaValve-simResolution128-pressureIterations30-dyeResolution512/capture-override-dyeResolution512-pressureIterations30-simResolution128.json | own 1440×900; r1/a1 | 84873 | 0.269083 | 600/600/0 | 0:0 | 1.660000 | clean |
+| grid-screen/TeslaValve-simResolution128-pressureIterations26-dyeResolution512/capture-override-dyeResolution512-pressureIterations26-simResolution128.json | own 1440×900; r1/a1 | 4175 | 0.238167 | 600/600/0 | 0:0 | 1.199000 | clean |
+| grid-screen/TeslaValve-simResolution128-pressureIterations24-dyeResolution512/capture-override-dyeResolution512-pressureIterations24-simResolution128.json | own 1440×900; r1/a1 | 6856 | 0.349708 | 600/600/0 | 0:0 | 1.755000 | clean |
+| certify/TeslaValve-simResolution128-pressureIterations26-dyeResolution512/capture-override-dyeResolution512-pressureIterations26-simResolution128.json | own 1440×900; r1/a1 | 61199 | 0.280167 | 600/600/0 | 0:0 | 0.361000 | clean |
+| certify/TeslaValve-simResolution128-pressureIterations26-dyeResolution512/capture-override-dyeResolution512-pressureIterations26-simResolution128.json | own 800×500; r1/a1 | 64042 | 0.339125 | 600/600/0 | 0:0 | 0.276000 | clean |
+| certify/TeslaValve-simResolution128-pressureIterations26-dyeResolution512/capture-override-dyeResolution512-pressureIterations26-simResolution128.json | own 1440×900; r2/a1 | 69306 | 0.382125 | 600/600/0 | 0:0 | 0.216000 | clean |
+| certify/TeslaValve-simResolution128-pressureIterations26-dyeResolution512/capture-override-dyeResolution512-pressureIterations26-simResolution128.json | own 800×500; r2/a1 | 71948 | 0.231542 | 600/600/0 | 0:0 | 0.573000 | clean |
+| certify/TeslaValve-simResolution128-pressureIterations26-dyeResolution512/capture-override-dyeResolution512-pressureIterations26-simResolution128.json | own 1440×900; r3/a1 | 74896 | 0.244541 | 600/600/0 | 0:0 | 0.692000 | clean |
+| certify/TeslaValve-simResolution128-pressureIterations26-dyeResolution512/capture-override-dyeResolution512-pressureIterations26-simResolution128.json | own 800×500; r3/a1 | 81468 | 0.311250 | 600/600/0 | 0:0 | 0.171000 | clean |
+| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | own 1440×900; r1/a1 | 88058 | 0.426542 | 600/600/0 | 0:0 | 0.307000 | clean |
+| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | own 800×500; r1/a1 | 90254 | 0.333667 | 600/600/0 | 0:0 | 0.284000 | clean |
+| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | own 480.25×300.5; r1/a1 | 92263 | 0.288125 | 600/600/0 | 0:0 | 0.161000 | clean |
+| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | shared 1440×900; r1/a1 | 94182 | 0.863542 | 600/600/0 | 600:600 | 0.000000 | clean |
+| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | own 1440×900; r2/a1 | 95817 | 0.358792 | 600/600/0 | 0:0 | 0.000000 | clean |
+| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | own 800×500; r2/a1 | 97632 | 0.446083 | 600/600/0 | 0:0 | 0.000000 | clean |
+| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | own 480.25×300.5; r2/a1 | 99771 | 0.383208 | 600/600/0 | 0:0 | 0.000000 | clean |
+| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | shared 1440×900; r2/a1 | 1972 | 0.191000 | 600/600/0 | 600:600 | 0.000000 | clean |
+| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | own 1440×900; r3/a1 | 3588 | 40.818459 | 0/0/— | 0:0 | 0.000000 | <4ms alignment gate failed |
+| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | own 800×500; r3/a1 | 5323 | 0.308083 | 600/600/0 | 0:0 | 0.000000 | clean |
+| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | own 480.25×300.5; r3/a1 | 6773 | 0.282834 | 600/600/0 | 0:0 | 0.000000 | clean |
+| certify/Karman-simResolution128-pressureIterations24-dyeResolution768/capture-override-dyeResolution768-pressureIterations24-simResolution128.json | shared 1440×900; r3/a1 | 8518 | 1.268541 | 600/600/0 | 600:600 | 0.000000 | clean |
+| gas-grid-screen/GasFlare-simResolution128/capture-override-simResolution128.json | shared 1440×900; r1/a1 | 10382 | 0.270875 | 600/600/0 | 600:600 | 0.010000 | clean |
+| gas-grid-screen/GasFlare-simResolution128-pressureIterations22/capture-override-pressureIterations22-simResolution128.json | shared 1440×900; r1/a1 | 11991 | 0.217709 | 600/600/0 | 600:600 | 0.177000 | clean |
+| gas-grid-screen/GasFlare-simResolution128-pressureIterations20/capture-override-pressureIterations20-simResolution128.json | shared 1440×900; r1/a1 | 13577 | 0.237916 | 600/600/0 | 600:600 | 0.000000 | clean |
+| gas-grid-screen/GasFlare-simResolution128-pressureIterations24-dyeResolution512/capture-override-dyeResolution512-pressureIterations24-simResolution128.json | shared 1440×900; r1/a1 | 15214 | 0.157417 | 600/600/0 | 600:600 | 0.000000 | clean |
+| gas-grid-screen/GasFlare-simResolution128-pressureIterations22-dyeResolution512/capture-override-dyeResolution512-pressureIterations22-simResolution128.json | shared 1440×900; r1/a1 | 17076 | 0.242917 | 600/600/0 | 600:600 | 0.012000 | clean |
+| gas-grid-screen/GasFlare-simResolution128-pressureIterations20-dyeResolution512/capture-override-dyeResolution512-pressureIterations20-simResolution128.json | shared 1440×900; r1/a1 | 18828 | 0.143834 | 600/600/0 | 600:600 | 0.000000 | clean |
 
 ### Certification cross-run spreads
 
@@ -2055,3 +2055,67 @@ GasFlare no eligible certification.
 | Karman | own 800×500 | 3/3 | 1.324958–1.382749 (0.057791) | 1.746250–1.783919 (0.037669) | 1.943832–3.354792 (1.410960) | PASS |
 | Karman | own 480.25×300.5 | 3/3 | 1.289126–1.359875 (0.070749) | 1.689500–1.732833 (0.043333) | 1.862042–3.281084 (1.419042) | PASS |
 | Karman | shared 1440×900 | 3/3 | 1.591666–1.606586 (0.014920) | 2.037455–2.076042 (0.038587) | 2.135295–3.762540 (1.627245) | FAIL |
+
+### Synchronized native clips
+
+Index: **`/tmp/quality-sweep/clips/index.html`**. Each preset has baseline,
+certified-or-deepest tested level, and next-milder option. Labels explicitly
+mark Karman/GasFlare uncertified. TeslaValve is certified for the tested scene
+set, not adopted as a default or visually approved. Owner decision pending.
+
+Ordinary installed Chrome, native **1440×900 CSS/DPR2,2880×1800 pixels**, own-tier
+visual rendering, seed5, pointer disabled, identical seeded preset initial/flow
+inputs, fixed dt1/60, same200-frame warm-up. Every final video has exactly
+**600 frames/60fps/10.000000s**. Frame0 is simulation frame201, frame599 is800.
+Frame-exact PNG sampling plus local ffmpeg VP9 encoding avoids MediaRecorder's
+observed dropped/coalesced frames; the first recordings had582–600 frames and
+are overwritten. Recording wall time is slower than real time; playback preserves
+simulation time. No GPU timing measured during recording. Lock retained throughout
+browser recording and final index playback verification. No production code added.
+
+| Preset | Role | Absolute clip path |
+|---|---|---|
+| Karman | Before: registry default | `/tmp/quality-sweep/clips/Karman-before.webm` |
+| Karman | Deepest tested, NOT certified | `/tmp/quality-sweep/clips/Karman-uncertified-simResolution128-pressureIterations24-dyeResolution768.webm` |
+| Karman | Next milder, screen FAIL2.042252ms | `/tmp/quality-sweep/clips/Karman-next-milder-simResolution128-pressureIterations26-dyeResolution768.webm` |
+| TeslaValve | Before: registry default | `/tmp/quality-sweep/clips/TeslaValve-before.webm` |
+| TeslaValve | Certified tested scene set | `/tmp/quality-sweep/clips/TeslaValve-simResolution128-pressureIterations26-dyeResolution512.webm` |
+| TeslaValve | Next milder, screen FAIL2.172665ms | `/tmp/quality-sweep/clips/TeslaValve-next-milder-simResolution128-pressureIterations30-dyeResolution512.webm` |
+| GasFlare | Before: registry default | `/tmp/quality-sweep/clips/GasFlare-before.webm` |
+| GasFlare | Deepest tested, screen FAIL2.232379ms | `/tmp/quality-sweep/clips/GasFlare-uncertified-simResolution128-pressureIterations20-dyeResolution512.webm` |
+| GasFlare | Next milder, screen FAIL2.397292ms | `/tmp/quality-sweep/clips/GasFlare-next-milder-simResolution128-pressureIterations22-dyeResolution512.webm` |
+
+`manifest.json` records config/adapter/native dimensions/frame count/ffprobe.
+Index play/pause/restart synchronizes each trio, corrects >50ms drift; ordinary
+Chrome playback check verifies9 videos,2880×1800,10s duration, play/pause/restart,
+<100ms observed synchronization. Evidence `/tmp/quality-sweep/index-check.json`.
+Clips are visual evidence, not calibrated physics or a no-degradation verdict.
+PNG sequences deleted after verified600-frame encodes; nine final WebMs retained.
+
+### Final verification and cleanup
+
+`bun run test && bun run check` passed: **52 files/864 tests**, **471 checked
+files/0 errors/0 warnings**. `bun run prepack` passed publint/public-neutral
+strict consumer checks; existing import.meta.env packaging advisory unchanged.
+Harness self-check, `git diff --check` passed. Final logs
+`/tmp/quality-sweep/{test-final,check-final,prepack-final}.log`.
+Registry/production runtime unchanged; historical benchmark sections unchanged.
+
+GPU lock was acquired by driver PID46866 (`quality-sweep` owner), retained across
+all captures/recordings/playback, released only after verifying that same owner.
+`/tmp/quality-sweep/cleanup-proof.json`: **1,998 recorded owned PID+command
+identities,0 still alive; lock absent**. Ports5198/5199 no listeners.
+`profiles-cleanup.json`: **74 exact owned temporary profile paths,all already
+absent**. Foreign user Chrome4386/GPU4411 and Chrome-for-Testing48063/GPU48074
+still alive, untouched. Original stalled clip cleanup is documented above; exact
+SIGTERM then SIGKILL only for verified owned runner9425. All Vite/Chrome/xctrace,
+notifyutil, parser, ffmpeg, driver and ownership monitor lifecycles ended.
+Ignored node_modules dependency symlink removed, never staged. Worktree retained
+because commits are not remotely preserved. Raw traces/logs/clips remain ephemeral
+under `/tmp/quality-sweep/`; no report files in Git beyond this requested section.
+
+Skipped: preset adoption/ADR (owner decides); deeper unapproved settings;
+GasFlare certification (no clean screen<2ms); retrying alignment/timeouts or clean
+FAIL (protocol forbids favorable replacement); release/full-browser suite
+(test-only harness, direct hardware captures/clip checks supplied). No installs,
+tracker writes, push, merge, foreign signals or unsafe GPU flags.
