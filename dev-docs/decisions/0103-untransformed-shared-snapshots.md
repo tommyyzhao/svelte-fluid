@@ -61,6 +61,30 @@ Run variability is substantial, including unchanged own controls. Paired
 percentile differences are not isolated snapshot timings. This change does
 **not** establish p95 <2 ms for the failing scenes or close ADR 0101's goal.
 
+A non-regression gate was fixed before three further alternating baseline /
+candidate pairs for LavaLamp, default and InkPaper. Median of all valid paired
+shared p95 deltas must be ≤ +0.10 ms and ≤ the unchanged own-control p95 spread.
+Exclude only inconclusive pairs; even-count median averages the central two.
+InkPaper uses the larger LavaLamp/default own-control spread (no own model tier).
+The gate passes: **−0.108 / −0.125 / −0.009 ms**, respectively, with control
+spreads **1.657 / 0.430 / 1.657 ms**. Individual increases remain reported;
+those small medians are within the broad control variability, not a speed-up
+claim. Two of the 30 extra attempts are attribution-inconclusive; none contended.
+
+Worst clean candidate p95 across **all** captures, with remaining excess over
+the 2 ms boundary:
+
+| Shared scene | Worst p95 ms | Remaining excess ms |
+|---|---:|---:|
+| Karman 1440×900 | 3.666 | 1.666 |
+| GasFlare 1440×900 | 2.522 | 0.522 |
+| LavaLamp 1440×900 | 2.869 | 0.869 |
+| default 1440×900 | 2.822 | 0.822 |
+| InkPaper held wet 800×500 | 3.850 | 1.850 |
+
+Every target scene remains FAIL under the all-clean-repeats rule. Reaching
+exactly 2 ms would still fail the strict `<2 ms` comparison.
+
 ## Consequences
 
 - One redundant native-size raster copy removed, no changed fluid workload.

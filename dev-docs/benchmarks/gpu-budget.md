@@ -563,6 +563,68 @@ still count toward scene verdicts; this non-regression gate is not budget
 certification. Otherwise revert the runtime option change, retaining tests and
 evidence as a negative result. These rules were fixed before the new data.
 
+#### Additional paired results
+
+Native median / p95 / max ms; every attempt retained. `Δ` is candidate minus
+baseline; INCONCLUSIVE pairs stay excluded from gate arithmetic only.
+
+| Pair | Scene / tier | Baseline | Candidate | Δ median / p95 / max |
+|---|---|---|---|---|
+| p1 | LavaLamp / own | 1.443 / 1.777 / 2.363 (PASS) | 1.463 / 2.162 / 3.890 (FAIL) | 0.020 / 0.386 / 1.527 |
+| p1 | LavaLamp / shared | 1.538 / 3.137 / 3.678 (FAIL) | 1.469 / 1.914 / 2.909 (PASS) | -0.069 / -1.223 / -0.770 |
+| p1 | (default) / own | INCONCLUSIVE | 1.575 / 2.144 / 3.093 (FAIL) | INCONCLUSIVE |
+| p1 | (default) / shared | INCONCLUSIVE | 1.912 / 2.822 / 3.209 (FAIL) | INCONCLUSIVE |
+| p1 | model-inkpaper / shared | 1.628 / 2.421 / 3.993 (FAIL) | 1.900 / 2.424 / 3.990 (FAIL) | 0.272 / 0.003 / -0.003 |
+| p2 | LavaLamp / own | 1.531 / 2.152 / 2.303 (FAIL) | 1.429 / 1.881 / 3.710 (PASS) | -0.103 / -0.271 / 1.406 |
+| p2 | LavaLamp / shared | 1.667 / 3.127 / 4.520 (FAIL) | 1.485 / 2.089 / 3.505 (FAIL) | -0.183 / -1.038 / -1.015 |
+| p2 | (default) / own | 1.665 / 2.432 / 3.814 (FAIL) | 1.512 / 2.002 / 2.192 (FAIL) | -0.153 / -0.430 / -1.622 |
+| p2 | (default) / shared | 2.020 / 3.305 / 4.267 (FAIL) | 1.626 / 2.165 / 3.779 (FAIL) | -0.394 / -1.140 / -0.488 |
+| p2 | model-inkpaper / shared | 1.832 / 2.481 / 3.988 (FAIL) | 1.433 / 2.460 / 2.482 (FAIL) | -0.399 / -0.021 / -1.506 |
+| p3 | LavaLamp / own | 1.455 / 1.849 / 3.688 (PASS) | 1.643 / 2.416 / 3.712 (FAIL) | 0.188 / 0.567 / 0.024 |
+| p3 | LavaLamp / shared | 1.597 / 2.004 / 2.631 (FAIL) | 1.463 / 2.869 / 4.247 (FAIL) | -0.135 / 0.865 / 1.616 |
+| p3 | (default) / own | 1.537 / 2.198 / 3.705 (FAIL) | 1.560 / 2.365 / 2.416 (FAIL) | 0.023 / 0.167 / -1.289 |
+| p3 | (default) / shared | 1.753 / 2.485 / 2.641 (FAIL) | 1.601 / 2.461 / 3.653 (FAIL) | -0.152 / -0.024 / 1.011 |
+| p3 | model-inkpaper / shared | 1.778 / 2.739 / 4.003 (FAIL) | 1.856 / 2.370 / 2.389 (FAIL) | 0.078 / -0.369 / -1.614 |
+
+Gate includes initial matched repeats above plus all three new pairs.
+Own-control spread is maximum minus minimum clean p95 across both builds,
+including the original controls; no transfer attribution assigned to that spread.
+
+| Shared scene | All paired p95 deltas (ms) | Median Δ p95 | Own-control spread | ≤ +0.10 and ≤ spread |
+|---|---|---:|---:|---|
+| LavaLamp | -0.108, 0.406, -1.223, -1.038, 0.865 | -0.108 | 1.657 | PASS |
+| (default) | 0.407, -0.226, INCONCLUSIVE, -1.140, -0.024 | -0.125 | 0.430 | PASS |
+| model-inkpaper | INCONCLUSIVE, 1.413, 0.003, -0.021, -0.369 | -0.009 | 1.657 | PASS |
+
+Additional captures: `/tmp/opt-shared/paired/p{1,2,3}-{baseline,candidate}/`;
+manifest records exact script PIDs and transport expressions, since baseline
+runs intentionally use the old option on the candidate checkout. All 30 attempts
+retained: 28 clean aligned, two INCONCLUSIVE (p1 baseline default own 14.330 ms,
+shared 4.512 ms alignment error); no contention, maximum foreign overlap 0.189%.
+Every shared attempt delivered all 60 transfers. The gate passes, so retain the
+one-line transport change. Median deltas sit within broad unchanged-control
+variability: **saving a native copy is proven; an overall speed-up is not**.
+
+Worst clean candidate shared p95 across initial and additional captures:
+Karman **3.666**, GasFlare **2.522**, LavaLamp **2.869**, default **2.822**,
+InkPaper **3.850 ms**. Remaining excess over 2 ms: **1.666 / 0.522 / 0.869 /
+0.822 / 1.850 ms**, respectively. Every target remains FAIL. Button and enamel
+controls pass both initial candidate repeats; no later favourable pass erases
+any earlier clean failure.
+
+Final focused hardware suite: **59/59 passed**, covering host, shared context
+and display pipeline. Eight seeded scene PNGs are **byte-identical** before /
+after, white/dark pages; manifests and images stay under `/tmp/opt-shared/visual/`.
+Node **864/864**, type check, prepack and diff whitespace checks passed. Existing
+prepack `import.meta.env` warning and Vite's unrelated missing SplashCursor
+scan warning remain; no touched route or capture-script fix.
+
+Cleanup: owned Chrome contexts closed through Playwright; recorder, notifyutil,
+Bun/Vite handles killed by exact owned PID and awaited. Every owned lock released
+immediately after its operation. No user Chrome or other lane process signalled.
+Worktree and untracked dependency symlink retained (not pushed/remotely preserved);
+no installs, tracker writes, push or merge.
+
 ### Hot-pass attribution — bounded negative result
 
 No truthful per-shader top-three GPU shares could be derived. Native labels are
