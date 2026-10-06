@@ -1460,3 +1460,12 @@ zero errors/warnings**, `git diff --check`. Launch Vite reported missing generat
 `.svelte-kit/tsconfig.json`/dependency-scan warnings; `bun run check` generated the
 config successfully. Foreign Chrome-for-Testing GPU **48074** (browser **48063**)
 also appeared in the pre-run census; untouched, alongside the user Chrome.
+
+### WIP checkpoint: 13:15 PDT
+
+Run 2 finished all **43 scenes: 29 PASS / 13 FAIL / 1 INCONCLUSIVE /
+0 CONTENDED**, zero GPU-process exits and zero retries. Karman shared 1440×900
+run2 completed **600 marks**, then hit `Attempt timeout in recorder finalisation`;
+retained as INCONCLUSIVE without a manual repeat. Maximum run2 foreign overlap
+**2.020%**, below the fixed 5% gate. Run3 has completed **26/43** slots at this
+checkpoint. No full-matrix verdict yet; both timeout attempts remain visible.
