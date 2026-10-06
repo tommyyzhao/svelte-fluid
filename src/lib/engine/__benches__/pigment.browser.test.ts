@@ -139,6 +139,29 @@ describe('Pigment pressure pairing (ADR-0104)', () => {
 		}
 	});
 
+	it('conserves pigment during settling/evaporation with transport disabled', () => {
+		const e = engine(); e.setVisible(false); e.resize(48, 36, 2);
+		const h = pressureHook(e);
+		const fields = h.fields as unknown as { simW: number; simH: number; vel: Pair; water: Pair; susp: Pair; dep: Pair; paper: Target };
+		const inner = e as unknown as { landDabs(gl: WebGL2RenderingContext, f: unknown, dabs: Dab[]): void; resistInputs(cell: number): Record<string, unknown> };
+		h.host.run(e, (gl) => {
+			inner.landDabs(gl, fields, [{ x: 24, y: 18, r: 8, water: 0.3, pigment: [0.2, 0.1, 0.05, 0] }]);
+			const before = sum(e.readField('wet')) + sum(e.readField('deposited'));
+			const pass = h.pass as unknown as (gl: WebGL2RenderingContext, name: string, shader: string, out: Target[], inputs: Record<string, unknown>) => void;
+			for (let i = 0; i < 10; i++) {
+				pass.call(h, gl, 'pigment-test-transfer', S.TRANSPORT, [fields.water[1], fields.susp[1], fields.dep[1]], {
+					uVel: fields.vel[0].tex, uWater: fields.water[0].tex, uSusp: fields.susp[0].tex, uDep: fields.dep[0].tex,
+					uPaper: fields.paper.tex, ...inner.resistInputs(3), uDiffuse: 0, uHold: 0.01, uPin: 0.3,
+					uEdgeEvap: 9, uEvap: i === 9 ? 10 : 0.003, uWetDry: 0.04,
+					uSettle: ['4f', [0.004, 0.003, 0.004, 0.004]], uGran: ['4f', [0.9, 0.2, 0.35, 0.5]], uLift: ['4f', [0.004, 0.01, 0.004, 0.004]]
+				});
+				fields.water.reverse(); fields.susp.reverse(); fields.dep.reverse();
+				expect(Math.abs(sum(e.readField('wet')) + sum(e.readField('deposited')) - before)).toBeLessThan(before * 0.000001);
+			}
+			expect(sum(e.readField('wet'))).toBe(0);
+		});
+	});
+
 	it('preserves wet/dry mass, resist, resize/replay determinism and sibling isolation', () => {
 		const make = (legacy = false) => {
 			const e = engine(); e.setVisible(false); e.resize(120, 90, 2);
@@ -300,9 +323,11 @@ describe('PigmentEngine (ADR-0090)', () => {
 		const restored = vi.fn();
 		const lostCb = vi.fn();
 		const e = engine({ onContextRestored: restored, onContextLost: lostCb, pigments: ['#2549a8'] });
+		e.setVisible(false);
 		e.resize(200, 120, 1);
 		e.paint(bloom(70, 60, 35, 0, 0.08, 4));
 		e.settle();
+		const original = e.readField('deposited')!.data.slice();
 		const before = sum(e.readField('deposited'), 0);
 		const gl = hostGl(e);
 		const lose = gl.getExtension('WEBGL_lose_context')!;
@@ -318,10 +343,12 @@ describe('PigmentEngine (ADR-0090)', () => {
 		await back;
 		expect(restored).toHaveBeenCalledTimes(1);
 		expect(e.isLost).toBe(false);
-		await vi.waitFor(() => expect(e.wet).toBe(false), { timeout: 20000, interval: 50 });
+		e.settle();
+		expect(e.wet).toBe(false);
+		const replayed = e.readField('deposited')!.data;
+		for (let i = 0; i < original.length; i++) expect(Math.abs(original[i] - replayed[i])).toBeLessThanOrEqual(0.000001);
 		const after = sum(e.readField('deposited'), 0);
-		expect(after).toBeGreaterThan(before * 0.7);
-		expect(after).toBeLessThan(before * 1.3);
+		expect(Math.abs(after - before)).toBeLessThan(before * 0.000001);
 		expect(hostGl(e).getError()).toBe(hostGl(e).NO_ERROR);
 	});
 
