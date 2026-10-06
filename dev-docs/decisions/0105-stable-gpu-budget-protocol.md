@@ -178,3 +178,19 @@ flags. Run six Karman-only slots to diagnose the repeated third-slot exit patter
 not a quality sweep. DiagnosticReports inspection found no matching Chrome crash/
 hang report at the pilot times; the Chrome Helper report dated 06:32 is an earlier
 user-Chrome disk-write advisory, unrelated and untouched.
+
+### Final feasibility check
+
+Harness `5b2b6c7`, six Karman-only slots: **6/6 clean, zero GPU target exits/retries**;
+first three validate the R3 pilot. Every slot has 600 aligned clusters/native-write
+frames, zero strays/foreign overlap. p95 ms: **3.126041, 3.168251, 3.402249,
+3.151416, 3.140417, 3.117415**, spread **0.284834 ms**; Karman remains FAIL.
+Alignment 0.241500–0.329417 ms. Parent launch RSS MiB **124.00, 172.34, 176.98,
+177.78, 177.88, 178.765**, plateau after startup. Prior third-slot exit pattern
+not reproduced; cause remains unproved. Zero of six is feasibility evidence,
+not statistical assurance of reliability (one-sided 95% failure-rate upper bound
+~39.3%). Recorded duration 18.496–18.750 s, trace 108.62–112.99 MiB, exports
+50.66–50.91 MiB, total driver 333.770 s. Estimated 43-scene × R3 wall time
+**~120 min without retries**, ~14 GiB native traces; 60 Hz/paced/model workloads
+may add time. No full matrix performed. Exact owned processes closed, GPU lock
+released, user Chrome untouched. Full pilot/provenance in the benchmark.
