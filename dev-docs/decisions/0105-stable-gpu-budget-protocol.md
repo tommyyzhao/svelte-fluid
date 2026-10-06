@@ -194,3 +194,25 @@ not statistical assurance of reliability (one-sided 95% failure-rate upper bound
 **~120 min without retries**, ~14 GiB native traces; 60 Hz/paced/model workloads
 may add time. No full matrix performed. Exact owned processes closed, GPU lock
 released, user Chrome untouched. Full pilot/provenance in the benchmark.
+
+### Harness review fixes (pre-matrix)
+
+Independent review found fail-open harness defects after feasibility. Correct
+without changing N/R/warm-up, percentile rank, attribution gap or alignment gate:
+require nonempty finite execution intervals for **every attributed encoder-bearing
+command buffer** (missing coverage yields no percentile and INCONCLUSIVE); recorded
+errors unconditionally gate the verdict. Monitor the attached GPU PID through the
+last drain and recorder completion, check once more before intentional cleanup.
+Cancellation stops startup before every resource creation, uses abort-aware waits,
+and awaits the cancelled task's settlement before advancing. Skip bootstrap/
+partial rows in replay unless trace, marks, GPU PID and backing metadata exist.
+Completeness checks requested seeds, not merely observed seeds. Infrastructure
+(two) and contention (one) retry allowances are independent, so mixed failures
+cannot consume each other's allowance. Attempt deadline derives from recorder
+ceiling **plus 60 s bounded overhead** (default 130 s), not fixed 90 s.
+
+Runnable regression checks: `zero-interval-coverage`, `gpu-exit-during-drain`,
+`abort-during-server-start`, `bootstrap-failure-replay`, `missing-requested-seed`,
+`mixed-infrastructure-contention-retries`, `large-frame-attempt-deadline`.
+Historical replays and one new Karman-only 600×3 pilot verify the corrected harness
+before any matrix. No missing execution inferred as zero; all failures retained.
