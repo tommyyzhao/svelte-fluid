@@ -166,7 +166,7 @@ if (process.argv[2] === '--replay') {
 		r.foreignOverlapMs = frames.reduce((s, f) => s + Object.entries(f.overlap).filter(([k]) => !/^WindowServer \(/.test(k)).reduce((t, [, v]) => t + v, 0), 0);
 		r.foreignOverlapPct = +(100 * r.foreignOverlapMs / frames.reduce((s, f) => s + f.gpuMs, 0)).toFixed(3);
 		r.contended = r.foreignOverlapPct >= 5;
-		r.verdict = !r.aligned || r.transfersOk === false ? 'INCONCLUSIVE' : r.contended ? 'CONTENDED' : r.maxMs < 2 ? 'PASS' : 'FAIL';
+		r.verdict = !r.aligned || !Number.isFinite(r.maxMs) || r.transfersOk === false ? 'INCONCLUSIVE' : r.contended ? 'CONTENDED' : r.maxMs < 2 ? 'PASS' : 'FAIL';
 		await writeFile(`${r.trace}.frames.json`, JSON.stringify(frames, null, 1));
 	}
 	await writeFile(process.argv[3], JSON.stringify(d, null, 2)); process.exit(0);
@@ -210,7 +210,7 @@ try {
 			r.foreignOverlapMs = +overlapMs.toFixed(3);
 			r.foreignOverlapPct = gpuSum ? +(100 * overlapMs / gpuSum).toFixed(3) : 0;
 			r.contended = r.foreignOverlapPct >= 5;
-			r.verdict = !r.aligned || r.transfersOk === false ? 'INCONCLUSIVE' : r.contended ? 'CONTENDED' : r.maxMs < 2 ? 'PASS' : 'FAIL';
+			r.verdict = !r.aligned || !Number.isFinite(r.maxMs) || r.transfersOk === false ? 'INCONCLUSIVE' : r.contended ? 'CONTENDED' : r.maxMs < 2 ? 'PASS' : 'FAIL';
 			const { frameDetail, ...row } = r;
 			results.push({ ...row, attempt });
 			await writeFile(`${DIR}/capture.json`, JSON.stringify({ sha, machineDpr, chrome: CHROME, results }, null, 2));
@@ -228,6 +228,7 @@ try {
 
 async function capture(page, c, name, attempt) {
 		await page.bringToFront();
+		await page.evaluate((v) => { globalThis.__passLog = v; }, process.env.GPU_CAPTURE_PASS_LOG === '1');
 		const setup = await page.evaluate(async ({ preset, w, h, tier }) => {
 			if (document.visibilityState !== 'visible') throw new Error('Foreground visibility required');
 			if (preset.startsWith('model-')) {
@@ -314,12 +315,20 @@ async function capture(page, c, name, attempt) {
 			globalThis.createImageBitmap = function (...a) { counts.requested++; return snap.apply(this, a); };
 			ImageBitmapRenderingContext.prototype.transferFromImageBitmap = function (b) { transfer.call(this, b); if (this.canvas === canvas) counts.delivered++; };
 			const frame = () => { e.rafRunning = true; e.update(); e.stopRaf(); };
+			const draws = []; let label = 'unlabelled';
+			if (globalThis.__passLog) {
+				for (const [name, value] of Object.entries(e)) if (value && typeof value.bind === 'function' && /Program|Material/.test(name)) {
+					const bind = value.bind; value.bind = function (...args) { label = name; return bind.apply(this, args); };
+				}
+				const draw = e.gl.drawElements;
+				e.gl.drawElements = function (...args) { draws.push(label); return draw.apply(this, args); };
+			}
 			const px = new Uint8Array(4);
 			const drain = () => e.withGl(() => { const gl = e.gl; gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null); gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); });
 			for (let i = 0; i < 200; i++) frame();
 			await e.presented(); drain();
 			const dbg = e.gl.getExtension('WEBGL_debug_renderer_info');
-			globalThis.__cap = { e, frame, counts, restore: () => { globalThis.createImageBitmap = snap; ImageBitmapRenderingContext.prototype.transferFromImageBitmap = transfer; } };
+			globalThis.__cap = { e, frame, counts, draws, restore: () => { globalThis.createImageBitmap = snap; ImageBitmapRenderingContext.prototype.transferFromImageBitmap = transfer; } };
 			return { dprActual: devicePixelRatio, backing: [canvas.width, canvas.height], adapter: dbg ? String(e.gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : 'unknown', ua: navigator.userAgent, config: { sim: cfg.simResolution ?? 128, dye: cfg.dyeResolution, pressureIterations: cfg.pressureIterations ?? null, bloom: cfg.bloom ?? null, sunrays: cfg.sunrays ?? null } };
 		}, c);
 		const pid = gpuPid();
@@ -337,17 +346,18 @@ async function capture(page, c, name, attempt) {
 	// 60 individually paced frames: three RAFs apart so each frame's GPU burst is
 	// isolated in the trace; presentation verified per frame (transferFromImageBitmap).
 	const run = await page.evaluate(async (FRAMES) => {
-		const { e, frame, counts, restore } = globalThis.__cap;
+		const { e, frame, counts, restore, draws } = globalThis.__cap;
 		const before = { ...counts }, marks = [];
 		try {
 			for (let i = 0; i < FRAMES; i++) {
 				for (let raf = 0; raf < 3; raf++) await new Promise(requestAnimationFrame);
 				const shared = !!e.sharedContext;
 				const r0 = counts.requested, d0 = counts.delivered, t0 = performance.now();
+				if (draws) draws.length = 0;
 				frame();
 				const cpuMs = performance.now() - t0;
 				await e.presented();
-				marks.push({ t0, cpuMs });
+				marks.push({ t0, cpuMs, draws: draws ? [...draws] : undefined });
 				if (shared && (counts.requested !== r0 + 1 || counts.delivered !== d0 + 1)) throw new Error(`frame ${i}: transfer not delivered`);
 			}
 			return { marks, transfers: { requested: counts.requested - before.requested, delivered: counts.delivered - before.delivered }, settled: e.settled, transfersOk: runOk() };
