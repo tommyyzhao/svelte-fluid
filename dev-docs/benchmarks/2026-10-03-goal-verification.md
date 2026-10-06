@@ -119,29 +119,29 @@ Tests at `c873fdf`: `src/lib/engine/__tests__/lighting.test.ts`,
 
 ## Remaining open / ceilings
 
-- `svelte-fluid-7n8`: **p95 <2 ms goal remains open after the optimisation round**.
-  [ADR 0101](../decisions/0101-p95-gpu-budget.md)'s owner-adopted target was post hoc,
-  not pre-registered or a waiver. Merged local-main WebGL2 `21041a0` includes
-  [ADR 0103](../decisions/0103-untransformed-shared-snapshots.md) shared copy removal
-  and [ADR 0104](../decisions/0104-pigment-pressure-pairing.md) InkPaper pressure
-  pairing; [ADR 0102](../decisions/0102-solver-display-optimisation-rejected.md)
-  solver/display candidates were rejected. Two independent full 43-scene seed-5
-  invocations on M1 Max, native DPR 2: **18 PASS / 25 FAIL** under every-clean-repeat
-  accounting; **15 PASS have two clean repeats**, three PASS rows lack a second clean
-  repeat (Aurora own 800×500, Venturi own 800×500, LiquidDropZone). All 86 attempts
-  retained: 40 PASS / 40 FAIL / 6 INCONCLUSIVE / 0 CONTENDED. Foreign overlap >=5%
-  marks contention; observed maximum 2.214% on Aurora own 1440×900 from foreign
-  Chrome, counted as clean FAIL. No foreign client signalled; GPU lock released,
-  owned Chrome/xctrace/Vite closed. Historical selected p95 result remains
-  **28 PASS / 15 FAIL**, strict-max **18 PASS / 25 FAIL**, not replaced or erased.
-  All 15 historical p95 failures persist; ten new failures use the **unchanged
-  own-tier runtime**, so variance/seed/repeat differences do not establish an
-  optimisation regression. Worst post-opt p95: shared Karman **4.613166 ms**
-  (gap **2.613166 ms**); InkPaper **2.268207 ms** (gap **0.268207 ms**).
-  200 warm / 60 paced frames per attempt; index-56 p95 is exactly 4th-worst,
-  no sustained-percentile guarantee. Median/p95/max, every attempt, unchanged-path
-  variance ranges and export SHA256s appear in the
-  [post-optimisation full matrix](gpu-budget.md#post-optimisation-full-matrix--2026-10-06).
+- `svelte-fluid-7n8`: **p95 <2 ms goal remains open after the stable full matrix**.
+  [ADR 0105](../decisions/0105-stable-gpu-budget-protocol.md)'s pre-registered
+  N600/R3/warm200/seed5 protocol, unchanged local-main WebGL2 `fbec39a`, M1 Max,
+  native DPR2: **26 PASS /14 FAIL /3 INCOMPLETE** across all43 scenes. All130
+  attempts retained: **87 PASS /39 FAIL /3 INCONCLUSIVE /1 CONTENDED**;126/129
+  slots clean, zero GPU exits, one bounded contention retry. Incomplete: SvgPathFluid
+  own800×500 (15s export timeout), Karman shared1440×900 (recorder-finalisation
+  timeout; two clean FAILs), LiquidDropZone (run3 alignment7.737208ms exceeds4ms).
+  Enamel64 run3 foreign ghostty overlap6.391% triggered the registered30s retry;
+  clean retry passed. No foreign process signalled. Worst complete FAIL: Karman
+  own1440×900 **3.136128ms**, gap **1.136128ms**; incomplete shared Karman has
+  observed clean p95 **3.430248 /3.527541ms**. InkPaper remains FAIL,
+  worst **2.165541ms**, gap **0.165541ms**. Historical60-frame post-optimisation
+  **18 PASS /25 FAIL** remains unchanged; comparison:10 old FAIL scenes now PASS,
+  14 remain FAIL, one INCOMPLETE; no old PASS becomes FAIL, two become INCOMPLETE.
+  Different sampling/repeat accounting establishes no causal speed-up/regression.
+  [ADR 0101](../decisions/0101-p95-gpu-budget.md)'s post-hoc selected-row result
+  **28 PASS /15 FAIL** and strict-max **18 PASS /25 FAIL** also remain history.
+  Every attempt median/p95/max, clean cross-run spreads, completeness and exact
+  export hashes appear in the [stable matrix](gpu-budget.md#stable-protocol-full-matrix-adr-0105--2026-10-06).
+  Post-completion unchanged replay again hit15s export timeout; diagnostic raw
+  retained-trace export took24.258628s, no new capture or verdict replacement.
+  GPU lock released; exact owned processes absent; user Chrome untouched.
   Scanout, per-shader shares and total browser/OS-cost compliance remain unproved.
 - `svelte-fluid-dv2`: geometry implemented; hybrid cache scope narrowly accepted via
   owner delegation, not universal shared compilation. See amended
