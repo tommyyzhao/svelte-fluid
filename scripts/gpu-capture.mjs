@@ -8,9 +8,11 @@
 import { chromium } from 'playwright';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { parseArgs } from 'node:util';
+import { parseArgs, promisify } from 'node:util';
+const execAsync = promisify(execFile);
+import { writeFileSync } from 'node:fs';
 
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const XCODE = { ...process.env, DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer' };
@@ -20,6 +22,15 @@ const WARM = 200, RETRIES = 2, RETRY_WAIT_MS = 30000;
 const PRESETS = ['(default)', 'LavaLamp', 'Plasma', 'InkInWater', 'FrozenSwirl', 'Aurora', 'CircularFluid', 'FrameFluid', 'AnnularFluid', 'SvgPathFluid', 'Toroidal', 'GasFlare', 'Venturi', 'Karman', 'TeslaValve'];
 const sha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 const USAGE = 'bun scripts/gpu-capture.mjs [--frames N] [--runs R] [--seed N[,N...]] [--legacy] | --self-check | --replay capture.json';
+async function attemptDeadline(work, cleanup, state, timeoutMs = 90000) {
+	const controller = new AbortController();
+	let timer;
+	try {
+		return await Promise.race([work(controller.signal), new Promise((_, reject) => {
+			timer = setTimeout(() => { controller.abort(); cleanup(); reject(new Error(`Attempt timeout in ${state.phase}`)); }, timeoutMs);
+		})]);
+	} finally { clearTimeout(timer); }
+}
 function positiveInteger(value, label) {
 	if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) < 1) throw new Error(`${label} requires a positive safe integer`);
 	return Number(value);
@@ -71,8 +82,8 @@ const TRACE_LIMIT_S = options.legacy ? 10 : Math.max(10, Math.ceil(FRAMES * 3 / 
 const protocol = { measuredFrames: FRAMES, runs: RUNS, warmupFrames: WARM, p95Index: Math.round(0.95 * (FRAMES - 1)), traceLimitSeconds: TRACE_LIMIT_S, legacy: !!options.legacy };
 
 // --- xctrace export parsing (id/ref-deduplicated XML rows) -------------------------------
-function exportTable(trace, schema) {
-	const xml = execFileSync('env', [`DEVELOPER_DIR=${XCODE.DEVELOPER_DIR}`, 'xcrun', 'xctrace', 'export', '--input', trace, '--xpath', `/trace-toc/run[@number="1"]/data/table[@schema="${schema}"]`], { env: XCODE, encoding: 'utf8', maxBuffer: 1 << 30 });
+async function exportTable(trace, schema, signal) {
+	const { stdout: xml } = await execAsync('env', [`DEVELOPER_DIR=${XCODE.DEVELOPER_DIR}`, 'xcrun', 'xctrace', 'export', '--input', trace, '--xpath', `/trace-toc/run[@number="1"]/data/table[@schema="${schema}"]`], { env: XCODE, encoding: 'utf8', maxBuffer: 1 << 30, timeout: 15000, signal });
 	const ids = new Map(), stack = [], rows = [], cols = [];
 	const dec = (s) => s.replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 	const re = /<\?[^>]*\?>|<(\/)?([\w:-]+)((?:\s+[\w:-]+=(?:"[^"]*"|'[^']*'))*)\s*(\/)?>|([^<]+)/g;
@@ -112,10 +123,10 @@ const sha256 = (s) => createHash('sha256').update(s).digest('hex');
 const rank = (v, q) => [...v].sort((a, b) => a - b)[Math.min(v.length - 1, Math.round(q * (v.length - 1)))];
 const clusterGap = (marks) => Math.max(10.75, marks.length > 1 ? 0.4 * rank(marks.slice(1).map((m, i) => m.t0 - marks[i].t0), 0.5) : 10.75);
 
-function analyse(trace, gpuPid, marks, backing) {
-	const gpu = exportTable(trace, 'metal-gpu-intervals');
-	const subs = exportTable(trace, 'metal-application-command-buffer-submissions');
-	const io = exportTable(trace, 'metal-io-surface-access');
+async function analyse(trace, gpuPid, marks, backing, signal) {
+	const gpu = await exportTable(trace, 'metal-gpu-intervals', signal);
+	const subs = await exportTable(trace, 'metal-application-command-buffer-submissions', signal);
+	const io = await exportTable(trace, 'metal-io-surface-access', signal);
 	const hashes = { 'metal-gpu-intervals': sha256(gpu.xml), 'metal-application-command-buffer-submissions': sha256(subs.xml), 'metal-io-surface-access': sha256(io.xml) };
 	const exportBytes = { 'metal-gpu-intervals': Buffer.byteLength(gpu.xml), 'metal-application-command-buffer-submissions': Buffer.byteLength(subs.xml), 'metal-io-surface-access': Buffer.byteLength(io.xml) };
 	const exec = new Map(); // cmdbuffer-id -> [start,end] ns, Chrome GPU process only
@@ -240,6 +251,9 @@ if (options['self-check']) {
 	assert.equal(verdict({ ...complete, clusters: 599 }), 'INCONCLUSIVE');
 	assert.equal(verdict({ ...complete, strays: 1 }), 'INCONCLUSIVE');
 	assert.equal(verdict({ ...complete, completedFrames: 75 }), 'INCONCLUSIVE');
+	let cleaned = false;
+	await assert.rejects(attemptDeadline(() => new Promise(() => {}), () => { cleaned = true; }, { phase: 'simulated hang' }, 10), /Attempt timeout in simulated hang/);
+	assert.equal(cleaned, true);
 	console.log('GPU capture self-check passed'); process.exit(0);
 }
 if (options.replay) {
@@ -250,13 +264,13 @@ if (options.replay) {
 			// Older captures preserved frame->command-buffer ownership, not the JS marks. Reuse that
 			// mapping only; the original capture's alignErrMs remains the JS-spacing validation.
 			const frames = JSON.parse(await readFile(`${r.trace.replace(/\.trace$/, '')}.frames.json`, 'utf8'));
-			const subs = exportTable(r.trace, 'metal-application-command-buffer-submissions').rows;
+			const subs = (await exportTable(r.trace, 'metal-application-command-buffer-submissions')).rows;
 			const times = new Map(subs.map((s) => [n(s['cmdbuffer-id']), n(s.start)]));
 			r.marks = frames.map((f) => ({ t0: times.get(parseInt(f.cbs[0].split(':')[0], 16)) / 1e6 }));
 			r.originalAlignErrMs = r.alignErrMs;
 		}
 		if (r.measuredFrames !== undefined && r.marks.length !== r.measuredFrames) { r.verdict = 'INCONCLUSIVE'; continue; }
-		const a = analyse(r.trace, r.gpuPid, r.marks, r.backing);
+		const a = await analyse(r.trace, r.gpuPid, r.marks, r.backing);
 		const { frames, ...summary } = a;
 		Object.assign(r, summary);
 		r.foreignOverlapMs = frames.reduce((s, f) => s + Object.entries(f.overlap).filter(([k]) => !/^WindowServer \(/.test(k)).reduce((t, [, v]) => t + v, 0), 0);
@@ -271,66 +285,105 @@ if (options.replay) {
 
 // --- capture --------------------------------------------------------------------------------
 await mkdir(DIR, { recursive: true });
-const owned = [];
-const server = Bun.spawn(['bun', 'run', 'dev', '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'], { stdout: 'ignore', stderr: 'inherit' });
-owned.push(server);
-let browser, gpuPid;
-const captureDeadlineMs = Math.max(60 * 60 * 1000, (process.env.GPU_CAPTURE_CASES?.split(',').length ?? PRESETS.length * 2) * seeds.length * RUNS * (TRACE_LIMIT_S + 120) * 1000);
-const deadline = setTimeout(() => { for (const p of owned) p.kill(); process.exit(2); }, captureDeadlineMs);
-const results = [];
-try {
-	for (let i = 0; i < 100 && !(await fetch(URL).then((r) => r.ok, () => false)); i++) await Bun.sleep(100);
-	for (let run = 1; run <= RUNS; run++) {
-	browser = await chromium.launch({ executablePath: CHROME, headless: false, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'] });
-	const ps = () => execFileSync('ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' }).split('\n').map((l) => l.trim().split(/\s+/));
-	const chromePid = Number(ps().find((f) => +f[1] === process.pid && f.slice(2).join(' ').startsWith(CHROME))?.[0]);
-	gpuPid = () => Number(ps().find((f) => +f[1] === chromePid && f.join(' ').includes('--type=gpu-process'))?.[0]);
-	const probe = await (await browser.newContext({ viewport: null })).newPage();
-	const machineDpr = await probe.evaluate(() => devicePixelRatio);
-	await probe.context().close();
-	const CASES = (process.env.GPU_CAPTURE_CASES || PRESETS.flatMap((p) => [`${p}@1440x900:own:${machineDpr}`, `${p}@800x500:own:${machineDpr}`]).join(','))
-		.split(',').map((s) => { const [, preset, w, h, tier, dpr] = s.match(/^(.+)@([\d.]+)x([\d.]+):(own|shared):([\d.]+)$/); return { preset, w: +w, h: +h, tier, dpr: +dpr }; })
-		.flatMap((c) => c.preset.startsWith('model-') ? [{ ...c, seed: c.preset === 'model-inkpaper' ? 5 : 'not applicable (model)' }] : seeds.map((seed) => ({ ...c, seed })));
-	let page, pageDpr;
-	for (const c of CASES) {
-		if (pageDpr !== c.dpr || page?.isClosed()) {
-			await page?.context().close();
-			// Same viewport/DPR mechanism as scripts/paced-presentation.mjs.
-			page = await (await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: c.dpr })).newPage();
-			await page.route('**/__gpu_capture__', (r) => r.fulfill({ contentType: 'text/html', body: '<!doctype html><html><body style="margin:0;overflow:hidden;background:#000"></body></html>' }));
-			await page.goto(`${URL}/__gpu_capture__`);
-			pageDpr = c.dpr;
-		}
-		const name = `${c.preset.replace(/\W/g, '')}-${c.w}x${c.h}-${c.tier}-dpr${c.dpr}${c.preset.startsWith('model-') ? '' : `-seed${c.seed}`}${options.legacy ? '' : `-r${run}`}`;
-		const firstAttempt = 1 + results.filter((r) => r.name === name).length;
-		for (let attempt = firstAttempt; ; attempt++) {
-			const r = await capture(page, c, name, attempt);
-			// Gate: foreign execution overlap (not WindowServer) >=5% of summed per-frame
-			// instance execution marks contention. All client busy spans remain reported.
-			const overlapMs = r.frameDetail.reduce((s, f) => s + Object.entries(f.overlap).filter(([k]) => !/^WindowServer \(/.test(k)).reduce((t, [, v]) => t + v, 0), 0);
-			const gpuSum = r.perFrameGpuMs.reduce((s, v) => s + v, 0);
-			r.foreignOverlapMs = +overlapMs.toFixed(3);
-			r.foreignOverlapPct = gpuSum ? +(100 * overlapMs / gpuSum).toFixed(3) : 0;
-			r.contended = r.foreignOverlapPct >= 5;
-			r.verdict = verdict(r);
-			const { frameDetail, ...row } = r;
-			results.push({ ...row, run, attempt });
-			await writeFile(`${DIR}/capture.json`, JSON.stringify({ sha, machineDpr, chrome: CHROME, seeds, protocol, results, scenes: sceneVerdicts(results, RUNS) }, null, 2));
-			await writeFile(`${DIR}/${name}-a${attempt}.frames.json`, JSON.stringify(frameDetail, null, 1));
-			console.log(JSON.stringify({ name, seed: r.seed, run, attempt, measuredFrames: FRAMES, clusters: r.clusters, verdict: r.verdict, backing: r.backing, median: +r.medianMs.toFixed(3), p95: +r.p95Ms.toFixed(3), max: +r.maxMs.toFixed(3), aligned: r.aligned, error: r.error, clusterGapMs: r.clusterGapMs, clusterDisagreements: r.clusterDisagreements, alignErrMs: r.alignErrMs == null ? null : +r.alignErrMs.toFixed(3), strays: r.strays, presentWrites: r.framesWithPresentWrite, transfers: r.transfers, otherClients: r.otherClients, foreignOverlapMs: r.foreignOverlapMs }));
-			if (r.verdict !== 'CONTENDED' || attempt - firstAttempt + 1 >= RETRIES) break;
-			await Bun.sleep(RETRY_WAIT_MS);
-		}
+const owned = [], results = [];
+const census = () => execFileSync('ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' }).split('\n').map((l) => { const m = l.match(/^\s*(\d+)\s+(\d+)\s+(.*)$/); return m && { pid: +m[1], ppid: +m[2], command: m[3] }; }).filter(Boolean);
+let browser, gpuPid, server, machineDpr;
+const save = () => writeFileSync(`${DIR}/capture.json`, JSON.stringify({ sha, machineDpr, chrome: CHROME, seeds, protocol, results, scenes: sceneVerdicts(results, RUNS) }, null, 2));
+const exactOwned = new Map();
+function rememberOwned() {
+	const rows = census(), ids = new Set([process.pid]);
+	for (let changed = true; changed;) { changed = false; for (const r of rows) if (ids.has(r.ppid) && !ids.has(r.pid)) { ids.add(r.pid); changed = true; } }
+	for (const r of rows) if (ids.has(r.pid) && r.pid !== process.pid) exactOwned.set(r.pid, r.command);
+}
+function cleanupOwned() {
+	rememberOwned();
+	for (const r of census().reverse()) if (exactOwned.get(r.pid) === r.command) {
+		try { process.kill(r.pid, 'SIGTERM'); } catch (e) { if (e.code !== 'ESRCH') throw e; }
 	}
-	await browser.close(); browser = null;
+	browser = null; server = null;
+}
+let watchdog = setTimeout(stalled, 5 * 60 * 1000);
+function stalled() { save(); cleanupOwned(); process.exit(2); }
+function completed() { clearTimeout(watchdog); watchdog = setTimeout(stalled, 5 * 60 * 1000); }
+async function startServer(phase) {
+	if (server) return;
+	phase('server startup');
+	server = Bun.spawn(['bun', 'run', 'dev', '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'], { stdout: 'ignore', stderr: 'inherit' }); owned.push(server);
+	for (let i = 0; i < 100 && !(await fetch(URL, { signal: AbortSignal.timeout(1000) }).then((r) => r.ok, () => false)); i++) await Bun.sleep(100);
+	rememberOwned();
+}
+try {
+	let CASES;
+	for (let run = 1; run <= RUNS; run++) {
+		const bootstrap = { phase: 'browser launch' };
+		const bootstrapPhase = (p) => { bootstrap.phase = p; writeFileSync(`${DIR}/run${run}.progress.json`, JSON.stringify(bootstrap)); };
+		try {
+			await attemptDeadline(async () => {
+				await startServer(bootstrapPhase);
+				bootstrapPhase('browser launch');
+				browser = await chromium.launch({ executablePath: CHROME, headless: false, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'], timeout: 30000 }); rememberOwned();
+				const chromePid = census().find((r) => r.ppid === process.pid && r.command.startsWith(CHROME))?.pid;
+				gpuPid = () => census().find((r) => r.ppid === chromePid && r.command.includes('--type=gpu-process'))?.pid;
+				bootstrapPhase('DPR probe');
+				const context = await browser.newContext({ viewport: null }), probe = await context.newPage();
+				machineDpr = await probe.evaluate(() => devicePixelRatio); await context.close();
+			}, cleanupOwned, bootstrap);
+		} catch (error) {
+			cleanupOwned();
+			if (!CASES) throw error;
+			for (const c of CASES) results.push({ ...c, run, attempt: 1, error: String(error.message), phase: bootstrap.phase, verdict: 'INCONCLUSIVE', aligned: false, p95Ms: NaN });
+			save(); completed(); continue;
+		}
+		CASES ??= (process.env.GPU_CAPTURE_CASES || PRESETS.flatMap((p) => [`${p}@1440x900:own:${machineDpr}`, `${p}@800x500:own:${machineDpr}`]).join(','))
+			.split(',').map((s) => { const match = s.match(/^(.+)@([\d.]+)x([\d.]+):(own|shared):([\d.]+)$/); if (!match) throw new Error(`Invalid GPU_CAPTURE_CASES: ${s}`); const [, preset, w, h, tier, dpr] = match; return { preset, w: +w, h: +h, tier, dpr: +dpr }; })
+			.flatMap((c) => c.preset.startsWith('model-') ? [{ ...c, seed: c.preset === 'model-inkpaper' ? 5 : 'not applicable (model)' }] : seeds.map((seed) => ({ ...c, seed })));
+		let page, pageDpr;
+		for (const c of CASES) {
+			const name = `${c.preset.replace(/\W/g, '')}-${c.w}x${c.h}-${c.tier}-dpr${c.dpr}${c.preset.startsWith('model-') ? '' : `-seed${c.seed}`}${options.legacy ? '' : `-r${run}`}`;
+			for (let attempt = 1; attempt <= RETRIES; attempt++) {
+				const state = { phase: 'page setup', marks: [], visibility: [] };
+				const phase = (p) => { state.phase = p; writeFileSync(`${DIR}/${name}-a${attempt}.progress.json`, JSON.stringify(state)); };
+				let r;
+				try {
+					r = await attemptDeadline(async (signal) => {
+						await startServer(phase);
+						if (!browser) {
+							phase('browser relaunch'); browser = await chromium.launch({ executablePath: CHROME, headless: false, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'], timeout: 30000 }); rememberOwned();
+							const chromePid = census().find((r) => r.ppid === process.pid && r.command.startsWith(CHROME))?.pid;
+							gpuPid = () => census().find((r) => r.ppid === chromePid && r.command.includes('--type=gpu-process'))?.pid;
+						}
+						if (pageDpr !== c.dpr || !page || page.isClosed()) {
+							phase('page navigation'); await page?.context().close();
+							page = await (await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: c.dpr })).newPage();
+							await page.route('**/__gpu_capture__', (r) => r.fulfill({ contentType: 'text/html', body: '<!doctype html><html><body style="margin:0;overflow:hidden;background:#000"></body></html>' }));
+							await page.goto(`${URL}/__gpu_capture__`, { timeout: 15000 }); pageDpr = c.dpr;
+						}
+						return await capture(page, c, name, attempt, phase, signal, state);
+					}, cleanupOwned, state);
+				} catch (error) {
+					cleanupOwned(); page = null; pageDpr = null;
+					r = { ...c, name, trace: `${DIR}/${name}-a${attempt}.trace`, measuredFrames: FRAMES, completedFrames: state.marks.length, marks: state.marks, visibility: state.visibility, error: String(error.message), phase: state.phase, aligned: false, clusters: 0, framesWithPresentWrite: 0, p95Ms: NaN, medianMs: NaN, maxMs: NaN, frameDetail: [], perFrameGpuMs: [], transfersOk: false };
+				}
+				const overlapMs = r.frameDetail.reduce((s, f) => s + Object.entries(f.overlap).filter(([k]) => !/^WindowServer \(/.test(k)).reduce((t, [, v]) => t + v, 0), 0);
+				const gpuSum = r.perFrameGpuMs.reduce((s, v) => s + v, 0);
+				r.foreignOverlapMs = +overlapMs.toFixed(3); r.foreignOverlapPct = gpuSum ? +(100 * overlapMs / gpuSum).toFixed(3) : 0; r.contended = r.foreignOverlapPct >= 5; r.verdict = verdict(r);
+				const { frameDetail, ...row } = r; results.push({ ...row, run, attempt }); save(); completed();
+				writeFileSync(`${DIR}/${name}-a${attempt}.frames.json`, JSON.stringify(frameDetail, null, 1));
+				console.log(JSON.stringify({ name, run, attempt, verdict: r.verdict, error: r.error, phase: r.phase, p95: r.p95Ms, aligned: r.aligned, alignErrMs: r.alignErrMs, clusters: r.clusters, presentWrites: r.framesWithPresentWrite, completedFrames: r.completedFrames }));
+				if (r.verdict !== 'CONTENDED' || attempt === RETRIES) break;
+				await Bun.sleep(RETRY_WAIT_MS);
+			}
+		}
+		const closing = { phase: 'browser cleanup' };
+		try { await attemptDeadline(async () => { await browser?.close(); browser = null; }, cleanupOwned, closing, 10000); } catch { cleanupOwned(); }
 	}
 } finally {
-	clearTimeout(deadline);
-	await browser?.close();
-	for (const p of owned.reverse()) { p.kill(); await p.exited; }
+	clearTimeout(watchdog); save(); cleanupOwned();
 }
 
-async function capture(page, c, name, attempt) {
+async function capture(page, c, name, attempt, phase, signal, state) {
+		phase('warm-up');
+		signal.throwIfAborted();
 		await page.bringToFront();
 		await page.evaluate((v) => { globalThis.__passLog = v; }, process.env.GPU_CAPTURE_PASS_LOG === '1');
 		const setup = await page.evaluate(async ({ preset, w, h, tier, seed, warmupFrames }) => {
@@ -435,6 +488,8 @@ async function capture(page, c, name, attempt) {
 			globalThis.__cap = { e, frame, counts, draws, restore: () => { globalThis.createImageBitmap = snap; ImageBitmapRenderingContext.prototype.transferFromImageBitmap = transfer; } };
 			return { dprActual: devicePixelRatio, backing: [canvas.width, canvas.height], adapter: dbg ? String(e.gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : 'unknown', ua: navigator.userAgent, config: { sim: cfg.simResolution ?? 128, dye: cfg.dyeResolution, pressureIterations: cfg.pressureIterations ?? null, bloom: cfg.bloom ?? null, sunrays: cfg.sunrays ?? null } };
 		}, { ...c, warmupFrames: WARM });
+		signal.throwIfAborted();
+		phase('recorder startup');
 		const pid = gpuPid();
 		const trace = `${DIR}/${name}-a${attempt}.trace`;
 		execFileSync('rm', ['-rf', trace]);
@@ -447,18 +502,26 @@ async function capture(page, c, name, attempt) {
 		owned.push(rec);
 		await Promise.race([started.exited, Bun.sleep(6000)]);
 		started.kill();
+		phase('quiet lead-in');
 		await Bun.sleep(300); // quiet lead-in
+		signal.throwIfAborted();
+		if (!census().some((r) => r.pid === pid)) throw new Error('GPU process exited during recorder startup');
 	// Individually paced frames: three RAFs apart so each frame's GPU burst is
 	// isolated in the trace; presentation verified per frame (transferFromImageBitmap).
-	const progress = { marks: [], visibility: [], transfers: { requested: 0, delivered: 0 }, transfersOk: false };
+	phase('measurement');
+	const progress = { marks: state.marks, visibility: state.visibility, transfers: { requested: 0, delivered: 0 }, transfersOk: false };
 	await page.exposeFunction(`__captureProgress${attempt}${name.replace(/\W/g, '')}`, (event) => {
 		if (event.mark) progress.marks.push(event.mark);
 		if (event.visibility) progress.visibility.push(event.visibility);
 		if (event.transfers) progress.transfers = event.transfers;
+		if (event.visibility || progress.marks.length % 50 === 0) phase(state.phase);
 	});
 	await page.evaluate((key) => { globalThis.__captureProgress = globalThis[key]; }, `__captureProgress${attempt}${name.replace(/\W/g, '')}`);
 	let timer;
+	let gpuWatch;
+	const gpuExited = new Promise((_, reject) => { gpuWatch = setInterval(() => { if (!census().some((r) => r.pid === pid)) reject(new Error('GPU process exited during recording')); }, 250); });
 	const run = await Promise.race([
+		gpuExited,
 		page.evaluate(async ({ FRAMES, timeoutMs }) => {
 			const { e, frame, counts, restore, draws } = globalThis.__cap;
 			const before = { ...counts }, marks = [], visibility = [];
@@ -492,16 +555,25 @@ async function capture(page, c, name, attempt) {
 		}, { FRAMES, timeoutMs: (TRACE_LIMIT_S - (options.legacy ? 3 : 10)) * 1000 }),
 		new Promise((resolve) => { timer = setTimeout(() => resolve({ ...progress, error: 'Page evaluation timeout before recorder ceiling', transfersOk: false }), (TRACE_LIMIT_S - (options.legacy ? 1 : 8)) * 1000); })
 	]).catch((e) => ({ ...progress, error: String(e.message ?? e), transfersOk: false }));
-	clearTimeout(timer);
+	clearTimeout(timer); clearInterval(gpuWatch);
 	await writeFile(`${trace}.progress.json`, JSON.stringify(progress, null, 2));
+	signal.throwIfAborted();
+	phase('recorder finalisation');
 	await Bun.sleep(500); // let the last frame's GPU execution and display dependencies complete
 	rec.kill('SIGINT'); // early stop; --time-limit is the hard ceiling
 	const code = await rec.exited;
 	const recordingWallMs = performance.now() - recordingStarted;
 	if (code !== 0) throw new Error(`xctrace exit ${code}: ${await new Response(rec.stderr).text()}`);
-	if (run.error) await page.close({ runBeforeUnload: false });
+	signal.throwIfAborted();
+	phase('page cleanup');
+	if (run.error) {
+		if (page.isClosed() || !browser?.isConnected()) cleanupOwned();
+		else await page.close({ runBeforeUnload: false });
+	}
 	else await page.evaluate(() => { globalThis.__cap.e.dispose(); document.body.replaceChildren(); delete globalThis.__cap; });
-	const a = run.marks.length === FRAMES ? analyse(trace, pid, run.marks, setup.backing) : { aligned: false, clusters: 0, framesWithPresentWrite: 0, strays: null, medianMs: NaN, p95Ms: NaN, maxMs: NaN, frames: [], error: run.error };
+	signal.throwIfAborted();
+	phase('trace export');
+	const a = run.marks.length === FRAMES ? await analyse(trace, pid, run.marks, setup.backing, signal) : { aligned: false, clusters: 0, framesWithPresentWrite: 0, strays: null, medianMs: NaN, p95Ms: NaN, maxMs: NaN, frames: [], error: run.error };
 	const { frames, ...summary } = a;
 	return { ...c, name, trace, gpuPid: pid, command: `env DEVELOPER_DIR=${XCODE.DEVELOPER_DIR} ${cmd.join(' ')}`, measuredFrames: FRAMES, warmupFrames: WARM, recordingWallMs, ...setup, error: run.error, visibility: run.visibility, completedFrames: run.marks.length, transfers: run.transfers, settled: run.settled, transfersOk: run.transfersOk, marks: run.marks, ...summary, frameDetail: frames, perFrameGpuMs: frames.map((f) => +f.gpuMs.toFixed(4)) };
 }
