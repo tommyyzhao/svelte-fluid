@@ -18,18 +18,47 @@ const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const XCODE = { ...process.env, DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer' };
 const DIR = process.env.GPU_CAPTURE_DIR || '/tmp/gpu-capture';
 const PORT = 5198, URL = `http://127.0.0.1:${PORT}`;
-const WARM = 200, RETRIES = 2, RETRY_WAIT_MS = 30000;
+const WARM = 200, RETRY_WAIT_MS = 30000;
 const PRESETS = ['(default)', 'LavaLamp', 'Plasma', 'InkInWater', 'FrozenSwirl', 'Aurora', 'CircularFluid', 'FrameFluid', 'AnnularFluid', 'SvgPathFluid', 'Toroidal', 'GasFlare', 'Venturi', 'Karman', 'TeslaValve'];
 const sha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 const USAGE = 'bun scripts/gpu-capture.mjs [--frames N] [--runs R] [--seed N[,N...]] [--legacy] | --self-check | --replay capture.json';
-async function attemptDeadline(work, cleanup, state, timeoutMs = 90000) {
+function abortable(promise, signal) {
+	signal.throwIfAborted();
+	let abort;
+	return Promise.race([promise, new Promise((_, reject) => {
+		abort = () => reject(signal.reason); signal.addEventListener('abort', abort, { once: true });
+	})]).finally(() => signal.removeEventListener('abort', abort));
+}
+async function attemptDeadline(work, cleanup, state, timeoutMs) {
 	const controller = new AbortController();
 	let timer;
+	const pending = Promise.resolve().then(() => work(controller.signal));
 	try {
-		return await Promise.race([work(controller.signal), new Promise((_, reject) => {
-			timer = setTimeout(() => { controller.abort(); cleanup(); reject(new Error(`Attempt timeout in ${state.phase}`)); }, timeoutMs);
+		return await Promise.race([pending, new Promise((_, reject) => {
+			timer = setTimeout(() => {
+				const error = new Error(`Attempt timeout in ${state.phase}`);
+				controller.abort(error); cleanup(); reject(error);
+			}, timeoutMs);
 		})]);
-	} finally { clearTimeout(timer); }
+	} finally {
+		clearTimeout(timer);
+		if (controller.signal.aborted) { await pending.catch(() => {}); cleanup(); }
+		else controller.abort(); // release phase monitors on normal completion/error too
+	}
+}
+const attemptLimitMs = (recordingSeconds) => (recordingSeconds + 60) * 1000;
+function retryAllowed(r, allowances) {
+	if (/GPU process exited/.test(r.error ?? '')) return allowances.gpuExits++ < 2;
+	if (r.verdict === 'CONTENDED') return allowances.contention++ < 1;
+	return false;
+}
+const replayReady = (r) => typeof r.trace === 'string' && Number.isInteger(r.gpuPid) && Array.isArray(r.backing) && r.backing.length === 2 && Array.isArray(r.marks) && r.marks.length > 0;
+function watchGpu(alive, fail, signal, intervalMs = 250) {
+	const check = () => { if (!alive()) fail('GPU process exited during recording'); };
+	const timer = setInterval(check, intervalMs);
+	const stop = () => clearInterval(timer);
+	signal.addEventListener('abort', stop, { once: true });
+	return () => { stop(); signal.removeEventListener('abort', stop); check(); };
 }
 function positiveInteger(value, label) {
 	if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) < 1) throw new Error(`${label} requires a positive safe integer`);
@@ -51,9 +80,9 @@ function parseSeeds(value = '5') {
 }
 function verdict(r) {
 	const incomplete = r.measuredFrames !== undefined && (r.clusters !== r.measuredFrames || r.framesWithPresentWrite !== r.measuredFrames || r.strays !== 0 || r.completedFrames !== undefined && r.completedFrames !== r.measuredFrames);
-	return !r.aligned || !Number.isFinite(r.p95Ms) || r.transfersOk === false || incomplete ? 'INCONCLUSIVE' : r.contended ? 'CONTENDED' : r.p95Ms < 2 ? 'PASS' : 'FAIL';
+	return r.error || r.executionCoverageOk === false || !r.aligned || !Number.isFinite(r.p95Ms) || r.transfersOk === false || incomplete ? 'INCONCLUSIVE' : r.contended ? 'CONTENDED' : r.p95Ms < 2 ? 'PASS' : 'FAIL';
 }
-function sceneVerdicts(results, requiredRuns = 1) {
+function sceneVerdicts(results, requiredRuns = 1, expectedSeeds) {
 	const scenes = new Map();
 	for (const r of results) {
 		const key = JSON.stringify([r.preset, r.w, r.h, r.tier, r.dpr]);
@@ -62,7 +91,8 @@ function sceneVerdicts(results, requiredRuns = 1) {
 	}
 	return [...scenes.values()].map((s) => {
 		const clean = s.repeats.filter((r) => r.verdict === 'PASS' || r.verdict === 'FAIL');
-		const complete = [...new Set(s.repeats.map((r) => r.seed))].every((seed) => {
+		const requested = s.preset?.startsWith('model-') ? [s.preset === 'model-inkpaper' ? 5 : 'not applicable (model)'] : expectedSeeds ?? [...new Set(s.repeats.map((r) => r.seed))];
+		const complete = requested.every((seed) => {
 			const repeats = clean.filter((r) => r.seed === seed);
 			return new Set(repeats.map((r) => r.run ?? r.trace)).size >= requiredRuns;
 		});
@@ -84,6 +114,7 @@ const protocol = { measuredFrames: FRAMES, runs: RUNS, warmupFrames: WARM, p95In
 
 // --- xctrace export parsing (id/ref-deduplicated XML rows) -------------------------------
 async function exportTable(trace, schema, signal) {
+	signal?.throwIfAborted();
 	const { stdout: xml } = await execAsync('env', [`DEVELOPER_DIR=${XCODE.DEVELOPER_DIR}`, 'xcrun', 'xctrace', 'export', '--input', trace, '--xpath', `/trace-toc/run[@number="1"]/data/table[@schema="${schema}"]`], { env: XCODE, encoding: 'utf8', maxBuffer: 1 << 30, timeout: 15000, signal });
 	const ids = new Map(), stack = [], rows = [], cols = [];
 	const dec = (s) => s.replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
@@ -128,6 +159,9 @@ async function analyse(trace, gpuPid, marks, backing, signal) {
 	const gpu = await exportTable(trace, 'metal-gpu-intervals', signal);
 	const subs = await exportTable(trace, 'metal-application-command-buffer-submissions', signal);
 	const io = await exportTable(trace, 'metal-io-surface-access', signal);
+	return analyseTables(gpu, subs, io, gpuPid, marks, backing);
+}
+function analyseTables(gpu, subs, io, gpuPid, marks, backing) {
 	const hashes = { 'metal-gpu-intervals': sha256(gpu.xml), 'metal-application-command-buffer-submissions': sha256(subs.xml), 'metal-io-surface-access': sha256(io.xml) };
 	const exportBytes = { 'metal-gpu-intervals': Buffer.byteLength(gpu.xml), 'metal-application-command-buffer-submissions': Buffer.byteLength(subs.xml), 'metal-io-surface-access': Buffer.byteLength(io.xml) };
 	const exec = new Map(); // cmdbuffer-id -> [start,end] ns, Chrome GPU process only
@@ -175,6 +209,7 @@ async function analyse(trace, gpuPid, marks, backing, signal) {
 	// browser-compositor-only redraw) is counted, not silently assigned to the instance.
 	const strays = aligned ? bursts.filter((b) => b.start >= spanLo && b.start <= spanHi && !run.includes(b)).length : null;
 	const frames = run.map((b, i) => {
+		const missingExecutionCbs = b.cbs.filter((c) => !(exec.get(c.cb) ?? []).some(([s, e]) => Number.isFinite(s) && Number.isFinite(e) && e > s)).map((c) => c.cb);
 		const iv = b.cbs.flatMap((c) => exec.get(c.cb) ?? []);
 		const s = Math.min(...iv.map((x) => x[0])), e = Math.max(...iv.map((x) => x[1]));
 		const sizes = new Set(b.cbs.flatMap((c) => [...(writes.get(c.cb) ?? [])]));
@@ -185,7 +220,7 @@ async function analyse(trace, gpuPid, marks, backing, signal) {
 		const by = {};
 		for (const x of other) for (const [a, z] of iv) if (x[1] > a && x[0] < z) (by[x[2]] ??= []).push([Math.max(x[0], a), Math.min(x[1], z)]);
 		return {
-			gpuMs: union(iv) / 1e6, browserOsMs, firstToLastMs: (e - s) / 1e6, commitOffsetMs: (b.start - run[0].start - (t0[i] - t0[0])) / 1e6,
+			gpuMs: missingExecutionCbs.length ? NaN : union(iv) / 1e6, executionCoverageOk: !missingExecutionCbs.length, missingExecutionCbs, browserOsMs, firstToLastMs: (e - s) / 1e6, commitOffsetMs: (b.start - run[0].start - (t0[i] - t0[0])) / 1e6,
 			cbs: b.cbs.map((c) => `0x${c.cb.toString(16)}:${c.enc}`), encoders: b.cbs.reduce((sum, c) => sum + c.enc, 0),
 			presentWrite: sizes.has(`${backing[0]}x${backing[1]}`), otherWrites: [...sizes].filter((z) => z !== `${backing[0]}x${backing[1]}`),
 			overlap: Object.fromEntries(Object.entries(by).map(([k, v]) => [k, union(v) / 1e6]))
@@ -196,8 +231,10 @@ async function analyse(trace, gpuPid, marks, backing, signal) {
 	for (const x of other) if (x[1] > spanLo && x[0] < spanHi) (clients[x[2]] ??= []).push([Math.max(x[0], spanLo), Math.min(x[1], spanHi)]);
 	const spanMs = (spanHi - spanLo) / 1e6;
 	const otherClients = Object.fromEntries(Object.entries(clients).map(([k, v]) => [k, { busyMs: +(union(v) / 1e6).toFixed(3), busyPct: +((100 * union(v)) / (spanHi - spanLo)).toFixed(2) }]));
-	const g = frames.map((f) => f.gpuMs);
+	const executionCoverageOk = frames.length > 0 && frames.every((f) => f.executionCoverageOk);
+	const g = executionCoverageOk ? frames.map((f) => f.gpuMs) : [];
 	return {
+		executionCoverageOk,
 		aligned, alignErrMs: best.err / 1e6, clusterGapMs, idleGapBursts, clusterDisagreements: idleGapBursts - bursts.length, bursts: bursts.length, clusters: run.length, strays, spanMs,
 		medianMs: g.length ? rank(g, 0.5) : NaN, p95Ms: g.length ? rank(g, 0.95) : NaN, maxMs: g.length ? Math.max(...g) : NaN,
 		framesWithPresentWrite: frames.filter((f) => f.presentWrite).length,
@@ -216,6 +253,7 @@ if (workerMode) {
 async function analyseWorker(trace, pid, marks, backing, signal) {
 	const input = `${trace}.analysis-input.json`, output = `${trace}.analysis.json`;
 	await writeFile(input, JSON.stringify({ trace, pid, marks, backing }));
+	signal?.throwIfAborted();
 	await execAsync(process.execPath, [process.argv[1], '--analyse-worker', input, output], { timeout: 60000, signal, maxBuffer: 1 << 20 });
 	return JSON.parse(await readFile(output, 'utf8'));
 }
@@ -265,14 +303,49 @@ if (options['self-check']) {
 	assert.equal(verdict({ ...complete, strays: 1 }), 'INCONCLUSIVE');
 	assert.equal(verdict({ ...complete, completedFrames: 75 }), 'INCONCLUSIVE');
 	let cleaned = false;
-	await assert.rejects(attemptDeadline(() => new Promise(() => {}), () => { cleaned = true; }, { phase: 'simulated hang' }, 10), /Attempt timeout in simulated hang/);
+	await assert.rejects(attemptDeadline((signal) => abortable(new Promise(() => {}), signal), () => { cleaned = true; }, { phase: 'simulated hang' }, 10), /Attempt timeout in simulated hang/);
 	assert.equal(cleaned, true);
-	console.log('GPU capture self-check passed'); process.exit(0);
+	// review: zero-interval-coverage
+	const cell = (value) => ({ text: String(value) });
+	const proc = { attrs: { fmt: 'Chrome (123)' } };
+	const marks = Array.from({ length: 600 }, (_, i) => ({ t0: i * 25 }));
+	const synthetic = analyseTables({ xml: '', rows: [] }, { xml: '', rows: marks.map((m, i) => ({ process: proc, start: cell(m.t0 * 1e6), 'cmdbuffer-id': cell(i + 1), 'num-encoders': cell(1) })) }, { xml: '', rows: marks.map((_, i) => ({ pid: cell(123), 'access-type': cell(1), 'cmdbuffer-id': cell(i + 1), width: cell(2880), height: cell(1800) })) }, 123, marks, [2880, 1800]);
+	assert.equal(synthetic.clusters, 600); assert.equal(synthetic.framesWithPresentWrite, 600);
+	assert.equal(synthetic.executionCoverageOk, false); assert.equal(Number.isFinite(synthetic.p95Ms), false); assert.equal(verdict(synthetic), 'INCONCLUSIVE');
+	// review: gpu-exit-during-drain
+	let alive = true, error;
+	const stop = watchGpu(() => alive, (value) => { error = value; }, new AbortController().signal, 1);
+	await Bun.sleep(2); alive = false; await Bun.sleep(3); stop();
+	assert.equal(verdict({ ...complete, error }), 'INCONCLUSIVE');
+	assert.equal(verdict({ ...complete, error: 'recorder failed' }), 'INCONCLUSIVE');
+	// review: abort-during-server-start
+	let created = false, settled = false;
+	await assert.rejects(attemptDeadline(async (signal) => {
+		try { await abortable(Bun.sleep(50), signal); signal.throwIfAborted(); created = true; }
+		finally { settled = true; }
+	}, () => {}, { phase: 'server startup' }, 5), /Attempt timeout/);
+	assert.equal(created, false); assert.equal(settled, true); await Bun.sleep(55); assert.equal(created, false);
+	// review: bootstrap-failure-replay
+	assert.equal(replayReady({ error: 'browser launch failed', verdict: 'INCONCLUSIVE' }), false);
+	// review: missing-requested-seed
+	assert.equal(sceneVerdicts(repeats, 3, [5, 42])[0].verdict, 'INCOMPLETE');
+	// review: mixed-infrastructure-contention-retries
+	const allowances = { gpuExits: 0, contention: 0 };
+	assert.equal(retryAllowed({ error: 'GPU process exited' }, allowances), true);
+	assert.equal(retryAllowed({ verdict: 'CONTENDED' }, allowances), true);
+	assert.equal(retryAllowed({ error: 'GPU process exited' }, allowances), true);
+	assert.equal(retryAllowed({ verdict: 'CONTENDED' }, allowances), false);
+	assert.equal(retryAllowed({ error: 'GPU process exited' }, allowances), false);
+	assert.equal(retryAllowed({ verdict: 'FAIL' }, allowances), false);
+	// review: large-frame-attempt-deadline
+	assert.ok(attemptLimitMs(610) > 610000);
+	console.log('GPU capture self-check passed: zero-interval-coverage, gpu-exit-during-drain, abort-during-server-start, bootstrap-failure-replay, missing-requested-seed, mixed-infrastructure-contention-retries, large-frame-attempt-deadline'); process.exit(0);
 }
 if (options.replay) {
 	const d = JSON.parse(await readFile(options.replay, 'utf8'));
 	for (const r of d.results) {
 		r.seed ??= 'unseeded (historical)';
+		if (typeof r.trace !== 'string' || !Number.isInteger(r.gpuPid) || !Array.isArray(r.backing)) { r.verdict = 'INCONCLUSIVE'; continue; }
 		if (!r.marks) {
 			// Older captures preserved frame->command-buffer ownership, not the JS marks. Reuse that
 			// mapping only; the original capture's alignErrMs remains the JS-spacing validation.
@@ -282,7 +355,7 @@ if (options.replay) {
 			r.marks = frames.map((f) => ({ t0: times.get(parseInt(f.cbs[0].split(':')[0], 16)) / 1e6 }));
 			r.originalAlignErrMs = r.alignErrMs;
 		}
-		if (r.measuredFrames !== undefined && r.marks.length !== r.measuredFrames) { r.verdict = 'INCONCLUSIVE'; continue; }
+		if (!replayReady(r) || r.measuredFrames !== undefined && r.marks.length !== r.measuredFrames) { r.verdict = 'INCONCLUSIVE'; continue; }
 		const a = await analyseWorker(r.trace, r.gpuPid, r.marks, r.backing);
 		const { frames, ...summary } = a;
 		Object.assign(r, summary);
@@ -292,7 +365,7 @@ if (options.replay) {
 		r.verdict = verdict(r);
 		await writeFile(`${r.trace}.frames.json`, JSON.stringify(frames, null, 1));
 	}
-	d.scenes = sceneVerdicts(d.results, d.protocol?.runs ?? 1);
+	d.scenes = sceneVerdicts(d.results, d.protocol?.runs ?? 1, d.seeds);
 	await writeFile(options.replay, JSON.stringify(d, null, 2)); process.exit(0);
 }
 
@@ -301,7 +374,7 @@ await mkdir(DIR, { recursive: true });
 const owned = [], results = [];
 const census = () => execFileSync('ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' }).split('\n').map((l) => { const m = l.match(/^\s*(\d+)\s+(\d+)\s+(.*)$/); return m && { pid: +m[1], ppid: +m[2], command: m[3] }; }).filter(Boolean);
 let browser, gpuPid, server, machineDpr;
-const save = () => writeFileSync(`${DIR}/capture.json`, JSON.stringify({ sha, machineDpr, chrome: CHROME, seeds, protocol, results, scenes: sceneVerdicts(results, RUNS) }, null, 2));
+const save = () => writeFileSync(`${DIR}/capture.json`, JSON.stringify({ sha, machineDpr, chrome: CHROME, seeds, protocol, results, scenes: sceneVerdicts(results, RUNS, seeds) }, null, 2));
 const exactOwned = new Map();
 function rememberOwned() {
 	const rows = census(), ids = new Set([process.pid]);
@@ -318,12 +391,18 @@ function cleanupOwned() {
 let watchdog = setTimeout(stalled, 5 * 60 * 1000);
 function stalled() { save(); cleanupOwned(); process.exit(2); }
 function completed() { clearTimeout(watchdog); watchdog = setTimeout(stalled, 5 * 60 * 1000); }
-async function startServer(phase) {
+async function startServer(phase, signal) {
+	signal.throwIfAborted();
 	if (server) return;
 	phase('server startup');
+	signal.throwIfAborted();
 	server = Bun.spawn(['bun', 'run', 'dev', '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'], { stdout: 'ignore', stderr: 'inherit' }); owned.push(server);
-	for (let i = 0; i < 100 && !(await fetch(URL, { signal: AbortSignal.timeout(1000) }).then((r) => r.ok, () => false)); i++) await Bun.sleep(100);
-	rememberOwned();
+	for (let i = 0; i < 100; i++) {
+		signal.throwIfAborted();
+		if (await fetch(URL, { signal: AbortSignal.any([signal, AbortSignal.timeout(1000)]) }).then((r) => r.ok, () => false)) break;
+		await abortable(Bun.sleep(100), signal);
+	}
+	signal.throwIfAborted(); rememberOwned();
 }
 try {
 	let CASES;
@@ -331,18 +410,20 @@ try {
 		const bootstrap = { phase: 'browser launch' };
 		const bootstrapPhase = (p) => { bootstrap.phase = p; writeFileSync(`${DIR}/run${run}.progress.json`, JSON.stringify(bootstrap)); };
 		try {
-			await attemptDeadline(async () => {
-				await startServer(bootstrapPhase);
+			await attemptDeadline(async (signal) => {
+				await startServer(bootstrapPhase, signal);
+				signal.throwIfAborted();
 				bootstrap.parentRssBytes = process.memoryUsage().rss;
 				bootstrapPhase('browser launch');
 				console.log(JSON.stringify({ run, phase: 'browser launch', parentRssBytes: bootstrap.parentRssBytes }));
-				browser = await chromium.launch({ executablePath: CHROME, headless: false, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'], args: ['--enable-logging=stderr', '--v=0'], timeout: 30000 }); rememberOwned();
+				signal.throwIfAborted(); browser = await chromium.launch({ executablePath: CHROME, headless: false, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'], args: ['--enable-logging=stderr', '--v=0'], timeout: 30000 }); rememberOwned(); signal.throwIfAborted();
 				const chromePid = census().find((r) => r.ppid === process.pid && r.command.startsWith(CHROME))?.pid;
 				gpuPid = () => census().find((r) => r.ppid === chromePid && r.command.includes('--type=gpu-process'))?.pid;
 				bootstrapPhase('DPR probe');
-				const context = await browser.newContext({ viewport: null }), probe = await context.newPage();
-				machineDpr = await probe.evaluate(() => devicePixelRatio); await context.close();
-			}, cleanupOwned, bootstrap);
+				signal.throwIfAborted(); const context = await abortable(browser.newContext({ viewport: null }), signal);
+				signal.throwIfAborted(); const probe = await abortable(context.newPage(), signal);
+				machineDpr = await abortable(probe.evaluate(() => devicePixelRatio), signal); await abortable(context.close(), signal);
+			}, cleanupOwned, bootstrap, attemptLimitMs(TRACE_LIMIT_S));
 		} catch (error) {
 			cleanupOwned();
 			if (!CASES) throw error;
@@ -354,30 +435,34 @@ try {
 			.flatMap((c) => c.preset.startsWith('model-') ? [{ ...c, seed: c.preset === 'model-inkpaper' ? 5 : 'not applicable (model)' }] : seeds.map((seed) => ({ ...c, seed })));
 		let page, pageDpr;
 		for (const c of CASES) {
+			const allowances = { gpuExits: 0, contention: 0 };
 			const name = `${c.preset.replace(/\W/g, '')}-${c.w}x${c.h}-${c.tier}-dpr${c.dpr}${c.preset.startsWith('model-') ? '' : `-seed${c.seed}`}${options.legacy ? '' : `-r${run}`}`;
-			for (let attempt = 1; attempt <= 3; attempt++) {
+			for (let attempt = 1; ; attempt++) {
 				const state = { phase: 'page setup', marks: [], visibility: [] };
 				const phase = (p) => { state.phase = p; writeFileSync(`${DIR}/${name}-a${attempt}.progress.json`, JSON.stringify(state)); };
 				let r;
 				try {
 					r = await attemptDeadline(async (signal) => {
-						await startServer(phase);
+						await startServer(phase, signal);
+						signal.throwIfAborted();
 						if (!browser) {
-							state.parentRssBytes = process.memoryUsage().rss; phase('browser relaunch'); console.log(JSON.stringify({ run, phase: 'browser relaunch', parentRssBytes: state.parentRssBytes })); browser = await chromium.launch({ executablePath: CHROME, headless: false, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'], args: ['--enable-logging=stderr', '--v=0'], timeout: 30000 }); rememberOwned();
+							state.parentRssBytes = process.memoryUsage().rss; phase('browser relaunch'); console.log(JSON.stringify({ run, phase: 'browser relaunch', parentRssBytes: state.parentRssBytes })); signal.throwIfAborted(); browser = await chromium.launch({ executablePath: CHROME, headless: false, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'], args: ['--enable-logging=stderr', '--v=0'], timeout: 30000 }); rememberOwned(); signal.throwIfAborted();
 							const chromePid = census().find((r) => r.ppid === process.pid && r.command.startsWith(CHROME))?.pid;
 							gpuPid = () => census().find((r) => r.ppid === chromePid && r.command.includes('--type=gpu-process'))?.pid;
 						}
 						if (pageDpr !== c.dpr || !page || page.isClosed()) {
-							phase('page navigation'); await page?.context().close();
-							page = await (await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: c.dpr })).newPage();
-							await page.route('**/__gpu_capture__', (r) => r.fulfill({ contentType: 'text/html', body: '<!doctype html><html><body style="margin:0;overflow:hidden;background:#000"></body></html>' }));
-							await page.goto(`${URL}/__gpu_capture__`, { timeout: 15000 }); pageDpr = c.dpr;
+							phase('page navigation'); if (page) await abortable(page.context().close(), signal);
+							signal.throwIfAborted(); const context = await abortable(browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: c.dpr }), signal);
+							signal.throwIfAborted(); page = await abortable(context.newPage(), signal);
+							signal.throwIfAborted();
+							await abortable(page.route('**/__gpu_capture__', (r) => r.fulfill({ contentType: 'text/html', body: '<!doctype html><html><body style="margin:0;overflow:hidden;background:#000"></body></html>' })), signal);
+							await abortable(page.goto(`${URL}/__gpu_capture__`, { timeout: 15000 }), signal); pageDpr = c.dpr;
 						}
 						const result = await capture(page, c, name, attempt, phase, signal, state);
-						phase('attempt browser cleanup'); await browser?.close(); browser = null; page = null; pageDpr = null;
+						phase('attempt browser cleanup'); if (browser) await abortable(browser.close(), signal); browser = null; page = null; pageDpr = null;
 						Bun.gc(true);
 						return result;
-					}, cleanupOwned, state);
+					}, cleanupOwned, state, attemptLimitMs(TRACE_LIMIT_S));
 				} catch (error) {
 					cleanupOwned(); page = null; pageDpr = null; Bun.gc(true);
 					r = { ...c, name, trace: `${DIR}/${name}-a${attempt}.trace`, measuredFrames: FRAMES, completedFrames: state.marks.length, marks: state.marks, visibility: state.visibility, error: state.error ?? String(error.message), phase: state.phase, aligned: false, clusters: 0, framesWithPresentWrite: 0, p95Ms: NaN, medianMs: NaN, maxMs: NaN, frameDetail: [], perFrameGpuMs: [], transfersOk: false };
@@ -388,13 +473,12 @@ try {
 				const { frameDetail, ...row } = r; results.push({ ...row, run, attempt }); save(); completed();
 				writeFileSync(`${DIR}/${name}-a${attempt}.frames.json`, JSON.stringify(frameDetail, null, 1));
 				console.log(JSON.stringify({ name, run, attempt, verdict: r.verdict, error: r.error, phase: r.phase, p95: r.p95Ms, aligned: r.aligned, alignErrMs: r.alignErrMs, clusters: r.clusters, presentWrites: r.framesWithPresentWrite, completedFrames: r.completedFrames }));
-				const gpuExit = /GPU process exited/.test(r.error ?? '');
-				if (!(gpuExit && attempt < 3 || r.verdict === 'CONTENDED' && attempt < RETRIES)) break;
+				if (!retryAllowed(r, allowances)) break;
 				await Bun.sleep(RETRY_WAIT_MS);
 			}
 		}
 		const closing = { phase: 'browser cleanup' };
-		try { await attemptDeadline(async () => { await browser?.close(); browser = null; }, cleanupOwned, closing, 10000); } catch { cleanupOwned(); }
+		try { await attemptDeadline(async (signal) => { if (browser) await abortable(browser.close(), signal); browser = null; }, cleanupOwned, closing, 10000); } catch { cleanupOwned(); }
 	}
 } finally {
 	clearTimeout(watchdog); save(); cleanupOwned();
@@ -405,9 +489,9 @@ process.exit(0); // terminated Playwright transports must not retain a completed
 async function capture(page, c, name, attempt, phase, signal, state) {
 		phase('warm-up');
 		signal.throwIfAborted();
-		await page.bringToFront();
-		await page.evaluate((v) => { globalThis.__passLog = v; }, process.env.GPU_CAPTURE_PASS_LOG === '1');
-		const setup = await page.evaluate(async ({ preset, w, h, tier, seed, warmupFrames }) => {
+		await abortable(page.bringToFront(), signal);
+		await abortable(page.evaluate((v) => { globalThis.__passLog = v; }, process.env.GPU_CAPTURE_PASS_LOG === '1'), signal);
+		const setup = await abortable(page.evaluate(async ({ preset, w, h, tier, seed, warmupFrames }) => {
 			if (document.visibilityState !== 'visible') throw new Error('Foreground visibility required');
 			if (preset.startsWith('model-')) {
 				const { acquireGlHost } = await import('/src/lib/engine/gl-host.ts');
@@ -508,40 +592,42 @@ async function capture(page, c, name, attempt, phase, signal, state) {
 			const dbg = e.gl.getExtension('WEBGL_debug_renderer_info');
 			globalThis.__cap = { e, frame, counts, draws, restore: () => { globalThis.createImageBitmap = snap; ImageBitmapRenderingContext.prototype.transferFromImageBitmap = transfer; } };
 			return { dprActual: devicePixelRatio, backing: [canvas.width, canvas.height], adapter: dbg ? String(e.gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : 'unknown', ua: navigator.userAgent, config: { sim: cfg.simResolution ?? 128, dye: cfg.dyeResolution, pressureIterations: cfg.pressureIterations ?? null, bloom: cfg.bloom ?? null, sunrays: cfg.sunrays ?? null } };
-		}, { ...c, warmupFrames: WARM });
+		}, { ...c, warmupFrames: WARM }), signal);
 		signal.throwIfAborted();
 		phase('recorder startup');
 		const pid = gpuPid();
 		const trace = `${DIR}/${name}-a${attempt}.trace`;
 		execFileSync('rm', ['-rf', trace]);
 		const note = `svelte-fluid.gpu-capture.${process.pid}.${name}.${attempt}`;
-		const started = Bun.spawn(['/usr/bin/notifyutil', '-1', note], { stdout: 'ignore' });
+		signal.throwIfAborted(); const started = Bun.spawn(['/usr/bin/notifyutil', '-1', note], { stdout: 'ignore' });
 		owned.push(started);
 		const cmd = ['xcrun', 'xctrace', 'record', '--template', 'Metal System Trace', '--attach', String(pid), '--time-limit', `${TRACE_LIMIT_S}s`, '--no-prompt', '--notify-tracing-started', note, '--output', trace];
 		const recordingStarted = performance.now();
-		const rec = Bun.spawn(['env', `DEVELOPER_DIR=${XCODE.DEVELOPER_DIR}`, ...cmd], { env: XCODE, stdout: 'pipe', stderr: 'pipe' });
+		signal.throwIfAborted(); const rec = Bun.spawn(['env', `DEVELOPER_DIR=${XCODE.DEVELOPER_DIR}`, ...cmd], { env: XCODE, stdout: 'pipe', stderr: 'pipe' });
 		owned.push(rec);
-		await Promise.race([started.exited, Bun.sleep(6000)]);
+		await abortable(Promise.race([started.exited, Bun.sleep(6000)]), signal);
 		started.kill();
 		phase('quiet lead-in');
-		await Bun.sleep(300); // quiet lead-in
+		await abortable(Bun.sleep(300), signal); // quiet lead-in
 		signal.throwIfAborted();
 		if (!census().some((r) => r.pid === pid)) throw new Error('GPU process exited during recorder startup');
 	// Individually paced frames: three RAFs apart so each frame's GPU burst is
 	// isolated in the trace; presentation verified per frame (transferFromImageBitmap).
 	phase('measurement');
 	const progress = { marks: state.marks, visibility: state.visibility, transfers: { requested: 0, delivered: 0 }, transfersOk: false };
-	await page.exposeFunction(`__captureProgress${attempt}${name.replace(/\W/g, '')}`, (event) => {
+	signal.throwIfAborted();
+	await abortable(page.exposeFunction(`__captureProgress${attempt}${name.replace(/\W/g, '')}`, (event) => {
 		if (event.mark) progress.marks.push(event.mark);
 		if (event.visibility) progress.visibility.push(event.visibility);
 		if (event.transfers) progress.transfers = event.transfers;
 		if (event.visibility || progress.marks.length % 50 === 0) phase(state.phase);
-	});
-	await page.evaluate((key) => { globalThis.__captureProgress = globalThis[key]; }, `__captureProgress${attempt}${name.replace(/\W/g, '')}`);
+	}), signal);
+	await abortable(page.evaluate((key) => { globalThis.__captureProgress = globalThis[key]; }, `__captureProgress${attempt}${name.replace(/\W/g, '')}`), signal);
 	let timer;
-	let gpuWatch;
-	const gpuExited = new Promise((_, reject) => { gpuWatch = setInterval(() => { if (!census().some((r) => r.pid === pid)) reject(new Error('GPU process exited during recording')); }, 250); });
-	const run = await Promise.race([
+	let gpuFailure, rejectGpu;
+	const gpuExited = new Promise((_, reject) => { rejectGpu = reject; });
+	const stopGpuWatch = watchGpu(() => census().some((r) => r.pid === pid), (error) => { gpuFailure = error; state.error = error; rejectGpu(new Error(error)); }, signal);
+	const run = await abortable(Promise.race([
 		gpuExited,
 		page.evaluate(async ({ FRAMES, timeoutMs }) => {
 			const { e, frame, counts, restore, draws } = globalThis.__cap;
@@ -575,14 +661,16 @@ async function capture(page, c, name, attempt, phase, signal, state) {
 			return { marks, visibility, error, transfers: { requested: counts.requested - before.requested, delivered: counts.delivered - before.delivered }, settled: e.settled, transfersOk: !error && (!e.sharedContext || (counts.requested - before.requested === FRAMES && counts.delivered - before.delivered === FRAMES)) };
 		}, { FRAMES, timeoutMs: (TRACE_LIMIT_S - (options.legacy ? 3 : 10)) * 1000 }),
 		new Promise((resolve) => { timer = setTimeout(() => resolve({ ...progress, error: 'Page evaluation timeout before recorder ceiling', transfersOk: false }), (TRACE_LIMIT_S - (options.legacy ? 1 : 8)) * 1000); })
-	]).catch((e) => ({ ...progress, error: String(e.message ?? e), transfersOk: false }));
-	clearTimeout(timer); clearInterval(gpuWatch);
+	]), signal).catch((e) => ({ ...progress, error: String(e.message ?? e), transfersOk: false }));
+	clearTimeout(timer);
 	await writeFile(`${trace}.progress.json`, JSON.stringify(progress, null, 2));
 	signal.throwIfAborted();
 	phase('recorder finalisation');
-	await Bun.sleep(500); // let the last frame's GPU execution and display dependencies complete
+	await abortable(Bun.sleep(500), signal); // let the last frame's GPU execution and display dependencies complete
 	rec.kill('SIGINT'); // early stop; --time-limit is the hard ceiling
-	const code = await rec.exited;
+	const code = await abortable(rec.exited, signal);
+	stopGpuWatch(); // includes one last PID check before intentional page/browser cleanup
+	if (gpuFailure) { run.error = gpuFailure; run.transfersOk = false; }
 	const recordingWallMs = performance.now() - recordingStarted;
 	if (code !== 0) throw new Error(`xctrace exit ${code}: ${await new Response(rec.stderr).text()}`);
 	signal.throwIfAborted();
@@ -591,7 +679,7 @@ async function capture(page, c, name, attempt, phase, signal, state) {
 		state.error = run.error;
 		cleanupOwned();
 	}
-	else await page.evaluate(() => { globalThis.__cap.e.dispose(); document.body.replaceChildren(); delete globalThis.__cap; });
+	else await abortable(page.evaluate(() => { globalThis.__cap.e.dispose(); document.body.replaceChildren(); delete globalThis.__cap; }), signal);
 	signal.throwIfAborted();
 	phase('trace export');
 	const a = run.marks.length === FRAMES ? await analyseWorker(trace, pid, run.marks, setup.backing, signal) : { aligned: false, clusters: 0, framesWithPresentWrite: 0, strays: null, medianMs: NaN, p95Ms: NaN, maxMs: NaN, frames: [], error: run.error };
