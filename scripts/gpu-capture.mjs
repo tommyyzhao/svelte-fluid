@@ -292,8 +292,8 @@ if (options['self-check']) {
 	assert.throws(() => captureOptions(['--legacy', '--frames', '600'], {}));
 	assert.throws(() => captureOptions(['--replay', 'capture.json', '--runs', '3'], {}));
 	assert.deepEqual(captureOverride('{"pressureIterations":26,"dyeResolution":768}'), { dyeResolution: 768, pressureIterations: 26 });
-		for (const value of ['null', '[]', '{"seed":5}', '{"pressureIterations":-1}', '{"dyeResolution":0}']) assert.throws(() => captureOverride(value));
-		assert.deepEqual(parseSeeds(), [5]);
+	for (const value of ['null', '[]', '{"seed":5}', '{"pressureIterations":-1}', '{"dyeResolution":0}']) assert.throws(() => captureOverride(value));
+	assert.deepEqual(parseSeeds(), [5]);
 	assert.deepEqual(parseSeeds('0,5,4294967295'), [0, 5, 4294967295]);
 	for (const value of ['', '-1', '1.5', '4294967296', '5,5', '1,2,3,4,5,6']) assert.throws(() => parseSeeds(value));
 	const clean = { aligned: true, p95Ms: 1.9, maxMs: 3, transfersOk: true, contended: false };
