@@ -1440,3 +1440,23 @@ capture and run only missing cases under the same protocol, recording the split.
 No runtime, preset, script, tracker, install, push or merge changes.
 
 Capture in progress; no full-matrix verdict or completeness claim yet.
+
+### WIP checkpoint: 12:16 PDT
+
+**45 preserved attempts: run 1 all 43 scenes, run 2 first two scenes**;
+**29 PASS / 15 FAIL / 1 INCONCLUSIVE / 0 CONTENDED**, zero GPU-process exits,
+zero retries so far. These are attempt counts, not final scene verdicts.
+SvgPathFluid own 800×500 run1 completed all **600 JS marks**, then its analysis
+worker failed in `trace export`: `metal-gpu-intervals` export exited code 1,
+`killed: true`, empty stdout/stderr. The unchanged export call has a **15 s bound**;
+the error is consistent with its child timeout, not evidence of a deterministic
+parser defect or missing GPU execution. The raw trace and worker input remain;
+no analysis output exists. This is **INCONCLUSIVE**, not covered by the registered
+GPU-exit/contention retries. No manual repeat, script edit or successful-result
+replacement; the scene may finish INCOMPLETE even if runs 2–3 are clean.
+
+Required checks passed: **52 Node files / 864 tests**, **471 checked files,
+zero errors/warnings**, `git diff --check`. Launch Vite reported missing generated
+`.svelte-kit/tsconfig.json`/dependency-scan warnings; `bun run check` generated the
+config successfully. Foreign Chrome-for-Testing GPU **48074** (browser **48063**)
+also appeared in the pre-run census; untouched, alongside the user Chrome.
