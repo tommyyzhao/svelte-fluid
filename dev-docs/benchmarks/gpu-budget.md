@@ -877,3 +877,124 @@ inventory contains no `gpu-capture.mjs`, xctrace or port5198 server. User Chrome
 pid4386 / GPU4411 left alone. Worktree retained (not remotely preserved); untracked
 node_modules symlink retained, never staged. Traces retained in /tmp only, no live
 profiling processes. No cleanup of shared/unknown resources.
+
+## Solver/display negative optimisation lane — 2026-10-06
+
+**No optimisation retained.** [ADR 0102](../decisions/0102-solver-display-optimisation-rejected.md)
+records paired-viscosity/outlet parity failures, sunrays native-gate rejection,
+packed-bloom blue/HDR rejection. Baseline `76bdaa2`; sunrays trial `8691527`.
+Final production runtime unchanged from baseline. No p95 budget closure.
+
+Unchanged `bun scripts/gpu-capture.mjs --seed 5`, M1 Max, ordinary headed Chrome,
+native DPR2. Same 200 warm-up / 60 paced fixed-dt frames and interval-union
+attribution; all original matrix rows aligned,60native writes, shared60/60
+transfers, zero strays. Original baseline and unpaired trial foreign overlap
+**0 ms / 0% every row**. WindowServer397 span busy ~3.72–4.59% is disclosed,
+not foreign contention. Native backing unchanged: full2880×1800,
+800CSS1600×1000, fractional960×601. Median/p95/max below in ms.
+
+### Original matrix: before / unpaired R16F sunrays trial
+
+Sunrays-off rows are controls only; timing changes cannot be attributed to
+this candidate. CircularFluid full-size historically passed, fails fresh baseline;
+Venturi and InkInWater800 provide passing controls. Earlier clean failures persist.
+
+| Scene | CSS | Tier | Before median / p95 / max | Before | Trial median / p95 / max | Trial |
+|---|---|---|---:|---|---:|---|
+| Karman | 1440×900 | own | 2.438 / 3.806 / 5.043 | FAIL | 2.237 / 3.130 / 4.835 | FAIL |
+| Karman | 800×500 | own | 2.205 / 3.024 / 3.366 | FAIL | 2.343 / 3.076 / 3.939 | FAIL |
+| Karman | 480.25×300.5 | own | 2.164 / 2.848 / 4.164 | FAIL | 2.076 / 2.828 / 3.794 | FAIL |
+| Karman | 1440×900 | shared | 2.495 / 4.091 / 4.975 | FAIL | 2.515 / 3.478 / 4.204 | FAIL |
+| TeslaValve | 1440×900 | own | 2.007 / 4.129 / 4.339 | FAIL | 2.343 / 3.146 / 4.687 | FAIL |
+| TeslaValve | 800×500 | own | 1.750 / 2.488 / 2.543 | FAIL | 1.739 / 2.528 / 3.648 | FAIL |
+| GasFlare | 1440×900 | own | 2.485 / 4.130 / 4.448 | FAIL | 1.961 / 4.036 / 4.498 | FAIL |
+| GasFlare | 800×500 | own | 1.554 / 2.154 / 3.401 | FAIL | 1.534 / 1.991 / 2.128 | PASS |
+| GasFlare | 1440×900 | shared | 2.216 / 3.760 / 4.445 | FAIL | 2.111 / 3.694 / 5.119 | FAIL |
+| (default) | 1440×900 | own | 1.592 / 2.424 / 3.708 | FAIL | 1.351 / 2.175 / 2.312 | FAIL |
+| Plasma | 1440×900 | own | 1.777 / 2.747 / 3.508 | FAIL | 1.365 / 2.128 / 2.443 | FAIL |
+| Toroidal | 1440×900 | own | 1.966 / 3.808 / 4.392 | FAIL | 1.682 / 2.454 / 3.954 | FAIL |
+| AnnularFluid | 1440×900 | own | 1.475 / 2.175 / 2.870 | FAIL | 1.579 / 2.203 / 3.399 | FAIL |
+| CircularFluid | 1440×900 | own | 1.776 / 2.367 / 3.333 | FAIL | 1.472 / 2.146 / 3.428 | FAIL |
+| Venturi | 1440×900 | own | 1.335 / 1.876 / 2.081 | PASS | 1.451 / 1.825 / 1.888 | PASS |
+| InkInWater | 800×500 | own | — | not captured | 0.956 / 1.171 / 1.450 | PASS |
+
+### Frozen sunrays paired gate; every repeat
+
+Only default/Plasma/Toroidal/Aurora have sunrays enabled. Fixed before data:
+keep if a failing affected row has median paired p95 delta ≤−0.05 ms, and no
+affected row has median delta >+0.10 ms; at least3valid pairs per affected row.
+Three alternating baseline/candidate invocations,61s release gaps; seed5.
+Attribution-inconclusive rows retained, not treated as zero execution.
+No foreign contention; baseline Aurora p1 overlap below5% disclosed.
+
+| Pair | Variant | Scene | Median / p95 / max | Verdict | Foreign overlap ms / % |
+|---|---|---|---:|---|---:|
+| 1 | baseline | (default) | 1.539 / 2.002 / 2.147 | FAIL | 0.000 / 0.000% |
+| 1 | baseline | Plasma | 1.526 / 2.014 / 3.618 | FAIL | 0.000 / 0.000% |
+| 1 | baseline | Toroidal | 1.719 / 2.230 / 2.410 | FAIL | 0.000 / 0.000% |
+| 1 | baseline | Aurora | 1.506 / 2.102 / 3.550 | FAIL | 0.202 / 0.210% |
+| 1 | baseline | Venturi | 1.242 / 1.681 / 3.332 | PASS | 0.000 / 0.000% |
+| 1 | baseline | InkInWater | 0.943 / 1.123 / 1.471 | PASS | 0.000 / 0.000% |
+| 1 | candidate | (default) | — | INCONCLUSIVE | 0.000 / 0.000% |
+| 1 | candidate | Plasma | 1.399 / 2.071 / 3.268 | FAIL | 0.000 / 0.000% |
+| 1 | candidate | Toroidal | 1.651 / 2.409 / 4.042 | FAIL | 0.000 / 0.000% |
+| 1 | candidate | Aurora | 1.399 / 2.113 / 2.901 | FAIL | 0.000 / 0.000% |
+| 1 | candidate | Venturi | 1.524 / 1.886 / 2.896 | PASS | 0.000 / 0.000% |
+| 1 | candidate | InkInWater | 1.007 / 1.489 / 2.608 | PASS | 0.000 / 0.000% |
+| 2 | baseline | (default) | 1.612 / 2.490 / 3.700 | FAIL | 0.000 / 0.000% |
+| 2 | baseline | Plasma | 1.756 / 2.489 / 2.762 | FAIL | 0.000 / 0.000% |
+| 2 | baseline | Toroidal | 1.676 / 2.515 / 4.319 | FAIL | 0.000 / 0.000% |
+| 2 | baseline | Aurora | 1.549 / 2.182 / 3.681 | FAIL | 0.000 / 0.000% |
+| 2 | baseline | Venturi | 1.444 / 1.890 / 2.562 | PASS | 0.000 / 0.000% |
+| 2 | baseline | InkInWater | 0.999 / 1.457 / 2.742 | PASS | 0.000 / 0.000% |
+| 2 | candidate | (default) | 1.387 / 1.700 / 2.002 | PASS | 0.007 / 0.008% |
+| 2 | candidate | Plasma | 1.369 / 1.825 / 3.153 | PASS | 0.000 / 0.000% |
+| 2 | candidate | Toroidal | 1.630 / 2.359 / 2.635 | FAIL | 0.013 / 0.013% |
+| 2 | candidate | Aurora | 1.336 / 1.724 / 1.885 | PASS | 0.000 / 0.000% |
+| 2 | candidate | Venturi | 1.333 / 1.690 / 1.968 | PASS | 0.000 / 0.000% |
+| 2 | candidate | InkInWater | 0.973 / 1.484 / 2.166 | PASS | 0.000 / 0.000% |
+| 3 | baseline | (default) | — | INCONCLUSIVE | 0.000 / 0.000% |
+| 3 | baseline | Plasma | 1.656 / 3.018 / 3.427 | FAIL | 0.000 / 0.000% |
+| 3 | baseline | Toroidal | 1.778 / 2.732 / 3.167 | FAIL | 0.000 / 0.000% |
+| 3 | baseline | Aurora | — | INCONCLUSIVE | 0.000 / 0.000% |
+| 3 | baseline | Venturi | 1.416 / 1.850 / 2.926 | PASS | 0.000 / 0.000% |
+| 3 | baseline | InkInWater | 1.054 / 1.506 / 1.717 | PASS | 0.000 / 0.000% |
+| 3 | candidate | (default) | 1.310 / 1.717 / 2.957 | PASS | 0.000 / 0.000% |
+| 3 | candidate | Plasma | 1.436 / 2.232 / 2.942 | FAIL | 0.000 / 0.000% |
+| 3 | candidate | Toroidal | 1.590 / 3.215 / 3.981 | FAIL | 0.000 / 0.000% |
+| 3 | candidate | Aurora | — | INCONCLUSIVE | 0.000 / 0.000% |
+| 3 | candidate | Venturi | 1.314 / 1.810 / 2.062 | PASS | 0.000 / 0.000% |
+| 3 | candidate | InkInWater | 0.966 / 1.134 / 1.225 | PASS | 0.000 / 0.000% |
+
+| Affected scene | Valid matched pairs | Paired p95 deltas ms | Median delta | All-clean candidate verdict |
+|---|---:|---|---:|---|
+| (default) | 1 | -0.789421 | -0.789421 | FAIL |
+| Plasma | 3 | 0.056420, -0.663540, -0.786125 | -0.663540 | FAIL |
+| Toroidal | 3 | 0.179127, -0.156250, 0.483374 | 0.179127 | FAIL |
+| Aurora | 2 | 0.011252, -0.457748 | -0.223248 | FAIL |
+
+**DROP:** Toroidal median+0.179127ms exceeds+0.10ms ceiling despite Plasma
+−0.663540ms. Default/Aurora lack3valid pairs; no improvement certification.
+No replacement captures after complete Toroidal failure rejected shipment.
+Sunrays exact odd-grid field/image parity2/2 passed, but extra full-size R16F
+mask adds3,354,624persistent bytes at1638×1024. Not worth this gate.
+
+Viscosity/outlets failed current-fp16-reference parity before native timing.
+Packed bloom failed native2880×1800 saturated-blue max16LSB (mean1.800399),
+HDR max15LSB (mean3.003788), ceiling1LSB. No packed bloom native capture.
+Original iteration/resolution/preset settings retained.
+
+### Provenance, checks and hygiene
+
+Raw unchanged-script JSON, Metal traces, frames and export SHA256 remain under
+`/tmp/opt-solver/before/`, `/tmp/opt-solver/sunrays-after/`,
+`/tmp/opt-solver/sunrays-pairs/p{1,2,3}-{baseline,candidate}/`. Each JSON
+retains all attempts, PID/commands, client spans, alignment, hashes. No traces
+committed. Kept-candidate visual manifest `/tmp/opt-solver/visual/manifest.json`
+is empty: no candidate survived. No kept-candidate appearance approval claimed.
+
+Bun Node/check/prepack/diff checks and focused ordinary-Chrome evidence recorded
+in ADR0102. Owned Chrome/context, xctrace/notifyutil, Bun/Vite handles closed
+after each run; lock released only for opt-solver owner. User Chrome untouched.
+Worktree/ignored dependency symlink retained, not remotely preserved. No installs,
+tracker writes, push, merge or system changes.
