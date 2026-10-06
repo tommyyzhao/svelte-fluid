@@ -593,7 +593,7 @@ export const TESLA_VALVE_CONFIG: PresetConfig = {
 	wallFriction: 0.14,
 	wallFrictionWidth: 2,
 	pressure: 0.9,
-	pressureIterations: 30,
+	pressureIterations: 26,
 	splatRadius: 0.085,
 	splatForce: 6000,
 	autoSplatRate: 5,
@@ -608,8 +608,8 @@ export const TESLA_VALVE_CONFIG: PresetConfig = {
 	colorful: false,
 	bloom: false,
 	sunrays: false,
-	simResolution: 192,
-	dyeResolution: 768,
+	simResolution: 128,
+	dyeResolution: 512,
 	initialSplatCount: 0,
 	backColor: { r: 5, g: 9, b: 12 }
 };
