@@ -95,6 +95,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0099](./0099-settle-visible-idle-fluid.md) | Settle a visible idle fluid to zero frames | Accepted |
 | [0100](./0100-independent-deposited-thickness.md) | Independent deposited thickness in dye alpha | Accepted; visual review pending |
 | [0101](./0101-p95-gpu-budget.md) | p95 GPU execution budget at native DPR; post hoc owner decision | Accepted |
+| [0102](./0102-solver-display-optimisation-rejected.md) | Reject solver/display candidates failing parity or native timing | Accepted (negative result) |
 | [0103](./0103-untransformed-shared-snapshots.md) | Preserve the shared snapshot's sRGB tag; remove redundant native-size raster transform | Accepted |
 | [0104](./0104-pigment-pressure-pairing.md) | Pigment warm-start fold and paired pressure iterations; budget still FAIL | Accepted |
 
