@@ -449,6 +449,31 @@ change from strict-max FAIL to p95 PASS without runtime improvement; their max
 exceedances are not erased. No new captures, tuning or per-shader GPU shares
 are claimed by this re-tabulation.
 
+### Pinned-seed optimisation protocol — 2026-10-06
+
+Use `bun scripts/gpu-capture.mjs [--seed N[,N...]]`: reference seed **5** by
+default; optionally supply up to five distinct uint32 seeds, for example
+`--seed 5,42,2026`. Every preset result and console row records the explicit seed;
+trace names include it. InkPaper retains its existing seed 5 workload; other model
+rows label seed as not applicable. Replayed older rows without seed metadata are
+labelled **`unseeded (historical)`**, never assigned the reference seed retroactively.
+
+Report **every clean repeat**, with median, p95 and max. A scene passes only if
+**each clean repeat's p95 is <2 ms**; one clean failure cannot be erased by a later
+pass. `capture.json` retains all attempt rows and scene summaries counting clean
+repeats, including every supplied seed. CONTENDED/INCONCLUSIVE attempts stay visible
+but do not certify a scene. Separate invocations must retain separate output
+directories and combine all clean repeats when reporting; do not overwrite or
+select a favourable run. Historical strict-max tables and the selected-row p95
+re-tabulation above remain unchanged, not certification under this new repeat rule.
+
+Optimisation lanes must compare **same-seed before/after captures using this script
+unchanged**, matching CSS size, tier, native DPR and environment. Pin the same seed
+set in both captures. Preserve 200 warm-up frames, 60 fixed-dt measured frames,
+three-RAF pacing, Metal interval-union attribution, complete native writes, 60
+shared transfers and the >=5% foreign-overlap contention gate. No new capture or
+runtime optimisation was performed for this protocol update.
+
 ### Hot-pass attribution — bounded negative result
 
 No truthful per-shader top-three GPU shares could be derived. Native labels are

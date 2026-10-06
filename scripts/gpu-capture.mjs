@@ -1,6 +1,6 @@
 // Native Metal GPU-execution capture of one FluidEngine per page (measurement only;
 // no runtime patch, no timer queries). Dev-docs: dev-docs/benchmarks/gpu-budget.md.
-// Run: bun scripts/gpu-capture.mjs
+// Run: bun scripts/gpu-capture.mjs [--seed N[,N...]] (default 5; up to 5 uint32 seeds)
 // Env: GPU_CAPTURE_CASES='Karman@1440x900:own:2,...' (preset@CSS:tier:DPR; default = full
 // preset matrix at the machine DPR), GPU_CAPTURE_DIR (default /tmp/gpu-capture; traces stay there).
 // Hardware Chrome with ordinary flags: Playwright's default --enable-unsafe-swiftshader is removed.
@@ -17,7 +17,36 @@ const PORT = 5198, URL = `http://127.0.0.1:${PORT}`;
 const FRAMES = 60, WARM = 200, RETRIES = 2, RETRY_WAIT_MS = 30000;
 const PRESETS = ['(default)', 'LavaLamp', 'Plasma', 'InkInWater', 'FrozenSwirl', 'Aurora', 'CircularFluid', 'FrameFluid', 'AnnularFluid', 'SvgPathFluid', 'Toroidal', 'GasFlare', 'Venturi', 'Karman', 'TeslaValve'];
 const sha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-await mkdir(DIR, { recursive: true });
+const USAGE = 'bun scripts/gpu-capture.mjs [--seed N[,N...]] | --self-check | --replay capture.json';
+
+function parseSeeds(value = '5') {
+	const seeds = value.split(',').map((s) => /^\d+$/.test(s) ? Number(s) : NaN);
+	if (!seeds.length || seeds.length > 5 || seeds.some((s) => !Number.isInteger(s) || s < 0 || s > 0xffffffff) || new Set(seeds).size !== seeds.length) {
+		throw new Error('--seed requires 1–5 distinct uint32 seeds');
+	}
+	return seeds;
+}
+function verdict(r) {
+	return !r.aligned || !Number.isFinite(r.p95Ms) || r.transfersOk === false ? 'INCONCLUSIVE' : r.contended ? 'CONTENDED' : r.p95Ms < 2 ? 'PASS' : 'FAIL';
+}
+function sceneVerdicts(results) {
+	const scenes = new Map();
+	for (const r of results) {
+		const key = JSON.stringify([r.preset, r.w, r.h, r.tier, r.dpr]);
+		if (!scenes.has(key)) scenes.set(key, { preset: r.preset, w: r.w, h: r.h, tier: r.tier, dpr: r.dpr, repeats: [] });
+		scenes.get(key).repeats.push({ seed: r.seed, attempt: r.attempt, trace: r.trace, verdict: r.verdict, medianMs: r.medianMs, p95Ms: r.p95Ms, maxMs: r.maxMs });
+	}
+	return [...scenes.values()].map((s) => {
+		const clean = s.repeats.filter((r) => r.verdict === 'PASS' || r.verdict === 'FAIL');
+		return { ...s, cleanRepeats: clean.length, verdict: clean.some((r) => r.verdict === 'FAIL') ? 'FAIL' : clean.length ? 'PASS' : 'INCONCLUSIVE' };
+	});
+}
+const args = process.argv.slice(2);
+if (args[0] === '--help') { console.log(USAGE); process.exit(0); }
+if (!(args.length === 0 || (args.length === 2 && args[0] === '--seed') || (args.length === 1 && args[0] === '--self-check') || (args.length === 2 && args[0] === '--replay'))) {
+	throw new Error(USAGE);
+}
+const seeds = parseSeeds(args[0] === '--seed' ? args[1] : undefined);
 
 // --- xctrace export parsing (id/ref-deduplicated XML rows) -------------------------------
 function exportTable(trace, schema) {
@@ -146,11 +175,24 @@ if (process.argv.includes('--self-check')) {
 	assert.equal(union([[0, 3], [1, 2], [2, 5], [7, 8]]), 6);
 	assert.equal(rank(Array.from({ length: 60 }, (_, i) => i), 0.5), 30);
 	assert.equal(rank(Array.from({ length: 60 }, (_, i) => i), 0.95), 56);
+	assert.deepEqual(parseSeeds(), [5]);
+	assert.deepEqual(parseSeeds('0,5,4294967295'), [0, 5, 4294967295]);
+	for (const value of ['', '-1', '1.5', '4294967296', '5,5', '1,2,3,4,5,6']) assert.throws(() => parseSeeds(value));
+	const clean = { aligned: true, p95Ms: 1.9, maxMs: 3, transfersOk: true, contended: false };
+	assert.equal(verdict(clean), 'PASS');
+	assert.equal(verdict({ ...clean, p95Ms: 2 }), 'FAIL');
+	assert.equal(verdict({ ...clean, p95Ms: NaN }), 'INCONCLUSIVE');
+	assert.equal(verdict({ ...clean, contended: true }), 'CONTENDED');
+	assert.equal(verdict({ ...clean, transfersOk: false }), 'INCONCLUSIVE');
+	assert.equal(sceneVerdicts([{ ...clean, verdict: 'FAIL' }, { ...clean, verdict: 'PASS' }])[0].verdict, 'FAIL');
+	assert.equal(sceneVerdicts([{ ...clean, verdict: 'PASS' }, { ...clean, verdict: 'CONTENDED' }])[0].cleanRepeats, 1);
+	assert.equal(sceneVerdicts([{ ...clean, verdict: 'INCONCLUSIVE' }])[0].verdict, 'INCONCLUSIVE');
 	console.log('GPU capture self-check passed'); process.exit(0);
 }
 if (process.argv[2] === '--replay') {
 	const d = JSON.parse(await readFile(process.argv[3], 'utf8'));
 	for (const r of d.results) {
+		r.seed ??= 'unseeded (historical)';
 		if (!r.marks) {
 			// Older captures preserved frame->command-buffer ownership, not the JS marks. Reuse that
 			// mapping only; the original capture's alignErrMs remains the JS-spacing validation.
@@ -166,13 +208,15 @@ if (process.argv[2] === '--replay') {
 		r.foreignOverlapMs = frames.reduce((s, f) => s + Object.entries(f.overlap).filter(([k]) => !/^WindowServer \(/.test(k)).reduce((t, [, v]) => t + v, 0), 0);
 		r.foreignOverlapPct = +(100 * r.foreignOverlapMs / frames.reduce((s, f) => s + f.gpuMs, 0)).toFixed(3);
 		r.contended = r.foreignOverlapPct >= 5;
-		r.verdict = !r.aligned || !Number.isFinite(r.maxMs) || r.transfersOk === false ? 'INCONCLUSIVE' : r.contended ? 'CONTENDED' : r.maxMs < 2 ? 'PASS' : 'FAIL';
+		r.verdict = verdict(r);
 		await writeFile(`${r.trace}.frames.json`, JSON.stringify(frames, null, 1));
 	}
+	d.scenes = sceneVerdicts(d.results);
 	await writeFile(process.argv[3], JSON.stringify(d, null, 2)); process.exit(0);
 }
 
 // --- capture --------------------------------------------------------------------------------
+await mkdir(DIR, { recursive: true });
 const owned = [];
 const server = Bun.spawn(['bun', 'run', 'dev', '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'], { stdout: 'ignore', stderr: 'inherit' });
 owned.push(server);
@@ -189,7 +233,8 @@ try {
 	const machineDpr = await probe.evaluate(() => devicePixelRatio);
 	await probe.close();
 	const CASES = (process.env.GPU_CAPTURE_CASES || PRESETS.flatMap((p) => [`${p}@1440x900:own:${machineDpr}`, `${p}@800x500:own:${machineDpr}`]).join(','))
-		.split(',').map((s) => { const [, preset, w, h, tier, dpr] = s.match(/^(.+)@([\d.]+)x([\d.]+):(own|shared):([\d.]+)$/); return { preset, w: +w, h: +h, tier, dpr: +dpr }; });
+		.split(',').map((s) => { const [, preset, w, h, tier, dpr] = s.match(/^(.+)@([\d.]+)x([\d.]+):(own|shared):([\d.]+)$/); return { preset, w: +w, h: +h, tier, dpr: +dpr }; })
+		.flatMap((c) => c.preset.startsWith('model-') ? [{ ...c, seed: c.preset === 'model-inkpaper' ? 5 : 'not applicable (model)' }] : seeds.map((seed) => ({ ...c, seed })));
 	let page, pageDpr;
 	for (const c of CASES) {
 		if (pageDpr !== c.dpr) {
@@ -200,8 +245,9 @@ try {
 			await page.goto(`${URL}/__gpu_capture__`);
 			pageDpr = c.dpr;
 		}
-		const name = `${c.preset.replace(/\W/g, '')}-${c.w}x${c.h}-${c.tier}-dpr${c.dpr}`;
-		for (let attempt = 1; ; attempt++) {
+		const name = `${c.preset.replace(/\W/g, '')}-${c.w}x${c.h}-${c.tier}-dpr${c.dpr}${c.preset.startsWith('model-') ? '' : `-seed${c.seed}`}`;
+		const firstAttempt = 1 + results.filter((r) => r.name === name).length;
+		for (let attempt = firstAttempt; ; attempt++) {
 			const r = await capture(page, c, name, attempt);
 			// Gate: foreign execution overlap (not WindowServer) >=5% of summed per-frame
 			// instance execution marks contention. All client busy spans remain reported.
@@ -210,13 +256,13 @@ try {
 			r.foreignOverlapMs = +overlapMs.toFixed(3);
 			r.foreignOverlapPct = gpuSum ? +(100 * overlapMs / gpuSum).toFixed(3) : 0;
 			r.contended = r.foreignOverlapPct >= 5;
-			r.verdict = !r.aligned || !Number.isFinite(r.maxMs) || r.transfersOk === false ? 'INCONCLUSIVE' : r.contended ? 'CONTENDED' : r.maxMs < 2 ? 'PASS' : 'FAIL';
+			r.verdict = verdict(r);
 			const { frameDetail, ...row } = r;
 			results.push({ ...row, attempt });
-			await writeFile(`${DIR}/capture.json`, JSON.stringify({ sha, machineDpr, chrome: CHROME, results }, null, 2));
+			await writeFile(`${DIR}/capture.json`, JSON.stringify({ sha, machineDpr, chrome: CHROME, seeds, results, scenes: sceneVerdicts(results) }, null, 2));
 			await writeFile(`${DIR}/${name}-a${attempt}.frames.json`, JSON.stringify(frameDetail, null, 1));
-			console.log(JSON.stringify({ name, attempt, verdict: r.verdict, backing: r.backing, median: +r.medianMs.toFixed(3), p95: +r.p95Ms.toFixed(3), max: +r.maxMs.toFixed(3), aligned: r.aligned, alignErrMs: +r.alignErrMs.toFixed(3), strays: r.strays, presentWrites: r.framesWithPresentWrite, transfers: r.transfers, otherClients: r.otherClients, foreignOverlapMs: r.foreignOverlapMs }));
-			if (r.verdict !== 'CONTENDED' || attempt >= RETRIES) break;
+			console.log(JSON.stringify({ name, seed: r.seed, attempt, verdict: r.verdict, backing: r.backing, median: +r.medianMs.toFixed(3), p95: +r.p95Ms.toFixed(3), max: +r.maxMs.toFixed(3), aligned: r.aligned, alignErrMs: +r.alignErrMs.toFixed(3), strays: r.strays, presentWrites: r.framesWithPresentWrite, transfers: r.transfers, otherClients: r.otherClients, foreignOverlapMs: r.foreignOverlapMs }));
+			if (r.verdict !== 'CONTENDED' || attempt - firstAttempt + 1 >= RETRIES) break;
 			await Bun.sleep(RETRY_WAIT_MS);
 		}
 	}
@@ -229,7 +275,7 @@ try {
 async function capture(page, c, name, attempt) {
 		await page.bringToFront();
 		await page.evaluate((v) => { globalThis.__passLog = v; }, process.env.GPU_CAPTURE_PASS_LOG === '1');
-		const setup = await page.evaluate(async ({ preset, w, h, tier }) => {
+		const setup = await page.evaluate(async ({ preset, w, h, tier, seed }) => {
 			if (document.visibilityState !== 'visible') throw new Error('Foreground visibility required');
 			if (preset.startsWith('model-')) {
 				const { acquireGlHost } = await import('/src/lib/engine/gl-host.ts');
@@ -295,7 +341,7 @@ async function capture(page, c, name, attempt) {
 			canvas.style.cssText = `display:block;width:${w}px;height:${h}px`;
 			document.body.append(canvas);
 			// Config derivation identical to gpu-budget.browser.test.ts / paced-presentation.mjs.
-			const cfg = { ...(preset === '(default)' ? {} : PRESETS.find((p) => p.id === preset).config), pointerInput: false };
+			const cfg = { ...(preset === '(default)' ? {} : PRESETS.find((p) => p.id === preset).config), pointerInput: false, seed };
 			const max = Math.max(canvas.width, canvas.height);
 			cfg.dyeResolution = Math.min(cfg.dyeResolution ?? 1024, max);
 			cfg.bloomResolution = Math.min(cfg.bloomResolution ?? 256, max);
