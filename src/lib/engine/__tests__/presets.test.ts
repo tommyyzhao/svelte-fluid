@@ -166,6 +166,11 @@ describe('flow-sensitive obstruction demos', () => {
 		expect(TESLA_VALVE_CONFIG.autoSplatBandHeight).toBe(0.18);
 		expect(TESLA_VALVE_CONFIG.viscosity).toBe(0.026667);
 		expect(TESLA_VALVE_CONFIG.viscosityIterations).toBe(10);
+		expect(TESLA_VALVE_CONFIG).toMatchObject({
+			simResolution: 128,
+			pressureIterations: 26,
+			dyeResolution: 512
+		});
 		// One physical container — no separate tongue obstructions, no per-source
 		// line tracers, no scalar fields, no speed visualization.
 		expect(TESLA_VALVE_CONFIG.obstructions).toBeUndefined();
