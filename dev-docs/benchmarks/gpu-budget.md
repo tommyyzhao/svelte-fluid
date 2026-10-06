@@ -1831,3 +1831,23 @@ One grid Karman sim128/pressure30/dye768 attempt hit610s recorder-finalisation
 timeout after600 marks. Original GasFlare pressure22/20 and pressure22/dye512,
 Karman sim160/128 screens fail the unchanged4ms alignment gate. INCONCLUSIVE,
 never counted as zero-cost frames or quality FAIL. No manual retries.
+
+### WIP certification checkpoint — 15:47 PDT
+
+TeslaValve sim128/pressure26/dye512 completes all6 clean slots: own1440×900
+p95 **1.879877/1.909086/1.896793ms**; own800×500
+**1.618707/1.625502/1.631419ms**. **Certified PASS** for both required scenes.
+
+Karman sim128/pressure24/dye768 still completing its12 slots. Shared1440×900
+r1/r2 **2.038624/2.037455ms clean FAIL**, therefore this setting cannot certify
+all required scenes. Own1440×900 r1/r2 **1.964292/1.944457ms**, r3 attribution
+INCONCLUSIVE; own800×500 **1.754832/1.746250/1.783919ms**. Fractional own r1/r2
+**1.691749/1.689500ms**. Remaining attempts and GasFlare grid extension pending.
+All reported failures remain; no retries of clean FAIL or alignment failure.
+
+Initial clip runner stalled after saving three valid native Karman WebMs. Its
+exact owned descendants were stopped; runner PID9425 ignored SIGTERM and required
+SIGKILL after identity verification. Foreign processes untouched. First clip
+files retained, rerun reuses matching settings; bounded90s clip watchdog added
+only to the temporary machine-local recorder. Final synchronized index pending.
+Ownership evidence `/tmp/quality-sweep/stalled-clip-owned.json`.
