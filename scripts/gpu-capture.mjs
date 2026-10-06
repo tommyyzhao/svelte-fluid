@@ -47,6 +47,7 @@ async function attemptDeadline(work, cleanup, state, timeoutMs) {
 	}
 }
 const attemptLimitMs = (recordingSeconds) => (recordingSeconds + 60) * 1000;
+const watchdogLimitMs = (recordingSeconds) => Math.max(300000, attemptLimitMs(recordingSeconds) + 60000);
 function retryAllowed(r, allowances) {
 	if (/GPU process exited/.test(r.error ?? '')) return allowances.gpuExits++ < 2;
 	if (r.verdict === 'CONTENDED') return allowances.contention++ < 1;
@@ -312,20 +313,20 @@ if (options['self-check']) {
 	const synthetic = analyseTables({ xml: '', rows: [] }, { xml: '', rows: marks.map((m, i) => ({ process: proc, start: cell(m.t0 * 1e6), 'cmdbuffer-id': cell(i + 1), 'num-encoders': cell(1) })) }, { xml: '', rows: marks.map((_, i) => ({ pid: cell(123), 'access-type': cell(1), 'cmdbuffer-id': cell(i + 1), width: cell(2880), height: cell(1800) })) }, 123, marks, [2880, 1800]);
 	assert.equal(synthetic.clusters, 600); assert.equal(synthetic.framesWithPresentWrite, 600);
 	assert.equal(synthetic.executionCoverageOk, false); assert.equal(Number.isFinite(synthetic.p95Ms), false); assert.equal(verdict(synthetic), 'INCONCLUSIVE');
-	// review: gpu-exit-during-drain
+	// review: gpu-watch-and-error-gate
 	let alive = true, error;
 	const stop = watchGpu(() => alive, (value) => { error = value; }, new AbortController().signal, 1);
 	await Bun.sleep(2); alive = false; await Bun.sleep(3); stop();
 	assert.equal(verdict({ ...complete, error }), 'INCONCLUSIVE');
 	assert.equal(verdict({ ...complete, error: 'recorder failed' }), 'INCONCLUSIVE');
-	// review: abort-during-server-start
+	// review: cancelled-startup-settles-without-creation
 	let created = false, settled = false;
 	await assert.rejects(attemptDeadline(async (signal) => {
 		try { await abortable(Bun.sleep(50), signal); signal.throwIfAborted(); created = true; }
 		finally { settled = true; }
 	}, () => {}, { phase: 'server startup' }, 5), /Attempt timeout/);
 	assert.equal(created, false); assert.equal(settled, true); await Bun.sleep(55); assert.equal(created, false);
-	// review: bootstrap-failure-replay
+	// review: bootstrap-metadata-analysis-guard
 	assert.equal(replayReady({ error: 'browser launch failed', verdict: 'INCONCLUSIVE' }), false);
 	// review: missing-requested-seed
 	assert.equal(sceneVerdicts(repeats, 3, [5, 42])[0].verdict, 'INCOMPLETE');
@@ -340,7 +341,9 @@ if (options['self-check']) {
 	assert.equal(retryAllowed({ verdict: 'FAIL' }, allowances), false);
 	// review: large-frame-attempt-deadline
 	assert.ok(attemptLimitMs(610) > 610000);
-	console.log('GPU capture self-check passed: zero-interval-coverage, gpu-exit-during-drain, abort-during-server-start, bootstrap-failure-replay, missing-requested-seed, mixed-infrastructure-contention-retries, large-frame-attempt-deadline'); process.exit(0);
+	assert.ok(watchdogLimitMs(610) > attemptLimitMs(610));
+	assert.equal(watchdogLimitMs(70), 300000);
+	console.log('GPU capture self-check passed: zero-interval-coverage, gpu-watch-and-error-gate, cancelled-startup-settles-without-creation, bootstrap-metadata-analysis-guard, missing-requested-seed, mixed-infrastructure-contention-retries, large-frame-attempt-deadline'); process.exit(0);
 }
 if (options.replay) {
 	const d = JSON.parse(await readFile(options.replay, 'utf8'));
@@ -389,9 +392,9 @@ function cleanupOwned() {
 	}
 	browser = null; server = null;
 }
-let watchdog = setTimeout(stalled, 5 * 60 * 1000);
+let watchdog = setTimeout(stalled, watchdogLimitMs(TRACE_LIMIT_S));
 function stalled() { save(); cleanupOwned(); process.exit(2); }
-function completed() { clearTimeout(watchdog); watchdog = setTimeout(stalled, 5 * 60 * 1000); }
+function completed() { clearTimeout(watchdog); watchdog = setTimeout(stalled, watchdogLimitMs(TRACE_LIMIT_S)); }
 async function startServer(phase, signal) {
 	signal.throwIfAborted();
 	if (server) return;

@@ -211,8 +211,12 @@ Completeness checks requested seeds, not merely observed seeds. Infrastructure
 cannot consume each other's allowance. Attempt deadline derives from recorder
 ceiling **plus 60 s bounded overhead** (default 130 s), not fixed 90 s.
 
-Runnable regression checks: `zero-interval-coverage`, `gpu-exit-during-drain`,
-`abort-during-server-start`, `bootstrap-failure-replay`, `missing-requested-seed`,
-`mixed-infrastructure-contention-retries`, `large-frame-attempt-deadline`.
+Runnable regression checks: `zero-interval-coverage`, `gpu-watch-and-error-gate`,
+`cancelled-startup-settles-without-creation`, `bootstrap-metadata-analysis-guard`,
+`missing-requested-seed`, `mixed-infrastructure-contention-retries`,
+`large-frame-attempt-deadline`. Names describe their unit scope; actual CLI replay
+also checks retained bootstrap-failure rows without launching GPU work. The run
+watchdog is `max(300 s, attempt deadline + 60 s)`, so large frame overrides cannot
+expire before their derived attempt ceiling.
 Historical replays and one new Karman-only 600×3 pilot verify the corrected harness
 before any matrix. No missing execution inferred as zero; all failures retained.
