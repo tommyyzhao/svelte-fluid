@@ -474,6 +474,36 @@ three-RAF pacing, Metal interval-union attribution, complete native writes, 60
 shared transfers and the >=5% foreign-overlap contention gate. No new capture or
 runtime optimisation was performed for this protocol update.
 
+### InkPaper pressure-pairing lane — 2026-10-06
+
+Candidate 4 ([ADR 0104](../decisions/0104-pigment-pressure-pairing.md)): fold
+warm-start pressure decay into paired Jacobi, retain 16 iterations and all field
+precisions. Pressure draws **17 → 8**; held-wet steady step+display **24 → 15**.
+No capture-script, preset, host or FluidEngine edits.
+
+Same-seed native comparison uses unchanged `bun scripts/gpu-capture.mjs`,
+`GPU_CAPTURE_CASES='model-inkpaper@800x500:shared:2'`, seed 5, 1600×1000 native
+backing, GPU lock held. Existing 200 warm-up/60 paced frame protocol, attribution,
+transfer and foreign-contention gates, all-clean-repeats rule unchanged.
+
+| Revision / capture | Median ms | p95 ms | Max ms | Verdict | Foreign overlap |
+|---|---:|---:|---:|---|---|
+| Base `76bdaa2`, `/tmp/opt-pigment/before/`, attempt 1 | 1.837 | 2.637 | 4.208 | FAIL | 0 ms / 0% |
+
+Baseline: aligned (0.477 ms error), zero strays, 60 native writes and 60/60
+requested/delivered transfers. After-capture pending; no p95 success claimed.
+Historical InkPaper 1.617/2.453/2.771 ms remains above, not replaced by this run.
+No per-shader GPU share inferred from draw counts.
+
+Hardware pigment suite **14/14 passes**: old/new pressure parity (including odd
+counts and edges) ≤2e-6 fp32 / <0.002 fp16 on the bounded fixture; painting fields
+≤1e-5, mass <1e-5 relative; isolated settling/evaporation mass <1e-6 relative;
+resist/drying, fixed-step resize and sibling isolation, context-loss replay ≤1e-6
+per cell. fp16 bound accounts for omitted intermediate rounding, not precision
+reduction. Existing semi-Lagrangian transport is not claimed globally conservative.
+Same-seed wet steps 1/30/120 and final dry PNGs at native DPR are untracked under
+`/tmp/opt-pigment/visual/`; comparison pending.
+
 ### Hot-pass attribution — bounded negative result
 
 No truthful per-shader top-three GPU shares could be derived. Native labels are
