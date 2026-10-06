@@ -1269,6 +1269,37 @@ Ownership: `/tmp/svelte-fluid-gpu.lock` acquired with lane/worktree/SHA owner fi
 
 Worktree and ignored `node_modules` symlink retained: work not remotely preserved, so no worktree removal. Symlink targets `/Users/admin/Projects/personal-archive/fluid-project/svelte-fluid/.claude/worktrees/integrate-main/node_modules`, never staged. Raw traces, logs, aggregation checks and process snapshots remain `/tmp/post-opt-matrix/` only; ephemeral, not durable archived binaries. No tracker writes, installs, push, merge or foreign process signals.
 
+## Pre-registered stable measurement protocol — 2026-10-06
+
+Owner decision: **“Stabilise measurement, then sweep.”** [ADR 0105](../decisions/0105-stable-gpu-budget-protocol.md)
+amends ADR 0101 sampling, fixed **before any new sweep or feasibility pilot**.
+Default **600 measured frames × three independent fresh-Chrome runs**, **200 warm-up**,
+seed **5**, native DPR, fixed dt, three-RAF pacing. p95 sorted index **569**
+(31st-worst), not pooled across runs. PASS requires all three runs clean for each
+requested seed, each p95 **<2 ms**; any clean failure persists, missing clean runs
+cannot certify PASS. Report per-run median/p95/max and their clean min/max/range.
+Attribution/gates unchanged: Metal interval union, <4 ms alignment, exactly 600
+clusters/native writes, zero strays, 600 shared/model transfers, ≥5% foreign
+overlap CONTENDED. Preserve all attempts; bounded contention retry only.
+
+Existing 31-scene / 136-clean-own-repeat frame arrays, no new captures: 2,000
+conditional bootstraps per run, seed 5. IID median p95 SD **0.120444 → 0.036563 ms**
+(60 → 600), circular five-frame blocks **0.130325 → 0.033368 ms**; IID central-95%
+width **0.3224 → 0.0788 ms**. N=1200 adds only 0.014016 ms median SD reduction
+for twice the capture time. Empirical tails/systematic between-run variation
+remain: historical median scene spread **0.530916 ms**, maximum **1.703376 ms**;
+27 same-seed post-opt pairs differ by median **0.318750 ms**, max **0.949169 ms**.
+No promise to resolve every 0.08 ms gap; no retrospective PASS reclassification.
+
+`bun scripts/gpu-capture.mjs` now uses the registered default; explicit
+`--frames N` / `GPU_CAPTURE_FRAMES`, `--runs R` / `GPU_CAPTURE_RUNS` overrides
+are experimental. `--legacy` retains 60/1 and the 10 s ceiling for comparison.
+Separate output directories required. `--replay` honors recorded run count.
+`xctrace help record` confirms `--time-limit` and rolling `--window`; no window
+used. Three RAFs mean **30 s** measurement at 60 Hz, 15 s at 120 Hz for N=600;
+raise default ceiling to **70 s**, stop early. Pilot restricted to Karman own
+1440×900; no full matrix authorized here.
+
 Additional provenance SHA256s:
 
 - run1 client census: `a32f9fb133603fdff442b5655eb93b826b8a7b304466e22dd77b7e3d4dbcf93e`.

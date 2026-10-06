@@ -1,6 +1,7 @@
 // Native Metal GPU-execution capture of one FluidEngine per page (measurement only;
 // no runtime patch, no timer queries). Dev-docs: dev-docs/benchmarks/gpu-budget.md.
-// Run: bun scripts/gpu-capture.mjs [--seed N[,N...]] (default 5; up to 5 uint32 seeds)
+// Run: bun scripts/gpu-capture.mjs [--frames N] [--runs R] [--seed N[,N...]]; --legacy = 60 frames / 1 run.
+// Defaults: 600 measured frames / 3 independent browser runs / seed 5. Env: GPU_CAPTURE_FRAMES, GPU_CAPTURE_RUNS.
 // Env: GPU_CAPTURE_CASES='Karman@1440x900:own:2,...' (preset@CSS:tier:DPR; default = full
 // preset matrix at the machine DPR), GPU_CAPTURE_DIR (default /tmp/gpu-capture; traces stay there).
 // Hardware Chrome with ordinary flags: Playwright's default --enable-unsafe-swiftshader is removed.
@@ -9,15 +10,26 @@ import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { parseArgs } from 'node:util';
 
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const XCODE = { ...process.env, DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer' };
 const DIR = process.env.GPU_CAPTURE_DIR || '/tmp/gpu-capture';
 const PORT = 5198, URL = `http://127.0.0.1:${PORT}`;
-const FRAMES = 60, WARM = 200, RETRIES = 2, RETRY_WAIT_MS = 30000;
+const WARM = 200, RETRIES = 2, RETRY_WAIT_MS = 30000;
 const PRESETS = ['(default)', 'LavaLamp', 'Plasma', 'InkInWater', 'FrozenSwirl', 'Aurora', 'CircularFluid', 'FrameFluid', 'AnnularFluid', 'SvgPathFluid', 'Toroidal', 'GasFlare', 'Venturi', 'Karman', 'TeslaValve'];
 const sha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-const USAGE = 'bun scripts/gpu-capture.mjs [--seed N[,N...]] | --self-check | --replay capture.json';
+const USAGE = 'bun scripts/gpu-capture.mjs [--frames N] [--runs R] [--seed N[,N...]] [--legacy] | --self-check | --replay capture.json';
+function positiveInteger(value, label) {
+	if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) < 1) throw new Error(`${label} requires a positive safe integer`);
+	return Number(value);
+}
+function captureOptions(args, env = process.env) {
+	const { values } = parseArgs({ args, options: { frames: { type: 'string' }, runs: { type: 'string' }, seed: { type: 'string' }, legacy: { type: 'boolean' }, help: { type: 'boolean' }, 'self-check': { type: 'boolean' }, replay: { type: 'string' } } });
+	if ((values.replay || values['self-check'] || values.help) && Object.keys(values).length !== 1) throw new Error(USAGE);
+	if (values.legacy && (values.frames !== undefined || values.runs !== undefined)) throw new Error('--legacy cannot be combined with --frames or --runs');
+	return { ...values, frames: positiveInteger(values.legacy ? '60' : values.frames ?? env.GPU_CAPTURE_FRAMES ?? '600', '--frames / GPU_CAPTURE_FRAMES'), runs: positiveInteger(values.legacy ? '1' : values.runs ?? env.GPU_CAPTURE_RUNS ?? '3', '--runs / GPU_CAPTURE_RUNS'), seeds: parseSeeds(values.seed) };
+}
 
 function parseSeeds(value = '5') {
 	const seeds = value.split(',').map((s) => /^\d+$/.test(s) ? Number(s) : NaN);
@@ -27,30 +39,40 @@ function parseSeeds(value = '5') {
 	return seeds;
 }
 function verdict(r) {
-	return !r.aligned || !Number.isFinite(r.p95Ms) || r.transfersOk === false ? 'INCONCLUSIVE' : r.contended ? 'CONTENDED' : r.p95Ms < 2 ? 'PASS' : 'FAIL';
+	const incomplete = r.measuredFrames !== undefined && (r.clusters !== r.measuredFrames || r.framesWithPresentWrite !== r.measuredFrames || r.strays !== 0);
+	return !r.aligned || !Number.isFinite(r.p95Ms) || r.transfersOk === false || incomplete ? 'INCONCLUSIVE' : r.contended ? 'CONTENDED' : r.p95Ms < 2 ? 'PASS' : 'FAIL';
 }
-function sceneVerdicts(results) {
+function sceneVerdicts(results, requiredRuns = 1) {
 	const scenes = new Map();
 	for (const r of results) {
 		const key = JSON.stringify([r.preset, r.w, r.h, r.tier, r.dpr]);
 		if (!scenes.has(key)) scenes.set(key, { preset: r.preset, w: r.w, h: r.h, tier: r.tier, dpr: r.dpr, repeats: [] });
-		scenes.get(key).repeats.push({ seed: r.seed, attempt: r.attempt, trace: r.trace, verdict: r.verdict, medianMs: r.medianMs, p95Ms: r.p95Ms, maxMs: r.maxMs });
+		scenes.get(key).repeats.push({ seed: r.seed, run: r.run, attempt: r.attempt, trace: r.trace, verdict: r.verdict, medianMs: r.medianMs, p95Ms: r.p95Ms, maxMs: r.maxMs });
 	}
 	return [...scenes.values()].map((s) => {
 		const clean = s.repeats.filter((r) => r.verdict === 'PASS' || r.verdict === 'FAIL');
-		return { ...s, cleanRepeats: clean.length, verdict: clean.some((r) => r.verdict === 'FAIL') ? 'FAIL' : clean.length ? 'PASS' : 'INCONCLUSIVE' };
+		const complete = [...new Set(s.repeats.map((r) => r.seed))].every((seed) => {
+			const repeats = clean.filter((r) => r.seed === seed);
+			return new Set(repeats.map((r) => r.run ?? r.trace)).size >= requiredRuns;
+		});
+		const spread = Object.fromEntries(['medianMs', 'p95Ms', 'maxMs'].map((key) => {
+			const v = clean.map((r) => r[key]), min = v.length ? Math.min(...v) : null, max = v.length ? Math.max(...v) : null;
+			return [key, { min, max, range: v.length ? max - min : null }];
+		}));
+		return { ...s, requiredRuns, cleanRepeats: clean.length, complete, spread, verdict: clean.some((r) => r.verdict === 'FAIL') ? 'FAIL' : complete ? 'PASS' : 'INCONCLUSIVE' };
 	});
 }
-const args = process.argv.slice(2);
-if (args[0] === '--help') { console.log(USAGE); process.exit(0); }
-if (!(args.length === 0 || (args.length === 2 && args[0] === '--seed') || (args.length === 1 && args[0] === '--self-check') || (args.length === 2 && args[0] === '--replay'))) {
-	throw new Error(USAGE);
-}
-const seeds = parseSeeds(args[0] === '--seed' ? args[1] : undefined);
+const options = captureOptions(process.argv.slice(2));
+if (options.help) { console.log(USAGE); process.exit(0); }
+const { frames: FRAMES, runs: RUNS, seeds } = options;
+// Three-RAF pacing is 30 s for 600 frames at 60 Hz, not 10 s. Allow 2× that
+// duration plus startup/finalisation slack; --window would discard required frames.
+const TRACE_LIMIT_S = options.legacy ? 10 : Math.max(10, Math.ceil(FRAMES * 3 / 60 * 2 + 10));
+const protocol = { measuredFrames: FRAMES, runs: RUNS, warmupFrames: WARM, p95Index: Math.round(0.95 * (FRAMES - 1)), traceLimitSeconds: TRACE_LIMIT_S, legacy: !!options.legacy };
 
 // --- xctrace export parsing (id/ref-deduplicated XML rows) -------------------------------
 function exportTable(trace, schema) {
-	const xml = execFileSync('xcrun', ['xctrace', 'export', '--input', trace, '--xpath', `/trace-toc/run[@number="1"]/data/table[@schema="${schema}"]`], { env: XCODE, encoding: 'utf8', maxBuffer: 1 << 30 });
+	const xml = execFileSync('env', [`DEVELOPER_DIR=${XCODE.DEVELOPER_DIR}`, 'xcrun', 'xctrace', 'export', '--input', trace, '--xpath', `/trace-toc/run[@number="1"]/data/table[@schema="${schema}"]`], { env: XCODE, encoding: 'utf8', maxBuffer: 1 << 30 });
 	const ids = new Map(), stack = [], rows = [], cols = [];
 	const dec = (s) => s.replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 	const re = /<\?[^>]*\?>|<(\/)?([\w:-]+)((?:\s+[\w:-]+=(?:"[^"]*"|'[^']*'))*)\s*(\/)?>|([^<]+)/g;
@@ -94,6 +116,7 @@ function analyse(trace, gpuPid, marks, backing) {
 	const subs = exportTable(trace, 'metal-application-command-buffer-submissions');
 	const io = exportTable(trace, 'metal-io-surface-access');
 	const hashes = { 'metal-gpu-intervals': sha256(gpu.xml), 'metal-application-command-buffer-submissions': sha256(subs.xml), 'metal-io-surface-access': sha256(io.xml) };
+	const exportBytes = { 'metal-gpu-intervals': Buffer.byteLength(gpu.xml), 'metal-application-command-buffer-submissions': Buffer.byteLength(subs.xml), 'metal-io-surface-access': Buffer.byteLength(io.xml) };
 	const exec = new Map(); // cmdbuffer-id -> [start,end] ns, Chrome GPU process only
 	const browserOs = []; // measured Chrome GPU process + WindowServer, not foreign Chrome clients
 	const other = []; // [start,end,label] for non-instance processes
@@ -160,21 +183,33 @@ function analyse(trace, gpuPid, marks, backing) {
 	const otherClients = Object.fromEntries(Object.entries(clients).map(([k, v]) => [k, { busyMs: +(union(v) / 1e6).toFixed(3), busyPct: +((100 * union(v)) / (spanHi - spanLo)).toFixed(2) }]));
 	const g = frames.map((f) => f.gpuMs);
 	return {
-		aligned, alignErrMs: best.err / 1e6, bursts: bursts.length, strays, spanMs,
+		aligned, alignErrMs: best.err / 1e6, bursts: bursts.length, clusters: run.length, strays, spanMs,
 		medianMs: g.length ? rank(g, 0.5) : NaN, p95Ms: g.length ? rank(g, 0.95) : NaN, maxMs: g.length ? Math.max(...g) : NaN,
 		framesWithPresentWrite: frames.filter((f) => f.presentWrite).length,
 		browserOsMedianMs: g.length ? rank(frames.map((f) => f.browserOsMs), 0.5) : NaN,
 		browserOsP95Ms: g.length ? rank(frames.map((f) => f.browserOsMs), 0.95) : NaN,
 		browserOsMaxMs: g.length ? Math.max(...frames.map((f) => f.browserOsMs)) : NaN,
-		otherClients, hashes, frames
+		otherClients, hashes, exportBytes, frames
 	};
 }
 
 // Runnable self-check; replay permits metadata/ceiling derivation from existing /tmp traces.
-if (process.argv.includes('--self-check')) {
+if (options['self-check']) {
 	assert.equal(union([[0, 3], [1, 2], [2, 5], [7, 8]]), 6);
 	assert.equal(rank(Array.from({ length: 60 }, (_, i) => i), 0.5), 30);
 	assert.equal(rank(Array.from({ length: 60 }, (_, i) => i), 0.95), 56);
+	assert.equal(rank(Array.from({ length: 600 }, (_, i) => i), 0.95), 569);
+	assert.equal(captureOptions([], {}).frames, 600);
+	assert.equal(captureOptions([], {}).runs, 3);
+	assert.equal(captureOptions([], { GPU_CAPTURE_FRAMES: '1200', GPU_CAPTURE_RUNS: '4' }).frames, 1200);
+	assert.equal(captureOptions(['--frames', '600', '--runs', '2'], { GPU_CAPTURE_FRAMES: '1200' }).runs, 2);
+	assert.equal(captureOptions(['--frames', '600'], { GPU_CAPTURE_FRAMES: '1200' }).frames, 600);
+	assert.equal(captureOptions(['--legacy'], {}).frames, 60);
+	assert.equal(captureOptions(['--legacy'], {}).runs, 1);
+	for (const value of ['', '0', '-1', '1.5', 'Infinity', '9007199254740992']) assert.throws(() => captureOptions(['--frames', value], {}));
+	assert.throws(() => captureOptions(['--runs', '0'], {}));
+	assert.throws(() => captureOptions(['--legacy', '--frames', '600'], {}));
+	assert.throws(() => captureOptions(['--replay', 'capture.json', '--runs', '3'], {}));
 	assert.deepEqual(parseSeeds(), [5]);
 	assert.deepEqual(parseSeeds('0,5,4294967295'), [0, 5, 4294967295]);
 	for (const value of ['', '-1', '1.5', '4294967296', '5,5', '1,2,3,4,5,6']) assert.throws(() => parseSeeds(value));
@@ -187,10 +222,22 @@ if (process.argv.includes('--self-check')) {
 	assert.equal(sceneVerdicts([{ ...clean, verdict: 'FAIL' }, { ...clean, verdict: 'PASS' }])[0].verdict, 'FAIL');
 	assert.equal(sceneVerdicts([{ ...clean, verdict: 'PASS' }, { ...clean, verdict: 'CONTENDED' }])[0].cleanRepeats, 1);
 	assert.equal(sceneVerdicts([{ ...clean, verdict: 'INCONCLUSIVE' }])[0].verdict, 'INCONCLUSIVE');
+	const repeats = [1, 2, 3].map((run) => ({ ...clean, seed: 5, run, verdict: 'PASS', medianMs: 1 + run / 10, p95Ms: 1.5 + run / 10, maxMs: 3 + run / 10 }));
+	assert.equal(sceneVerdicts(repeats, 3)[0].verdict, 'PASS');
+	assert.equal(sceneVerdicts(repeats.slice(0, 2), 3)[0].verdict, 'INCONCLUSIVE');
+	assert.equal(sceneVerdicts([...repeats, { ...repeats[0], verdict: 'FAIL', p95Ms: 2 }], 3)[0].verdict, 'FAIL');
+	assert.equal(sceneVerdicts([...repeats, { ...repeats[0], seed: 42 }], 3)[0].verdict, 'INCONCLUSIVE');
+	assert.equal(sceneVerdicts([repeats[0], repeats[0], repeats[0]], 3)[0].verdict, 'INCONCLUSIVE');
+	assert.ok(Math.abs(sceneVerdicts(repeats, 3)[0].spread.p95Ms.range - 0.2) < 1e-12);
+	const complete = { ...clean, measuredFrames: 600, clusters: 600, framesWithPresentWrite: 600, strays: 0 };
+	assert.equal(verdict(complete), 'PASS');
+	assert.equal(verdict({ ...complete, framesWithPresentWrite: 599 }), 'INCONCLUSIVE');
+	assert.equal(verdict({ ...complete, clusters: 599 }), 'INCONCLUSIVE');
+	assert.equal(verdict({ ...complete, strays: 1 }), 'INCONCLUSIVE');
 	console.log('GPU capture self-check passed'); process.exit(0);
 }
-if (process.argv[2] === '--replay') {
-	const d = JSON.parse(await readFile(process.argv[3], 'utf8'));
+if (options.replay) {
+	const d = JSON.parse(await readFile(options.replay, 'utf8'));
 	for (const r of d.results) {
 		r.seed ??= 'unseeded (historical)';
 		if (!r.marks) {
@@ -211,8 +258,8 @@ if (process.argv[2] === '--replay') {
 		r.verdict = verdict(r);
 		await writeFile(`${r.trace}.frames.json`, JSON.stringify(frames, null, 1));
 	}
-	d.scenes = sceneVerdicts(d.results);
-	await writeFile(process.argv[3], JSON.stringify(d, null, 2)); process.exit(0);
+	d.scenes = sceneVerdicts(d.results, d.protocol?.runs ?? 1);
+	await writeFile(options.replay, JSON.stringify(d, null, 2)); process.exit(0);
 }
 
 // --- capture --------------------------------------------------------------------------------
@@ -221,17 +268,19 @@ const owned = [];
 const server = Bun.spawn(['bun', 'run', 'dev', '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'], { stdout: 'ignore', stderr: 'inherit' });
 owned.push(server);
 let browser, gpuPid;
-const deadline = setTimeout(() => { for (const p of owned) p.kill(); process.exit(2); }, 60 * 60 * 1000);
+const captureDeadlineMs = Math.max(60 * 60 * 1000, (process.env.GPU_CAPTURE_CASES?.split(',').length ?? PRESETS.length * 2) * seeds.length * RUNS * (TRACE_LIMIT_S + 120) * 1000);
+const deadline = setTimeout(() => { for (const p of owned) p.kill(); process.exit(2); }, captureDeadlineMs);
 const results = [];
 try {
 	for (let i = 0; i < 100 && !(await fetch(URL).then((r) => r.ok, () => false)); i++) await Bun.sleep(100);
+	for (let run = 1; run <= RUNS; run++) {
 	browser = await chromium.launch({ executablePath: CHROME, headless: false, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'] });
 	const ps = () => execFileSync('ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' }).split('\n').map((l) => l.trim().split(/\s+/));
 	const chromePid = Number(ps().find((f) => +f[1] === process.pid && f.slice(2).join(' ').startsWith(CHROME))?.[0]);
 	gpuPid = () => Number(ps().find((f) => +f[1] === chromePid && f.join(' ').includes('--type=gpu-process'))?.[0]);
 	const probe = await (await browser.newContext({ viewport: null })).newPage();
 	const machineDpr = await probe.evaluate(() => devicePixelRatio);
-	await probe.close();
+	await probe.context().close();
 	const CASES = (process.env.GPU_CAPTURE_CASES || PRESETS.flatMap((p) => [`${p}@1440x900:own:${machineDpr}`, `${p}@800x500:own:${machineDpr}`]).join(','))
 		.split(',').map((s) => { const [, preset, w, h, tier, dpr] = s.match(/^(.+)@([\d.]+)x([\d.]+):(own|shared):([\d.]+)$/); return { preset, w: +w, h: +h, tier, dpr: +dpr }; })
 		.flatMap((c) => c.preset.startsWith('model-') ? [{ ...c, seed: c.preset === 'model-inkpaper' ? 5 : 'not applicable (model)' }] : seeds.map((seed) => ({ ...c, seed })));
@@ -245,7 +294,7 @@ try {
 			await page.goto(`${URL}/__gpu_capture__`);
 			pageDpr = c.dpr;
 		}
-		const name = `${c.preset.replace(/\W/g, '')}-${c.w}x${c.h}-${c.tier}-dpr${c.dpr}${c.preset.startsWith('model-') ? '' : `-seed${c.seed}`}`;
+		const name = `${c.preset.replace(/\W/g, '')}-${c.w}x${c.h}-${c.tier}-dpr${c.dpr}${c.preset.startsWith('model-') ? '' : `-seed${c.seed}`}${options.legacy ? '' : `-r${run}`}`;
 		const firstAttempt = 1 + results.filter((r) => r.name === name).length;
 		for (let attempt = firstAttempt; ; attempt++) {
 			const r = await capture(page, c, name, attempt);
@@ -258,13 +307,15 @@ try {
 			r.contended = r.foreignOverlapPct >= 5;
 			r.verdict = verdict(r);
 			const { frameDetail, ...row } = r;
-			results.push({ ...row, attempt });
-			await writeFile(`${DIR}/capture.json`, JSON.stringify({ sha, machineDpr, chrome: CHROME, seeds, results, scenes: sceneVerdicts(results) }, null, 2));
+			results.push({ ...row, run, attempt });
+			await writeFile(`${DIR}/capture.json`, JSON.stringify({ sha, machineDpr, chrome: CHROME, seeds, protocol, results, scenes: sceneVerdicts(results, RUNS) }, null, 2));
 			await writeFile(`${DIR}/${name}-a${attempt}.frames.json`, JSON.stringify(frameDetail, null, 1));
-			console.log(JSON.stringify({ name, seed: r.seed, attempt, verdict: r.verdict, backing: r.backing, median: +r.medianMs.toFixed(3), p95: +r.p95Ms.toFixed(3), max: +r.maxMs.toFixed(3), aligned: r.aligned, alignErrMs: +r.alignErrMs.toFixed(3), strays: r.strays, presentWrites: r.framesWithPresentWrite, transfers: r.transfers, otherClients: r.otherClients, foreignOverlapMs: r.foreignOverlapMs }));
+			console.log(JSON.stringify({ name, seed: r.seed, run, attempt, measuredFrames: FRAMES, clusters: r.clusters, verdict: r.verdict, backing: r.backing, median: +r.medianMs.toFixed(3), p95: +r.p95Ms.toFixed(3), max: +r.maxMs.toFixed(3), aligned: r.aligned, alignErrMs: +r.alignErrMs.toFixed(3), strays: r.strays, presentWrites: r.framesWithPresentWrite, transfers: r.transfers, otherClients: r.otherClients, foreignOverlapMs: r.foreignOverlapMs }));
 			if (r.verdict !== 'CONTENDED' || attempt - firstAttempt + 1 >= RETRIES) break;
 			await Bun.sleep(RETRY_WAIT_MS);
 		}
+	}
+	await browser.close(); browser = null;
 	}
 } finally {
 	clearTimeout(deadline);
@@ -275,7 +326,7 @@ try {
 async function capture(page, c, name, attempt) {
 		await page.bringToFront();
 		await page.evaluate((v) => { globalThis.__passLog = v; }, process.env.GPU_CAPTURE_PASS_LOG === '1');
-		const setup = await page.evaluate(async ({ preset, w, h, tier, seed }) => {
+		const setup = await page.evaluate(async ({ preset, w, h, tier, seed, warmupFrames }) => {
 			if (document.visibilityState !== 'visible') throw new Error('Foreground visibility required');
 			if (preset.startsWith('model-')) {
 				const { acquireGlHost } = await import('/src/lib/engine/gl-host.ts');
@@ -324,7 +375,7 @@ async function capture(page, c, name, attempt) {
 				ImageBitmapRenderingContext.prototype.transferFromImageBitmap = function (b) { transfer.call(this, b); if (this.canvas === canvas) counts.delivered++; };
 				let pending;
 				const frame = () => { e.busyFrames(1); pending = host.present(e); };
-				for (let i = 0; i < 200; i++) e.busyFrames(1);
+				for (let i = 0; i < warmupFrames; i++) e.busyFrames(1);
 				pending = host.present(e); await pending;
 				gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
 				const dbg = gl.getExtension('WEBGL_debug_renderer_info');
@@ -371,25 +422,26 @@ async function capture(page, c, name, attempt) {
 			}
 			const px = new Uint8Array(4);
 			const drain = () => e.withGl(() => { const gl = e.gl; gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null); gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); });
-			for (let i = 0; i < 200; i++) frame();
+			for (let i = 0; i < warmupFrames; i++) frame();
 			await e.presented(); drain();
 			const dbg = e.gl.getExtension('WEBGL_debug_renderer_info');
 			globalThis.__cap = { e, frame, counts, draws, restore: () => { globalThis.createImageBitmap = snap; ImageBitmapRenderingContext.prototype.transferFromImageBitmap = transfer; } };
 			return { dprActual: devicePixelRatio, backing: [canvas.width, canvas.height], adapter: dbg ? String(e.gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : 'unknown', ua: navigator.userAgent, config: { sim: cfg.simResolution ?? 128, dye: cfg.dyeResolution, pressureIterations: cfg.pressureIterations ?? null, bloom: cfg.bloom ?? null, sunrays: cfg.sunrays ?? null } };
-		}, c);
+		}, { ...c, warmupFrames: WARM });
 		const pid = gpuPid();
 		const trace = `${DIR}/${name}-a${attempt}.trace`;
 		execFileSync('rm', ['-rf', trace]);
 		const note = `svelte-fluid.gpu-capture.${process.pid}.${name}.${attempt}`;
 		const started = Bun.spawn(['/usr/bin/notifyutil', '-1', note], { stdout: 'ignore' });
 		owned.push(started);
-		const cmd = ['xcrun', 'xctrace', 'record', '--template', 'Metal System Trace', '--attach', String(pid), '--time-limit', '10s', '--no-prompt', '--notify-tracing-started', note, '--output', trace];
-		const rec = Bun.spawn(cmd, { env: XCODE, stdout: 'pipe', stderr: 'pipe' });
+		const cmd = ['xcrun', 'xctrace', 'record', '--template', 'Metal System Trace', '--attach', String(pid), '--time-limit', `${TRACE_LIMIT_S}s`, '--no-prompt', '--notify-tracing-started', note, '--output', trace];
+		const recordingStarted = performance.now();
+		const rec = Bun.spawn(['env', `DEVELOPER_DIR=${XCODE.DEVELOPER_DIR}`, ...cmd], { env: XCODE, stdout: 'pipe', stderr: 'pipe' });
 		owned.push(rec);
 		await Promise.race([started.exited, Bun.sleep(6000)]);
 		started.kill();
 		await Bun.sleep(300); // quiet lead-in
-	// 60 individually paced frames: three RAFs apart so each frame's GPU burst is
+	// Individually paced frames: three RAFs apart so each frame's GPU burst is
 	// isolated in the trace; presentation verified per frame (transferFromImageBitmap).
 	const run = await page.evaluate(async (FRAMES) => {
 		const { e, frame, counts, restore, draws } = globalThis.__cap;
@@ -411,11 +463,12 @@ async function capture(page, c, name, attempt) {
 		} finally { restore(); }
 	}, FRAMES);
 	await Bun.sleep(500); // let the last frame's GPU execution and display dependencies complete
-	rec.kill('SIGINT'); // early stop; --time-limit 10s is the hard ceiling
+	rec.kill('SIGINT'); // early stop; --time-limit is the hard ceiling
 	const code = await rec.exited;
+	const recordingWallMs = performance.now() - recordingStarted;
 	if (code !== 0) throw new Error(`xctrace exit ${code}: ${await new Response(rec.stderr).text()}`);
 	await page.evaluate(() => { globalThis.__cap.e.dispose(); document.body.replaceChildren(); delete globalThis.__cap; });
 	const a = analyse(trace, pid, run.marks, setup.backing);
 	const { frames, ...summary } = a;
-	return { ...c, name, trace, gpuPid: pid, command: cmd.join(' '), ...setup, transfers: run.transfers, settled: run.settled, transfersOk: run.transfersOk, marks: run.marks, ...summary, frameDetail: frames, perFrameGpuMs: frames.map((f) => +f.gpuMs.toFixed(4)) };
+	return { ...c, name, trace, gpuPid: pid, command: `env DEVELOPER_DIR=${XCODE.DEVELOPER_DIR} ${cmd.join(' ')}`, measuredFrames: FRAMES, warmupFrames: WARM, recordingWallMs, ...setup, transfers: run.transfers, settled: run.settled, transfersOk: run.transfersOk, marks: run.marks, ...summary, frameDetail: frames, perFrameGpuMs: frames.map((f) => +f.gpuMs.toFixed(4)) };
 }

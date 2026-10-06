@@ -98,6 +98,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0102](./0102-solver-display-optimisation-rejected.md) | Reject solver/display candidates failing parity or native timing | Accepted (negative result) |
 | [0103](./0103-untransformed-shared-snapshots.md) | Preserve the shared snapshot's sRGB tag; remove redundant native-size raster transform | Accepted |
 | [0104](./0104-pigment-pressure-pairing.md) | Pigment warm-start fold and paired pressure iterations; budget still FAIL | Accepted |
+| [0105](./0105-stable-gpu-budget-protocol.md) | Pre-registered 600-frame / three-run native GPU budget protocol | Accepted |
 
 ADRs 0067-0078 exist only on the private R&D branch (`rd/webgpu-replacement`); the numbering gap here is intentional.
 
