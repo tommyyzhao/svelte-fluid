@@ -220,3 +220,16 @@ watchdog is `max(300 s, attempt deadline + 60 s)`, so large frame overrides cann
 expire before their derived attempt ceiling.
 Historical replays and one new Karman-only 600×3 pilot verify the corrected harness
 before any matrix. No missing execution inferred as zero; all failures retained.
+
+Validation at `30ff4d4`: **197 historical 60-frame traces** replayed from all three
+native tables, identical command-buffer assignments, median/p95/max and native
+write counts versus `beb659b`; every aligned trace has complete execution coverage.
+Actual CLI replay of a bootstrap-failure row stays INCONCLUSIVE without analysis.
+One fresh Karman-only 600×3 invocation: **3/3 clean, zero GPU exits/retries**, all
+600 clusters/native writes, zero strays, execution coverage complete. p95
+**3.143916 / 3.302124 / 3.133459 ms** (spread **0.168665 ms**), alignment
+**0.275375 / 0.289958 / 0.303542 ms**; scene FAIL. Native recordings
+18.529–19.613 s, traces 108.83–110.42 MiB, exports 50.82–51.10 MiB.
+Tests/check/prepack/self-check/diff-check passed; exact owned processes closed,
+GPU lock released, user Chrome untouched. No matrix, metric or threshold change.
+Evidence `/tmp/stable-review-{replay-summary.json,replay.log,pilot/}`.
