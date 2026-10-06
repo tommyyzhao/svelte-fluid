@@ -135,7 +135,7 @@ function analyse(trace, gpuPid, marks, backing) {
 const owned = [];
 const server = Bun.spawn(['bun', 'run', 'dev', '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'], { stdout: 'ignore', stderr: 'inherit' });
 owned.push(server);
-let browser;
+let browser, gpuPid;
 const deadline = setTimeout(() => { for (const p of owned) p.kill(); process.exit(2); }, 60 * 60 * 1000);
 const results = [];
 try {
@@ -143,7 +143,7 @@ try {
 	browser = await chromium.launch({ executablePath: CHROME, headless: false, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'] });
 	const ps = () => execFileSync('ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' }).split('\n').map((l) => l.trim().split(/\s+/));
 	const chromePid = Number(ps().find((f) => +f[1] === process.pid && f.slice(2).join(' ').startsWith(CHROME))?.[0]);
-	const gpuPid = () => Number(ps().find((f) => +f[1] === chromePid && f.join(' ').includes('--type=gpu-process'))?.[0]);
+	gpuPid = () => Number(ps().find((f) => +f[1] === chromePid && f.join(' ').includes('--type=gpu-process'))?.[0]);
 	const probe = await browser.newPage();
 	const machineDpr = await probe.evaluate(() => devicePixelRatio);
 	await probe.close();
@@ -256,11 +256,13 @@ async function capture(page, c, name, attempt) {
 			}
 			return { marks, transfers: { requested: counts.requested - before.requested, delivered: counts.delivered - before.delivered }, settled: e.settled, transfersOk: runOk() };
 			function runOk() { return !e.sharedContext || (counts.requested - before.requested === FRAMES && counts.delivered - before.delivered === FRAMES); }
-		} finally { restore(); e.dispose(); document.body.replaceChildren(); delete globalThis.__cap; }
+		} finally { restore(); }
 	}, FRAMES);
+	await Bun.sleep(500); // let the last frame's GPU execution and display dependencies complete
 	rec.kill('SIGINT'); // early stop; --time-limit 10s is the hard ceiling
 	const code = await rec.exited;
 	if (code !== 0) throw new Error(`xctrace exit ${code}: ${await new Response(rec.stderr).text()}`);
+	await page.evaluate(() => { globalThis.__cap.e.dispose(); document.body.replaceChildren(); delete globalThis.__cap; });
 	const a = analyse(trace, pid, run.marks, setup.backing);
 	const { frames, ...summary } = a;
 	return { ...c, name, trace, gpuPid: pid, command: cmd.join(' '), ...setup, transfers: run.transfers, settled: run.settled, transfersOk: run.transfersOk, ...summary, frameDetail: frames, perFrameGpuMs: frames.map((f) => +f.gpuMs.toFixed(4)) };
