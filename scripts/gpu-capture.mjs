@@ -39,7 +39,7 @@ function parseSeeds(value = '5') {
 	return seeds;
 }
 function verdict(r) {
-	const incomplete = r.measuredFrames !== undefined && (r.clusters !== r.measuredFrames || r.framesWithPresentWrite !== r.measuredFrames || r.strays !== 0);
+	const incomplete = r.measuredFrames !== undefined && (r.clusters !== r.measuredFrames || r.framesWithPresentWrite !== r.measuredFrames || r.strays !== 0 || r.completedFrames !== undefined && r.completedFrames !== r.measuredFrames);
 	return !r.aligned || !Number.isFinite(r.p95Ms) || r.transfersOk === false || incomplete ? 'INCONCLUSIVE' : r.contended ? 'CONTENDED' : r.p95Ms < 2 ? 'PASS' : 'FAIL';
 }
 function sceneVerdicts(results, requiredRuns = 1) {
@@ -110,6 +110,7 @@ function union(intervals) {
 }
 const sha256 = (s) => createHash('sha256').update(s).digest('hex');
 const rank = (v, q) => [...v].sort((a, b) => a - b)[Math.min(v.length - 1, Math.round(q * (v.length - 1)))];
+const clusterGap = (marks) => Math.max(10.75, marks.length > 1 ? 0.4 * rank(marks.slice(1).map((m, i) => m.t0 - marks[i].t0), 0.5) : 10.75);
 
 function analyse(trace, gpuPid, marks, backing) {
 	const gpu = exportTable(trace, 'metal-gpu-intervals');
@@ -137,7 +138,9 @@ function analyse(trace, gpuPid, marks, backing) {
 	// GPU-process commits separated from the next by most of a vsync. Cluster encoder-bearing
 	// commits on CPU commit-time gaps > GAP; the measured run must yield exactly one burst per
 	// JS mark, with burst-to-burst spacing matching the JS mark spacing.
-	const GAP = 6e6;
+	const clusterGapMs = clusterGap(marks);
+	const GAP = clusterGapMs * 1e6; // tolerate submit stalls, remain below paced frame spacing
+	const idleGapBursts = commits.filter((c) => c.enc > 0).reduce((s, c, i, a) => s + (!i || c.t - a[i - 1].t >= 6e6 ? 1 : 0), 0);
 	const bursts = [];
 	for (const c of commits) {
 		if (c.enc === 0) continue;
@@ -183,7 +186,7 @@ function analyse(trace, gpuPid, marks, backing) {
 	const otherClients = Object.fromEntries(Object.entries(clients).map(([k, v]) => [k, { busyMs: +(union(v) / 1e6).toFixed(3), busyPct: +((100 * union(v)) / (spanHi - spanLo)).toFixed(2) }]));
 	const g = frames.map((f) => f.gpuMs);
 	return {
-		aligned, alignErrMs: best.err / 1e6, bursts: bursts.length, clusters: run.length, strays, spanMs,
+		aligned, alignErrMs: best.err / 1e6, clusterGapMs, idleGapBursts, clusterDisagreements: idleGapBursts - bursts.length, bursts: bursts.length, clusters: run.length, strays, spanMs,
 		medianMs: g.length ? rank(g, 0.5) : NaN, p95Ms: g.length ? rank(g, 0.95) : NaN, maxMs: g.length ? Math.max(...g) : NaN,
 		framesWithPresentWrite: frames.filter((f) => f.presentWrite).length,
 		browserOsMedianMs: g.length ? rank(frames.map((f) => f.browserOsMs), 0.5) : NaN,
@@ -199,6 +202,8 @@ if (options['self-check']) {
 	assert.equal(rank(Array.from({ length: 60 }, (_, i) => i), 0.5), 30);
 	assert.equal(rank(Array.from({ length: 60 }, (_, i) => i), 0.95), 56);
 	assert.equal(rank(Array.from({ length: 600 }, (_, i) => i), 0.95), 569);
+	assert.equal(clusterGap([{ t0: 0 }, { t0: 25 }, { t0: 50 }]), 10.75);
+	assert.equal(clusterGap([{ t0: 0 }, { t0: 50 }, { t0: 100 }]), 20);
 	assert.equal(captureOptions([], {}).frames, 600);
 	assert.equal(captureOptions([], {}).runs, 3);
 	assert.equal(captureOptions([], { GPU_CAPTURE_FRAMES: '1200', GPU_CAPTURE_RUNS: '4' }).frames, 1200);
@@ -234,6 +239,7 @@ if (options['self-check']) {
 	assert.equal(verdict({ ...complete, framesWithPresentWrite: 599 }), 'INCONCLUSIVE');
 	assert.equal(verdict({ ...complete, clusters: 599 }), 'INCONCLUSIVE');
 	assert.equal(verdict({ ...complete, strays: 1 }), 'INCONCLUSIVE');
+	assert.equal(verdict({ ...complete, completedFrames: 75 }), 'INCONCLUSIVE');
 	console.log('GPU capture self-check passed'); process.exit(0);
 }
 if (options.replay) {
@@ -249,6 +255,7 @@ if (options.replay) {
 			r.marks = frames.map((f) => ({ t0: times.get(parseInt(f.cbs[0].split(':')[0], 16)) / 1e6 }));
 			r.originalAlignErrMs = r.alignErrMs;
 		}
+		if (r.measuredFrames !== undefined && r.marks.length !== r.measuredFrames) { r.verdict = 'INCONCLUSIVE'; continue; }
 		const a = analyse(r.trace, r.gpuPid, r.marks, r.backing);
 		const { frames, ...summary } = a;
 		Object.assign(r, summary);
@@ -286,7 +293,7 @@ try {
 		.flatMap((c) => c.preset.startsWith('model-') ? [{ ...c, seed: c.preset === 'model-inkpaper' ? 5 : 'not applicable (model)' }] : seeds.map((seed) => ({ ...c, seed })));
 	let page, pageDpr;
 	for (const c of CASES) {
-		if (pageDpr !== c.dpr) {
+		if (pageDpr !== c.dpr || page?.isClosed()) {
 			await page?.context().close();
 			// Same viewport/DPR mechanism as scripts/paced-presentation.mjs.
 			page = await (await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: c.dpr })).newPage();
@@ -310,7 +317,7 @@ try {
 			results.push({ ...row, run, attempt });
 			await writeFile(`${DIR}/capture.json`, JSON.stringify({ sha, machineDpr, chrome: CHROME, seeds, protocol, results, scenes: sceneVerdicts(results, RUNS) }, null, 2));
 			await writeFile(`${DIR}/${name}-a${attempt}.frames.json`, JSON.stringify(frameDetail, null, 1));
-			console.log(JSON.stringify({ name, seed: r.seed, run, attempt, measuredFrames: FRAMES, clusters: r.clusters, verdict: r.verdict, backing: r.backing, median: +r.medianMs.toFixed(3), p95: +r.p95Ms.toFixed(3), max: +r.maxMs.toFixed(3), aligned: r.aligned, alignErrMs: +r.alignErrMs.toFixed(3), strays: r.strays, presentWrites: r.framesWithPresentWrite, transfers: r.transfers, otherClients: r.otherClients, foreignOverlapMs: r.foreignOverlapMs }));
+			console.log(JSON.stringify({ name, seed: r.seed, run, attempt, measuredFrames: FRAMES, clusters: r.clusters, verdict: r.verdict, backing: r.backing, median: +r.medianMs.toFixed(3), p95: +r.p95Ms.toFixed(3), max: +r.maxMs.toFixed(3), aligned: r.aligned, error: r.error, clusterGapMs: r.clusterGapMs, clusterDisagreements: r.clusterDisagreements, alignErrMs: r.alignErrMs == null ? null : +r.alignErrMs.toFixed(3), strays: r.strays, presentWrites: r.framesWithPresentWrite, transfers: r.transfers, otherClients: r.otherClients, foreignOverlapMs: r.foreignOverlapMs }));
 			if (r.verdict !== 'CONTENDED' || attempt - firstAttempt + 1 >= RETRIES) break;
 			await Bun.sleep(RETRY_WAIT_MS);
 		}
@@ -443,32 +450,58 @@ async function capture(page, c, name, attempt) {
 		await Bun.sleep(300); // quiet lead-in
 	// Individually paced frames: three RAFs apart so each frame's GPU burst is
 	// isolated in the trace; presentation verified per frame (transferFromImageBitmap).
-	const run = await page.evaluate(async (FRAMES) => {
-		const { e, frame, counts, restore, draws } = globalThis.__cap;
-		const before = { ...counts }, marks = [];
-		try {
-			for (let i = 0; i < FRAMES; i++) {
-				for (let raf = 0; raf < 3; raf++) await new Promise(requestAnimationFrame);
-				const shared = !!e.sharedContext;
-				const r0 = counts.requested, d0 = counts.delivered, t0 = performance.now();
-				if (draws) draws.length = 0;
-				frame();
-				const cpuMs = performance.now() - t0;
-				await e.presented();
-				marks.push({ t0, cpuMs, draws: draws ? [...draws] : undefined });
-				if (shared && (counts.requested !== r0 + 1 || counts.delivered !== d0 + 1)) throw new Error(`frame ${i}: transfer not delivered`);
+	const progress = { marks: [], visibility: [], transfers: { requested: 0, delivered: 0 }, transfersOk: false };
+	await page.exposeFunction('__captureProgress', (event) => {
+		if (event.mark) progress.marks.push(event.mark);
+		if (event.visibility) progress.visibility.push(event.visibility);
+		if (event.transfers) progress.transfers = event.transfers;
+	});
+	let timer;
+	const run = await Promise.race([
+		page.evaluate(async ({ FRAMES, timeoutMs }) => {
+			const { e, frame, counts, restore, draws } = globalThis.__cap;
+			const before = { ...counts }, marks = [], visibility = [];
+			const event = () => ({ t: performance.now(), state: document.visibilityState, focus: document.hasFocus() });
+			const changed = () => { const v = event(); visibility.push(v); void globalThis.__captureProgress({ visibility: v }); };
+			document.addEventListener('visibilitychange', changed); window.addEventListener('blur', changed); window.addEventListener('focus', changed); changed();
+			const deadline = performance.now() + timeoutMs;
+			async function bounded(promise, label) {
+				let timer;
+				try { return await Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${label} timeout; visibility=${document.visibilityState}; focus=${document.hasFocus()}`)), Math.max(1, Math.min(2000, deadline - performance.now()))); })]); }
+				finally { clearTimeout(timer); }
 			}
-			return { marks, transfers: { requested: counts.requested - before.requested, delivered: counts.delivered - before.delivered }, settled: e.settled, transfersOk: runOk() };
-			function runOk() { return !e.sharedContext || (counts.requested - before.requested === FRAMES && counts.delivered - before.delivered === FRAMES); }
-		} finally { restore(); }
-	}, FRAMES);
+			let error;
+			try {
+				for (let i = 0; i < FRAMES; i++) {
+					if (document.visibilityState !== 'visible') throw new Error('Foreground visibility lost');
+					for (let raf = 0; raf < 3; raf++) await bounded(new Promise(requestAnimationFrame), `frame ${i} RAF ${raf}`);
+					const shared = !!e.sharedContext;
+					const r0 = counts.requested, d0 = counts.delivered, t0 = performance.now();
+					if (draws) draws.length = 0;
+					frame();
+					const mark = { t0, cpuMs: performance.now() - t0, draws: draws ? [...draws] : undefined };
+					marks.push(mark);
+					await bounded(globalThis.__captureProgress({ mark, transfers: { requested: counts.requested - before.requested, delivered: counts.delivered - before.delivered } }), `frame ${i} progress`);
+					await bounded(e.presented(), `frame ${i} presentation`);
+					if (shared && (counts.requested !== r0 + 1 || counts.delivered !== d0 + 1)) throw new Error(`frame ${i}: transfer not delivered`);
+				}
+			} catch (e) { error = String(e.message ?? e); }
+			finally { restore(); document.removeEventListener('visibilitychange', changed); window.removeEventListener('blur', changed); window.removeEventListener('focus', changed); }
+			return { marks, visibility, error, transfers: { requested: counts.requested - before.requested, delivered: counts.delivered - before.delivered }, settled: e.settled, transfersOk: !error && (!e.sharedContext || (counts.requested - before.requested === FRAMES && counts.delivered - before.delivered === FRAMES)) };
+		}, { FRAMES, timeoutMs: (TRACE_LIMIT_S - (options.legacy ? 3 : 10)) * 1000 }),
+		new Promise((resolve) => { timer = setTimeout(() => resolve({ ...progress, error: 'Page evaluation timeout before recorder ceiling', transfersOk: false }), (TRACE_LIMIT_S - (options.legacy ? 1 : 8)) * 1000); })
+	]).catch((e) => ({ ...progress, error: String(e.message ?? e), transfersOk: false }));
+	clearTimeout(timer);
+	await writeFile(`${trace}.progress.json`, JSON.stringify(progress, null, 2));
+	await page.removeExposedFunction('__captureProgress').catch(() => {});
 	await Bun.sleep(500); // let the last frame's GPU execution and display dependencies complete
 	rec.kill('SIGINT'); // early stop; --time-limit is the hard ceiling
 	const code = await rec.exited;
 	const recordingWallMs = performance.now() - recordingStarted;
 	if (code !== 0) throw new Error(`xctrace exit ${code}: ${await new Response(rec.stderr).text()}`);
-	await page.evaluate(() => { globalThis.__cap.e.dispose(); document.body.replaceChildren(); delete globalThis.__cap; });
-	const a = analyse(trace, pid, run.marks, setup.backing);
+	if (run.error) await page.close({ runBeforeUnload: false });
+	else await page.evaluate(() => { globalThis.__cap.e.dispose(); document.body.replaceChildren(); delete globalThis.__cap; });
+	const a = run.marks.length === FRAMES ? analyse(trace, pid, run.marks, setup.backing) : { aligned: false, clusters: 0, framesWithPresentWrite: 0, strays: null, medianMs: NaN, p95Ms: NaN, maxMs: NaN, frames: [], error: run.error };
 	const { frames, ...summary } = a;
-	return { ...c, name, trace, gpuPid: pid, command: `env DEVELOPER_DIR=${XCODE.DEVELOPER_DIR} ${cmd.join(' ')}`, measuredFrames: FRAMES, warmupFrames: WARM, recordingWallMs, ...setup, transfers: run.transfers, settled: run.settled, transfersOk: run.transfersOk, marks: run.marks, ...summary, frameDetail: frames, perFrameGpuMs: frames.map((f) => +f.gpuMs.toFixed(4)) };
+	return { ...c, name, trace, gpuPid: pid, command: `env DEVELOPER_DIR=${XCODE.DEVELOPER_DIR} ${cmd.join(' ')}`, measuredFrames: FRAMES, warmupFrames: WARM, recordingWallMs, ...setup, error: run.error, visibility: run.visibility, completedFrames: run.marks.length, transfers: run.transfers, settled: run.settled, transfersOk: run.transfersOk, marks: run.marks, ...summary, frameDetail: frames, perFrameGpuMs: frames.map((f) => +f.gpuMs.toFixed(4)) };
 }
