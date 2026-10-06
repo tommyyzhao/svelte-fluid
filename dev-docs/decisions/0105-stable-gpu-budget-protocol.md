@@ -84,3 +84,65 @@ N aligned clusters/writes, complete transfers where applicable, recording and
 export size/time. Preserve failed/inconclusive attempts rather than altering
 thresholds. No full matrix in this task. Historical measurements/verdicts remain
 unchanged. Pilot evidence will be appended separately after protocol commitment.
+
+## Pre-sweep implementation correction (after first feasibility pilot)
+
+Initial registration commit `bb6f3b46cfd1ffceac951c120f9d77b57251c1ec` predates
+all pilot data. The first Karman invocation exposed a capture implementation
+weakness, not a quality result: run 2 split three normal 40-encoder frames into
+16+24 encoders across 8.571334, 8.424917 and 7.867041 ms CPU-submit gaps. The fixed
+6 ms cluster heuristic created 603 bursts for 600 marks; contiguous matching
+then accumulated whole-frame offsets (47.941250 ms), not clock drift.
+
+Before any sweep, use **`max(10.75 ms, 0.4 × median JS inter-mark interval)`** for
+clustering; record its value and the old 6 ms burst count/disagreement. This
+changes a frame-grouping parameter, **not the independent <4 ms alignment gate**,
+exact N clusters, native-write/transfer checks, union attribution or contention
+gate. At measured 120 Hz, three RAFs give ~25 ms spacing and the 10.75 ms floor.
+A unique native-write terminator was rejected: normal Karman frames write the
+same native-sized IOSurface in both first and final command buffers, so writes
+alone cannot independently segment frames.
+
+Original Karman run 1 replays identically (p95 3.583163 ms, alignment 2.564792 ms);
+run 2 now has 600 aligned clusters/native-write frames, zero strays, p95
+3.365292 ms, alignment 2.711333 ms; all three split frames recover 40 encoders.
+Pilot gap separation: maximum intra-frame 8.571334 ms, minimum inter-frame
+14.001583 ms. These diagnostic replays do not overwrite original verdicts.
+
+Original run 3 hit the 70 s ceiling; its trace has about 75 frames over 1.826 s,
+then no further measured submissions. The old script returned JS marks only at
+completion; visibility/focus and the exact stalled wait are unrecoverable.
+It remains INCONCLUSIVE, not an inferred zero execution or a visibility claim.
+Measurement now exports progressive marks to the owned runner, records
+visibility/focus transitions, bounds each RAF/presentation/progress wait to 2 s,
+and bounds page evaluation to 62 s (under the recorder ceiling). Partial/error
+attempts remain INCONCLUSIVE and close their owned page. No system focus changes,
+security changes or repeated screen takeover: a visible unoccluded headed window
+is required; genuine occlusion/focus interference must stop measurement.
+
+Replay validation before the fresh pilot: 206 trace entries inspected, **197
+historical 60-frame traces + two 600-frame pilot traces replayable**; seven lack
+marks/retained ownership or contain zero marks and cannot be validated. All
+previously aligned historical frame assignments are identical (therefore GPU
+interval unions/statistics/verdicts unchanged). Three prior INCONCLUSIVE rows
+recover split bursts: exploratory pass-log GasFlare (61→60 bursts, alignment
+6.963042→1.374208 ms, p95 13.152002 ms FAIL), post-opt run1 Plasma (61→60,
+22.959125→3.812375 ms, p95 3.444751 ms FAIL), p3 solver-baseline default
+(62→60, 24.328000→2.464166 ms). Preserve their original reports.
+Across replayable aligned mappings: **25,838 intra-frame gaps**, median
+0.486208 / p95 1.170375 / p99 2.367667 / max **8.571334 ms**;
+**12,467 inter-frame gaps**, min **12.915791 ms** / p01 18.794166 /
+median 24.031750 / p95 25.832625 ms. Initial 12 ms floor separated observed
+groups but left only 0.915791 ms inter-frame margin. Before a fresh pilot or any
+sweep, centre the floor at **10.75 ms** (rounded midpoint 10.7435625), giving
+**2.178666 ms intra / 2.165791 ms inter** observed margins. Cached replay confirms
+identical assignments/results versus the 12 ms trial across all 199 replayable
+traces. No per-scene gap tuning; unseen stalls remain possible.
+
+Misassignment is intended to fail closed: exact N attributed clusters, the
+independent <4 ms JS-spacing gate, zero strays and complete native writes/transfers
+are all mandatory; split/merged bursts fail these checks as INCONCLUSIVE rather
+than yielding a budget verdict. These gates validate this paced workload, not a
+mathematical proof against every possible coincident misassignment. A thin gap
+margin primarily increases the inconclusive rate; never relax the alignment gate
+to conceal it. Fresh validation remains required.
