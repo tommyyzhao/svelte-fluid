@@ -544,6 +544,25 @@ snapshot, forced-loss restore and lazy/churn coverage remains. No profile
 setting changed; preserving a tagged sRGB canvas is independent of a monitor
 profile, not a claim to have exercised every OS profile.
 
+#### Additional paired gate (fixed before additional data)
+
+The initial repeats varied too much to establish a non-regression. Before looking
+at further data, the coordinator fixed three additional alternating baseline /
+candidate pairs per LavaLamp, default and InkPaper shared row, with unchanged
+LavaLamp/default own controls in each invocation. Same seed 5 and protocol;
+separate owned Chrome processes per unchanged-script invocation, same machine
+and work session. Runtime toggles only the snapshot option between captures.
+
+Acceptance: each row's median of **all valid paired shared p95 deltas** (candidate
+minus baseline) must be **≤ +0.10 ms**, and must not exceed the unchanged own
+control's p95 spread (maximum minus minimum across the two builds). InkPaper has
+no own-tier backend; use the larger LavaLamp/default own-control spread.
+INCONCLUSIVE pairs remain visible but do not enter the median; for an even
+number of valid pairs, average the central two values. Original clean failures
+still count toward scene verdicts; this non-regression gate is not budget
+certification. Otherwise revert the runtime option change, retaining tests and
+evidence as a negative result. These rules were fixed before the new data.
+
 ### Hot-pass attribution — bounded negative result
 
 No truthful per-shader top-three GPU shares could be derived. Native labels are
