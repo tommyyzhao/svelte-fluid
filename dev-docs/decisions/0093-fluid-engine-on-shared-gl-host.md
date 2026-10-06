@@ -98,6 +98,18 @@ obstruction unit).
   host's slot (ADR 0088). `Fluid.svelte` never calls `getContext('webgl*')` on a
   shared canvas, and never loses a context that is still shared.
 
+### Snapshot premise correction — 2026-10-06
+
+[ADR 0103](./0103-untransformed-shared-snapshots.md) supersedes only the
+`colorSpaceConversion: 'none'` option above. On Chrome 154.0.8037.98, `none`
+forces a raster transform to strip an already-sRGB snapshot's tag. Default
+options preserve the sRGB premultiplied snapshot without that extra transform.
+Native Metal IOSurface joins prove two full-size raster copies become one;
+visible-canvas parity and lifecycle tests retain the safe snapshot transport.
+The earlier wall measurements below remain historical, not paired native
+copy timings or evidence that current default conversion is more expensive.
+The hybrid tier and ADR 0088's prohibition on `transferToImageBitmap` remain.
+
 ## Measurements
 
 Hardware Chrome, Apple M1 Max. Suites: `shared-context.browser.test.ts`, plus

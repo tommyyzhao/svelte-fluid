@@ -90,6 +90,7 @@ function composite(canvas: HTMLCanvasElement, background: string, colorSpace: 's
 	copy.width = canvas.width;
 	copy.height = canvas.height;
 	const ctx = copy.getContext('2d', { colorSpace })!;
+	expect(ctx.getContextAttributes().colorSpace).toBe(colorSpace);
 	ctx.fillStyle = background;
 	ctx.fillRect(0, 0, copy.width, copy.height);
 	ctx.drawImage(canvas, 0, 0);
