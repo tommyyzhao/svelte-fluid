@@ -1,8 +1,12 @@
 # GPU budget (per-instance frame time)
 
-Evidence for the 1.0 bar "< 2 ms GPU per instance per frame at native DPR".
-**Latest 2026-10-05/06 native Metal result: measured FAIL** (18 PASS / 25 FAIL,
-43 scenes, native DPR 2; [results and ceilings below](#native-metal-execution-measurement--2026-10-0506)).
+Evidence for the 1.0 bar: p95 GPU execution per instance per frame <2 ms at native DPR.
+**Owner changed the target on 2026-10-06 after seeing the native Metal results**
+([ADR 0101](../decisions/0101-p95-gpu-budget.md)); it was not pre-registered.
+**Current p95 verdict: 28 PASS / 15 FAIL**, 43 scenes, native DPR 2;
+[re-tabulation below](#owner-adopted-p95-verdict--2026-10-06). Optimisation remains pending.
+The original strict-max verdict (18 PASS / 25 FAIL), measured numbers and
+[ceilings below](#native-metal-execution-measurement--2026-10-0506) remain unchanged as history.
 Earlier wall-throughput/UNCERTIFIED sections remain historical evidence.
 Harness: `src/lib/engine/__benches__/gpu-budget.browser.test.ts`. Measurement,
 not a performance gate. Decision records: ADRs 0089, 0093, 0099.
@@ -372,6 +376,78 @@ alternative interpretation only. All rows below have complete 60-burst attributi
 Only the smaller model controls' browser/OS ceilings consistently fit 2 ms (button,
 wide button, segmented, caustics and both enamel cases). Their instance metric
 passes. Other passing rows do **not** claim total browser/OS GPU execution below 2 ms.
+
+### Owner-adopted p95 verdict — 2026-10-06
+
+The owner chose **“Adopt p95 < 2 ms target”** after seeing the native Metal results
+recorded in `aec018e`. [ADR 0101](../decisions/0101-p95-gpu-budget.md) replaces the
+strict-max 1.0 target with 95th-percentile GPU execution per instance per frame
+<2 ms at native DPR. **Post hoc, not pre-registered; not a waiver.** Scenes still
+failing p95 must be optimised.
+
+Every one of the 43 rows below was checked against the existing per-scene table:
+**28 PASS / 15 FAIL**, matching the lead's count. These are the same selected
+worst-max valid clean captures, not new captures or worst-p95 repeat selection.
+No measured numbers changed. The strict-max table above remains historical;
+median, p95 and **max stay reported alongside** there.
+
+Measurement: M1 Max, native DPR 2, 200 warm-up frames then 60 paced frames per
+capture. Recorded p95 is sorted zero-based index 56: roughly the 3rd-worst frame
+in such a small sample (exactly 4th-worst under this convention, three above it).
+This coarse tail estimate cannot establish a sustained population percentile,
+every-frame compliance or other-hardware/DPR performance. GPU attribution,
+contention and browser/OS/scanout limits above still apply.
+
+| Scene | Tier | CSS size | Existing p95 ms | p95 <2 ms verdict |
+|---|---|---|---:|---|
+| (default) | own | 1440×900 | 2.020 | FAIL |
+| (default) | own | 800×500 | 1.634 | PASS |
+| LavaLamp | own | 1440×900 | 1.913 | PASS |
+| LavaLamp | own | 800×500 | 1.347 | PASS |
+| Plasma | own | 1440×900 | 2.321 | FAIL |
+| Plasma | own | 800×500 | 1.983 | PASS |
+| InkInWater | own | 1440×900 | 1.851 | PASS |
+| InkInWater | own | 800×500 | 1.308 | PASS |
+| FrozenSwirl | own | 1440×900 | 1.934 | PASS |
+| FrozenSwirl | own | 800×500 | 1.471 | PASS |
+| Aurora | own | 1440×900 | 1.977 | PASS |
+| Aurora | own | 800×500 | 1.594 | PASS |
+| CircularFluid | own | 1440×900 | 1.765 | PASS |
+| CircularFluid | own | 800×500 | 1.334 | PASS |
+| FrameFluid | own | 1440×900 | 1.884 | PASS |
+| FrameFluid | own | 800×500 | 1.423 | PASS |
+| AnnularFluid | own | 1440×900 | 2.056 | FAIL |
+| AnnularFluid | own | 800×500 | 1.271 | PASS |
+| SvgPathFluid | own | 1440×900 | 1.765 | PASS |
+| SvgPathFluid | own | 800×500 | 1.330 | PASS |
+| Toroidal | own | 1440×900 | 2.211 | FAIL |
+| Toroidal | own | 800×500 | 1.788 | PASS |
+| GasFlare | own | 1440×900 | 2.443 | FAIL |
+| GasFlare | own | 800×500 | 1.933 | PASS |
+| Venturi | own | 1440×900 | 1.681 | PASS |
+| Venturi | own | 800×500 | 1.270 | PASS |
+| Karman | own | 1440×900 | 2.720 | FAIL |
+| Karman | own | 800×500 | 2.901 | FAIL |
+| TeslaValve | own | 1440×900 | 2.733 | FAIL |
+| TeslaValve | own | 800×500 | 2.491 | FAIL |
+| Karman | shared | 1440×900 | 3.150 | FAIL |
+| GasFlare | shared | 1440×900 | 2.531 | FAIL |
+| LavaLamp | shared | 1440×900 | 2.030 | FAIL |
+| (default) | shared | 1440×900 | 2.235 | FAIL |
+| Karman | own | 480.25×300.5 | 2.694 | FAIL |
+| LiquidButton (220×56; canvas 232×68) | shared | 232×68 | 0.700 | PASS |
+| LiquidButton wide (480×64; canvas 492×76) | shared | 492×76 | 0.758 | PASS |
+| LiquidSegmented (360×56; canvas 372×68) | shared | 372×68 | 0.811 | PASS |
+| LiquidDropZone dragging (480×200; canvas 492×212) | shared | 492×212 | 1.361 | PASS |
+| LiquidCaustics (720×400) | shared | 720×400 | 1.076 | PASS |
+| EnamelText 96px bold | shared | 322.3125×105.59375 | 0.503 | PASS |
+| EnamelText 64px two words | shared | 351.375×70.3984375 | 0.469 | PASS |
+| InkPaper held wet (800×500) | shared | 800×500 | 2.453 | FAIL |
+
+Open optimisation: the 15 FAIL rows remain `svelte-fluid-7n8` work. Ten rows
+change from strict-max FAIL to p95 PASS without runtime improvement; their max
+exceedances are not erased. No new captures, tuning or per-shader GPU shares
+are claimed by this re-tabulation.
 
 ### Hot-pass attribution — bounded negative result
 

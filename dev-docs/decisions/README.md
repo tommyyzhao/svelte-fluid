@@ -94,6 +94,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0098](./0098-gl-neutral-public-declarations.md) | Public declarations are GL-type-neutral; internal GL types removed from the root | Accepted |
 | [0099](./0099-settle-visible-idle-fluid.md) | Settle a visible idle fluid to zero frames | Accepted |
 | [0100](./0100-independent-deposited-thickness.md) | Independent deposited thickness in dye alpha | Accepted; visual review pending |
+| [0101](./0101-p95-gpu-budget.md) | p95 GPU execution budget at native DPR; post hoc owner decision | Accepted |
 
 ADRs 0067-0078 exist only on the private R&D branch (`rd/webgpu-replacement`); the numbering gap here is intentional.
 

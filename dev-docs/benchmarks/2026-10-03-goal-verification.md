@@ -119,16 +119,23 @@ Tests at `c873fdf`: `src/lib/engine/__tests__/lighting.test.ts`,
 
 ## Remaining open / ceilings
 
-- `svelte-fluid-7n8`: **measured FAIL — 2026-10-05/06**. Xcode 27.0 installed;
-  native Metal execution captured on local-main WebGL2 runtime `9df58fc`, native
-  DPR 2, 200 warm / 60 paced frames per scene. Strict **max <2 ms** metric:
-  **18 PASS / 25 FAIL across 43 scenes**, worst clean repeats retained. Shared Karman
-  1440×900 CSS: median **2.775**, p95 **3.150**, max **3.433 ms**. No runtime tuning.
-  Foreign overlap >=5% marks contention; ambiguous attempts excluded, bounded
-  retries preserved. Scanout of every frame and per-shader shares remain unproved;
-  this verdict concerns attributed instance command-buffer GPU execution, not wall
-  time or total OS compositor cost. See [native Metal results](gpu-budget.md#native-metal-execution-measurement--2026-10-0506)
-  for per-scene numbers, browser/OS ceilings, commands and exported-table SHA256s.
+- `svelte-fluid-7n8`: **target changed to p95 <2 ms by the owner on 2026-10-06;
+  optimisation pending**. [ADR 0101](../decisions/0101-p95-gpu-budget.md) records
+  the post hoc decision, made after seeing the native Metal results in `aec018e`,
+  not a pre-registered metric or a waiver. Existing 43 scene rows give
+  **28 PASS / 15 FAIL under p95**; all 15 failures still need optimisation.
+  Local-main WebGL2 runtime `9df58fc`, M1 Max at native DPR 2, 200 warm / 60 paced
+  frames per capture. With 60 frames, p95 is roughly the 3rd-worst frame
+  (recorded index 56 is exactly 4th-worst); no sustained-percentile guarantee.
+  The strict-max table remains history: **18 PASS / 25 FAIL**, max still reported
+  alongside median/p95. No new captures or runtime tuning. Shared Karman 1440×900
+  CSS: median **2.775**, p95 **3.150**, max **3.433 ms**. Foreign overlap >=5%
+  marks contention; ambiguous attempts excluded, bounded retries preserved.
+  Scanout of every frame and per-shader shares remain unproved; this concerns
+  attributed instance command-buffer GPU execution, not wall time or total OS
+  compositor cost. See [p95 re-tabulation](gpu-budget.md#owner-adopted-p95-verdict--2026-10-06)
+  and [native Metal results](gpu-budget.md#native-metal-execution-measurement--2026-10-0506)
+  for numbers, browser/OS ceilings, commands and exported-table SHA256s.
 - `svelte-fluid-dv2`: geometry implemented; hybrid cache scope narrowly accepted via
   owner delegation, not universal shared compilation. See amended
   [ADR 0093](../decisions/0093-fluid-engine-on-shared-gl-host.md) at `c873fdf`.
