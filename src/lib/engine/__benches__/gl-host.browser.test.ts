@@ -167,6 +167,50 @@ describe('gl-host (ADR-0088)', () => {
 		expect(host.gl.getError()).toBe(host.gl.NO_ERROR);
 	});
 
+	it('matches default and none colour conversion for premultiplied translucent snapshots', async () => {
+		const a = instance(32, 24);
+		const b = instance(32, 24);
+		const host = acquireGlHost(a);
+		acquireGlHost(b);
+		const fragment = `#version 300 es
+precision highp float;
+out vec4 color;
+void main () {
+	float alpha = floor(gl_FragCoord.x / 8.0) / 4.0;
+	color = vec4(vec3(0.8, 0.4, 0.2) * alpha, alpha);
+}`;
+		host.run(a, () => {
+			host.program('snapshot-alpha', VERTEX, fragment).bind();
+			host.blit(null);
+		});
+		expect(host.gl.getContextAttributes()?.premultipliedAlpha).toBe(true);
+		const pending = host.present(a);
+		const bitmap = await createImageBitmap(host.gl.canvas, { colorSpaceConversion: 'default' });
+		try {
+			b.canvas.getContext('bitmaprenderer')!.transferFromImageBitmap(bitmap);
+		} finally {
+			bitmap.close();
+		}
+		await pending;
+		expect(pixels(b.canvas)).toEqual(pixels(a.canvas));
+		// Native compositing must also agree, not just unpremultiplied readback.
+		for (const background of ['#fff', '#172331']) {
+			const composite = (canvas: HTMLCanvasElement) => {
+				const copy = document.createElement('canvas');
+				copy.width = canvas.width;
+				copy.height = canvas.height;
+				const ctx = copy.getContext('2d')!;
+				ctx.fillStyle = background;
+				ctx.fillRect(0, 0, copy.width, copy.height);
+				ctx.drawImage(canvas, 0, 0);
+				return ctx.getImageData(0, 0, copy.width, copy.height).data;
+			};
+			expect(composite(b.canvas)).toEqual(composite(a.canvas));
+		}
+		expect(Array.from(pixels(a.canvas)).filter((_, i) => i % 4 === 3)).toContain(128);
+		expect(host.gl.getError()).toBe(host.gl.NO_ERROR);
+	});
+
 	it('compiles define variants after the GLSL 300 version directive', async () => {
 		const a = instance(12, 9);
 		const host = acquireGlHost(a);
