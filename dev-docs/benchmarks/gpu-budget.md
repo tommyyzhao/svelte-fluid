@@ -1300,6 +1300,118 @@ used. Three RAFs mean **30 s** measurement at 60 Hz, 15 s at 120 Hz for N=600;
 raise default ceiling to **70 s**, stop early. Pilot restricted to Karman own
 1440×900; no full matrix authorized here.
 
+### Pre-sweep capture implementation validation
+
+Registration committed **`bb6f3b46cfd1ffceac951c120f9d77b57251c1ec`** before
+pilot data. Initial Karman run2 exposed three 8 ms submit stalls splitting
+40-encoder frames into 16+24 under the old 6 ms heuristic. ADR 0105 records the
+pre-sweep correction **`max(10.75 ms, 0.4 × median JS mark spacing)`**, derived
+from existing replay gap distributions, not preset timing/quality outcomes.
+Keep <4 ms alignment, exact N clusters/writes, zero strays and transfer gates.
+Report original 6 ms burst counts/disagreements. The unique-native-write-terminator
+alternative was rejected: a frame writes the same IOSurface in both early and
+final command buffers.
+
+206 trace entries inspected, **197 historical 60-frame + two 600-frame pilot
+traces replayable**, seven lack marks/ownership or have zero marks. Every
+previously aligned 60-frame command-buffer assignment remains identical; three
+old INCONCLUSIVE rows recover split bursts (GasFlare pass-log, post-opt run1
+Plasma, solver p3-baseline default). Original evidence/verdict tables untouched.
+25,838 intra-frame gaps: median **0.486208**, p95 **1.170375**, p99 **2.367667**,
+max **8.571334 ms**. 12,467 inter-frame gaps: min **12.915791**, p01 **18.794166**,
+median **24.031750**, p95 **25.832625 ms**. Floor midpoint 10.75 ms gives observed
+margins **2.178666 / 2.165791 ms**; cached replay matches the trial 12 ms floor.
+Future split/merge ambiguity stays INCONCLUSIVE, never a relaxed alignment gate.
+
+Original pilot run1: p95 **3.583163 ms**, alignment **2.564792 ms**, 600 clusters/
+native writes, trace ~108 MiB, exports ~50.8 MiB. Original run2 now replays at
+**3.365292 ms**, alignment **2.711333 ms**, 600 clusters/writes, three old-gap
+disagreements. Original run3 reached the 70 s ceiling after ~75 frames then no
+submissions; its JS marks were not recoverable, **INCONCLUSIVE**. No claimed
+visibility cause. Add progressive marks, visibility/focus telemetry, 2 s wait
+bounds and 62 s page-evaluation deadline; partial attempts close the owned page.
+A first corrected pilot completed 600 visible/focused marks then hit a Playwright
+binding-cleanup API mismatch; preserved as a harness failure, no budget verdict.
+Mechanical binding fix precedes fresh validation. A subsequent corrected
+invocation retained two valid runs (p95 3.361003 / 3.530919 ms); run3 lost its
+attached GPU target after 1.393218 s (TOC “Target app exited”) and an uncovered
+phase hung. Preserve that failure; no implied quality improvement.
+
+Mechanical hardening before any sweep: **90 s outer attempt deadline**, explicit
+phase-progress files, AbortController, exact PID+command owned cleanup, partial
+INCONCLUSIVE rows and next-attempt continuation. Five minutes without a completed
+attempt saves partial results and exits nonzero. Attached GPU PID exits detected
+during startup/measurement; async exports have 15 s timeout. Trace parsing runs
+in a short-lived Bun worker (60 s bound), preventing ~2 GiB parsed-XML RSS remaining
+in the Chrome-owning parent. Self-check simulates a never-resolving phase and
+asserts cleanup. Parent RSS logged before each browser launch. Memory pressure
+as a cause of earlier GPU exits is unproved. Visible unoccluded headed Chrome
+required; no system focus takeover or foreign process signals.
+
+Before matrix data, ADR 0105 additionally registers **GPU-process-exit retries:
+two extra attempts maximum per run slot**, each preserved, 30 s wait. Never
+retry/discard clean FAIL; R=3 distinct clean slots required, otherwise
+**INCOMPLETE** (observed failures still visible). One contention retry unchanged.
+Fresh temporary Playwright browser profile per attempt, close context/browser,
+`Bun.gc(true)`; log RSS and ordinary Chrome stderr. Six Karman-only slots diagnose
+exit position/rate, not quality tuning. No matching Chrome crash/hang diagnostic
+report at pilot times; earlier user-Chrome disk-write advisory unrelated.
+
+### Final Karman-only feasibility evidence
+
+Final harness **`5b2b6c7`**, six diagnostic slots (not a matrix), explicit
+`GPU_CAPTURE_CASES='Karman@1440x900:own:2'`, seed 5, N600/W200, native backing
+2880×1800. The first three slots satisfy the registered R3 pilot; all six stay
+visible. **Six clean FAIL, zero GPU target exits, zero retries, zero incomplete
+attempts**. Each has 600 clusters, 600 native-write frames, zero strays, zero
+foreign overlap; own tier correctly has 0 requested/delivered bitmap transfers.
+All visibility telemetry remained visible/focused. Old 6 ms cluster disagreements
+zero in this final sequence; original split pilot remains retained separately.
+
+| Slot | Median ms | p95 ms | Max ms | Alignment ms | Recording s (TOC) | Trace MiB | Export XML MiB |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 2.255665 | 3.126041 | 4.793500 | 0.278917 | 18.749825 | 112.992 | 50.913 |
+| 2 | 2.248084 | 3.168251 | 4.751127 | 0.300500 | 18.495741 | 108.641 | 50.826 |
+| 3 | 2.256706 | 3.402249 | 4.859001 | 0.266833 | 18.510272 | 108.734 | 50.663 |
+| 4 | 2.251252 | 3.151416 | 4.798876 | 0.241500 | 18.525502 | 108.621 | 50.791 |
+| 5 | 2.271123 | 3.140417 | 4.700875 | 0.296917 | 18.514655 | 108.922 | 50.817 |
+| 6 | 2.244415 | 3.117415 | 4.841292 | 0.329417 | 18.553634 | 108.668 | 50.797 |
+
+Cross-slot ranges: median **0.026708 ms**, p95 **0.284834 ms**, max **0.158126 ms**.
+Longer captures do not erase environmental variation or make Karman fit 2 ms.
+Parent launch RSS MiB: **124.00 / 172.34 / 176.98 / 177.78 / 177.88 / 178.765**:
+plateau after initial warm-up, not the previous 40–50 MiB/attempt growth. No
+re-exec guard needed on this evidence; future memory growth stays observable.
+Chrome stderr contains ordinary updater/GCM diagnostics, no GPU crash/watchdog
+reason in the successful sequence. No matching crash report explains prior exits;
+position correlation disappeared after cleanup/GC/logging changes, not proof of
+which change caused it. Zero of six cannot establish a low long-run failure rate
+(one-sided 95% binomial upper bound ~39.3%). Infrastructure retries remain bounded.
+
+Measured spans **16.753–16.785 s** at ~120 Hz; native recording **18.496–18.750 s**;
+recorder wall including Instruments finalisation **34.271–41.684 s**. Total driver
+**333.770 s / six =55.628 s per slot** including exports/browser setup. Estimated
+historical 43-scene × R3 matrix **~119.6 min**, default 30-scene × R3 **~83.4 min**,
+no retries; 43×3 native traces roughly **14 GiB**, XML exported one-at-a-time in
+short-lived workers, not held by the parent. Other workloads, 60 Hz pacing and
+retries add time; allow ~2–2.5 h, not a promise. No matrix run in this task.
+
+Evidence: `/tmp/stable-protocol-six/{capture.json,pilot.log,summary.json}`, six
+TOCs, frame details/progress/analysis JSON, raw traces and exact owned process
+census. Earlier failed pilots stay `/tmp/stable-protocol-{pilot,fresh,fresh2,final}/`;
+replay/variance evidence `/tmp/stable-protocol-replay-all/` and
+`/tmp/stable-protocol-variance.{mjs,json}`. Ephemeral raw data, not archived binaries.
+All final owned Chrome/xctrace/Bun/Vite/parser descendants absent by exact PID+
+command census; port5198 listener gone, GPU lock released after verification.
+User Chrome4386/GPU4411 alive, untouched. Worktree and ignored dependency symlink
+retained: not remotely preserved. No tracker writes, runtime changes, installs,
+push, merge or foreign process signals.
+
+Checks: 52 Node files / **864 tests**; **471 checked files, zero errors/warnings**;
+prepack publint/public declarations pass (existing `import.meta.env` advisory),
+self-check including simulated never-resolving deadline cleanup, historical
+`--replay`, `git diff --check` pass.
+
 Additional provenance SHA256s:
 
 - run1 client census: `a32f9fb133603fdff442b5655eb93b826b8a7b304466e22dd77b7e3d4dbcf93e`.
