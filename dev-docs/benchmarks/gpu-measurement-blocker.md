@@ -1,5 +1,13 @@
 # GPU measurement blocker — 2026-10-02
 
+**2026-10-05/06 update:** full Xcode 27.0 is available; Metal System Trace recorded
+without permission prompts or system changes. The original tooling blocker is
+resolved. Native-DPR-2 execution measurement on local-main WebGL2 `9df58fc` gives
+**18 PASS / 25 FAIL across 43 scenes** under the strict max <2 ms metric. See
+[results, commands and attribution ceilings](gpu-budget.md#native-metal-execution-measurement--2026-10-0506).
+The text below is historical, not the latest verdict. Scanout and per-shader
+attribution ceilings remain explicit in the new results.
+
 **GPU compliance is UNCERTIFIED. The <2 ms per-instance, per-frame native-DPR
 budget goal is not met until proved.** Shared wall throughput above 2 ms is
 negative throughput evidence, not proof that GPU execution alone exceeds 2 ms.

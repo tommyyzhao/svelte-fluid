@@ -119,9 +119,16 @@ Tests at `c873fdf`: `src/lib/engine/__tests__/lighting.test.ts`,
 
 ## Remaining open / ceilings
 
-- `svelte-fluid-7n8`: **GPU budget uncertified**. User selected manual Xcode install;
-  native Xcode absent, `xctrace` cannot run. Wall benchmarks are not GPU execution proof.
-  See [GPU measurement blocker](gpu-measurement-blocker.md), recorded at `3788960`.
+- `svelte-fluid-7n8`: **measured FAIL — 2026-10-05/06**. Xcode 27.0 installed;
+  native Metal execution captured on local-main WebGL2 runtime `9df58fc`, native
+  DPR 2, 200 warm / 60 paced frames per scene. Strict **max <2 ms** metric:
+  **18 PASS / 25 FAIL across 43 scenes**, worst clean repeats retained. Shared Karman
+  1440×900 CSS: median **2.775**, p95 **3.150**, max **3.433 ms**. No runtime tuning.
+  Foreign overlap >=5% marks contention; ambiguous attempts excluded, bounded
+  retries preserved. Scanout of every frame and per-shader shares remain unproved;
+  this verdict concerns attributed instance command-buffer GPU execution, not wall
+  time or total OS compositor cost. See [native Metal results](gpu-budget.md#native-metal-execution-measurement--2026-10-0506)
+  for per-scene numbers, browser/OS ceilings, commands and exported-table SHA256s.
 - `svelte-fluid-dv2`: geometry implemented; hybrid cache scope narrowly accepted via
   owner delegation, not universal shared compilation. See amended
   [ADR 0093](../decisions/0093-fluid-engine-on-shared-gl-host.md) at `c873fdf`.
