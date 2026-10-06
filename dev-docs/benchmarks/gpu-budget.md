@@ -1807,3 +1807,27 @@ xcrun invocation. Foreign user/Chrome-for-Testing processes untouched.
 Initial checks: harness self-check, **864 Node tests /52 files**, Svelte check,
 prepack passed. Logs `/tmp/quality-sweep/{test,check,prepack}.log`.
 Clips and final cleanup proof pending. No tracker writes, installs, push or merge.
+
+### Post-screen eligibility amendment
+
+After seeing the screening data, the lead relaxed **only the screening margin**
+from ≤1.85ms to **<2ms** for certification eligibility. This is post hoc, not a
+pre-registered threshold. ADR0105's actual acceptance remains unchanged: N600,
+R3, W200, seed5, every clean run strictly <2ms; failures/missing slots retained.
+Certify TeslaValve sim128/pressure26/dye512 (screen1.896289ms) and Karman
+sim128/pressure24/dye768 (screen1.970748ms), covering every listed failing
+size/tier including Karman shared1440×900. Marginal screens are not certification.
+
+Lead-directed measurement-only extension for GasFlare: sim128, original
+pressure24/dye768 first; pressure22/20 next; then dye512 with pressure24/22/20,
+mildest-first. First clean screen <2ms is eligible for own/shared1440×900 R3.
+No settings below those floors, no default adoption. Existing screens preserved.
+Original pressure/dye sweep: Karman deepest2.293043, TeslaValve deepest2.185167,
+GasFlare deepest2.179544ms; all FAIL. Grid Karman deepest1.970748 and TeslaValve
+pressure26/dye5121.896289 PASS below2ms without the original margin. Capture
+artifacts `/tmp/quality-sweep/{screen,grid-screen,certify,gas-grid-screen}/`.
+
+One grid Karman sim128/pressure30/dye768 attempt hit610s recorder-finalisation
+timeout after600 marks. Original GasFlare pressure22/20 and pressure22/dye512,
+Karman sim160/128 screens fail the unchanged4ms alignment gate. INCONCLUSIVE,
+never counted as zero-cost frames or quality FAIL. No manual retries.
