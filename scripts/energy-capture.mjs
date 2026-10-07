@@ -10,6 +10,7 @@ import { mkdir, readFile, writeFile, rm, readdir, stat, mkdtemp } from 'node:fs/
 import { writeFileSync } from 'node:fs';
 import { parseArgs, promisify } from 'node:util';
 import { createHash } from 'node:crypto';
+import { runInNewContext } from 'node:vm';
 import { loadavg, tmpdir } from 'node:os';
 import { hasContinuousDriver } from '../src/lib/engine/settle.js';
 const execAsync = promisify(execFile);
@@ -152,7 +153,8 @@ const engineFileHash = createHash('sha256').update(await readFile(`${sourceRoot}
 if (sourceRoot === ROOT && !options['self-check']) assert.equal(execFileSync('git', ['diff', '37bbe85', '--', 'src/lib'], { encoding: 'utf8' }), '', 'Baseline engine source changed');
 const sha = engineSourceSha;
 const source = await readFile(process.argv[1], 'utf8');
-const measurementParts = (s) => s.slice(s.indexOf('function slice('), s.indexOf("const { values: options }")) + s.slice(s.indexOf("\t\tprogress('mount');"), s.indexOf("\t\tprogress('browser cleanup');"));
+// Amendment 3 changes only the separate post-trace diagnostic; energy windows/parser stay frozen.
+const measurementParts = (s) => s.slice(s.indexOf('function slice('), s.indexOf("const { values: options }")) + s.slice(s.indexOf("\t\tprogress('mount');"), s.indexOf('\t\t// Diagnostic run is separate;'));
 const frozenSource = execFileSync('git', ['show', 'e4be335:scripts/energy-capture.mjs'], { cwd: ROOT, encoding: 'utf8' });
 assert.equal(measurementParts(source), measurementParts(frozenSource), 'Frozen window/parser/metric logic changed');
 const measurementLogicHash = createHash('sha256').update(measurementParts(source)).update(await readFile(`${ROOT}/src/energy-capture.js`, 'utf8')).digest('hex');
@@ -203,7 +205,19 @@ if (options['self-check']) {
 	assert.equal(matrix.filter((c) => c.split === 'train').length, 22);
 	assert.equal(matrix.filter((c) => c.split === 'test').length, 16);
 	assert.throws(() => slice([], 10, 10));
-	console.log('Energy self-check passed: slicing, overlap union, ns/ms/s, median, R3 noise floor, frozen matrix'); process.exit(0);
+	const entry = await readFile(`${ROOT}/src/energy-capture.js`, 'utf8');
+	const motionCode = entry.slice(entry.indexOf('const motion ='), entry.indexOf('const ticks ='));
+	const scope = { at: 30001, mountedAt: 1, diagnosticMount: true, epoch: () => scope.at };
+	runInNewContext(`let { mountedAt, diagnosticMount } = scope; const epoch = scope.epoch; ${motionCode}; scope.sample = sampleMotion; scope.motion = motion;`, { scope });
+	let dye = 1;
+	const e = { gl: { NO_ERROR: 0, getError: () => 0 }, readField: (field) => ({ width: 1, height: 1, data: field === 'velocity' ? [3, 4] : [dye, 0, 0, 100] }) };
+	scope.sample(e); scope.at += 1000 / 60; dye = 1.25; scope.sample(e);
+	assert.equal(scope.motion.samples.length, 1);
+	assert.equal(scope.motion.samples[0].maxVelocityTexelsPerSecond, 5);
+	assert.equal(scope.motion.samples[0].maxPerFrameDyeChange, 0.25);
+	scope.at = 31000; scope.sample(e); assert.equal(scope.motion.samples.length, 1);
+	scope.at = 32001; e.gl.getError = () => 1282; scope.sample(e); assert.equal(scope.motion.errors.length, 1);
+	console.log('Energy self-check passed: slicing, overlap union, ns/ms/s, median, R3 noise floor, frozen matrix, diagnostic motion pair, invalid-readback rejection'); process.exit(0);
 }
 await mkdir(DIR, { recursive: true });
 const results = [];
@@ -223,7 +237,7 @@ const save = () => writeFileSync(`${DIR}/summary.json`, JSON.stringify(summaries
 if (options['summary-only']) { save(); console.log(JSON.stringify(summaries(results).headline)); process.exit(0); }
 const census = () => execFileSync('ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' }).split('\n').map((l) => { const m = l.match(/^\s*(\d+)\s+(\d+)\s+(.*)$/); return m && { pid: +m[1], ppid: +m[2], command: m[3] }; }).filter(Boolean);
 const owned = new Map(); let browser, chrome, profile, server, recording, notifier, lockOwned = false, lastReleasedAt = 0, lockedAt = 0;
-const ownerText = JSON.stringify({ lane: 'E1', worktree: ROOT, sha, pid: process.pid });
+const ownerText = JSON.stringify({ lane: 'E1', purpose: `headless energy ${options.label} ${options.split}`, start: new Date().toISOString(), worktree: ROOT, sha, pid: process.pid });
 function remember() {
 	const rows = census(), ids = new Set([process.pid]);
 	for (let changed = true; changed;) { changed = false; for (const r of rows) if (ids.has(r.ppid) && !ids.has(r.pid)) { ids.add(r.pid); changed = true; } }
@@ -254,6 +268,7 @@ async function acquire() {
 			console.log(JSON.stringify({ phase: 'waiting for next GPU lane turn', owner: owner?.lane })); await Bun.sleep(30000);
 		}
 	}
+	console.log(execFileSync('df', ['-h', '/'], { encoding: 'utf8' }));
 	while (!lockOwned) {
 		try { await mkdir(LOCK); lockOwned = true; lockedAt = Date.now(); await writeFile(`${LOCK}/owner`, ownerText); }
 		catch (e) { if (e.code !== 'EEXIST') throw e; console.log(JSON.stringify({ phase: 'waiting for GPU lock' })); await Bun.sleep(30000); }
@@ -420,7 +435,7 @@ async function capture(c, run) {
 				const setup = await diag.evaluate((c) => window.__energy.mount({ ...c, diagnostic: true }), { ...c, override });
 				let state;
 				for (let i = 0; i < 80; i++) { signal.throwIfAborted(); state = await diag.evaluate(() => window.__energy.state()); if (state.settledAt !== null || state.errors.length) break; await Bun.sleep(500); }
-				row.diagnostic = { firstQuietSeconds: state.firstQuietAt === null ? null : (state.firstQuietAt - setup.mountedAt) / 1000, settleSeconds: state.settledAt === null ? null : (state.settledAt - setup.mountedAt) / 1000, latencySeconds: state.firstQuietAt === null || state.settledAt === null ? null : (state.settledAt - state.firstQuietAt) / 1000, observationSeconds: (state.at - setup.mountedAt) / 1000, errors: state.errors };
+				row.diagnostic = { firstQuietSeconds: state.firstQuietAt === null ? null : (state.firstQuietAt - setup.mountedAt) / 1000, settleSeconds: state.settledAt === null ? null : (state.settledAt - setup.mountedAt) / 1000, latencySeconds: state.firstQuietAt === null || state.settledAt === null ? null : (state.settledAt - state.firstQuietAt) / 1000, observationSeconds: (state.at - setup.mountedAt) / 1000, errors: state.errors, motion: state.motion, rafHz: (await diag.evaluate(() => window.__energy.snapshot())).raf.filter((t) => t >= setup.mountedAt + 30000 && t < setup.mountedAt + 40000).length / 10, engineHz: (await diag.evaluate(() => window.__energy.snapshot())).ticks.filter((t) => t >= setup.mountedAt + 30000 && t < setup.mountedAt + 40000).length / 10 };
 				await diag.close();
 			}
 		}
