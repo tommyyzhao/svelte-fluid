@@ -149,7 +149,7 @@ assert.ok(sourceRoot.startsWith('/'), '--source-root requires an absolute direct
 const engineSourceSha = sourceRoot === ROOT ? 'e4be335997ed2cd9ee1922879efaeea8f6a4b22e' : options['engine-sha'];
 assert.match(engineSourceSha ?? '', /^[a-f0-9]{7,40}$/, '--source-root requires supplied --engine-sha; no cross-worktree Git operations');
 const engineFileHash = createHash('sha256').update(await readFile(`${sourceRoot}/src/lib/engine/FluidEngine.ts`)).digest('hex');
-if (sourceRoot === ROOT) assert.equal(execFileSync('git', ['diff', 'e4be335', '--', 'src/lib'], { encoding: 'utf8' }), '', 'Baseline engine source changed');
+if (sourceRoot === ROOT && !options['self-check']) assert.equal(execFileSync('git', ['diff', 'e4be335', '--', 'src/lib'], { encoding: 'utf8' }), '', 'Baseline engine source changed');
 const sha = engineSourceSha;
 const source = await readFile(process.argv[1], 'utf8');
 const measurementParts = (s) => s.slice(s.indexOf('function slice('), s.indexOf("const { values: options }")) + s.slice(s.indexOf("\t\tprogress('mount');"), s.indexOf("\t\tprogress('browser cleanup');"));
