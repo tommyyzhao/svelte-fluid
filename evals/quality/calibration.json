@@ -1,0 +1,1862 @@
+{
+  "protocol": "ADR 0107 E2",
+  "baselineSha": "1006e8fae1e670a72be67e1ff75800a43b35ff5e",
+  "attempt": 4,
+  "seeds": [
+    5
+  ],
+  "rubric": "Read only pair.png in the current directory. Blind pairwise visual-quality evaluation of fluid renders. Left/right panels each show the SAME scene at wall times 2, 5, 10, 20 seconds, left-to-right. Top row: whole frames. Bottom row: matching native-pixel detail crops, selected without comparing variant quality. Describe the left and right briefly before choosing. Read each filmstrip as a sequence: assess whether coherent flow structures develop and persist across the scene, not whether individual tiny curls look exciting. Evaluate at both whole-scene and native-detail scales. Judge the fluid itself, not the crispness of static masks or obstacle silhouettes. Quality means resolved, structurally coherent filaments/vortices, clean smooth gradients and vivid colour. Additional jagged, noisy or incoherent fine curls are not useful detail. Do not reward sharpness alone; weigh large-scale flow organization equally with small-scale clarity. Do not judge swirl arrangement or infer variant labels. Tie if any difference is merely chaotic layout, or quality is indistinguishable. Stills cannot establish frame-rate smoothness; assess spatial smoothness and structural evolution only. Return ONLY JSON {\"verdict\":\"left\"|\"right\"|\"tie\",\"reason\":\"left: …; right: …; deciding evidence: …\"}.",
+  "rubricHash": "c29e7b2cc65f423a0b95219176cda611c7d368ad7314ba47d87e8ab4fa43a099",
+  "passed": false,
+  "summary": [
+    {
+      "degradation": "identical",
+      "pairs": 6,
+      "referencePreferred": 0,
+      "referencePreferredFraction": 0,
+      "ties": 6,
+      "inconsistent": 3,
+      "pass": true
+    },
+    {
+      "degradation": "blur",
+      "pairs": 6,
+      "referencePreferred": 4,
+      "referencePreferredFraction": 0.6666666666666666,
+      "ties": 2,
+      "inconsistent": 0,
+      "pass": false
+    },
+    {
+      "degradation": "half-resolution",
+      "pairs": 6,
+      "referencePreferred": 5,
+      "referencePreferredFraction": 0.8333333333333334,
+      "ties": 0,
+      "inconsistent": 0,
+      "pass": true
+    },
+    {
+      "degradation": "karman128-p24",
+      "pairs": 2,
+      "referencePreferred": 2,
+      "referencePreferredFraction": 1,
+      "ties": 0,
+      "inconsistent": 0,
+      "pass": true
+    },
+    {
+      "degradation": "desaturation",
+      "pairs": 6,
+      "referencePreferred": 6,
+      "referencePreferredFraction": 1,
+      "ties": 0,
+      "inconsistent": 0,
+      "pass": true
+    }
+  ],
+  "separation": [
+    {
+      "degradation": "blur",
+      "scene": "Plasma-1440x900-dpr2-seed5",
+      "violations": []
+    },
+    {
+      "degradation": "blur",
+      "scene": "CircularFluid-800x500-dpr2-seed5",
+      "violations": []
+    },
+    {
+      "degradation": "blur",
+      "scene": "Aurora-1440x900-dpr2-seed5",
+      "violations": []
+    },
+    {
+      "degradation": "blur",
+      "scene": "InkInWater-800x500-dpr2-seed5",
+      "violations": []
+    },
+    {
+      "degradation": "blur",
+      "scene": "Karman-1440x900-dpr2-seed5",
+      "violations": []
+    },
+    {
+      "degradation": "blur",
+      "scene": "Karman-800x500-dpr2-seed5",
+      "violations": []
+    },
+    {
+      "degradation": "half-resolution",
+      "scene": "Plasma-1440x900-dpr2-seed5",
+      "violations": [
+        {
+          "scene": "Plasma-1440x900-dpr2-seed5",
+          "wall": 2,
+          "metric": "low",
+          "value": 0.02961034947290201,
+          "lower": 0.0789649290095286,
+          "upper": 0.10578433193917779
+        },
+        {
+          "scene": "Plasma-1440x900-dpr2-seed5",
+          "wall": 2,
+          "metric": "mid",
+          "value": 0.4301650199424172,
+          "lower": 0.1831033473482252,
+          "upper": 0.23090592918770061
+        },
+        {
+          "scene": "Plasma-1440x900-dpr2-seed5",
+          "wall": 2,
+          "metric": "high",
+          "value": 0.5402246305846808,
+          "lower": 0.625445467571401,
+          "upper": 0.7725813798006534
+        },
+        {
+          "scene": "Plasma-1440x900-dpr2-seed5",
+          "wall": 5,
+          "metric": "chroma",
+          "value": 0.03774893921251386,
+          "lower": 0.048312870498626745,
+          "upper": 0.06669115182778591
+        },
+        {
+          "scene": "Plasma-1440x900-dpr2-seed5",
+          "wall": 5,
+          "metric": "low",
+          "value": 0.015015524867795269,
+          "lower": 0.005172253083240437,
+          "upper": 0.009131473278752614
+        },
+        {
+          "scene": "Plasma-1440x900-dpr2-seed5",
+          "wall": 5,
+          "metric": "mid",
+          "value": 0.2640725005014164,
+          "lower": 0.06101549667294985,
+          "upper": 0.08960852327429278
+        },
+        {
+          "scene": "Plasma-1440x900-dpr2-seed5",
+          "wall": 5,
+          "metric": "high",
+          "value": 0.7209119746307884,
+          "lower": 0.8193310905843743,
+          "upper": 1.0191038614091008
+        },
+        {
+          "scene": "Plasma-1440x900-dpr2-seed5",
+          "wall": 10,
+          "metric": "chroma",
+          "value": 0.026802650851987107,
+          "lower": 0.04047682544075177,
+          "upper": 0.06020622118429057
+        },
+        {
+          "scene": "Plasma-1440x900-dpr2-seed5",
+          "wall": 10,
+          "metric": "low",
+          "value": 0.012133632759419975,
+          "lower": 0.003621916390242569,
+          "upper": 0.005637948941387332
+        },
+        {
+          "scene": "Plasma-1440x900-dpr2-seed5",
+          "wall": 10,
+          "metric": "mid",
+          "value": 0.2540438019893748,
+          "lower": 0.051834990370282406,
+          "upper": 0.0702721932836758
+        },
+        {
+          "scene": "Plasma-1440x900-dpr2-seed5",
+          "wall": 10,
+          "metric": "high",
+          "value": 0.7338225652512052,
+          "lower": 0.8387371453265311,
+          "upper": 1.0322193361815808
+        },
+        {
+          "scene": "Plasma-1440x900-dpr2-seed5",
+          "wall": 20,
+          "metric": "low",
+          "value": 0.017191508352028775,
+          "lower": 0.004099544136690595,
+          "upper": 0.006505762715282738
+        },
+        {
+          "scene": "Plasma-1440x900-dpr2-seed5",
+          "wall": 20,
+          "metric": "mid",
+          "value": 0.2836145490782093,
+          "lower": 0.05061687948393058,
+          "upper": 0.06433994901474038
+        },
+        {
+          "scene": "Plasma-1440x900-dpr2-seed5",
+          "wall": 20,
+          "metric": "high",
+          "value": 0.699193942569762,
+          "lower": 0.8420353267663447,
+          "upper": 1.032511557709025
+        }
+      ]
+    },
+    {
+      "degradation": "half-resolution",
+      "scene": "CircularFluid-800x500-dpr2-seed5",
+      "violations": [
+        {
+          "scene": "CircularFluid-800x500-dpr2-seed5",
+          "wall": 2,
+          "metric": "low",
+          "value": 0.04945820675093276,
+          "lower": 0.07439636006859435,
+          "upper": 0.11376899631818438
+        },
+        {
+          "scene": "CircularFluid-800x500-dpr2-seed5",
+          "wall": 2,
+          "metric": "mid",
+          "value": 0.46208682592275163,
+          "lower": 0.23143245306800903,
+          "upper": 0.2938065126489286
+        },
+        {
+          "scene": "CircularFluid-800x500-dpr2-seed5",
+          "wall": 2,
+          "metric": "high",
+          "value": 0.4884549673263155,
+          "lower": 0.5747779380732532,
+          "upper": 0.7152646028227895
+        },
+        {
+          "scene": "CircularFluid-800x500-dpr2-seed5",
+          "wall": 5,
+          "metric": "low",
+          "value": 0.032061651784809235,
+          "lower": 0.03324337910507202,
+          "upper": 0.07020149957008076
+        },
+        {
+          "scene": "CircularFluid-800x500-dpr2-seed5",
+          "wall": 5,
+          "metric": "mid",
+          "value": 0.44506221488788045,
+          "lower": 0.1730402377651371,
+          "upper": 0.23460569599868608
+        },
+        {
+          "scene": "CircularFluid-800x500-dpr2-seed5",
+          "wall": 5,
+          "metric": "high",
+          "value": 0.5228761333273103,
+          "lower": 0.6615207498814072,
+          "upper": 0.824763507317337
+        },
+        {
+          "scene": "CircularFluid-800x500-dpr2-seed5",
+          "wall": 10,
+          "metric": "low",
+          "value": 0.036763476619246116,
+          "lower": 0.04367892249919568,
+          "upper": 0.06641282898520083
+        },
+        {
+          "scene": "CircularFluid-800x500-dpr2-seed5",
+          "wall": 10,
+          "metric": "mid",
+          "value": 0.43557562567952507,
+          "lower": 0.19681626597978746,
+          "upper": 0.2433477308878626
+        },
+        {
+          "scene": "CircularFluid-800x500-dpr2-seed5",
+          "wall": 10,
+          "metric": "high",
+          "value": 0.5276608977012287,
+          "lower": 0.6488459648505027,
+          "upper": 0.8032669193908982
+        },
+        {
+          "scene": "CircularFluid-800x500-dpr2-seed5",
+          "wall": 20,
+          "metric": "low",
+          "value": 0.0415957238325324,
+          "lower": 0.05272523154236638,
+          "upper": 0.09348919022596575
+        },
+        {
+          "scene": "CircularFluid-800x500-dpr2-seed5",
+          "wall": 20,
+          "metric": "mid",
+          "value": 0.425566033635635,
+          "lower": 0.2055043364975562,
+          "upper": 0.2700571571450684
+        },
+        {
+          "scene": "CircularFluid-800x500-dpr2-seed5",
+          "wall": 20,
+          "metric": "high",
+          "value": 0.5328382425318327,
+          "lower": 0.6160405100032945,
+          "upper": 0.7719717597367249
+        }
+      ]
+    },
+    {
+      "degradation": "half-resolution",
+      "scene": "Aurora-1440x900-dpr2-seed5",
+      "violations": [
+        {
+          "scene": "Aurora-1440x900-dpr2-seed5",
+          "wall": 2,
+          "metric": "low",
+          "value": 0.029853060758665947,
+          "lower": 0.04930804825983608,
+          "upper": 0.06731158813024939
+        },
+        {
+          "scene": "Aurora-1440x900-dpr2-seed5",
+          "wall": 2,
+          "metric": "mid",
+          "value": 0.40409171171385927,
+          "lower": 0.15698379202658289,
+          "upper": 0.2097549211404644
+        },
+        {
+          "scene": "Aurora-1440x900-dpr2-seed5",
+          "wall": 2,
+          "metric": "high",
+          "value": 0.5660552275274747,
+          "lower": 0.6757653991902388,
+          "upper": 0.8478536678024233
+        },
+        {
+          "scene": "Aurora-1440x900-dpr2-seed5",
+          "wall": 5,
+          "metric": "low",
+          "value": 0.014743307755021357,
+          "lower": 0.004022607799533199,
+          "upper": 0.006896187474307634
+        },
+        {
+          "scene": "Aurora-1440x900-dpr2-seed5",
+          "wall": 5,
+          "metric": "mid",
+          "value": 0.2660894138415358,
+          "lower": 0.051202207765852104,
+          "upper": 0.06515513628599019
+        },
+        {
+          "scene": "Aurora-1440x900-dpr2-seed5",
+          "wall": 5,
+          "metric": "high",
+          "value": 0.7191672784034429,
+          "lower": 0.8413018270366086,
+          "upper": 1.0317705887922206
+        },
+        {
+          "scene": "Aurora-1440x900-dpr2-seed5",
+          "wall": 10,
+          "metric": "low",
+          "value": 0.016020346389205492,
+          "lower": 0.0035602833954558365,
+          "upper": 0.004978505374243878
+        },
+        {
+          "scene": "Aurora-1440x900-dpr2-seed5",
+          "wall": 10,
+          "metric": "mid",
+          "value": 0.24036899235398687,
+          "lower": 0.04997361192801351,
+          "upper": 0.07229476699814591
+        },
+        {
+          "scene": "Aurora-1440x900-dpr2-seed5",
+          "wall": 10,
+          "metric": "high",
+          "value": 0.7436106612568076,
+          "lower": 0.8372894526969703,
+          "upper": 1.0339426356026284
+        },
+        {
+          "scene": "Aurora-1440x900-dpr2-seed5",
+          "wall": 20,
+          "metric": "low",
+          "value": 0.013587536209803963,
+          "lower": 0.003764435155683667,
+          "upper": 0.006115567570116041
+        },
+        {
+          "scene": "Aurora-1440x900-dpr2-seed5",
+          "wall": 20,
+          "metric": "mid",
+          "value": 0.25999629820062886,
+          "lower": 0.05257539115731585,
+          "upper": 0.06991287780575152
+        },
+        {
+          "scene": "Aurora-1440x900-dpr2-seed5",
+          "wall": 20,
+          "metric": "high",
+          "value": 0.7264161655895671,
+          "lower": 0.8380088869080834,
+          "upper": 1.0311402122841118
+        }
+      ]
+    },
+    {
+      "degradation": "half-resolution",
+      "scene": "InkInWater-800x500-dpr2-seed5",
+      "violations": [
+        {
+          "scene": "InkInWater-800x500-dpr2-seed5",
+          "wall": 2,
+          "metric": "low",
+          "value": 0.17579129959902606,
+          "lower": 0.08010224567829194,
+          "upper": 0.15854670190035755
+        },
+        {
+          "scene": "InkInWater-800x500-dpr2-seed5",
+          "wall": 5,
+          "metric": "coverage",
+          "value": 0.128988125,
+          "lower": 0.2563329375,
+          "upper": 0.8683393125000001
+        },
+        {
+          "scene": "InkInWater-800x500-dpr2-seed5",
+          "wall": 5,
+          "metric": "chroma",
+          "value": 0.04202509171891763,
+          "lower": 0.046865556996713,
+          "upper": 0.08699291337993664
+        },
+        {
+          "scene": "InkInWater-800x500-dpr2-seed5",
+          "wall": 5,
+          "metric": "low",
+          "value": 0.03739491053016386,
+          "lower": 0.07012656134055972,
+          "upper": 0.14377224445223744
+        },
+        {
+          "scene": "InkInWater-800x500-dpr2-seed5",
+          "wall": 5,
+          "metric": "mid",
+          "value": 0.28869696488830215,
+          "lower": 0.36811598746455854,
+          "upper": 0.5986163946695097
+        },
+        {
+          "scene": "InkInWater-800x500-dpr2-seed5",
+          "wall": 5,
+          "metric": "high",
+          "value": 0.6739081245815339,
+          "lower": 0.2925911134458433,
+          "upper": 0.5528879503684792
+        },
+        {
+          "scene": "InkInWater-800x500-dpr2-seed5",
+          "wall": 10,
+          "metric": "coverage",
+          "value": 0.14249625,
+          "lower": 0.222888375,
+          "upper": 0.8840053750000001
+        },
+        {
+          "scene": "InkInWater-800x500-dpr2-seed5",
+          "wall": 10,
+          "metric": "chroma",
+          "value": 0.04409918146450083,
+          "lower": 0.046013415779722754,
+          "upper": 0.0894273054166405
+        },
+        {
+          "scene": "InkInWater-800x500-dpr2-seed5",
+          "wall": 10,
+          "metric": "low",
+          "value": 0.03633899462695785,
+          "lower": 0.07183127391175868,
+          "upper": 0.15003331961567723
+        },
+        {
+          "scene": "InkInWater-800x500-dpr2-seed5",
+          "wall": 10,
+          "metric": "mid",
+          "value": 0.25535235656506405,
+          "lower": 0.3256952006050185,
+          "upper": 0.5703865602352921
+        },
+        {
+          "scene": "InkInWater-800x500-dpr2-seed5",
+          "wall": 10,
+          "metric": "high",
+          "value": 0.7083086488079781,
+          "lower": 0.31056555284920695,
+          "upper": 0.6141343089239392
+        },
+        {
+          "scene": "InkInWater-800x500-dpr2-seed5",
+          "wall": 20,
+          "metric": "coverage",
+          "value": 0.1770475,
+          "lower": 0.30957806250000003,
+          "upper": 0.6184805
+        },
+        {
+          "scene": "InkInWater-800x500-dpr2-seed5",
+          "wall": 20,
+          "metric": "chroma",
+          "value": 0.04822064276849584,
+          "lower": 0.05222103465281387,
+          "upper": 0.0776026777430676
+        },
+        {
+          "scene": "InkInWater-800x500-dpr2-seed5",
+          "wall": 20,
+          "metric": "low",
+          "value": 0.06446868298343043,
+          "lower": 0.07689621613054246,
+          "upper": 0.12208668037768917
+        },
+        {
+          "scene": "InkInWater-800x500-dpr2-seed5",
+          "wall": 20,
+          "metric": "high",
+          "value": 0.6402278609796045,
+          "lower": 0.3908772552291775,
+          "upper": 0.6302142285804022
+        }
+      ]
+    },
+    {
+      "degradation": "half-resolution",
+      "scene": "Karman-1440x900-dpr2-seed5",
+      "violations": [
+        {
+          "scene": "Karman-1440x900-dpr2-seed5",
+          "wall": 2,
+          "metric": "coverage",
+          "value": 0.2608780864197531,
+          "lower": 0.15973871527777778,
+          "upper": 0.19753466435185185
+        },
+        {
+          "scene": "Karman-1440x900-dpr2-seed5",
+          "wall": 2,
+          "metric": "chroma",
+          "value": 0.02711897168268294,
+          "lower": 0.027527330183016903,
+          "upper": 0.033767778932995964
+        },
+        {
+          "scene": "Karman-1440x900-dpr2-seed5",
+          "wall": 2,
+          "metric": "low",
+          "value": 0.32012254796822,
+          "lower": 0.10191728913699684,
+          "upper": 0.12715247477857766
+        },
+        {
+          "scene": "Karman-1440x900-dpr2-seed5",
+          "wall": 2,
+          "metric": "mid",
+          "value": 0.38023591952214714,
+          "lower": 0.43114991330669206,
+          "upper": 0.5279781449874447
+        },
+        {
+          "scene": "Karman-1440x900-dpr2-seed5",
+          "wall": 2,
+          "metric": "high",
+          "value": 0.2996415325096328,
+          "lower": 0.36398403837325455,
+          "upper": 0.44840074346830733
+        },
+        {
+          "scene": "Karman-1440x900-dpr2-seed5",
+          "wall": 5,
+          "metric": "coverage",
+          "value": 0.3700908564814815,
+          "lower": 0.2881262152777778,
+          "upper": 0.35348130787037035
+        },
+        {
+          "scene": "Karman-1440x900-dpr2-seed5",
+          "wall": 5,
+          "metric": "chroma",
+          "value": 0.023133942988747425,
+          "lower": 0.028444883553328318,
+          "upper": 0.034791921406285856
+        },
+        {
+          "scene": "Karman-1440x900-dpr2-seed5",
+          "wall": 5,
+          "metric": "low",
+          "value": 0.3303144293828173,
+          "lower": 0.16829197318358705,
+          "upper": 0.21412607155131386
+        },
+        {
+          "scene": "Karman-1440x900-dpr2-seed5",
+          "wall": 5,
+          "metric": "high",
+          "value": 0.2853207060702074,
+          "lower": 0.34828715376326097,
+          "upper": 0.44569738964169014
+        },
+        {
+          "scene": "Karman-1440x900-dpr2-seed5",
+          "wall": 20,
+          "metric": "high",
+          "value": 0.3231040862493299,
+          "lower": 0.34377420850416546,
+          "upper": 0.45457478279614777
+        }
+      ]
+    },
+    {
+      "degradation": "half-resolution",
+      "scene": "Karman-800x500-dpr2-seed5",
+      "violations": [
+        {
+          "scene": "Karman-800x500-dpr2-seed5",
+          "wall": 2,
+          "metric": "coverage",
+          "value": 0.264015,
+          "lower": 0.16108875,
+          "upper": 0.19830593750000003
+        },
+        {
+          "scene": "Karman-800x500-dpr2-seed5",
+          "wall": 2,
+          "metric": "chroma",
+          "value": 0.026849021503907503,
+          "lower": 0.02760196714028465,
+          "upper": 0.03379375829201694
+        },
+        {
+          "scene": "Karman-800x500-dpr2-seed5",
+          "wall": 2,
+          "metric": "low",
+          "value": 0.2720753415930493,
+          "lower": 0.1033793726289016,
+          "upper": 0.1282576842533587
+        },
+        {
+          "scene": "Karman-800x500-dpr2-seed5",
+          "wall": 2,
+          "metric": "high",
+          "value": 0.2719252031871537,
+          "lower": 0.3625189696653883,
+          "upper": 0.44604659415184167
+        },
+        {
+          "scene": "Karman-800x500-dpr2-seed5",
+          "wall": 5,
+          "metric": "coverage",
+          "value": 0.37825125,
+          "lower": 0.28946700000000003,
+          "upper": 0.35538662500000007
+        },
+        {
+          "scene": "Karman-800x500-dpr2-seed5",
+          "wall": 5,
+          "metric": "chroma",
+          "value": 0.026994491751333713,
+          "lower": 0.028403233781825483,
+          "upper": 0.03473785125557448
+        },
+        {
+          "scene": "Karman-800x500-dpr2-seed5",
+          "wall": 5,
+          "metric": "low",
+          "value": 0.22437787229613604,
+          "lower": 0.1721805210974546,
+          "upper": 0.21721240455683755
+        },
+        {
+          "scene": "Karman-800x500-dpr2-seed5",
+          "wall": 5,
+          "metric": "high",
+          "value": 0.32806712181621994,
+          "lower": 0.34300309160341125,
+          "upper": 0.44047003305219207
+        },
+        {
+          "scene": "Karman-800x500-dpr2-seed5",
+          "wall": 10,
+          "metric": "low",
+          "value": 0.25453817230984394,
+          "lower": 0.18495953644805088,
+          "upper": 0.24267000549157397
+        },
+        {
+          "scene": "Karman-800x500-dpr2-seed5",
+          "wall": 10,
+          "metric": "mid",
+          "value": 0.47713838363129996,
+          "lower": 0.3433062463407361,
+          "upper": 0.43049549812024374
+        },
+        {
+          "scene": "Karman-800x500-dpr2-seed5",
+          "wall": 10,
+          "metric": "high",
+          "value": 0.2683234440588561,
+          "lower": 0.35586306108206384,
+          "upper": 0.4434428462210275
+        },
+        {
+          "scene": "Karman-800x500-dpr2-seed5",
+          "wall": 20,
+          "metric": "low",
+          "value": 0.16238302250585038,
+          "lower": 0.20334959688052268,
+          "upper": 0.2564227007131484
+        },
+        {
+          "scene": "Karman-800x500-dpr2-seed5",
+          "wall": 20,
+          "metric": "high",
+          "value": 0.46726110957521994,
+          "lower": 0.35444296475401554,
+          "upper": 0.44818258040795494
+        }
+      ]
+    },
+    {
+      "degradation": "karman128-p24",
+      "scene": "Karman-1440x900-dpr2-seed5",
+      "violations": [
+        {
+          "scene": "Karman-1440x900-dpr2-seed5",
+          "wall": 2,
+          "metric": "coverage",
+          "value": 0.21465547839506172,
+          "lower": 0.15973871527777778,
+          "upper": 0.19753466435185185
+        },
+        {
+          "scene": "Karman-1440x900-dpr2-seed5",
+          "wall": 2,
+          "metric": "mid",
+          "value": 0.3807278455861361,
+          "lower": 0.43114991330669206,
+          "upper": 0.5279781449874447
+        },
+        {
+          "scene": "Karman-1440x900-dpr2-seed5",
+          "wall": 2,
+          "metric": "high",
+          "value": 0.5096417308612824,
+          "lower": 0.36398403837325455,
+          "upper": 0.44840074346830733
+        },
+        {
+          "scene": "Karman-1440x900-dpr2-seed5",
+          "wall": 10,
+          "metric": "low",
+          "value": 0.17888128063067443,
+          "lower": 0.18456123128082608,
+          "upper": 0.2480450683108598
+        },
+        {
+          "scene": "Karman-1440x900-dpr2-seed5",
+          "wall": 10,
+          "metric": "high",
+          "value": 0.4581087378567994,
+          "lower": 0.35384889392468033,
+          "upper": 0.4442087138039039
+        },
+        {
+          "scene": "Karman-1440x900-dpr2-seed5",
+          "wall": 20,
+          "metric": "low",
+          "value": 0.19484025878262723,
+          "lower": 0.20637654924549964,
+          "upper": 0.29801209078732904
+        }
+      ]
+    },
+    {
+      "degradation": "karman128-p24",
+      "scene": "Karman-800x500-dpr2-seed5",
+      "violations": [
+        {
+          "scene": "Karman-800x500-dpr2-seed5",
+          "wall": 2,
+          "metric": "coverage",
+          "value": 0.216378125,
+          "lower": 0.16108875,
+          "upper": 0.19830593750000003
+        },
+        {
+          "scene": "Karman-800x500-dpr2-seed5",
+          "wall": 2,
+          "metric": "mid",
+          "value": 0.36423349766927876,
+          "lower": 0.43155880257290063,
+          "upper": 0.5286635750445
+        },
+        {
+          "scene": "Karman-800x500-dpr2-seed5",
+          "wall": 2,
+          "metric": "high",
+          "value": 0.5238411505837289,
+          "lower": 0.3625189696653883,
+          "upper": 0.44604659415184167
+        },
+        {
+          "scene": "Karman-800x500-dpr2-seed5",
+          "wall": 20,
+          "metric": "high",
+          "value": 0.4515711872140404,
+          "lower": 0.35444296475401554,
+          "upper": 0.44818258040795494
+        }
+      ]
+    },
+    {
+      "degradation": "desaturation",
+      "scene": "Plasma-1440x900-dpr2-seed5",
+      "violations": [
+        {
+          "scene": "Plasma-1440x900-dpr2-seed5",
+          "wall": 2,
+          "metric": "chroma",
+          "value": 0.04242223930692127,
+          "lower": 0.07180743791953188,
+          "upper": 0.09785027144445785
+        },
+        {
+          "scene": "Plasma-1440x900-dpr2-seed5",
+          "wall": 5,
+          "metric": "chroma",
+          "value": 0.02949190252666391,
+          "lower": 0.048312870498626745,
+          "upper": 0.06669115182778591
+        },
+        {
+          "scene": "Plasma-1440x900-dpr2-seed5",
+          "wall": 10,
+          "metric": "chroma",
+          "value": 0.027654766691195775,
+          "lower": 0.04047682544075177,
+          "upper": 0.06020622118429057
+        },
+        {
+          "scene": "Plasma-1440x900-dpr2-seed5",
+          "wall": 20,
+          "metric": "chroma",
+          "value": 0.01201884957719898,
+          "lower": 0.016398675703226284,
+          "upper": 0.02651565702283624
+        }
+      ]
+    },
+    {
+      "degradation": "desaturation",
+      "scene": "CircularFluid-800x500-dpr2-seed5",
+      "violations": [
+        {
+          "scene": "CircularFluid-800x500-dpr2-seed5",
+          "wall": 2,
+          "metric": "chroma",
+          "value": 0.025153340870031803,
+          "lower": 0.04126195322550188,
+          "upper": 0.07048142919469018
+        },
+        {
+          "scene": "CircularFluid-800x500-dpr2-seed5",
+          "wall": 5,
+          "metric": "chroma",
+          "value": 0.03039854583536361,
+          "lower": 0.04796517887961422,
+          "upper": 0.06171782569765509
+        },
+        {
+          "scene": "CircularFluid-800x500-dpr2-seed5",
+          "wall": 10,
+          "metric": "chroma",
+          "value": 0.026621896155542713,
+          "lower": 0.04347764654005742,
+          "upper": 0.05669162596503904
+        },
+        {
+          "scene": "CircularFluid-800x500-dpr2-seed5",
+          "wall": 20,
+          "metric": "chroma",
+          "value": 0.023862472136913865,
+          "lower": 0.03817535029761826,
+          "upper": 0.06183618449125126
+        }
+      ]
+    },
+    {
+      "degradation": "desaturation",
+      "scene": "Aurora-1440x900-dpr2-seed5",
+      "violations": [
+        {
+          "scene": "Aurora-1440x900-dpr2-seed5",
+          "wall": 2,
+          "metric": "chroma",
+          "value": 0.049567660606580854,
+          "lower": 0.07890734420634626,
+          "upper": 0.10444655165686491
+        },
+        {
+          "scene": "Aurora-1440x900-dpr2-seed5",
+          "wall": 5,
+          "metric": "chroma",
+          "value": 0.05006596530782912,
+          "lower": 0.07713803202431228,
+          "upper": 0.10484309301756915
+        },
+        {
+          "scene": "Aurora-1440x900-dpr2-seed5",
+          "wall": 10,
+          "metric": "chroma",
+          "value": 0.050959191708815355,
+          "lower": 0.07475871148968292,
+          "upper": 0.10325089683808594
+        },
+        {
+          "scene": "Aurora-1440x900-dpr2-seed5",
+          "wall": 20,
+          "metric": "chroma",
+          "value": 0.049472385238639144,
+          "lower": 0.07074681256227965,
+          "upper": 0.09718146697125955
+        }
+      ]
+    },
+    {
+      "degradation": "desaturation",
+      "scene": "InkInWater-800x500-dpr2-seed5",
+      "violations": [
+        {
+          "scene": "InkInWater-800x500-dpr2-seed5",
+          "wall": 2,
+          "metric": "chroma",
+          "value": 0.03613773205464839,
+          "lower": 0.05491194041799384,
+          "upper": 0.07630929994859922
+        },
+        {
+          "scene": "InkInWater-800x500-dpr2-seed5",
+          "wall": 5,
+          "metric": "chroma",
+          "value": 0.02807043451959197,
+          "lower": 0.046865556996713,
+          "upper": 0.08699291337993664
+        },
+        {
+          "scene": "InkInWater-800x500-dpr2-seed5",
+          "wall": 10,
+          "metric": "chroma",
+          "value": 0.0268124656407329,
+          "lower": 0.046013415779722754,
+          "upper": 0.0894273054166405
+        },
+        {
+          "scene": "InkInWater-800x500-dpr2-seed5",
+          "wall": 20,
+          "metric": "chroma",
+          "value": 0.030341642527102076,
+          "lower": 0.05222103465281387,
+          "upper": 0.0776026777430676
+        }
+      ]
+    },
+    {
+      "degradation": "desaturation",
+      "scene": "Karman-1440x900-dpr2-seed5",
+      "violations": [
+        {
+          "scene": "Karman-1440x900-dpr2-seed5",
+          "wall": 2,
+          "metric": "chroma",
+          "value": 0.01658776791500218,
+          "lower": 0.027527330183016903,
+          "upper": 0.033767778932995964
+        },
+        {
+          "scene": "Karman-1440x900-dpr2-seed5",
+          "wall": 5,
+          "metric": "chroma",
+          "value": 0.017005498218532606,
+          "lower": 0.028444883553328318,
+          "upper": 0.034791921406285856
+        },
+        {
+          "scene": "Karman-1440x900-dpr2-seed5",
+          "wall": 10,
+          "metric": "chroma",
+          "value": 0.01652340265299376,
+          "lower": 0.027701945818536713,
+          "upper": 0.033930095972507665
+        },
+        {
+          "scene": "Karman-1440x900-dpr2-seed5",
+          "wall": 20,
+          "metric": "chroma",
+          "value": 0.016597137767399635,
+          "lower": 0.02781559387349702,
+          "upper": 0.03406030513555616
+        }
+      ]
+    },
+    {
+      "degradation": "desaturation",
+      "scene": "Karman-800x500-dpr2-seed5",
+      "violations": [
+        {
+          "scene": "Karman-800x500-dpr2-seed5",
+          "wall": 2,
+          "metric": "chroma",
+          "value": 0.016667286495089483,
+          "lower": 0.02760196714028465,
+          "upper": 0.03379375829201694
+        },
+        {
+          "scene": "Karman-800x500-dpr2-seed5",
+          "wall": 5,
+          "metric": "chroma",
+          "value": 0.01697709355318381,
+          "lower": 0.028403233781825483,
+          "upper": 0.03473785125557448
+        },
+        {
+          "scene": "Karman-800x500-dpr2-seed5",
+          "wall": 10,
+          "metric": "chroma",
+          "value": 0.016507595191568997,
+          "lower": 0.02771731742442569,
+          "upper": 0.033911399530718304
+        },
+        {
+          "scene": "Karman-800x500-dpr2-seed5",
+          "wall": 20,
+          "metric": "chroma",
+          "value": 0.016597915510896837,
+          "lower": 0.027854149388677613,
+          "upper": 0.034059438311519544
+        }
+      ]
+    }
+  ],
+  "results": [
+    {
+      "scene": {
+        "preset": "Plasma",
+        "w": 1440,
+        "h": 900,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "identical",
+      "verdict": "tie",
+      "inconsistent": true,
+      "trials": [
+        {
+          "verdict": "tie",
+          "reason": "left: colourful early filaments develop into broad luminous flow, with smooth gradients and increasingly faint late contours; right: similarly coherent early vortices and smooth folded detail, also becoming diffuse as the bright plume expands; deciding evidence: whole-scene organization and native-detail clarity are comparable across the sequence. Differences in visible curls, colour placement and sparse crop regions do not establish a consistent quality advantage.",
+          "raw": "{\"verdict\":\"tie\",\"reason\":\"left: colourful early filaments develop into broad luminous flow, with smooth gradients and increasingly faint late contours; right: similarly coherent early vortices and smooth folded detail, also becoming diffuse as the bright plume expands; deciding evidence: whole-scene organization and native-detail clarity are comparable across the sequence. Differences in visible curls, colour placement and sparse crop regions do not establish a consistent quality advantage.\"}\n",
+          "unblinded": "tie",
+          "image": "/tmp/quality-eval/judge-inputs/ced87c3b-da6b-4e35-a270-f0937dd71c3c/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/d27a68e005c8ed84-0.json"
+        },
+        {
+          "verdict": "left",
+          "reason": "left: coherent coloured filaments develop into broader plumes, with smooth gradients and readable curled boundaries persisting in later detail crops; right: similarly organized early flow, but later crops become flatter and more muted, with weaker internal structure. Deciding evidence: whole-scene organization is comparable, while the left retains clearer, more vivid fluid structure at native scale without relying on noisy fine curls.",
+          "raw": "{\"verdict\":\"left\",\"reason\":\"left: coherent coloured filaments develop into broader plumes, with smooth gradients and readable curled boundaries persisting in later detail crops; right: similarly organized early flow, but later crops become flatter and more muted, with weaker internal structure. Deciding evidence: whole-scene organization is comparable, while the left retains clearer, more vivid fluid structure at native scale without relying on noisy fine curls.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/9267224d-5dcc-4768-8eb5-1aa7e5e5e838/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/d27a68e005c8ed84-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "CircularFluid",
+        "w": 800,
+        "h": 500,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "identical",
+      "verdict": "tie",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "tie",
+          "reason": "left: vivid colour, smooth gradients and coherent curling ribbons; whole frames retain organized flow as structures develop across the sequence. right: similarly vivid, smooth fluid with sustained filament and vortex organization, also visible in native-detail crops. deciding evidence: both resolve clean, connected structures at both scales; differences chiefly concern swirl placement and colour distribution, not a consistent advantage in clarity or coherence.",
+          "raw": "{\"verdict\":\"tie\",\"reason\":\"left: vivid colour, smooth gradients and coherent curling ribbons; whole frames retain organized flow as structures develop across the sequence. right: similarly vivid, smooth fluid with sustained filament and vortex organization, also visible in native-detail crops. deciding evidence: both resolve clean, connected structures at both scales; differences chiefly concern swirl placement and colour distribution, not a consistent advantage in clarity or coherence.\"}\n",
+          "unblinded": "tie",
+          "image": "/tmp/quality-eval/judge-inputs/241b1a9f-43a4-4f92-8f08-8ad8d42d4bee/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/a595a09b3ecd9975-0.json"
+        },
+        {
+          "verdict": "tie",
+          "reason": "left: coherent curling bands and layered filaments remain visible across the sequence, with smooth native-detail gradients and vivid colour; right: similarly organized vortices and flowing bands, with clean contours and smooth colour transitions; deciding evidence: both retain large-scale organization and resolved local structures. Differences in filament width and bright-region placement appear to be flow layout, not a consistent quality advantage.",
+          "raw": "{\"verdict\":\"tie\",\"reason\":\"left: coherent curling bands and layered filaments remain visible across the sequence, with smooth native-detail gradients and vivid colour; right: similarly organized vortices and flowing bands, with clean contours and smooth colour transitions; deciding evidence: both retain large-scale organization and resolved local structures. Differences in filament width and bright-region placement appear to be flow layout, not a consistent quality advantage.\"}\n",
+          "unblinded": "tie",
+          "image": "/tmp/quality-eval/judge-inputs/0bc17476-1727-424c-8b69-ae5fabfc2822/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/a595a09b3ecd9975-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "Aurora",
+        "w": 1440,
+        "h": 900,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "identical",
+      "verdict": "tie",
+      "inconsistent": true,
+      "trials": [
+        {
+          "verdict": "right",
+          "reason": "left: vivid colour and fine early filaments, but later detail develops blunt, block-like folds and fragmented contours; right: comparable whole-scene plume organization, with smoother curved folds and more continuous vortex contours across later crops, despite brighter early highlights; deciding evidence: right better preserves coherent fluid structure at native scale without sacrificing large-scale organization, rather than merely adding sharpness or tiny curls.",
+          "raw": "{\"verdict\":\"right\",\"reason\":\"left: vivid colour and fine early filaments, but later detail develops blunt, block-like folds and fragmented contours; right: comparable whole-scene plume organization, with smoother curved folds and more continuous vortex contours across later crops, despite brighter early highlights; deciding evidence: right better preserves coherent fluid structure at native scale without sacrificing large-scale organization, rather than merely adding sharpness or tiny curls.\"}\n",
+          "unblinded": "candidate",
+          "image": "/tmp/quality-eval/judge-inputs/0dc7568c-47f7-4532-837d-3f2fb3c3f812/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/3b38fd1a699875c5-0.json"
+        },
+        {
+          "verdict": "right",
+          "reason": "left: coherent coloured plumes develop, but early detail is washed out and later folds become soft and muted; right: similarly coherent scene-scale evolution, with better-separated early filaments and clearer, more vivid later folds; deciding evidence: comparable large-scale organization, but right preserves colour gradients and fluid-structure separation better in the native-detail sequence, not merely extra tiny curls.",
+          "raw": "{\"verdict\":\"right\",\"reason\":\"left: coherent coloured plumes develop, but early detail is washed out and later folds become soft and muted; right: similarly coherent scene-scale evolution, with better-separated early filaments and clearer, more vivid later folds; deciding evidence: comparable large-scale organization, but right preserves colour gradients and fluid-structure separation better in the native-detail sequence, not merely extra tiny curls.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/f2223ab9-721c-4cab-9a3f-05c3f38fc4e0/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/3b38fd1a699875c5-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "InkInWater",
+        "w": 800,
+        "h": 500,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "identical",
+      "verdict": "tie",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "tie",
+          "reason": "left: luminous blue flow develops into coherent paired spirals with smooth gradients and continuous curved filaments; right: comparable structural evolution, colour intensity and native-detail spiral clarity; deciding evidence: neither shows a consistent advantage in whole-scene organization or resolved fluid detail; differences mainly concern swirl placement and shape.",
+          "raw": "{\"verdict\":\"tie\",\"reason\":\"left: luminous blue flow develops into coherent paired spirals with smooth gradients and continuous curved filaments; right: comparable structural evolution, colour intensity and native-detail spiral clarity; deciding evidence: neither shows a consistent advantage in whole-scene organization or resolved fluid detail; differences mainly concern swirl placement and shape.\"}\n",
+          "unblinded": "tie",
+          "image": "/tmp/quality-eval/judge-inputs/3d3e9b25-9da2-4f0d-9d0b-35028ba4f020/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/ea8f0c3f3f0d4cd9-0.json"
+        },
+        {
+          "verdict": "tie",
+          "reason": "left: bright initial plume develops into coherent paired spirals with continuous connecting filaments and smooth blue-violet gradients; right: similarly coherent spiral development, persistent curved filaments and comparable colour intensity. Deciding evidence: whole-scene organization and native-detail clarity are effectively matched; minor curl-shape differences show no consistent quality advantage.",
+          "raw": "{\"verdict\":\"tie\",\"reason\":\"left: bright initial plume develops into coherent paired spirals with continuous connecting filaments and smooth blue-violet gradients; right: similarly coherent spiral development, persistent curved filaments and comparable colour intensity. Deciding evidence: whole-scene organization and native-detail clarity are effectively matched; minor curl-shape differences show no consistent quality advantage.\"}\n",
+          "unblinded": "tie",
+          "image": "/tmp/quality-eval/judge-inputs/4a98aa66-3230-465d-9a14-c1e965bcc546/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/ea8f0c3f3f0d4cd9-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "Karman",
+        "w": 1440,
+        "h": 900,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "identical",
+      "verdict": "tie",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "tie",
+          "reason": "left: coherent coloured streams develop into broad trailing bands and curled wake structures; native crops show smooth gradients. right: similarly vivid bands, persistent wake structures and smooth native-detail gradients. deciding evidence: large-scale organization and filament clarity are comparable; differences mainly concern wake layout, not clearly better-resolved fluid structure.",
+          "raw": "{\"verdict\":\"tie\",\"reason\":\"left: coherent coloured streams develop into broad trailing bands and curled wake structures; native crops show smooth gradients. right: similarly vivid bands, persistent wake structures and smooth native-detail gradients. deciding evidence: large-scale organization and filament clarity are comparable; differences mainly concern wake layout, not clearly better-resolved fluid structure.\"}\n",
+          "unblinded": "tie",
+          "image": "/tmp/quality-eval/judge-inputs/9a403368-134f-413d-b68f-216c12afc63d/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/077db2d9c3fdbfc4-0.json"
+        },
+        {
+          "verdict": "tie",
+          "reason": "left: vivid streams develop into long, smooth bands with coherent wake curls; right: similarly vivid bands and coherent structures persist through the sequence; deciding evidence: whole-scene flow organization and native-detail gradients are comparable. Local curl differences provide no consistent advantage in resolved structure or spatial smoothness.",
+          "raw": "{\"verdict\":\"tie\",\"reason\":\"left: vivid streams develop into long, smooth bands with coherent wake curls; right: similarly vivid bands and coherent structures persist through the sequence; deciding evidence: whole-scene flow organization and native-detail gradients are comparable. Local curl differences provide no consistent advantage in resolved structure or spatial smoothness.\"}\n",
+          "unblinded": "tie",
+          "image": "/tmp/quality-eval/judge-inputs/d9ba72c4-763b-4ca4-ac8d-5a62642ef53a/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/077db2d9c3fdbfc4-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "Karman",
+        "w": 800,
+        "h": 500,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "identical",
+      "verdict": "tie",
+      "inconsistent": true,
+      "trials": [
+        {
+          "verdict": "tie",
+          "reason": "left: coherent coloured streams develop into broad curved filaments, with smooth gradients in the native crops; right: similarly persistent streams and resolved bends, with comparable colour and detail clarity; deciding evidence: large-scale organization and native-scale smoothness are comparable across the sequence. Differences mainly concern curl placement, not demonstrably better fluid structure.",
+          "raw": "{\"verdict\":\"tie\",\"reason\":\"left: coherent coloured streams develop into broad curved filaments, with smooth gradients in the native crops; right: similarly persistent streams and resolved bends, with comparable colour and detail clarity; deciding evidence: large-scale organization and native-scale smoothness are comparable across the sequence. Differences mainly concern curl placement, not demonstrably better fluid structure.\"}\n",
+          "unblinded": "tie",
+          "image": "/tmp/quality-eval/judge-inputs/977d6a19-5b0c-405f-8270-96191aabb663/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/ecf56cbe33bd9677-0.json"
+        },
+        {
+          "verdict": "right",
+          "reason": "left: coherent coloured streams develop around the obstacle, but later wake filaments appear slightly ragged and diffuse; right: comparable large-scale flow development, with smoother, more continuous wake curls and clean colour gradients; deciding evidence: the later whole-frame wakes retain clearer connected structures on the right, while native crops show smoother green-yellow bands rather than extra noisy detail.",
+          "raw": "{\"verdict\":\"right\",\"reason\":\"left: coherent coloured streams develop around the obstacle, but later wake filaments appear slightly ragged and diffuse; right: comparable large-scale flow development, with smoother, more continuous wake curls and clean colour gradients; deciding evidence: the later whole-frame wakes retain clearer connected structures on the right, while native crops show smoother green-yellow bands rather than extra noisy detail.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/c50c7df3-9132-4258-8d62-7041ff658e29/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/ecf56cbe33bd9677-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "Plasma",
+        "w": 1440,
+        "h": 900,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "blur",
+      "verdict": "reference",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "right",
+          "reason": "left: coherent early vortices evolve into broad luminous flow, but native-detail filaments become diffuse; right: comparable scene-wide organization and vivid colour, with smoother, better-resolved curling bands persisting in the crops; deciding evidence: right retains clearer continuous fluid boundaries across the sequence without added jagged noise. Large-scale organization is otherwise comparable.",
+          "raw": "{\"verdict\":\"right\",\"reason\":\"left: coherent early vortices evolve into broad luminous flow, but native-detail filaments become diffuse; right: comparable scene-wide organization and vivid colour, with smoother, better-resolved curling bands persisting in the crops; deciding evidence: right retains clearer continuous fluid boundaries across the sequence without added jagged noise. Large-scale organization is otherwise comparable.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/de46ad7f-0c75-4693-8849-b560b4a9eed0/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/2c3e5a8842ce377d-0.json"
+        },
+        {
+          "verdict": "left",
+          "reason": "left: coherent coloured folds and filaments remain better resolved in the native-detail sequence, with smooth gradients; right: comparable whole-scene evolution, but softer detail merges neighbouring folds and weakens filament continuity. Deciding evidence: large-scale organization is similar, while the left preserves clearer connected flow structures, especially at 5 and 10 seconds, without added jagged or noisy curls.",
+          "raw": "{\"verdict\":\"left\",\"reason\":\"left: coherent coloured folds and filaments remain better resolved in the native-detail sequence, with smooth gradients; right: comparable whole-scene evolution, but softer detail merges neighbouring folds and weakens filament continuity. Deciding evidence: large-scale organization is similar, while the left preserves clearer connected flow structures, especially at 5 and 10 seconds, without added jagged or noisy curls.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/dab64487-e7fe-4563-87fa-29fec487cb86/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/2c3e5a8842ce377d-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "CircularFluid",
+        "w": 800,
+        "h": 500,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "blur",
+      "verdict": "reference",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "right",
+          "reason": "left: vivid colour and coherent large-scale flow across the sequence, but native-detail filaments and vortex boundaries look diffuse; right: comparable whole-scene organization, with smoother, better-resolved winding filaments and nested vortices across all four crops; deciding evidence: right preserves continuous fluid structures more clearly without adding jagged or incoherent curls.",
+          "raw": "{\"verdict\":\"right\",\"reason\":\"left: vivid colour and coherent large-scale flow across the sequence, but native-detail filaments and vortex boundaries look diffuse; right: comparable whole-scene organization, with smoother, better-resolved winding filaments and nested vortices across all four crops; deciding evidence: right preserves continuous fluid structures more clearly without adding jagged or incoherent curls.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/9747ea85-d337-466a-a1d1-836c15ecb9f9/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/9fadcff9b20dbdc4-0.json"
+        },
+        {
+          "verdict": "left",
+          "reason": "left: coherent broad flow across the sequence, with smooth, clearly separated filaments and nested vortices in the detail crops; right: comparable large-scale organization and vivid colour, but fluid boundaries blur together and finer structures lose definition; deciding evidence: whole-scene coherence is similar, while left preserves genuinely structured, smoothly curving detail rather than extra noisy curls.",
+          "raw": "{\"verdict\":\"left\",\"reason\":\"left: coherent broad flow across the sequence, with smooth, clearly separated filaments and nested vortices in the detail crops; right: comparable large-scale organization and vivid colour, but fluid boundaries blur together and finer structures lose definition; deciding evidence: whole-scene coherence is similar, while left preserves genuinely structured, smoothly curving detail rather than extra noisy curls.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/eb309430-4b75-4c3c-9d19-cf2f705a70e6/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/9fadcff9b20dbdc4-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "Aurora",
+        "w": 1440,
+        "h": 900,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "blur",
+      "verdict": "reference",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "right",
+          "reason": "left: coherent large-scale structures develop across the sequence, but detail crops show softened, partially merged colour bands; right: comparable whole-scene organization, with better-separated nested filaments and smooth, clearly resolved curved boundaries; deciding evidence: right preserves coherent fluid detail without adding noisy curls, while matching left's large-scale structural evolution.",
+          "raw": "{\"verdict\":\"right\",\"reason\":\"left: coherent large-scale structures develop across the sequence, but detail crops show softened, partially merged colour bands; right: comparable whole-scene organization, with better-separated nested filaments and smooth, clearly resolved curved boundaries; deciding evidence: right preserves coherent fluid detail without adding noisy curls, while matching left's large-scale structural evolution.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/a92341ae-3c61-4fa1-9055-dcfd82ff7cd2/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/99365f67d9593be1-0.json"
+        },
+        {
+          "verdict": "left",
+          "reason": "left: coherent early vortices evolve into broader colour plumes; native crops retain distinct layered filaments and smooth gradients. right: comparable whole-scene organization and evolution, but filament bands and later folds are softer and less separated. deciding evidence: large-scale coherence is essentially equal; left preserves more readable fluid structure at native scale without additional jagged or noisy curls.",
+          "raw": "{\"verdict\":\"left\",\"reason\":\"left: coherent early vortices evolve into broader colour plumes; native crops retain distinct layered filaments and smooth gradients. right: comparable whole-scene organization and evolution, but filament bands and later folds are softer and less separated. deciding evidence: large-scale coherence is essentially equal; left preserves more readable fluid structure at native scale without additional jagged or noisy curls.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/e7f4145b-a6b6-495d-83b4-e3bc7786c210/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/99365f67d9593be1-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "InkInWater",
+        "w": 800,
+        "h": 500,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "blur",
+      "verdict": "reference",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "left",
+          "reason": "left: coherent paired vortices develop across the sequence, with smooth gradients and clearly separated spiral filaments; right: similarly coherent large-scale evolution and vivid colour, but native-detail spiral bands look broader and more diffuse; deciding evidence: whole-scene organization is comparable, while the left retains cleaner internal coil separation at 5–20 seconds without adding jagged or noisy curls.",
+          "raw": "{\"verdict\":\"left\",\"reason\":\"left: coherent paired vortices develop across the sequence, with smooth gradients and clearly separated spiral filaments; right: similarly coherent large-scale evolution and vivid colour, but native-detail spiral bands look broader and more diffuse; deciding evidence: whole-scene organization is comparable, while the left retains cleaner internal coil separation at 5–20 seconds without adding jagged or noisy curls.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/af9cbd1d-55b2-4c7b-a567-8efa363d83fc/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/6f5c6c7e93c343d3-0.json"
+        },
+        {
+          "verdict": "right",
+          "reason": "left: coherent blue vortices persist across the sequence, but diffuse bands soften inner spiral turns; right: similarly coherent whole-scene evolution, with better-separated spiral filaments, smooth gradients and vivid colour in the native crops; deciding evidence: large-scale organization is comparable, while the right resolves sustained vortex structure more clearly without adding noisy curls.",
+          "raw": "{\"verdict\":\"right\",\"reason\":\"left: coherent blue vortices persist across the sequence, but diffuse bands soften inner spiral turns; right: similarly coherent whole-scene evolution, with better-separated spiral filaments, smooth gradients and vivid colour in the native crops; deciding evidence: large-scale organization is comparable, while the right resolves sustained vortex structure more clearly without adding noisy curls.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/3730a73f-f4e5-4da8-a903-3192c583821a/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/6f5c6c7e93c343d3-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "Karman",
+        "w": 1440,
+        "h": 900,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "blur",
+      "verdict": "tie",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "tie",
+          "reason": "left: vivid jets develop coherent curved bands and downstream vortices, with smooth gradients; right: comparable structural evolution, colour and filament clarity. Deciding evidence: whole-scene flow organization and native-detail fluid quality are effectively indistinguishable; the clearest sharpness difference is in the static obstacle boundary, not the fluid.",
+          "raw": "{\"verdict\":\"tie\",\"reason\":\"left: vivid jets develop coherent curved bands and downstream vortices, with smooth gradients; right: comparable structural evolution, colour and filament clarity. Deciding evidence: whole-scene flow organization and native-detail fluid quality are effectively indistinguishable; the clearest sharpness difference is in the static obstacle boundary, not the fluid.\"}\n",
+          "unblinded": "tie",
+          "image": "/tmp/quality-eval/judge-inputs/224c6a47-58a5-417d-8c71-3a6af94f712e/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/8553f37b086af761-0.json"
+        },
+        {
+          "verdict": "tie",
+          "reason": "left: coherent coloured bands develop into an elongated curled wake, with smooth gradients in the visible native-detail fluid; right: comparable filament continuity, wake evolution and colour, with similarly smooth gradients; deciding evidence: fluid structure is effectively indistinguishable at both scales. The conspicuous crop difference is obstacle-edge sharpness, not useful fluid detail.",
+          "raw": "{\"verdict\":\"tie\",\"reason\":\"left: coherent coloured bands develop into an elongated curled wake, with smooth gradients in the visible native-detail fluid; right: comparable filament continuity, wake evolution and colour, with similarly smooth gradients; deciding evidence: fluid structure is effectively indistinguishable at both scales. The conspicuous crop difference is obstacle-edge sharpness, not useful fluid detail.\"}\n",
+          "unblinded": "tie",
+          "image": "/tmp/quality-eval/judge-inputs/f3c6df03-4ab9-4b54-b2a7-613f8ee22f8f/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/8553f37b086af761-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "Karman",
+        "w": 800,
+        "h": 500,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "blur",
+      "verdict": "tie",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "tie",
+          "reason": "left: Coloured streams develop coherent downstream bends and vortices, with smooth broad gradients and fine connecting filaments; right: Comparable structural evolution, colour intensity and fluid detail at both scales; deciding evidence: Across all four times, neither shows a consistent advantage in flow organization or resolved fluid filaments. Native crops show essentially equivalent fluid gradients; static silhouette crispness does not determine fluid quality.",
+          "raw": "{\"verdict\":\"tie\",\"reason\":\"left: Coloured streams develop coherent downstream bends and vortices, with smooth broad gradients and fine connecting filaments; right: Comparable structural evolution, colour intensity and fluid detail at both scales; deciding evidence: Across all four times, neither shows a consistent advantage in flow organization or resolved fluid filaments. Native crops show essentially equivalent fluid gradients; static silhouette crispness does not determine fluid quality.\"}\n",
+          "unblinded": "tie",
+          "image": "/tmp/quality-eval/judge-inputs/4e58d09f-b94b-4e2d-81a3-d0fbe022835d/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/8c0acf7c4a68fa24-0.json"
+        },
+        {
+          "verdict": "tie",
+          "reason": "left: vivid coloured streams develop into coherent curved wakes across the sequence; native crops show smooth green and yellow gradients, with softer fine filaments. right: comparable large-scale development and persistent flow structures, with similarly smooth gradients and filament clarity. deciding evidence: neither shows a consistent advantage in fluid organization, resolved detail or colour at either scale; obstacle-edge sharpness does not count.",
+          "raw": "{\"verdict\":\"tie\",\"reason\":\"left: vivid coloured streams develop into coherent curved wakes across the sequence; native crops show smooth green and yellow gradients, with softer fine filaments. right: comparable large-scale development and persistent flow structures, with similarly smooth gradients and filament clarity. deciding evidence: neither shows a consistent advantage in fluid organization, resolved detail or colour at either scale; obstacle-edge sharpness does not count.\"}\n",
+          "unblinded": "tie",
+          "image": "/tmp/quality-eval/judge-inputs/60aed96d-15fe-4fd7-b5e4-065f035407dd/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/8c0acf7c4a68fa24-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "Plasma",
+        "w": 1440,
+        "h": 900,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "half-resolution",
+      "verdict": "reference",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "left",
+          "reason": "left: distinct, smoothly bounded coloured filaments develop into readable curled plumes across the sequence; native crops retain layered flow structure. right: broader diffuse colour masses, with later crops largely washed out or featureless. deciding evidence: left preserves coherent fluid contours at both scene and detail scales, not merely sharper tiny curls; both share intense central glare.",
+          "raw": "{\"verdict\":\"left\",\"reason\":\"left: distinct, smoothly bounded coloured filaments develop into readable curled plumes across the sequence; native crops retain layered flow structure. right: broader diffuse colour masses, with later crops largely washed out or featureless. deciding evidence: left preserves coherent fluid contours at both scene and detail scales, not merely sharper tiny curls; both share intense central glare.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/62f8149c-d5b4-48a9-ab10-a0313d5d314a/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/1602e97cf47c0c96-0.json"
+        },
+        {
+          "verdict": "right",
+          "reason": "left: broad, diffuse flow becomes increasingly washed out, with weakly separated structures in the native crops; right: coherent folded filaments and vortices remain more legible across the sequence, with smooth gradients and stronger colour separation; deciding evidence: right preserves connected flow structures at both scene and native-detail scales, rather than merely adding sharper tiny curls. Both lose definition in the bright late frames.",
+          "raw": "{\"verdict\":\"right\",\"reason\":\"left: broad, diffuse flow becomes increasingly washed out, with weakly separated structures in the native crops; right: coherent folded filaments and vortices remain more legible across the sequence, with smooth gradients and stronger colour separation; deciding evidence: right preserves connected flow structures at both scene and native-detail scales, rather than merely adding sharper tiny curls. Both lose definition in the bright late frames.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/cf673bb8-67c8-45f0-8ba3-427ec34ef422/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/1602e97cf47c0c96-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "CircularFluid",
+        "w": 800,
+        "h": 500,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "half-resolution",
+      "verdict": "reference",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "left",
+          "reason": "left: vivid colour, broad flowing bands and coherent nested vortices remain well resolved across the sequence; native crops show smooth gradients and connected filaments. right: vivid but more diffuse, with broad colour patches and fewer clearly resolved internal structures, especially at 5 and 20 seconds. deciding evidence: left combines scene-scale organization with clean, continuous fine structures rather than merely sharper or noisier curls.",
+          "raw": "{\"verdict\":\"left\",\"reason\":\"left: vivid colour, broad flowing bands and coherent nested vortices remain well resolved across the sequence; native crops show smooth gradients and connected filaments. right: vivid but more diffuse, with broad colour patches and fewer clearly resolved internal structures, especially at 5 and 20 seconds. deciding evidence: left combines scene-scale organization with clean, continuous fine structures rather than merely sharper or noisier curls.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/af32e3c8-5156-4525-9d0f-332da15e859e/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/704fb68d9fc3a0f5-0.json"
+        },
+        {
+          "verdict": "right",
+          "reason": "left: colourful broad flows develop, but filament boundaries remain diffuse and later structures merge into soft patches; right: coherent curling bands remain resolved across the sequence, with vivid colour and smooth gradients at whole-scene and native-detail scales; deciding evidence: the right preserves continuous filaments and organized vortex boundaries, not merely sharper edges or extra tiny curls.",
+          "raw": "{\"verdict\":\"right\",\"reason\":\"left: colourful broad flows develop, but filament boundaries remain diffuse and later structures merge into soft patches; right: coherent curling bands remain resolved across the sequence, with vivid colour and smooth gradients at whole-scene and native-detail scales; deciding evidence: the right preserves continuous filaments and organized vortex boundaries, not merely sharper edges or extra tiny curls.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/8d8d8b10-e801-4827-b5ff-dfb5d7580145/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/704fb68d9fc3a0f5-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "Aurora",
+        "w": 1440,
+        "h": 900,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "half-resolution",
+      "verdict": "reference",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "right",
+          "reason": "left: early filaments fade into diffuse clouds, with native crops losing colour separation and internal structure; right: coherent curved bands develop into distinct vortical regions, retaining vivid colour and readable boundaries across later scenes, despite some angular lobes in the crops; deciding evidence: stronger persistent whole-scene organization and better-resolved native-scale gradients, not sharpness alone.",
+          "raw": "{\"verdict\":\"right\",\"reason\":\"left: early filaments fade into diffuse clouds, with native crops losing colour separation and internal structure; right: coherent curved bands develop into distinct vortical regions, retaining vivid colour and readable boundaries across later scenes, despite some angular lobes in the crops; deciding evidence: stronger persistent whole-scene organization and better-resolved native-scale gradients, not sharpness alone.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/10c4b586-5280-4fbd-9eb7-05c2cacfa1d5/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/69d687d70d0287fe-0.json"
+        },
+        {
+          "verdict": "left",
+          "reason": "left: coherent rolled filaments develop into distinct coloured plumes across the sequence; native crops retain smooth gradients and separated folds, though later edges become lobed. right: early fragmented structures become increasingly diffuse, with native crops losing filament definition and colour separation. deciding evidence: left preserves organized flow at whole-scene scale and resolved internal structure at native scale; the advantage is not merely sharper edges or different swirl placement.",
+          "raw": "{\"verdict\":\"left\",\"reason\":\"left: coherent rolled filaments develop into distinct coloured plumes across the sequence; native crops retain smooth gradients and separated folds, though later edges become lobed. right: early fragmented structures become increasingly diffuse, with native crops losing filament definition and colour separation. deciding evidence: left preserves organized flow at whole-scene scale and resolved internal structure at native scale; the advantage is not merely sharper edges or different swirl placement.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/f9fc418f-3dbb-42f3-b89a-83ede99d92bc/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/69d687d70d0287fe-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "InkInWater",
+        "w": 800,
+        "h": 500,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "half-resolution",
+      "verdict": "reference",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "right",
+          "reason": "left: vivid blue flow, but later vortex bands broaden and merge into diffuse, uneven blobs; right: smooth gradients and clearly separated, continuous spiral bands that remain coherent through the later times. Deciding evidence: the right sequence preserves organized vortex structures at whole-scene scale and readable winding filaments in native-detail crops, rather than merely adding sharp or noisy curls.",
+          "raw": "{\"verdict\":\"right\",\"reason\":\"left: vivid blue flow, but later vortex bands broaden and merge into diffuse, uneven blobs; right: smooth gradients and clearly separated, continuous spiral bands that remain coherent through the later times. Deciding evidence: the right sequence preserves organized vortex structures at whole-scene scale and readable winding filaments in native-detail crops, rather than merely adding sharp or noisy curls.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/ada3656f-79a2-4684-8bcc-22957ab9e72f/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/30785c629ed91283-0.json"
+        },
+        {
+          "verdict": "left",
+          "reason": "left: coherent spiral filaments develop and remain clearly resolved across the sequence, with smooth blue gradients in the native-detail crops; right: similarly vivid colour, but broader, unevenly diffuse curls lose internal definition as the scene evolves; deciding evidence: the left preserves continuous vortex structure at both whole-scene and detail scales, rather than merely adding sharper or busier curls.",
+          "raw": "{\"verdict\":\"left\",\"reason\":\"left: coherent spiral filaments develop and remain clearly resolved across the sequence, with smooth blue gradients in the native-detail crops; right: similarly vivid colour, but broader, unevenly diffuse curls lose internal definition as the scene evolves; deciding evidence: the left preserves continuous vortex structure at both whole-scene and detail scales, rather than merely adding sharper or busier curls.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/f6b4105a-5899-4f99-a22b-5902303c5fbe/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/30785c629ed91283-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "Karman",
+        "w": 1440,
+        "h": 900,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "half-resolution",
+      "verdict": "reference",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "right",
+          "reason": "left: develops broad flow bands, but filaments remain more fragmented and tangled, with uneven fading in the detail crops; right: develops and sustains continuous coloured bands around the obstacle, with coherent downstream rolls and smooth gradients; deciding evidence: stronger scene-wide structural continuity across 5–20 seconds on the right, not extra tiny curls or sharpness. Native-detail crops offer no clear countervailing advantage for the left.",
+          "raw": "{\"verdict\":\"right\",\"reason\":\"left: develops broad flow bands, but filaments remain more fragmented and tangled, with uneven fading in the detail crops; right: develops and sustains continuous coloured bands around the obstacle, with coherent downstream rolls and smooth gradients; deciding evidence: stronger scene-wide structural continuity across 5–20 seconds on the right, not extra tiny curls or sharpness. Native-detail crops offer no clear countervailing advantage for the left.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/262785f4-26da-4d3f-8177-8e485f3035d6/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/5c99c82e40ecb33c-0.json"
+        },
+        {
+          "verdict": "left",
+          "reason": "left: continuous coloured filaments develop into a coherent wake and remain legible across the sequence, with smooth gradients; right: finer folded wisps develop, but colour bands become less distinct and flow structures more fragmented. Native-detail crops show no compensating clarity advantage on the right. Deciding evidence: stronger persistent whole-scene organization and cleaner fluid gradients on the left, rather than merely different swirl placement or sharper edges.",
+          "raw": "{\"verdict\":\"left\",\"reason\":\"left: continuous coloured filaments develop into a coherent wake and remain legible across the sequence, with smooth gradients; right: finer folded wisps develop, but colour bands become less distinct and flow structures more fragmented. Native-detail crops show no compensating clarity advantage on the right. Deciding evidence: stronger persistent whole-scene organization and cleaner fluid gradients on the left, rather than merely different swirl placement or sharper edges.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/d7c3c90a-76c9-462c-8832-15d9db9742d8/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/5c99c82e40ecb33c-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "Karman",
+        "w": 800,
+        "h": 500,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "half-resolution",
+      "verdict": "candidate",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "right",
+          "reason": "left: coherent, smooth scene-wide bands, but intermediate detail crops show broad, diffuse yellow-green flow with little resolved structure; right: continuous coloured streams develop distinct layered vortices and curved filaments, despite some roughness in the upper bands; deciding evidence: right preserves large-scale organization while resolving substantially more coherent fluid structure in the native-detail crops, not merely sharper edges or extra tiny curls.",
+          "raw": "{\"verdict\":\"right\",\"reason\":\"left: coherent, smooth scene-wide bands, but intermediate detail crops show broad, diffuse yellow-green flow with little resolved structure; right: continuous coloured streams develop distinct layered vortices and curved filaments, despite some roughness in the upper bands; deciding evidence: right preserves large-scale organization while resolving substantially more coherent fluid structure in the native-detail crops, not merely sharper edges or extra tiny curls.\"}\n",
+          "unblinded": "candidate",
+          "image": "/tmp/quality-eval/judge-inputs/c8bc6624-5ab6-4943-aa98-c2d8a5b4eac0/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/3db4b512b7e56fd6-0.json"
+        },
+        {
+          "verdict": "left",
+          "reason": "left: evolving, connected vortical folds with smooth gradients and resolved nested filaments in the middle-time crops; right: vivid, clean bands maintaining broad scene-scale organization, but later crops show mostly diffuse ribbons with little internal structure; deciding evidence: left develops coherent structures visible at both scales, rather than merely adding tiny curls, while retaining comparable large-scale organization.",
+          "raw": "{\"verdict\":\"left\",\"reason\":\"left: evolving, connected vortical folds with smooth gradients and resolved nested filaments in the middle-time crops; right: vivid, clean bands maintaining broad scene-scale organization, but later crops show mostly diffuse ribbons with little internal structure; deciding evidence: left develops coherent structures visible at both scales, rather than merely adding tiny curls, while retaining comparable large-scale organization.\"}\n",
+          "unblinded": "candidate",
+          "image": "/tmp/quality-eval/judge-inputs/fce28121-9344-40d3-8034-23100686d28b/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/3db4b512b7e56fd6-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "Karman",
+        "w": 1440,
+        "h": 900,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "karman128-p24",
+      "verdict": "reference",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "left",
+          "reason": "left: continuous coloured filaments develop into broad, coherent wake structures with smooth gradients; native crops are faint but clean. right: vivid early detail, but repeated jagged ripples and tangled fine curls interrupt otherwise coherent bands. deciding evidence: left preserves cleaner filament continuity across the sequence at whole-scene scale, without the right’s noisy fine edges; the advantage is structural smoothness, not swirl placement or sharpness.",
+          "raw": "{\"verdict\":\"left\",\"reason\":\"left: continuous coloured filaments develop into broad, coherent wake structures with smooth gradients; native crops are faint but clean. right: vivid early detail, but repeated jagged ripples and tangled fine curls interrupt otherwise coherent bands. deciding evidence: left preserves cleaner filament continuity across the sequence at whole-scene scale, without the right’s noisy fine edges; the advantage is structural smoothness, not swirl placement or sharpness.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/ba3fe0c6-8b00-4a0c-89f0-c0f64cb7a157/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/0c17000fe79d923f-0.json"
+        },
+        {
+          "verdict": "right",
+          "reason": "left: vivid streams develop into vortices, but fine rippling and tangled wake filaments increasingly interrupt their continuity; right: vivid bands remain smoother and more continuous around coherent, larger wake structures across the sequence. Native-detail crops show mostly sparse, smooth fluid gradients in both. Deciding evidence: better sustained whole-scene organization on the right, with fewer jagged small-scale distortions—not merely different swirl placement or sharper obstacle edges.",
+          "raw": "{\"verdict\":\"right\",\"reason\":\"left: vivid streams develop into vortices, but fine rippling and tangled wake filaments increasingly interrupt their continuity; right: vivid bands remain smoother and more continuous around coherent, larger wake structures across the sequence. Native-detail crops show mostly sparse, smooth fluid gradients in both. Deciding evidence: better sustained whole-scene organization on the right, with fewer jagged small-scale distortions—not merely different swirl placement or sharper obstacle edges.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/ca86afe6-cb1e-4f63-a467-d18f05dbd71f/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/0c17000fe79d923f-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "Karman",
+        "w": 800,
+        "h": 500,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "karman128-p24",
+      "verdict": "reference",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "right",
+          "reason": "left: vivid bands and developing vortices, but fine corrugations increasingly fragment the flow contours; right: similarly vivid colour with smoother, continuous filaments and coherent broad wake structures across 5–20 seconds; deciding evidence: right preserves cleaner whole-scene organization without the left’s ragged fine curls, while native-detail gradients remain smooth. The advantage is structural coherence, not sharpness or swirl placement.",
+          "raw": "{\"verdict\":\"right\",\"reason\":\"left: vivid bands and developing vortices, but fine corrugations increasingly fragment the flow contours; right: similarly vivid colour with smoother, continuous filaments and coherent broad wake structures across 5–20 seconds; deciding evidence: right preserves cleaner whole-scene organization without the left’s ragged fine curls, while native-detail gradients remain smooth. The advantage is structural coherence, not sharpness or swirl placement.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/a822c31f-f5f7-43a8-8615-8822b22b633b/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/0fcab5300bfed7a9-0.json"
+        },
+        {
+          "verdict": "left",
+          "reason": "left: coherent coloured bands develop into broad, persistent curved wakes, with smooth gradients and clean native-detail filaments; right: similarly organized wakes and vivid colour, but increasing jagged rippling along the outer streams, despite clearly resolved early curls; deciding evidence: large-scale organization is comparable, while the left maintains cleaner fluid contours across the sequence without the right’s noisy fine undulations.",
+          "raw": "{\"verdict\":\"left\",\"reason\":\"left: coherent coloured bands develop into broad, persistent curved wakes, with smooth gradients and clean native-detail filaments; right: similarly organized wakes and vivid colour, but increasing jagged rippling along the outer streams, despite clearly resolved early curls; deciding evidence: large-scale organization is comparable, while the left maintains cleaner fluid contours across the sequence without the right’s noisy fine undulations.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/67714057-982d-4dd8-b0aa-ea39ab07b78b/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/0fcab5300bfed7a9-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "Plasma",
+        "w": 1440,
+        "h": 900,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "desaturation",
+      "verdict": "reference",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "left",
+          "reason": "left: coherent curling sheets and filaments, smooth native-detail gradients, stronger magenta, blue and yellow-green separation across the sequence; right: comparable large-scale flow organization and smooth folds, but colours appear more muted and later detail more washed out; deciding evidence: left preserves richer colour and clearer fluid-layer separation at both scales without adding noisy curls. Structural evolution is otherwise comparable; bright central regions obscure detail in both.",
+          "raw": "{\"verdict\":\"left\",\"reason\":\"left: coherent curling sheets and filaments, smooth native-detail gradients, stronger magenta, blue and yellow-green separation across the sequence; right: comparable large-scale flow organization and smooth folds, but colours appear more muted and later detail more washed out; deciding evidence: left preserves richer colour and clearer fluid-layer separation at both scales without adding noisy curls. Structural evolution is otherwise comparable; bright central regions obscure detail in both.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/0760cd3d-beec-4da0-b816-8c2237eed722/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/69453ac7c58bbb60-0.json"
+        },
+        {
+          "verdict": "right",
+          "reason": "left: coherent curled filaments develop into broad, smooth billows, but colour becomes muted and detail looks washed out; right: similarly coherent structural evolution, with more vivid colour and clearer filament separation in the native-detail crops; deciding evidence: comparable large-scale organization and spatial smoothness, but right preserves stronger colour gradients and readable fluid structure without added jagged or noisy curls.",
+          "raw": "{\"verdict\":\"right\",\"reason\":\"left: coherent curled filaments develop into broad, smooth billows, but colour becomes muted and detail looks washed out; right: similarly coherent structural evolution, with more vivid colour and clearer filament separation in the native-detail crops; deciding evidence: comparable large-scale organization and spatial smoothness, but right preserves stronger colour gradients and readable fluid structure without added jagged or noisy curls.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/16e03e2e-c5e4-465d-b083-8a9b8b248cb0/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/69453ac7c58bbb60-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "CircularFluid",
+        "w": 800,
+        "h": 500,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "desaturation",
+      "verdict": "reference",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "right",
+          "reason": "left: coherent evolving vortices and smooth filaments, but colours appear muted and washed out; right: similarly coherent structures across all four times, with richer colour and clearer separation of flowing bands in native crops; deciding evidence: right improves colour and fluid-band visibility at both scales without adding noisy curls; large-scale organization is comparable.",
+          "raw": "{\"verdict\":\"right\",\"reason\":\"left: coherent evolving vortices and smooth filaments, but colours appear muted and washed out; right: similarly coherent structures across all four times, with richer colour and clearer separation of flowing bands in native crops; deciding evidence: right improves colour and fluid-band visibility at both scales without adding noisy curls; large-scale organization is comparable.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/892f46af-76b7-49c2-84dd-ab206b4ce0bb/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/644cbd0195ea46ca-0.json"
+        },
+        {
+          "verdict": "left",
+          "reason": "left: coherent evolving vortices and connected filaments, smooth gradients, vivid yellow, cyan and magenta; right: similarly coherent structures and smooth native-detail curls, but paler colour and weaker filament contrast. Deciding evidence: large-scale organization and fine-detail clarity are comparable across the sequence; left preserves richer colour and clearer fluid-band separation at both scales without added noisy curls.",
+          "raw": "{\"verdict\":\"left\",\"reason\":\"left: coherent evolving vortices and connected filaments, smooth gradients, vivid yellow, cyan and magenta; right: similarly coherent structures and smooth native-detail curls, but paler colour and weaker filament contrast. Deciding evidence: large-scale organization and fine-detail clarity are comparable across the sequence; left preserves richer colour and clearer fluid-band separation at both scales without added noisy curls.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/a2d199ad-45fe-4ee0-90f4-3df19cb46e05/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/644cbd0195ea46ca-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "Aurora",
+        "w": 1440,
+        "h": 900,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "desaturation",
+      "verdict": "reference",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "left",
+          "reason": "left: vivid cyan, green and magenta; smooth layered filaments develop into organized plumes, with clean gradients in native-detail crops; right: comparable structural evolution and small-scale clarity, but paler, more subdued colour throughout; deciding evidence: left preserves stronger colour separation at both scales without additional noisy curls. Flow organization is otherwise comparable.",
+          "raw": "{\"verdict\":\"left\",\"reason\":\"left: vivid cyan, green and magenta; smooth layered filaments develop into organized plumes, with clean gradients in native-detail crops; right: comparable structural evolution and small-scale clarity, but paler, more subdued colour throughout; deciding evidence: left preserves stronger colour separation at both scales without additional noisy curls. Flow organization is otherwise comparable.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/3e7d53f6-9d59-4b74-b3fc-df98ce7168c1/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/137c8be6429a700f-0.json"
+        },
+        {
+          "verdict": "right",
+          "reason": "left: coherent early filaments develop into broader plumes, with smooth native-detail gradients but muted, greyish colour; right: similarly coherent structural evolution and smooth detail, with more vivid green and magenta and stronger fluid colour separation; deciding evidence: richer colour persists across the sequence at both scales without added jagged or noisy curls; structural quality is otherwise comparable.",
+          "raw": "{\"verdict\":\"right\",\"reason\":\"left: coherent early filaments develop into broader plumes, with smooth native-detail gradients but muted, greyish colour; right: similarly coherent structural evolution and smooth detail, with more vivid green and magenta and stronger fluid colour separation; deciding evidence: richer colour persists across the sequence at both scales without added jagged or noisy curls; structural quality is otherwise comparable.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/aebf3b13-abe5-4a9a-a9c3-0f1775671f4e/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/137c8be6429a700f-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "InkInWater",
+        "w": 800,
+        "h": 500,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "desaturation",
+      "verdict": "reference",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "right",
+          "reason": "left: coherent paired vortices develop across the sequence, with smooth but pale, diffuse spiral bands; right: similarly coherent evolution, with richer blue colour and better-separated, smoothly resolved filaments in the native crops; deciding evidence: large-scale organization is comparable, while the right preserves clearer fluid gradients and more vivid colour without noisy or jagged extra curls.",
+          "raw": "{\"verdict\":\"right\",\"reason\":\"left: coherent paired vortices develop across the sequence, with smooth but pale, diffuse spiral bands; right: similarly coherent evolution, with richer blue colour and better-separated, smoothly resolved filaments in the native crops; deciding evidence: large-scale organization is comparable, while the right preserves clearer fluid gradients and more vivid colour without noisy or jagged extra curls.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/88c59f23-e87c-40f2-accd-92f553f561c6/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/4574e209788f7a4e-0.json"
+        },
+        {
+          "verdict": "left",
+          "reason": "left: coherent spirals develop into connected, sweeping filaments, with vivid blue colour and smooth gradients; right: similarly organized evolution, but muted colour and more diffuse filament contrast. Deciding evidence: whole-scene organization is comparable; native-detail crops show clearer spiral bands and connecting filaments on the left without added jagged or noisy curls.",
+          "raw": "{\"verdict\":\"left\",\"reason\":\"left: coherent spirals develop into connected, sweeping filaments, with vivid blue colour and smooth gradients; right: similarly organized evolution, but muted colour and more diffuse filament contrast. Deciding evidence: whole-scene organization is comparable; native-detail crops show clearer spiral bands and connecting filaments on the left without added jagged or noisy curls.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/d2c086db-3626-4f1a-95cb-6a6854432474/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/4574e209788f7a4e-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "Karman",
+        "w": 1440,
+        "h": 900,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "desaturation",
+      "verdict": "reference",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "left",
+          "reason": "left: coherent coloured bands persist across the sequence, with clearer green/yellow wake filaments and smooth gradients; right: comparable large-scale organization, but more muted colour and weaker filament separation; deciding evidence: left retains vivid, readable fluid structures through 5–20 seconds, supported by stronger smooth colour traces in the early native-detail crop—not merely sharper edges or extra curls.",
+          "raw": "{\"verdict\":\"left\",\"reason\":\"left: coherent coloured bands persist across the sequence, with clearer green/yellow wake filaments and smooth gradients; right: comparable large-scale organization, but more muted colour and weaker filament separation; deciding evidence: left retains vivid, readable fluid structures through 5–20 seconds, supported by stronger smooth colour traces in the early native-detail crop—not merely sharper edges or extra curls.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/7f625127-2333-42aa-93cb-b5d3c9772d39/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/7ba814fc9f8f31ea-0.json"
+        },
+        {
+          "verdict": "right",
+          "reason": "left: coherent ribbons and developing wakes, but colours are muted and filaments softer; right: similarly coherent structural evolution, with more vivid colour and clearer continuous filaments while retaining smooth gradients; deciding evidence: right preserves comparable large-scale organization across the sequence while improving fluid visibility and native-detail separation without adding noisy curls.",
+          "raw": "{\"verdict\":\"right\",\"reason\":\"left: coherent ribbons and developing wakes, but colours are muted and filaments softer; right: similarly coherent structural evolution, with more vivid colour and clearer continuous filaments while retaining smooth gradients; deciding evidence: right preserves comparable large-scale organization across the sequence while improving fluid visibility and native-detail separation without adding noisy curls.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/fed45462-6af9-495d-805b-449fe7e5adbf/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/7ba814fc9f8f31ea-1.json"
+        }
+      ]
+    },
+    {
+      "scene": {
+        "preset": "Karman",
+        "w": 800,
+        "h": 500,
+        "dpr": 2,
+        "seed": 5
+      },
+      "reference": "baseline",
+      "candidate": "desaturation",
+      "verdict": "reference",
+      "inconsistent": false,
+      "trials": [
+        {
+          "verdict": "left",
+          "reason": "left: coherent coloured streams develop into broad, persistent wake structures; native-detail bands retain vivid green and yellow with smooth gradients. right: similarly coherent structural evolution and smooth detail, but colours appear paler and less distinct. deciding evidence: comparable large-scale organization and filament clarity; left preserves stronger colour separation and saturation at both scales, without added noisy curls.",
+          "raw": "{\"verdict\":\"left\",\"reason\":\"left: coherent coloured streams develop into broad, persistent wake structures; native-detail bands retain vivid green and yellow with smooth gradients. right: similarly coherent structural evolution and smooth detail, but colours appear paler and less distinct. deciding evidence: comparable large-scale organization and filament clarity; left preserves stronger colour separation and saturation at both scales, without added noisy curls.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/fe1a9bb9-428e-4acf-8fbe-a662f7a73811/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/74c531691d557018-0.json"
+        },
+        {
+          "verdict": "right",
+          "reason": "left: coherent ribbons and developing wake vortices, but colours appear muted and filaments diffuse; right: similarly coherent structures persist through 5–20 seconds, with richer colours and clearer fluid bands while retaining smooth gradients; deciding evidence: right preserves comparable whole-scene organization with visibly stronger colour separation in the native-detail crops, without relying on noisy fine curls.",
+          "raw": "{\"verdict\":\"right\",\"reason\":\"left: coherent ribbons and developing wake vortices, but colours appear muted and filaments diffuse; right: similarly coherent structures persist through 5–20 seconds, with richer colours and clearer fluid bands while retaining smooth gradients; deciding evidence: right preserves comparable whole-scene organization with visibly stronger colour separation in the native-detail crops, without relying on noisy fine curls.\"}\n",
+          "unblinded": "reference",
+          "image": "/tmp/quality-eval/judge-inputs/8008295a-f1be-45c2-bb60-8cd6a688e8f2/pair.png",
+          "sidecar": "/tmp/quality-eval/judge-mappings/74c531691d557018-1.json"
+        }
+      ]
+    }
+  ]
+}
