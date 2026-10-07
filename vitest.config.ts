@@ -49,7 +49,7 @@ const browserProject = defineProject({
 			provider: playwright(
 				process.env.VITEST_CHROME_PATH
 					? {
-							launchOptions: { executablePath: process.env.VITEST_CHROME_PATH },
+							launchOptions: { executablePath: process.env.VITEST_CHROME_PATH, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'] },
 							// Opt-in DPR for native-DPR captures and GPU benches.
 							...(process.env.SVELTE_FLUID_DPR ? { contextOptions: { deviceScaleFactor: Number(process.env.SVELTE_FLUID_DPR) } } : {})
 						}
