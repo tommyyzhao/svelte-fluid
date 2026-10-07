@@ -1,0 +1,512 @@
+{
+	"protocol": "ADR 0107 E3",
+	"splitSalt": "svelte-fluid-e3-split-v1:",
+	"tasks": [
+		{
+			"id": "basic-card",
+			"prompt": "Create a fluid animation filling a 600 by 360 pixel card.",
+			"components": [
+				"Fluid"
+			],
+			"props": {
+				"width": 600,
+				"height": 360
+			},
+			"split": "train",
+			"route": "src/routes/basic-card/+page.svelte"
+		},
+		{
+			"id": "viewport-background",
+			"prompt": "Put a fluid background behind a full page with a heading and a navigation link.",
+			"components": [
+				"FluidBackground"
+			],
+			"split": "train",
+			"route": "src/routes/viewport-background/+page.svelte"
+		},
+		{
+			"id": "background-holes",
+			"prompt": "Make a full-page fluid background with a card that the fluid avoids. Use .panel for the card and leave 12 pixels of padding around it.",
+			"components": [
+				"FluidBackground"
+			],
+			"props": {
+				"exclude": ".panel",
+				"excludePad": 12
+			},
+			"split": "train",
+			"route": "src/routes/background-holes/+page.svelte"
+		},
+		{
+			"id": "lava-preset",
+			"prompt": "Show the library's LavaLamp preset in a 480 by 400 pixel area with repeatable seed 17.",
+			"components": [
+				"LavaLamp"
+			],
+			"props": {
+				"width": 480,
+				"height": 400,
+				"seed": 17
+			},
+			"split": "train",
+			"route": "src/routes/lava-preset/+page.svelte"
+		},
+		{
+			"id": "aurora-preset",
+			"prompt": "Show the Aurora preset in a 600 by 300 pixel area, capped at two physical pixels per CSS pixel.",
+			"components": [
+				"Aurora"
+			],
+			"props": {
+				"width": 600,
+				"height": 300,
+				"maxPixelRatio": 2
+			},
+			"split": "train",
+			"route": "src/routes/aurora-preset/+page.svelte"
+		},
+		{
+			"id": "karman-preset",
+			"prompt": "Show the Karman vortex-street preset in a 640 by 360 pixel area and disable pointer input.",
+			"components": [
+				"Karman"
+			],
+			"props": {
+				"width": 640,
+				"height": 360,
+				"pointerInput": false
+			},
+			"split": "train",
+			"route": "src/routes/karman-preset/+page.svelte"
+		},
+		{
+			"id": "reveal-content",
+			"prompt": "Make a 600 by 360 scratch-to-reveal panel hiding a heading saying Secret. Revealed areas should remain revealed.",
+			"components": [
+				"FluidReveal"
+			],
+			"props": {
+				"width": 600,
+				"height": 360,
+				"fadeBack": false
+			},
+			"split": "test",
+			"route": "src/routes/reveal-content/+page.svelte"
+		},
+		{
+			"id": "reveal-sensitivity",
+			"prompt": "Make a scratch reveal panel sized 500 by 300 with sensitivity 0.2 and curve 0.8, covering text saying Prize.",
+			"components": [
+				"FluidReveal"
+			],
+			"props": {
+				"width": 500,
+				"height": 300,
+				"sensitivity": 0.2,
+				"curve": 0.8
+			},
+			"split": "train",
+			"route": "src/routes/reveal-sensitivity/+page.svelte"
+		},
+		{
+			"id": "distort-photo",
+			"prompt": "Warp /sample.svg as a liquid image in a 600 by 360 panel. Keep the whole image visible and set distortion strength to 0.3.",
+			"components": [
+				"FluidDistortion"
+			],
+			"props": {
+				"src": "/sample.svg",
+				"width": 600,
+				"height": 360,
+				"fit": "contain",
+				"strength": 0.3
+			},
+			"split": "train",
+			"route": "src/routes/distort-photo/+page.svelte"
+		},
+		{
+			"id": "distort-auto",
+			"prompt": "Make /sample.svg gently animate with automatic liquid distortion in a 500 by 300 area until someone interacts.",
+			"components": [
+				"FluidDistortion"
+			],
+			"props": {
+				"src": "/sample.svg",
+				"width": 500,
+				"height": 300,
+				"autoDistort": true
+			},
+			"split": "train",
+			"route": "src/routes/distort-auto/+page.svelte"
+		},
+		{
+			"id": "sticky-word",
+			"prompt": "Create a 600 by 360 fluid panel where dye sticks to the word HELLO.",
+			"components": [
+				"FluidStick"
+			],
+			"props": {
+				"width": 600,
+				"height": 360,
+				"text": "HELLO"
+			},
+			"split": "train",
+			"route": "src/routes/sticky-word/+page.svelte"
+		},
+		{
+			"id": "fluid-letterforms",
+			"prompt": "Render the word WATER with animated fluid confined inside its letters, 600 pixels wide.",
+			"components": [
+				"FluidText"
+			],
+			"props": {
+				"text": "WATER",
+				"width": 600
+			},
+			"split": "test",
+			"route": "src/routes/fluid-letterforms/+page.svelte"
+		},
+		{
+			"id": "splat-button",
+			"prompt": "Add a 500 by 300 fluid panel and a button that injects an orange splat at its center moving upward when clicked.",
+			"components": [
+				"Fluid"
+			],
+			"props": {
+				"width": 500,
+				"height": 300
+			},
+			"calls": [
+				"splat"
+			],
+			"bindings": [
+				"this"
+			],
+			"split": "test",
+			"route": "src/routes/splat-button/+page.svelte"
+		},
+		{
+			"id": "pause-buttons",
+			"prompt": "Add a 500 by 300 fluid panel with separate Pause and Resume buttons controlling the animation through its imperative API.",
+			"components": [
+				"Fluid"
+			],
+			"props": {
+				"width": 500,
+				"height": 300
+			},
+			"calls": [
+				"pause",
+				"resume"
+			],
+			"bindings": [
+				"this"
+			],
+			"split": "train",
+			"route": "src/routes/pause-buttons/+page.svelte"
+		},
+		{
+			"id": "visibility-pause",
+			"prompt": "Create a 500 by 300 fluid panel that automatically pauses when hidden or scrolled offscreen; keep its resources alive rather than lazily destroying it.",
+			"components": [
+				"Fluid"
+			],
+			"props": {
+				"width": 500,
+				"height": 300,
+				"autoPause": true,
+				"lazy": false
+			},
+			"split": "train",
+			"route": "src/routes/visibility-pause/+page.svelte"
+		},
+		{
+			"id": "lazy-gallery",
+			"prompt": "Build two stacked 500 by 300 fluid panels that only instantiate while near the viewport and release resources when scrolled away.",
+			"components": [
+				"Fluid"
+			],
+			"props": {
+				"width": 500,
+				"height": 300,
+				"lazy": true
+			},
+			"count": 2,
+			"split": "train",
+			"route": "src/routes/lazy-gallery/+page.svelte"
+		},
+		{
+			"id": "reduced-motion",
+			"prompt": "Create a 500 by 300 fluid animation that becomes still when the visitor prefers reduced motion. Browser preference access must be safe during server rendering.",
+			"components": [
+				"Fluid"
+			],
+			"props": {
+				"width": 500,
+				"height": 300
+			},
+			"present": [
+				"paused"
+			],
+			"strings": [
+				"prefers-reduced-motion"
+			],
+			"split": "train",
+			"route": "src/routes/reduced-motion/+page.svelte"
+		},
+		{
+			"id": "pixel-cap",
+			"prompt": "Add a 640 by 400 fluid canvas and cap its physical resolution at 1.5 times its CSS dimensions.",
+			"components": [
+				"Fluid"
+			],
+			"props": {
+				"width": 640,
+				"height": 400,
+				"maxPixelRatio": 1.5
+			},
+			"split": "test",
+			"route": "src/routes/pixel-cap/+page.svelte"
+		},
+		{
+			"id": "poster-fallback",
+			"prompt": "Add a 500 by 300 fluid panel with /sample.svg as its static poster when graphics are unavailable, with alt text Fluid still.",
+			"components": [
+				"Fluid"
+			],
+			"props": {
+				"width": 500,
+				"height": 300,
+				"poster": "/sample.svg",
+				"posterAlt": "Fluid still"
+			},
+			"split": "test",
+			"route": "src/routes/poster-fallback/+page.svelte"
+		},
+		{
+			"id": "custom-fallback",
+			"prompt": "Add a 500 by 300 fluid panel with custom fallback UI saying Animation unavailable if WebGL cannot run.",
+			"components": [
+				"Fluid"
+			],
+			"props": {
+				"width": 500,
+				"height": 300
+			},
+			"present": [
+				"fallback"
+			],
+			"strings": [
+				"Animation unavailable"
+			],
+			"split": "test",
+			"route": "src/routes/custom-fallback/+page.svelte"
+		},
+		{
+			"id": "ready-error",
+			"prompt": "Add a 500 by 300 fluid panel with status text that changes when initialization finishes or fails. Use the component's readiness and error callbacks.",
+			"components": [
+				"Fluid"
+			],
+			"props": {
+				"width": 500,
+				"height": 300
+			},
+			"present": [
+				"onReady",
+				"onError"
+			],
+			"split": "test",
+			"route": "src/routes/ready-error/+page.svelte"
+		},
+		{
+			"id": "live-flow",
+			"prompt": "Create a 600 by 360 live flow scene with a continuous blue point source at x 0.1, y 0.5, pushing rightward and an outlet on the right edge.",
+			"components": [
+				"Fluid"
+			],
+			"props": {
+				"width": 600,
+				"height": 360,
+				"flow.mode": "live",
+				"flow.sources.0.kind": "point",
+				"flow.sources.0.x": 0.1,
+				"flow.sources.0.y": 0.5,
+				"flow.outlets.0.edge": "right"
+			},
+			"split": "train",
+			"route": "src/routes/live-flow/+page.svelte"
+		},
+		{
+			"id": "flow-buoyancy",
+			"prompt": "Create a 600 by 360 fluid scene with a temperature scalar, a hot point source near the bottom, and upward buoyancy driven by temperature.",
+			"components": [
+				"Fluid"
+			],
+			"props": {
+				"width": 600,
+				"height": 360,
+				"flow.scalarFields.0.name": "temperature",
+				"flow.forces.0.kind": "buoyancy",
+				"flow.forces.0.scalar": "temperature"
+			},
+			"split": "train",
+			"route": "src/routes/flow-buoyancy/+page.svelte"
+		},
+		{
+			"id": "circle-container",
+			"prompt": "Confine fluid inside a centered circle of radius 0.4 in a 500 by 400 panel.",
+			"components": [
+				"Fluid"
+			],
+			"props": {
+				"width": 500,
+				"height": 400,
+				"containerShape.type": "circle",
+				"containerShape.cx": 0.5,
+				"containerShape.cy": 0.5,
+				"containerShape.radius": 0.4
+			},
+			"split": "test",
+			"route": "src/routes/circle-container/+page.svelte"
+		},
+		{
+			"id": "rounded-container",
+			"prompt": "Confine fluid inside a centered rounded rectangle in a 600 by 360 panel. Half-width 0.4, half-height 0.35, corner radius 0.06.",
+			"components": [
+				"Fluid"
+			],
+			"props": {
+				"width": 600,
+				"height": 360,
+				"containerShape.type": "roundedRect",
+				"containerShape.halfW": 0.4,
+				"containerShape.halfH": 0.35,
+				"containerShape.cornerRadius": 0.06
+			},
+			"split": "train",
+			"route": "src/routes/rounded-container/+page.svelte"
+		},
+		{
+			"id": "annulus-container",
+			"prompt": "Confine fluid to a centered circular ring in a 500 by 400 panel, inner radius 0.15 and outer radius 0.4.",
+			"components": [
+				"Fluid"
+			],
+			"props": {
+				"width": 500,
+				"height": 400,
+				"containerShape.type": "annulus",
+				"containerShape.innerRadius": 0.15,
+				"containerShape.outerRadius": 0.4
+			},
+			"split": "train",
+			"route": "src/routes/annulus-container/+page.svelte"
+		},
+		{
+			"id": "svg-container",
+			"prompt": "Confine a 500 by 400 fluid panel inside this triangle SVG path: M50 5 L95 95 L5 95 Z. Use a 0 0 100 100 view box.",
+			"components": [
+				"Fluid"
+			],
+			"props": {
+				"width": 500,
+				"height": 400,
+				"containerShape.type": "svgPath",
+				"containerShape.d": "M50 5 L95 95 L5 95 Z",
+				"containerShape.viewBox": [
+					0,
+					0,
+					100,
+					100
+				]
+			},
+			"split": "train",
+			"route": "src/routes/svg-container/+page.svelte"
+		},
+		{
+			"id": "ssr-route",
+			"prompt": "Create a server-rendered SvelteKit page with a heading saying Welcome and a 600 by 360 fluid animation. Keep SSR enabled; importing the component must not access browser globals on the server.",
+			"components": [
+				"Fluid"
+			],
+			"props": {
+				"width": 600,
+				"height": 360
+			},
+			"strings": [
+				"Welcome"
+			],
+			"split": "train",
+			"route": "src/routes/ssr-route/+page.svelte"
+		},
+		{
+			"id": "multiple-presets",
+			"prompt": "Put LavaLamp and Plasma side by side, each 400 by 300, with seeds 11 and 23 respectively.",
+			"components": [
+				"LavaLamp",
+				"Plasma"
+			],
+			"byComponent": {
+				"LavaLamp": {
+					"width": 400,
+					"height": 300,
+					"seed": 11
+				},
+				"Plasma": {
+					"width": 400,
+					"height": 300,
+					"seed": 23
+				}
+			},
+			"split": "train",
+			"route": "src/routes/multiple-presets/+page.svelte"
+		},
+		{
+			"id": "hover-cursor",
+			"prompt": "Create a full-page transparent fluid cursor overlay reacting to mouse movement anywhere in the window without requiring a click. Keep the page's links clickable.",
+			"components": [
+				"Fluid"
+			],
+			"props": {
+				"transparent": true,
+				"pointerTarget": "window",
+				"splatOnHover": true
+			},
+			"split": "test",
+			"route": "src/routes/hover-cursor/+page.svelte"
+		}
+	],
+	"splitOrder": [
+		"poster-fallback",
+		"splat-button",
+		"reveal-content",
+		"ready-error",
+		"circle-container",
+		"pixel-cap",
+		"fluid-letterforms",
+		"hover-cursor",
+		"custom-fallback",
+		"basic-card",
+		"visibility-pause",
+		"multiple-presets",
+		"rounded-container",
+		"sticky-word",
+		"viewport-background",
+		"aurora-preset",
+		"karman-preset",
+		"distort-auto",
+		"background-holes",
+		"svg-container",
+		"live-flow",
+		"reduced-motion",
+		"distort-photo",
+		"pause-buttons",
+		"reveal-sensitivity",
+		"lazy-gallery",
+		"flow-buoyancy",
+		"lava-preset",
+		"ssr-route",
+		"annulus-container"
+	]
+}
