@@ -1,7 +1,9 @@
-# ADR 0106: Proposed TeslaValve quality budget
+# ADR 0106: TeslaValve quality budget
 
-**Status:** Proposed — awaiting owner visual review
+**Status:** Accepted
 **Date:** 2026-10-06
+
+**Acceptance (2026-10-06):** The owner delegated the decision to the lead, stating that the <2 ms target is not critical; the real requirement is not draining laptop and phone batteries. The lead accepted the change because it cuts TeslaValve's GPU time by roughly 25–30% while the valve's flow stays clearly readable in the clips (it is only softer). Karman and GasFlare stay unchanged. Their remaining overage is small, `autoPause` (default `true`) already stops every offscreen or hidden-tab instance, and Karman's deeper candidate visibly loses its regular vortex street. The sections below keep the original proposal wording.
 
 ## Context
 
