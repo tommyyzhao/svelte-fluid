@@ -10,7 +10,7 @@
 <h1>Configuration</h1>
 <p class="subtitle">
 	Full prop reference for <code>FluidConfig</code>. Every field is optional — the engine fills in
-	defaults at construction time. Pass these as props to <code>&lt;Fluid&gt;</code> or any preset component.
+	defaults at construction time. Pass these as props to <code>&lt;Fluid&gt;</code>. Presets expose only their documented common and scene-specific props; their physics recipes are fixed.
 </p>
 
 <!-- ================================================================ -->
@@ -286,7 +286,7 @@
 			<td><code>minContrast</code></td>
 			<td><code>number</code></td>
 			<td><code>0</code> (off)</td>
-			<td>WCAG contrast floor (1-21) the display pass enforces against <code>contrastColor</code>: failing pixels are lightened or darkened with hue kept; pixels already passing against the reference are untouched. Glass reflections are excluded. <code>FluidText</code> defaults to 3 with an outline halo, not a fill correction; use 4.5 for small text. Toggling on/off recompiles the display shader; changing the value is hot.</td>
+			<td>WCAG contrast floor (1-21) the display pass enforces against <code>contrastColor</code>: failing pixels are lightened or darkened with hue kept; pixels already passing against the reference are untouched. Glass reflections are excluded. <code>FluidText</code> defaults to 4.5 with an outline halo, not a fill correction; 3 is an opt-in for large text. Toggling on/off recompiles the display shader; changing the value is hot.</td>
 		</tr>
 		<tr>
 			<td><code>contrastColor</code></td>
