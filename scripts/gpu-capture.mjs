@@ -7,7 +7,8 @@
 // Env: GPU_CAPTURE_OVERRIDE='{"pressureIterations":26}' (test-only quality overrides).
 // Hardware Chrome with ordinary flags: Playwright's default --enable-unsafe-swiftshader is removed.
 import { chromium } from 'playwright';
-import { mkdir, writeFile, readFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, rm, readdir, stat } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import assert from 'node:assert/strict';
 import { execFile, execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -403,6 +404,20 @@ const census = () => execFileSync('ps', ['-axo', 'pid=,ppid=,command='], { encod
 let browser, gpuPid, server, machineDpr;
 const save = () => writeFileSync(CAPTURE_FILE, JSON.stringify({ sha, machineDpr, chrome: CHROME, seeds, protocol, override, results, scenes: sceneVerdicts(results, RUNS, seeds) }, null, 2));
 const exactOwned = new Map();
+const traceTemps = new Set();
+let scratchBefore;
+const scratchNames = async () => (await readdir(tmpdir())).filter((name) => /^instruments.*\.ktrace$/.test(name));
+async function releaseTraceTemps() {
+	const deleted = [];
+	if (scratchBefore) for (const name of await scratchNames()) if (!scratchBefore.has(name)) {
+		const path = `${tmpdir()}/${name}`, s = await stat(path);
+		assert.equal(s.uid, process.getuid(), 'Foreign Instruments scratch owner');
+		deleted.push({ name, bytes: s.size }); await rm(path);
+	}
+	scratchBefore = null;
+	for (const path of traceTemps) { await rm(path, { recursive: true, force: true }); traceTemps.delete(path); }
+	return deleted;
+}
 function rememberOwned() {
 	const rows = census(), ids = new Set([process.pid]);
 	for (let changed = true; changed;) { changed = false; for (const r of rows) if (ids.has(r.ppid) && !ids.has(r.pid)) { ids.add(r.pid); changed = true; } }
@@ -494,6 +509,7 @@ try {
 					cleanupOwned(); page = null; pageDpr = null; Bun.gc(true);
 					r = { ...c, name, trace: `${DIR}/${name}-a${attempt}.trace`, measuredFrames: FRAMES, completedFrames: state.marks.length, marks: state.marks, visibility: state.visibility, error: state.error ?? String(error.message), phase: state.phase, aligned: false, clusters: 0, framesWithPresentWrite: 0, p95Ms: NaN, medianMs: NaN, maxMs: NaN, frameDetail: [], perFrameGpuMs: [], transfersOk: false };
 				}
+				r.scratchDeleted = await releaseTraceTemps();
 				const overlapMs = r.frameDetail.reduce((s, f) => s + Object.entries(f.overlap).filter(([k]) => !/^WindowServer \(/.test(k)).reduce((t, [, v]) => t + v, 0), 0);
 				const gpuSum = r.perFrameGpuMs.reduce((s, v) => s + v, 0);
 				r.foreignOverlapMs = +overlapMs.toFixed(3); r.foreignOverlapPct = gpuSum ? +(100 * overlapMs / gpuSum).toFixed(3) : 0; r.contended = r.foreignOverlapPct >= 5; r.verdict = verdict(r);
@@ -508,7 +524,7 @@ try {
 		try { await attemptDeadline(async (signal) => { if (browser) await abortable(browser.close(), signal); browser = null; }, cleanupOwned, closing, 10000); } catch { cleanupOwned(); }
 	}
 } finally {
-	clearTimeout(watchdog); save(); cleanupOwned();
+	clearTimeout(watchdog); save(); cleanupOwned(); await releaseTraceTemps();
 }
 process.exit(0); // terminated Playwright transports must not retain a completed driver
 
@@ -624,13 +640,16 @@ async function capture(page, c, name, attempt, phase, signal, state) {
 		phase('recorder startup');
 		const pid = gpuPid();
 		const trace = `${DIR}/${name}-a${attempt}.trace`;
+		const traceTmp = `${trace}-tmp`;
+		await mkdir(traceTmp); traceTemps.add(traceTmp);
 		execFileSync('rm', ['-rf', trace]);
 		const note = `svelte-fluid.gpu-capture.${process.pid}.${name}.${attempt}`;
 		signal.throwIfAborted(); const started = Bun.spawn(['/usr/bin/notifyutil', '-1', note], { stdout: 'ignore' });
 		owned.push(started);
 		const cmd = ['xcrun', 'xctrace', 'record', '--template', 'Metal System Trace', '--attach', String(pid), '--time-limit', `${TRACE_LIMIT_S}s`, '--no-prompt', '--notify-tracing-started', note, '--output', trace];
 		const recordingStarted = performance.now();
-		signal.throwIfAborted(); const rec = Bun.spawn(['env', `DEVELOPER_DIR=${XCODE.DEVELOPER_DIR}`, ...cmd], { env: XCODE, stdout: 'pipe', stderr: 'pipe' });
+		scratchBefore = new Set(await scratchNames());
+		signal.throwIfAborted(); const rec = Bun.spawn(['env', `DEVELOPER_DIR=${XCODE.DEVELOPER_DIR}`, ...cmd], { env: { ...XCODE, TMPDIR: traceTmp }, stdout: 'pipe', stderr: 'pipe' });
 		owned.push(rec);
 		await abortable(Promise.race([started.exited, Bun.sleep(6000)]), signal);
 		started.kill();
