@@ -39,6 +39,7 @@ const rich: Required<FluidConfig> = {
 	refraction: 0.6,
 	colorful: false,
 	colorUpdateSpeed: 3,
+	maxFps: 30,
 	paused: true,
 	backColor: c,
 	transparent: true,

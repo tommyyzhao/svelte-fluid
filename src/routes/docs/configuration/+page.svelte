@@ -84,7 +84,7 @@
 				<td><code>substeps</code></td>
 				<td><code>number</code></td>
 				<td><code>1</code></td>
-				<td>Minimum solver substeps per rendered frame. Higher values improve stability at extra GPU cost.</td>
+				<td>Minimum solver substeps per animation frame, independent of presentation cadence. Higher values improve stability at extra GPU cost.</td>
 			</tr>
 			<tr>
 				<td><code>viscosity</code></td>
@@ -265,10 +265,16 @@
 			<td>Pointer/touch color rotation rate (1/seconds). Only matters when <code>colorful</code> is true.</td>
 		</tr>
 		<tr>
+			<td><code>maxFps</code></td>
+			<td><code>number | null</code></td>
+			<td><code>60</code></td>
+			<td>Maximum presented frames per second. Simulation, input, and automatic splats still run every animation frame; only bloom, sunrays, display, glass, and presentation are capped. <code>0</code>/<code>null</code> presents every frame. Paused invalidations, resize/resume, explicit renders and the final settle frame bypass the cap. Negative/nonfinite values are ignored; <code>undefined</code> preserves the resolved hot value. Bucket A; no texture allocation or shader compilation.</td>
+		</tr>
+		<tr>
 			<td><code>paused</code></td>
 			<td><code>boolean</code></td>
 			<td><code>false</code></td>
-			<td>Pause the simulation step. Rendering still occurs.</td>
+			<td>Pause simulation stepping. RAF stays live; dirty invalidations render immediately, stable images submit no rendering.</td>
 		</tr>
 		<tr>
 			<td><code>backColor</code></td>

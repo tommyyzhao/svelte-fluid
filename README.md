@@ -204,6 +204,7 @@ config from the upstream project.
 | `refraction` | `number` | `0` | opt-in 0–1; refracts the distortion image or glass scene; recompile only when crossing 0 |
 | `colorful` | `boolean` | `true` | hot; rotate pointer/touch splat colors over time |
 | `colorUpdateSpeed` | `number` | `10` | hot; pointer/touch color rotation rate |
+| `maxFps` | `number \| null` | `60` | hot; maximum presented frames/sec; simulation runs every RAF; `0`/`null` presents every frame |
 | `paused` | `boolean` | `false` | hot |
 | `backColor` | `{r,g,b}` | `{0,0,0}` | 0–255 RGB; hot |
 | `transparent` | `boolean` | `false` | hot |
@@ -284,7 +285,7 @@ container shapes, and solver-native flow scenes. Useful as starting points for b
 ```
 
 Each preset forwards a small common set of props: `width`, `height`,
-`class`, `style`, `seed`, `lazy`, `maxPixelRatio`, `splatOnHover`, `aria-label`, and
+`class`, `style`, `seed`, `lazy`, `maxPixelRatio`, `maxFps`, `splatOnHover`, `aria-label`, and
 `backColor`. Flow-scene presets also expose `pointerInput`, and some shape
 presets expose small shape-specific knobs such as corner radii. The main
 physics recipe is intentionally fixed. They all re-expose the imperative

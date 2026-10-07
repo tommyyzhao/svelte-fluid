@@ -4,6 +4,55 @@
  * touches requestAnimationFrame until the first subscribe, so import is SSR-safe.
  */
 
+/** @internal Presentation-only deadline policy; never gate a solver or scheduler callback. */
+export function createFrameGate(initialRate = 0): {
+	shouldSubmit: (now: number, maxFps?: number | null) => boolean;
+	reset: () => void;
+} {
+	let previous: number | undefined;
+	let rate = initialRate;
+	let nextDeadline = 0;
+	let displayInterval = 1000 / 60;
+	const intervals: number[] = [];
+	const reset = () => {
+		previous = undefined;
+		nextDeadline = 0;
+		intervals.length = 0;
+		displayInterval = 1000 / 60;
+	};
+	return {
+		reset,
+		shouldSubmit(now, maxFps) {
+			const resolvedRate = maxFps === null ? 0
+				: maxFps !== undefined && Number.isFinite(maxFps) && maxFps >= 0 ? maxFps : rate;
+			if (resolvedRate !== rate) {
+				reset();
+				rate = resolvedRate;
+			}
+			const delta = previous === undefined ? 0 : now - previous;
+			if (previous !== undefined && (delta <= 0 || delta > 100)) reset();
+			if (delta >= 1 && delta <= 100) {
+				intervals.push(delta);
+				if (intervals.length > 5) intervals.shift();
+				const sorted = [...intervals].sort((a, b) => a - b);
+				displayInterval = sorted[Math.floor(sorted.length / 2)];
+			}
+			const first = previous === undefined;
+			previous = now;
+			if (!resolvedRate) return true;
+			const period = 1000 / resolvedRate;
+			if (first || period <= displayInterval + 0.001 || now - nextDeadline > period * 3) {
+				nextDeadline = now + period;
+				return true;
+			}
+			if (now < nextDeadline - displayInterval / 2) return false;
+			// Keep the ideal phase rather than accumulating quantized submission error.
+			nextDeadline += period * Math.max(1, Math.floor((now - nextDeadline) / period) + 1);
+			return true;
+		}
+	};
+}
+
 export type FrameCallback = (now: number) => void;
 
 const callbacks = new Set<FrameCallback>();

@@ -57,6 +57,11 @@ const browserProject = defineProject({
 			),
 			instances: [{ browser: 'chromium' }],
 			commands: {
+				async captureCanvasScreenshot(ctx: { page: any; frame: () => Promise<any> }, rect: { x: number; y: number; width: number; height: number }) {
+					const frame = await ctx.frame();
+					const offset = await (await frame.frameElement()).boundingBox();
+					return (await ctx.page.screenshot({ clip: { ...rect, x: offset.x + rect.x, y: offset.y + rect.y } })).toString('base64');
+				},
 				async emulateControlMedia(ctx: { page: any }, media: { forcedColors?: 'active' | 'none'; reducedMotion?: 'reduce' | 'no-preference' }) {
 					await ctx.page.emulateMedia(media);
 				},
