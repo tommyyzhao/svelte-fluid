@@ -10,6 +10,8 @@ Remove the internal WebGL types from the public API so every root-exported decla
 
 **Also removed:** the `ToroidalTempest` component and `ToroidalTempestProps` type (aliases deprecated since 0.4.0). Use `Toroidal` and `ToroidalProps`; they are the same component and type.
 
+**Also removed:** `FlowSource.samples`, a deprecated hint ignored by the analytic source renderer. Delete the property from source objects; no replacement or runtime change is needed.
+
 **Signature changes:** `isWebGLAvailable(attributes?)` now takes `{ failIfMajorPerformanceCaveat?: boolean }` instead of `WebGLContextAttributes`. This is wider-compatible for existing callers that passed only that field; a caller that passed a full `WebGLContextAttributes` object literal with other keys now gets an excess-property error (pass only `failIfMajorPerformanceCaveat`). `WebGLUnavailableError`, `WebGLUnavailableReason` and `GetContextOptions` are unchanged and now live in a GL-free module. No runtime behaviour changes.
 
 `bun run prepack` now compiles a strict consumer against `dist/` and fails if any declaration names a `WebGL*`, `GPU*`, `FBO`, `DoubleFBO`, `ExtInfo`, `ProgramWrap` or `ResolvedConfig` identifier.

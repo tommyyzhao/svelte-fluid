@@ -66,12 +66,6 @@ interface FlowSourceBase {
 	radius?: number;
 	/** Optional profile across line/rect sources. Default `uniform`. */
 	profile?: FlowProfile;
-	/**
-	 * Deprecated compatibility hint from the earlier sampled-source
-	 * implementation. Line/rect sources now render through one analytic shader
-	 * pass per target and ignore this value.
-	 */
-	samples?: number;
 }
 
 export type FlowSource =

@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import engineSrc from '../FluidEngine.ts?raw';
 import shadersSrc from '../shaders.ts?raw';
+import typesSrc from '../types.ts?raw';
+
+it('does not expose the ignored sampled-source compatibility hint', () => {
+	const sourceBase = typesSrc.split('interface FlowSourceBase {')[1].split('\n}')[0];
+	expect(sourceBase).not.toMatch(/\bsamples\s*\??:/);
+});
 
 describe('flow source math', () => {
 	function parabolic(t: number): number {
