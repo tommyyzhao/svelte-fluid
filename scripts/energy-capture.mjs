@@ -9,7 +9,7 @@ import { mkdir, readFile, writeFile, rm, readdir, stat, mkdtemp } from 'node:fs/
 import { writeFileSync } from 'node:fs';
 import { parseArgs, promisify } from 'node:util';
 import { createHash } from 'node:crypto';
-import { loadavg } from 'node:os';
+import { loadavg, tmpdir } from 'node:os';
 import { hasContinuousDriver } from '../src/lib/engine/settle.js';
 const execAsync = promisify(execFile);
 const ROOT = process.cwd(), PORT = 5201, URL = `http://127.0.0.1:${PORT}`;
@@ -305,9 +305,13 @@ async function bytes(path) {
 async function capture(c, run) {
 	const name = `${fileKey(c)}-r${run}${c.infraRetry ? '-infra-retry' : ''}`, trace = `${DIR}/${name}.trace`, windows = {}, states = {};
 	const disk = execFileSync('df', ['-k', DIR], { encoding: 'utf8' }).trim().split('\n').at(-1).trim().split(/\s+/);
-	assert.ok(Number(disk[3]) * 1024 >= 8 * 1024 ** 3, 'Disk free below 8 GiB; stop captures');
+	assert.ok(Number(disk[3]) * 1024 >= 15 * 1024 ** 3, 'Disk free below 15 GiB; stop captures');
 	const row = { ...c, run, sha, harnessSha, engineSourceSha, engineFileHash, measurementLogicHash, override, trace, loadAverage: loadavg(), recorderStartTimeoutSeconds: 45, startedAt: new Date().toISOString(), status: 'FAILED' };
-	let gpuPid, phase = 'browser launch', stopped = false;
+	let gpuPid, phase = 'browser launch', stopped = false, sizeWatch, scratchBefore;
+	const scratchNames = async () => (await readdir(tmpdir())).filter((name) => /^instruments.*\.ktrace$/.test(name));
+	const scratchNew = async () => scratchBefore ? (await scratchNames()).filter((name) => !scratchBefore.has(name)) : [];
+	const traceTmp = `${DIR}/${name}-tmp`;
+	await mkdir(traceTmp);
 	const progress = (p) => { phase = p; writeFileSync(`${DIR}/${name}.progress.json`, JSON.stringify({ ...row, phase, windows, states })); console.log(JSON.stringify({ name, phase })); };
 	const controller = new AbortController(), deadline = setTimeout(() => { controller.abort(new Error(`Attempt timeout in ${phase}`)); cleanup(); }, 600000);
 	const signal = controller.signal;
@@ -343,7 +347,17 @@ async function capture(c, run) {
 		progress('recorder startup');
 		const note = `svelte-fluid.energy.E1.${process.pid}.${name}`;
 		notifier = Bun.spawn(['/usr/bin/notifyutil', '-1', note], { stdout: 'ignore' });
-		recording = Bun.spawn(['env', `DEVELOPER_DIR=${XCODE.DEVELOPER_DIR}`, 'xcrun', 'xctrace', 'record', '--template', 'Metal System Trace', '--attach', String(gpuPid), '--time-limit', '110s', '--no-prompt', '--notify-tracing-started', note, '--output', trace], { env: XCODE, stdout: 'pipe', stderr: 'pipe' }); remember();
+		scratchBefore = new Set(await scratchNames());
+		recording = Bun.spawn(['env', `DEVELOPER_DIR=${XCODE.DEVELOPER_DIR}`, 'xcrun', 'xctrace', 'record', '--template', 'Metal System Trace', '--attach', String(gpuPid), '--time-limit', '110s', '--no-prompt', '--notify-tracing-started', note, '--output', trace], { env: { ...XCODE, TMPDIR: traceTmp }, stdout: 'pipe', stderr: 'pipe' }); remember();
+		let checkingSize = false;
+		sizeWatch = setInterval(async () => {
+			if (checkingSize || signal.aborted) return; checkingSize = true;
+			try {
+				const sizes = await Promise.all((await scratchNew()).map((name) => bytes(`${tmpdir()}/${name}`)));
+				const largest = Math.max(0, ...sizes);
+				if (largest > 10 * 1024 ** 3) { controller.abort(new Error(`Trace size watchdog: ${largest} bytes exceeds 10 GiB`)); cleanup(); }
+			} finally { checkingSize = false; }
+		}, 1000);
 		const notified = await Promise.race([notifier.exited.then(() => true), Bun.sleep(45000).then(() => false)]); notifier.kill(); notifier = null;
 		assert.ok(notified, 'Recorder tracing-started notification timeout'); await Bun.sleep(300); alive();
 		progress('mount'); Object.assign(row, await page.evaluate((c) => window.__energy.mount(c), { ...c, override }));
@@ -423,14 +437,24 @@ async function capture(c, run) {
 		await rm(input); await rm(output);
 	} catch (error) {
 		row.status = 'FAILED';
-		row.error = String(error.message ?? error); row.phase = phase; row.windows = windows; row.traceDeleted = false;
+		row.error = String(controller.signal.reason?.message ?? error.message ?? error); row.phase = phase; row.windows = windows; row.traceDeleted = false;
 		if (recording && !stopped) { try { recording.kill('SIGINT'); await Promise.race([recording.exited, Bun.sleep(180000)]); } catch {} }
 		row.traceBytes = await bytes(trace);
 		await writeFile(`${DIR}/${name}.parse-failure.json`, JSON.stringify({ error: row.error, traceBytes: row.traceBytes, windows, gpuPid }, null, 2));
 		await rm(trace, { recursive: true, force: true }); row.traceDeleted = true;
 		cleanup();
 	} finally {
-		clearTimeout(deadline);
+		clearTimeout(deadline); clearInterval(sizeWatch);
+		row.scratchDeleted = [];
+		for (const name of await scratchNew()) {
+			const path = `${tmpdir()}/${name}`, s = await stat(path);
+			assert.equal(s.uid, process.getuid(), 'Foreign scratch owner');
+			row.scratchDeleted.push({ name, bytes: s.size }); await rm(path);
+		}
+		row.traceTmpBytes = await bytes(traceTmp);
+		row.traceTmpFiles = await readdir(traceTmp).catch(() => []);
+		await rm(traceTmp, { recursive: true, force: true });
+		row.traceTmpDeleted = true;
 		if (browser) { await browser.close().catch(() => {}); browser = null; }
 		if (chrome) { chrome.kill(); await chrome.exited; chrome = null; }
 		if (profile) { await rm(profile, { recursive: true }); profile = null; }
@@ -450,7 +474,7 @@ try {
 		if (r.status !== 'OK') { await release(); await Bun.sleep(60000); }
 	}
 	// Exactly one end-of-run retry for recorder infrastructure timeout, never a clean metric.
-	for (const failed of results.filter((r) => (['Recorder tracing-started notification timeout', 'Recorder finalisation timeout', 'Outer background task ceiling interrupted recorder finalisation'].includes(r.error) || /missing execution coverage|GPU process exited|No space left on device|ENOSPC/.test(r.error ?? '')) && !r.infraRetry && cases.some((c) => key(c) === key(r)) && r.run >= RUN_START && r.run < RUN_START + RUNS)) {
+	for (const failed of results.filter((r) => (['Recorder tracing-started notification timeout', 'Recorder finalisation timeout', 'Outer background task ceiling interrupted recorder finalisation'].includes(r.error) || /missing execution coverage|GPU process exited|No space left on device|ENOSPC|Trace size watchdog/.test(r.error ?? '')) && !r.infraRetry && cases.some((c) => key(c) === key(r)) && r.run >= RUN_START && r.run < RUN_START + RUNS)) {
 		if (results.some((r) => key(r) === key(failed) && r.run === failed.run && r.infraRetry)) continue;
 		if (lockOwned && Date.now() - lockedAt >= 15 * 60000) await release();
 		await acquire();
