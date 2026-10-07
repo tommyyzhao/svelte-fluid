@@ -391,9 +391,13 @@ function statViolations(record, baseline) {
 	const scene = baseline.scenes[sceneKey(record.scene)]; if (!scene) throw new Error(`Missing baseline band: ${sceneKey(record.scene)}`);
 	return record.stats.flatMap((s) => Object.entries(scene.frames.find((f) => f.wall === s.wall).bands).flatMap(([metric, b]) => !Number.isFinite(s[metric]) || s[metric] < b.lower || s[metric] > b.upper ? [{ scene: sceneId(record.scene), wall: s.wall, metric, value: s[metric], lower: b.lower, upper: b.upper }] : []));
 }
-async function compare(label, override, sourceRoot, split) {
+async function compare(label, override, sourceRoot, split, spatialSafe) {
 	const calibration = await json(CALIBRATION), fresh = await json(join(ROOT, 'evals/quality/calibration-fresh.json')).catch(() => null);
-	if (!calibration.passed || calibration.rubricHash !== hash(RUBRIC) || !fresh?.passed || fresh.rubricHash !== hash(RUBRIC)) throw new Error('E2 unusable: seed-5 and fresh-seed calibration must pass with current judge rubric');
+	// ADR 0107 amendment 1 (post-hoc): blur is a documented blind spot; every other control must pass,
+	// and the caller must assert the candidate leaves resolution/filtering/post-processing unchanged.
+	const scoped = (c) => c && c.rubricHash === hash(RUBRIC) && c.summary.every((r) => r.pass || r.degradation === 'blur');
+	if (!scoped(calibration) || !scoped(fresh)) throw new Error('E2 unusable: seed-5 and fresh-seed calibration must pass (blur excepted, ADR 0107 amendment 1) with current judge rubric');
+	if (!spatialSafe) throw new Error('E2 may only gate candidates that do not change resolution, filtering or post-processing; pass --spatial-safe to assert this (ADR 0107 amendment 1)');
 	const bands = await json(BANDS), scenes = allScenes(split).filter((s) => split === 'train' ? s.seed === 5 : s.seed !== 5);
 	await withCapture(scenes, label, override, '', sourceRoot);
 	const violations = [], pairs = [];
@@ -442,14 +446,14 @@ export function selfCheck() {
 	console.log('Quality eval self-check passed: coverage, OKLCH, FFT sine bands, side swap/unblinding, no-worse threshold, judge JSON, train-only calibration');
 }
 if (import.meta.main) {
-	const { values, positionals } = parseArgs({ allowPositionals: true, options: { 'self-check': { type: 'boolean' }, label: { type: 'string' }, props: { type: 'string' }, 'source-root': { type: 'string' }, attempt: { type: 'string' }, split: { type: 'string' }, 'judge-only': { type: 'boolean' }, fresh: { type: 'boolean' } } });
+	const { values, positionals } = parseArgs({ allowPositionals: true, options: { 'self-check': { type: 'boolean' }, label: { type: 'string' }, props: { type: 'string' }, 'source-root': { type: 'string' }, attempt: { type: 'string' }, split: { type: 'string' }, 'judge-only': { type: 'boolean' }, fresh: { type: 'boolean' }, 'spatial-safe': { type: 'boolean' } } });
 	if (values['self-check']) selfCheck();
 	else {
 		const mode = positionals[0], label = values.label ?? 'candidate'; if (!/^[a-zA-Z0-9_-]+$/.test(label) || ['baseline', 'identical', 'blur', 'desaturation', 'half-resolution', 'karman128-p24'].includes(label)) throw new Error('Invalid/reserved candidate label');
 		if (mode === 'baseline') await baseline(resolve(values['source-root'] ?? ROOT));
 		else if (mode === 'calibration-baseline') await baseline(resolve(values['source-root'] ?? ROOT), true);
 		else if (mode === 'calibrate') { const attempt = Number(values.attempt ?? 1); if (!Number.isInteger(attempt) || attempt < 1) throw new Error('--attempt requires a positive integer'); await calibrate(attempt, resolve(values['source-root'] ?? ROOT), values.fresh ? [11, 23] : [5], values['judge-only']); }
-		else if (mode === 'compare') { const split = values.split ?? 'test'; if (!['train', 'test'].includes(split)) throw new Error('--split requires train or test'); await compare(label, props(values.props), resolve(values['source-root'] ?? ROOT), split); }
+		else if (mode === 'compare') { const split = values.split ?? 'test'; if (!['train', 'test'].includes(split)) throw new Error('--split requires train or test'); await compare(label, props(values.props), resolve(values['source-root'] ?? ROOT), split, !!values['spatial-safe']); }
 		else if (mode === 'judge-ready') {
 			const scenes = CAL.flatMap((s) => (values.fresh ? [11, 23] : [5]).map((seed) => ({ ...s, seed })));
 			await postprocess('blur', scenes); await postprocess('desaturation', scenes);
