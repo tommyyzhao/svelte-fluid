@@ -11,6 +11,11 @@ describe('FluidEngine smoke boot (WebGL2)', () => {
 		const engine = new FluidEngine({ canvas, config: { pointerInput: false } });
 		expect(engine.sharedContext).toBe(false);
 		expect(canvas.getContext('webgl2')).toBeTruthy();
+		const gl = canvas.getContext('webgl2')!;
+		const debug = gl.getExtension('WEBGL_debug_renderer_info')!;
+		const renderer = String(gl.getParameter(debug.UNMASKED_RENDERER_WEBGL));
+		console.log('RELEASE_GATE_RENDERER', renderer);
+		expect(renderer).not.toMatch(/swiftshader|llvmpipe|software/i);
 		engine.dispose();
 	});
 
