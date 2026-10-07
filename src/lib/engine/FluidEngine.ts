@@ -187,6 +187,7 @@ const CORE_PROGRAM_NAMES = [
 ] as const;
 
 const OPTIONAL_PROGRAM_NAMES = [
+	'pressureJacobi4',
 	'blur',
 	'bloomPrefilter',
 	'bloomBlur',
@@ -733,6 +734,7 @@ export class FluidEngine implements FluidHandle {
 	private wallFrictionProgram!: ProgramWrap;
 	private pressureProgram!: ProgramWrap;
 	private pressureJacobi2Program!: ProgramWrap;
+	private pressureJacobi4Program!: ProgramWrap;
 	private gradientSubtractProgram!: ProgramWrap;
 	private settleMaxProgram!: ProgramWrap;
 	private flowSourceProgram!: ProgramWrap;
@@ -1855,6 +1857,7 @@ export class FluidEngine implements FluidHandle {
 			this.wallFrictionProgram,
 			this.pressureProgram,
 			this.pressureJacobi2Program,
+			this.pressureJacobi4Program,
 			this.gradientSubtractProgram,
 			this.settleMaxProgram,
 			this.flowSourceProgram,
@@ -2156,6 +2159,7 @@ export class FluidEngine implements FluidHandle {
 
 	private selectedOptionalPrograms(config: ResolvedConfig): Set<OptionalProgramName> {
 		const selected = new Set<OptionalProgramName>();
+		if (this.ext.isWebGL2) selected.add('pressureJacobi4');
 		if (config.BLOOM) {
 			selected.add('blur');
 			selected.add('bloomPrefilter');
@@ -2199,9 +2203,8 @@ export class FluidEngine implements FluidHandle {
 				fragment = this.compileFragmentShader(name);
 			});
 			try {
-				const program = this.profileLifecycle('programLink', () =>
-					makeProgram(this.gl, name === 'blur' ? this.blurVertexShader! : this.baseVertexShader, fragment)
-				);
+				this._fragmentShadersByName[name] = fragment;
+				const program = this.profileLifecycle('programLink', () => this.linkCompiledProgram(name));
 				this.fragmentShaders.push(fragment);
 				this.assignProgram(name, program);
 			} catch (error) {
@@ -2236,6 +2239,7 @@ export class FluidEngine implements FluidHandle {
 			case 'wallFriction': return S.wallFrictionShader;
 			case 'pressure': return S.pressureShader;
 			case 'pressureJacobi2': return S.pressureJacobi2Shader;
+			case 'pressureJacobi4': return S.pressureJacobi4Shader;
 			case 'gradientSubtract': return S.gradientSubtractShader;
 			case 'settleMax': return S.settleMaxShader;
 			case 'flowSource': return S.flowSourceShader;
@@ -2249,7 +2253,7 @@ export class FluidEngine implements FluidHandle {
 
 	/** Program from the shared host cache; keyed by engine pass name plus defines. */
 	private cachedProgram(name: EngineProgramName): ProgramWrap {
-		const vertex = name === 'blur' ? S.blurVertexShader : S.baseVertexShader;
+		const vertex = name === 'pressureJacobi4' ? S.pressureJacobi4VertexShader : name === 'blur' ? S.blurVertexShader : S.baseVertexShader;
 		const defines = name === 'advection' && !this.ext.supportLinearFiltering ? ['MANUAL_FILTERING'] : undefined;
 		return this.host!.program(`fluid:${name}`, vertex, this.fragmentSource(name), defines);
 	}
@@ -2258,13 +2262,20 @@ export class FluidEngine implements FluidHandle {
 		if (this.host) return this.cachedProgram(name);
 		const fragment = this._fragmentShadersByName[name];
 		if (!fragment) throw new Error(`svelte-fluid: selected shader ${name} was not compiled`);
-		const vertex = name === 'blur' ? this.blurVertexShader : this.baseVertexShader;
+		const vertex = name === 'pressureJacobi4'
+			? compileShader(this.gl, this.gl.VERTEX_SHADER, S.pressureJacobi4VertexShader)
+			: name === 'blur' ? this.blurVertexShader : this.baseVertexShader;
 		if (!vertex) throw new Error(`svelte-fluid: selected vertex shader for ${name} was not compiled`);
-		return makeProgram(this.gl, vertex, fragment);
+		try {
+			return makeProgram(this.gl, vertex, fragment);
+		} finally {
+			if (name === 'pressureJacobi4') this.gl.deleteShader(vertex);
+		}
 	}
 
 	private optionalProgram(name: OptionalProgramName): ProgramWrap | null {
 		switch (name) {
+			case 'pressureJacobi4': return this.pressureJacobi4Program;
 			case 'blur': return this.blurProgram;
 			case 'bloomPrefilter': return this.bloomPrefilterProgram;
 			case 'bloomBlur': return this.bloomBlurProgram;
@@ -2301,6 +2312,7 @@ export class FluidEngine implements FluidHandle {
 			case 'wallFriction': this.wallFrictionProgram = program; break;
 			case 'pressure': this.pressureProgram = program; break;
 			case 'pressureJacobi2': this.pressureJacobi2Program = program; break;
+			case 'pressureJacobi4': this.pressureJacobi4Program = program; break;
 			case 'gradientSubtract': this.gradientSubtractProgram = program; break;
 			case 'settleMax': this.settleMaxProgram = program; break;
 			case 'flowSource': this.flowSourceProgram = program; break;
@@ -2313,6 +2325,7 @@ export class FluidEngine implements FluidHandle {
 	}
 
 	private resetOptionalProgramHandles(): void {
+		this.pressureJacobi4Program = undefined!;
 		this.blurProgram = undefined!;
 		this.bloomPrefilterProgram = undefined!;
 		this.bloomBlurProgram = undefined!;
@@ -4621,8 +4634,29 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		// the threshold stays conservative. Measurements in ADR-0038.
 		const PAIRED_JACOBI_MAX_TEXELS = 150_000;
 		const usePairs = this.velocity.width * this.velocity.height <= PAIRED_JACOBI_MAX_TEXELS;
-		const pairs = usePairs ? Math.floor(iterations / 2) : 0;
-		const singles = iterations - pairs * 2;
+		// ponytail: the four-ring stencil stays on <=256-square grids; expand only after parity/timing evidence.
+		const quads = this.ext.isWebGL2 && this.pressureJacobi4Program && this.velocity.width * this.velocity.height <= 65_536
+			? Math.floor(iterations / 4) : 0;
+		const remaining = iterations - quads * 4;
+		const pairs = usePairs ? Math.floor(remaining / 2) : 0;
+		const singles = remaining - pairs * 2;
+		if (quads > 0) {
+			const program = this.pressureJacobi4Program;
+			program.bind();
+			gl.uniform2f(program.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
+			gl.uniform1i(program.uniforms.uDivergence, this.divergence.attach(1));
+			this.bindStickyMask();
+			gl.uniform1i(program.uniforms.uStickyMask, 7);
+			this.bindSolidMaskUniforms(program.uniforms, 2, 3);
+			gl.uniform1f(program.uniforms.uStickyPressure, stickyPressure);
+			gl.uniform1f(program.uniforms.uScaleSecond, 1.0);
+			for (let k = 0; k < quads; k++) {
+				gl.uniform1f(program.uniforms.uScaleInner, k === 0 ? this.config.PRESSURE : 1.0);
+				gl.uniform1i(program.uniforms.uPressure, this.pressure.read.attach(0));
+				this.blit(this.pressure.write);
+				this.pressure.swap();
+			}
+		}
 		if (pairs > 0) {
 			this.pressureJacobi2Program.bind();
 			gl.uniform2f(this.pressureJacobi2Program.uniforms.texelSize, this.velocity.texelSizeX, this.velocity.texelSizeY);
@@ -4632,7 +4666,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			this.bindSolidMaskUniforms(this.pressureJacobi2Program.uniforms, 2, 3);
 			gl.uniform1f(this.pressureJacobi2Program.uniforms.uStickyPressure, stickyPressure);
 			for (let k = 0; k < pairs; k++) {
-				gl.uniform1f(this.pressureJacobi2Program.uniforms.uScaleInner, k === 0 ? this.config.PRESSURE : 1.0);
+				gl.uniform1f(this.pressureJacobi2Program.uniforms.uScaleInner, quads === 0 && k === 0 ? this.config.PRESSURE : 1.0);
 				gl.uniform1i(this.pressureJacobi2Program.uniforms.uPressure, this.pressure.read.attach(0));
 				this.blit(this.pressure.write);
 				this.pressure.swap();
@@ -4649,7 +4683,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			for (let i = 0; i < singles; i++) {
 				gl.uniform1f(
 					this.pressureProgram.uniforms.uPressureScale,
-					pairs === 0 && i === 0 ? this.config.PRESSURE : 1.0
+					quads === 0 && pairs === 0 && i === 0 ? this.config.PRESSURE : 1.0
 				);
 				gl.uniform1i(this.pressureProgram.uniforms.uPressure, this.pressure.read.attach(0));
 				this.blit(this.pressure.write);
