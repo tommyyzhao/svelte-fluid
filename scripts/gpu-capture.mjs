@@ -443,7 +443,7 @@ try {
 				bootstrap.parentRssBytes = process.memoryUsage().rss;
 				bootstrapPhase('browser launch');
 				console.log(JSON.stringify({ run, phase: 'browser launch', parentRssBytes: bootstrap.parentRssBytes }));
-				signal.throwIfAborted(); browser = await chromium.launch({ executablePath: CHROME, headless: false, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'], args: ['--enable-logging=stderr', '--v=0'], timeout: 30000 }); rememberOwned(); signal.throwIfAborted();
+				signal.throwIfAborted(); browser = await chromium.launch({ executablePath: CHROME, headless: true, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'], args: ['--enable-logging=stderr', '--v=0'], timeout: 30000 }); rememberOwned(); signal.throwIfAborted();
 				const chromePid = census().find((r) => r.ppid === process.pid && r.command.startsWith(CHROME))?.pid;
 				gpuPid = () => census().find((r) => r.ppid === chromePid && r.command.includes('--type=gpu-process'))?.pid;
 				bootstrapPhase('DPR probe');
@@ -473,7 +473,7 @@ try {
 						await startServer(phase, signal);
 						signal.throwIfAborted();
 						if (!browser) {
-							state.parentRssBytes = process.memoryUsage().rss; phase('browser relaunch'); console.log(JSON.stringify({ run, phase: 'browser relaunch', parentRssBytes: state.parentRssBytes })); signal.throwIfAborted(); browser = await chromium.launch({ executablePath: CHROME, headless: false, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'], args: ['--enable-logging=stderr', '--v=0'], timeout: 30000 }); rememberOwned(); signal.throwIfAborted();
+							state.parentRssBytes = process.memoryUsage().rss; phase('browser relaunch'); console.log(JSON.stringify({ run, phase: 'browser relaunch', parentRssBytes: state.parentRssBytes })); signal.throwIfAborted(); browser = await chromium.launch({ executablePath: CHROME, headless: true, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'], args: ['--enable-logging=stderr', '--v=0'], timeout: 30000 }); rememberOwned(); signal.throwIfAborted();
 							const chromePid = census().find((r) => r.ppid === process.pid && r.command.startsWith(CHROME))?.pid;
 							gpuPid = () => census().find((r) => r.ppid === chromePid && r.command.includes('--type=gpu-process'))?.pid;
 						}

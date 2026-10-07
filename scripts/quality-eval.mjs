@@ -163,7 +163,7 @@ async function withCapture(scenes, label, override = {}, degradation = '', sourc
 			let ready = false;
 			for (let i = 0; i < 100; i++) { if (server.exitCode !== null) throw new Error('Vite exited before ready'); if (await fetch(url, { signal: AbortSignal.timeout(1000) }).then((r) => r.ok, () => false)) { ready = true; break; } await Bun.sleep(100); }
 			if (!ready) throw new Error('Vite startup timeout');
-			browser = await chromium.launch({ executablePath: CHROME, headless: false, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'], timeout: 30000 });
+			browser = await chromium.launch({ executablePath: CHROME, headless: true, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'], timeout: 30000 });
 			for (const { scene, label, degradation } of pending.slice(offset, offset + 25)) {
 				const context = await browser.newContext({ viewport: { width: scene.w, height: scene.h }, deviceScaleFactor: scene.dpr });
 				try {
