@@ -1,0 +1,5886 @@
+{
+	"protocol": "ADR 0107 E3",
+	"docsSha": "1006e8f",
+	"repeats": 2,
+	"summary": {
+		"haiku-train": {
+			"passed": 18,
+			"total": 42,
+			"rate": 0.42857142857142855,
+			"lower": 0.2911765117618606,
+			"upper": 0.5779376012189541
+		},
+		"haiku-test": {
+			"passed": 6,
+			"total": 18,
+			"rate": 0.3333333333333333,
+			"lower": 0.1627877475083369,
+			"upper": 0.5625053270405489
+		},
+		"sonnet-train": {
+			"passed": 23,
+			"total": 42,
+			"rate": 0.5476190476190477,
+			"lower": 0.3994911903473349,
+			"upper": 0.6877660676654553
+		},
+		"sonnet-test": {
+			"passed": 11,
+			"total": 18,
+			"rate": 0.6111111111111112,
+			"lower": 0.3861904160223791,
+			"upper": 0.7969475342783638
+		}
+	},
+	"trials": [
+		{
+			"id": "basic-card-haiku-1",
+			"task": "basic-card",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 216000,
+							"different": 214551,
+							"fraction": 0.9932916666666667
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 600,
+								"height": 360
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "basic-card-haiku-2",
+			"task": "basic-card",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 216000,
+							"different": 215875,
+							"fraction": 0.9994212962962963
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 600,
+								"height": 360
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "basic-card-sonnet-1",
+			"task": "basic-card",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 216600,
+							"different": 216332,
+							"fraction": 0.9987626962142198
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 600,
+								"height": 360
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "basic-card-sonnet-2",
+			"task": "basic-card",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 216000,
+							"different": 215772,
+							"fraction": 0.9989444444444444
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 600,
+								"height": 360
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "viewport-background-haiku-1",
+			"task": "viewport-background",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 1024000,
+							"different": 49644,
+							"fraction": 0.04848046875
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 1280,
+								"height": 800
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "viewport-background-haiku-2",
+			"task": "viewport-background",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"missing FluidBackground instance/import"
+					]
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 1024000,
+							"different": 1022868,
+							"fraction": 0.99889453125
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 1280,
+								"height": 800
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "requirement-or-static-equivalence"
+		},
+		{
+			"id": "viewport-background-sonnet-1",
+			"task": "viewport-background",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 1024000,
+							"different": 276024,
+							"fraction": 0.2695546875
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 1280,
+								"height": 800
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "viewport-background-sonnet-2",
+			"task": "viewport-background",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 1024000,
+							"different": 762813,
+							"fraction": 0.7449345703125
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 1280,
+								"height": 800
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "background-holes-haiku-1",
+			"task": "background-holes",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"FluidBackground.excludePad != 12"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 1024000,
+							"different": 197723,
+							"fraction": 0.1930888671875
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 1280,
+								"height": 800
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "background-holes-haiku-2",
+			"task": "background-holes",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"FluidBackground.exclude != \".panel\"",
+						"FluidBackground.excludePad != 12"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 1024000,
+							"different": 0,
+							"fraction": 0,
+							"restingFraction": 0,
+							"dragged": true
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 1280,
+								"height": 800
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "background-holes-sonnet-1",
+			"task": "background-holes",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": false,
+				"code": 143,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"FluidBackground.exclude != \".panel\"",
+						"FluidBackground.excludePad != 12"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 1024000,
+							"different": 453962,
+							"fraction": 0.443322265625
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 1280,
+								"height": 800
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "subject-timeout"
+		},
+		{
+			"id": "background-holes-sonnet-2",
+			"task": "background-holes",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"missing FluidBackground instance/import",
+						"FluidBackground.exclude != \".panel\"",
+						"FluidBackground.excludePad != 12"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 1024000,
+							"different": 1020435,
+							"fraction": 0.9965185546875
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 1280,
+								"height": 800
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "typescript-inference"
+		},
+		{
+			"id": "lava-preset-haiku-1",
+			"task": "lava-preset",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 192000,
+							"different": 85426,
+							"fraction": 0.4449270833333333
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 480,
+								"height": 400
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "lava-preset-haiku-2",
+			"task": "lava-preset",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 192000,
+							"different": 191788,
+							"fraction": 0.9988958333333333
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 480,
+								"height": 400
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "lava-preset-sonnet-1",
+			"task": "lava-preset",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 192480,
+							"different": 191972,
+							"fraction": 0.9973607647547797
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 480,
+								"height": 400
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "lava-preset-sonnet-2",
+			"task": "lava-preset",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 192480,
+							"different": 191972,
+							"fraction": 0.9973607647547797
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 480,
+								"height": 400
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "aurora-preset-haiku-1",
+			"task": "aurora-preset",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 178204,
+							"different": 142964,
+							"fraction": 0.8022491077641355
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 598,
+								"height": 298
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "aurora-preset-haiku-2",
+			"task": "aurora-preset",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 273564,
+							"different": 271969,
+							"fraction": 0.9941695544735418
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": false,
+						"errors": [
+							"canvas CSS size != {\"width\":600,\"height\":300} (±2px)"
+						],
+						"rects": [
+							{
+								"width": 918,
+								"height": 298
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "presentation-size"
+		},
+		{
+			"id": "aurora-preset-sonnet-1",
+			"task": "aurora-preset",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 798848,
+							"different": 788614,
+							"fraction": 0.9871890522352187
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": false,
+						"errors": [
+							"canvas CSS size != {\"width\":600,\"height\":300} (±2px)"
+						],
+						"rects": [
+							{
+								"width": 1264,
+								"height": 632
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "aurora-preset-sonnet-2",
+			"task": "aurora-preset",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 180600,
+							"different": 166936,
+							"fraction": 0.9243410852713179
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 600,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "karman-preset-haiku-1",
+			"task": "karman-preset",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"A component can have a single top-level `<style>` element\nhttps://svelte.dev/e/style_duplicate"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": false
+				},
+				"render": {
+					"ok": false,
+					"errors": [
+						"target route did not return HTTP 200"
+					],
+					"fixtureError": false
+				}
+			},
+			"pass": false,
+			"cause": "svelte-syntax"
+		},
+		{
+			"id": "karman-preset-haiku-2",
+			"task": "karman-preset",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 230400,
+							"different": 209282,
+							"fraction": 0.9083420138888889
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 640,
+								"height": 360
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "karman-preset-sonnet-1",
+			"task": "karman-preset",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 231040,
+							"different": 230400,
+							"fraction": 0.997229916897507
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 640,
+								"height": 360
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "karman-preset-sonnet-2",
+			"task": "karman-preset",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 798848,
+							"different": 204879,
+							"fraction": 0.25646806401217753
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": false,
+						"errors": [
+							"canvas CSS size != {\"width\":640,\"height\":360} (±2px)"
+						],
+						"rects": [
+							{
+								"width": 1264,
+								"height": 632
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "reveal-content-haiku-1",
+			"task": "reveal-content",
+			"split": "test",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"missing FluidReveal instance/import",
+						"FluidReveal.fadeBack != false"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 214084,
+							"different": 214004,
+							"fraction": 0.99962631490443
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 598,
+								"height": 358
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "typescript-inference"
+		},
+		{
+			"id": "reveal-content-haiku-2",
+			"task": "reveal-content",
+			"split": "test",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"missing FluidReveal instance/import",
+						"FluidReveal.fadeBack != false"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 216600,
+							"different": 215617,
+							"fraction": 0.9954616805170822
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 600,
+								"height": 360
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "typescript-inference"
+		},
+		{
+			"id": "reveal-content-sonnet-1",
+			"task": "reveal-content",
+			"split": "test",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"missing FluidReveal instance/import",
+						"FluidReveal.fadeBack != false"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 216000,
+							"different": 215788,
+							"fraction": 0.9990185185185185
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 600,
+								"height": 360
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "reveal-content-sonnet-2",
+			"task": "reveal-content",
+			"split": "test",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": false,
+				"code": 143,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"missing FluidReveal instance/import",
+						"FluidReveal.fadeBack != false"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [
+						"target route did not return HTTP 200"
+					],
+					"fixtureError": false
+				}
+			},
+			"pass": false,
+			"cause": "subject-timeout"
+		},
+		{
+			"id": "reveal-sensitivity-haiku-1",
+			"task": "reveal-sensitivity",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": [
+					"llms-full.txt"
+				]
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150000,
+							"different": 20877,
+							"fraction": 0.13918,
+							"restingFraction": 0,
+							"dragged": true
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "reveal-sensitivity-haiku-2",
+			"task": "reveal-sensitivity",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150000,
+							"different": 20710,
+							"fraction": 0.13806666666666667,
+							"restingFraction": 0,
+							"dragged": true
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "reveal-sensitivity-sonnet-1",
+			"task": "reveal-sensitivity",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150000,
+							"different": 20473,
+							"fraction": 0.13648666666666667,
+							"restingFraction": 0,
+							"dragged": true
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "reveal-sensitivity-sonnet-2",
+			"task": "reveal-sensitivity",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"FluidReveal.sensitivity != 0.2",
+						"FluidReveal.curve != 0.8"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150000,
+							"different": 20558,
+							"fraction": 0.13705333333333333,
+							"restingFraction": 0,
+							"dragged": true
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "distort-photo-haiku-1",
+			"task": "distort-photo",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"FluidDistortion.strength != 0.3"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 345600,
+							"different": 198790,
+							"fraction": 0.5752025462962963
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": false,
+						"errors": [
+							"canvas CSS size != {\"width\":600,\"height\":360} (±2px)"
+						],
+						"rects": [
+							{
+								"width": 720,
+								"height": 480
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "distort-photo-haiku-2",
+			"task": "distort-photo",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"FluidDistortion.strength != 0.3"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 345600,
+							"different": 237667,
+							"fraction": 0.6876938657407408
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": false,
+						"errors": [
+							"canvas CSS size != {\"width\":600,\"height\":360} (±2px)"
+						],
+						"rects": [
+							{
+								"width": 720,
+								"height": 480
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "distort-photo-sonnet-1",
+			"task": "distort-photo",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 345600,
+							"different": 200953,
+							"fraction": 0.5814612268518519
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": false,
+						"errors": [
+							"canvas CSS size != {\"width\":600,\"height\":360} (±2px)"
+						],
+						"rects": [
+							{
+								"width": 720,
+								"height": 480
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "distort-photo-sonnet-2",
+			"task": "distort-photo",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 345600,
+							"different": 198273,
+							"fraction": 0.5737065972222222
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": false,
+						"errors": [
+							"canvas CSS size != {\"width\":600,\"height\":360} (±2px)"
+						],
+						"rects": [
+							{
+								"width": 720,
+								"height": 480
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "distort-auto-haiku-1",
+			"task": "distort-auto",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"missing FluidDistortion instance/import",
+						"FluidDistortion.src != \"/sample.svg\"",
+						"FluidDistortion.autoDistort != true"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [
+						"target route did not return HTTP 200"
+					],
+					"fixtureError": false
+				}
+			},
+			"pass": false,
+			"cause": "subject-no-route"
+		},
+		{
+			"id": "distort-auto-haiku-2",
+			"task": "distort-auto",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"FluidDistortion.autoDistort != true"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 260400,
+							"different": 204547,
+							"fraction": 0.785510752688172
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": false,
+						"errors": [
+							"canvas CSS size != {\"width\":500,\"height\":300} (±2px)"
+						],
+						"rects": [
+							{
+								"width": 620,
+								"height": 420
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "distort-auto-sonnet-1",
+			"task": "distort-auto",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"FluidDistortion.autoDistort != true"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 260400,
+							"different": 137816,
+							"fraction": 0.529247311827957
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": false,
+						"errors": [
+							"canvas CSS size != {\"width\":500,\"height\":300} (±2px)"
+						],
+						"rects": [
+							{
+								"width": 620,
+								"height": 420
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "distort-auto-sonnet-2",
+			"task": "distort-auto",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"FluidDistortion.autoDistort != true"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 260400,
+							"different": 129484,
+							"fraction": 0.49725038402457755
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": false,
+						"errors": [
+							"canvas CSS size != {\"width\":500,\"height\":300} (±2px)"
+						],
+						"rects": [
+							{
+								"width": 620,
+								"height": 420
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "sticky-word-haiku-1",
+			"task": "sticky-word",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 134162,
+							"different": 133004,
+							"fraction": 0.9913686438782964
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": false,
+						"errors": [
+							"canvas CSS size != {\"width\":600,\"height\":360} (±2px)"
+						],
+						"rects": [
+							{
+								"width": 518,
+								"height": 259
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "sticky-word-haiku-2",
+			"task": "sticky-word",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"FluidStick.text != \"HELLO\""
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 478112,
+							"different": 478096,
+							"fraction": 0.9999665350378154
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": false,
+						"errors": [
+							"canvas CSS size != {\"width\":600,\"height\":360} (±2px)"
+						],
+						"rects": [
+							{
+								"width": 892,
+								"height": 535.1875
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "sticky-word-sonnet-1",
+			"task": "sticky-word",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 216000,
+							"different": 213632,
+							"fraction": 0.989037037037037
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 600,
+								"height": 360
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "sticky-word-sonnet-2",
+			"task": "sticky-word",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 216600,
+							"different": 214423,
+							"fraction": 0.989949215143121
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 600,
+								"height": 360
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "fluid-letterforms-haiku-1",
+			"task": "fluid-letterforms",
+			"split": "test",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 63000,
+							"different": 22726,
+							"fraction": 0.36073015873015873
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 600,
+								"height": 104.28125
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "fluid-letterforms-haiku-2",
+			"task": "fluid-letterforms",
+			"split": "test",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 180600,
+							"different": 27720,
+							"fraction": 0.15348837209302327
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 600,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "fluid-letterforms-sonnet-1",
+			"task": "fluid-letterforms",
+			"split": "test",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"missing FluidText instance/import",
+						"FluidText.text != \"WATER\""
+					]
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 144600,
+							"different": 27856,
+							"fraction": 0.1926417704011065
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 600,
+								"height": 240
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "requirement-or-static-equivalence"
+		},
+		{
+			"id": "fluid-letterforms-sonnet-2",
+			"task": "fluid-letterforms",
+			"split": "test",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"missing FluidText instance/import",
+						"FluidText.text != \"WATER\""
+					]
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 144600,
+							"different": 28144,
+							"fraction": 0.1946334716459198
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 600,
+								"height": 240
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "requirement-or-static-equivalence"
+		},
+		{
+			"id": "splat-button-haiku-1",
+			"task": "splat-button",
+			"split": "test",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150500,
+							"different": 38064,
+							"fraction": 0.25291694352159466
+						},
+						{
+							"pixels": 14592,
+							"different": 10280,
+							"fraction": 0.7044956140350878
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							},
+							{
+								"width": 254.609375,
+								"height": 56
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "typescript-inference"
+		},
+		{
+			"id": "splat-button-haiku-2",
+			"task": "splat-button",
+			"split": "test",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150000,
+							"different": 149960,
+							"fraction": 0.9997333333333334
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "typescript-inference"
+		},
+		{
+			"id": "splat-button-sonnet-1",
+			"task": "splat-button",
+			"split": "test",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150000,
+							"different": 149908,
+							"fraction": 0.9993866666666666
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "splat-button-sonnet-2",
+			"task": "splat-button",
+			"split": "test",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150000,
+							"different": 149908,
+							"fraction": 0.9993866666666666
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "pause-buttons-haiku-1",
+			"task": "pause-buttons",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150000,
+							"different": 10225,
+							"fraction": 0.06816666666666667
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "typescript-inference"
+		},
+		{
+			"id": "pause-buttons-haiku-2",
+			"task": "pause-buttons",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150500,
+							"different": 149908,
+							"fraction": 0.9960664451827242
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "typescript-inference"
+		},
+		{
+			"id": "pause-buttons-sonnet-1",
+			"task": "pause-buttons",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150500,
+							"different": 150000,
+							"fraction": 0.9966777408637874
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "pause-buttons-sonnet-2",
+			"task": "pause-buttons",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": false,
+				"code": 143,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"missing Fluid instance/import",
+						"missing bind:this",
+						"missing pause() call",
+						"missing resume() call"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [
+						"target route did not return HTTP 200"
+					],
+					"fixtureError": false
+				}
+			},
+			"pass": false,
+			"cause": "subject-timeout"
+		},
+		{
+			"id": "visibility-pause-haiku-1",
+			"task": "visibility-pause",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150500,
+							"different": 149824,
+							"fraction": 0.9955083056478405
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "visibility-pause-haiku-2",
+			"task": "visibility-pause",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150500,
+							"different": 149824,
+							"fraction": 0.9955083056478405
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "visibility-pause-sonnet-1",
+			"task": "visibility-pause",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150500,
+							"different": 149908,
+							"fraction": 0.9960664451827242
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "visibility-pause-sonnet-2",
+			"task": "visibility-pause",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150500,
+							"different": 25626,
+							"fraction": 0.17027242524916944
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "lazy-gallery-haiku-1",
+			"task": "lazy-gallery",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"missing Fluid instance/import"
+					]
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 228000,
+							"different": 227998,
+							"fraction": 0.9999912280701755
+						},
+						{
+							"pixels": 228000,
+							"different": 227998,
+							"fraction": 0.9999912280701755
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": false,
+						"errors": [
+							"canvas CSS size != {\"width\":500,\"height\":300} (±2px)",
+							"canvas CSS size != {\"width\":500,\"height\":300} (±2px)"
+						],
+						"rects": [
+							{
+								"width": 760,
+								"height": 300
+							},
+							{
+								"width": 760,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "requirement-or-static-equivalence"
+		},
+		{
+			"id": "lazy-gallery-haiku-2",
+			"task": "lazy-gallery",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"missing Fluid instance/import"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150500,
+							"different": 149819,
+							"fraction": 0.9954750830564784
+						},
+						{
+							"pixels": 150500,
+							"different": 149820,
+							"fraction": 0.9954817275747508
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							},
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "typescript-inference"
+		},
+		{
+			"id": "lazy-gallery-sonnet-1",
+			"task": "lazy-gallery",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"missing Fluid instance/import",
+						"Fluid.lazy != true"
+					]
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150500,
+							"different": 35798,
+							"fraction": 0.23786046511627906
+						},
+						{
+							"pixels": 150500,
+							"different": 31564,
+							"fraction": 0.20972757475083056
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							},
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "requirement-or-static-equivalence"
+		},
+		{
+			"id": "lazy-gallery-sonnet-2",
+			"task": "lazy-gallery",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": false,
+				"code": 143,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"missing Fluid instance/import",
+						"Fluid.lazy != true"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [
+						"target route did not return HTTP 200"
+					],
+					"fixtureError": false
+				}
+			},
+			"pass": false,
+			"cause": "subject-timeout"
+		},
+		{
+			"id": "reduced-motion-haiku-1",
+			"task": "reduced-motion",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150500,
+							"different": 3656,
+							"fraction": 0.02429235880398671
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "reduced-motion-haiku-2",
+			"task": "reduced-motion",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150500,
+							"different": 149824,
+							"fraction": 0.9955083056478405
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "reduced-motion-sonnet-1",
+			"task": "reduced-motion",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150500,
+							"different": 150000,
+							"fraction": 0.9966777408637874
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "reduced-motion-sonnet-2",
+			"task": "reduced-motion",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150500,
+							"different": 150000,
+							"fraction": 0.9966777408637874
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "pixel-cap-haiku-1",
+			"task": "pixel-cap",
+			"split": "test",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 254562,
+							"different": 239101,
+							"fraction": 0.9392643049630346
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 638,
+								"height": 398
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "pixel-cap-haiku-2",
+			"task": "pixel-cap",
+			"split": "test",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 526014,
+							"different": 462833,
+							"fraction": 0.8798872273361545
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": false,
+						"errors": [
+							"canvas CSS size != {\"width\":640,\"height\":400} (±2px)"
+						],
+						"rects": [
+							{
+								"width": 918,
+								"height": 573
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "presentation-size"
+		},
+		{
+			"id": "pixel-cap-sonnet-1",
+			"task": "pixel-cap",
+			"split": "test",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 256640,
+							"different": 256000,
+							"fraction": 0.9975062344139651
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 640,
+								"height": 400
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "pixel-cap-sonnet-2",
+			"task": "pixel-cap",
+			"split": "test",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 256640,
+							"different": 255768,
+							"fraction": 0.9966022443890274
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 640,
+								"height": 400
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "poster-fallback-haiku-1",
+			"task": "poster-fallback",
+			"split": "test",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"Fluid.posterAlt != \"Fluid still\""
+					]
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150000,
+							"different": 20922,
+							"fraction": 0.13948
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "requirement-or-static-equivalence"
+		},
+		{
+			"id": "poster-fallback-haiku-2",
+			"task": "poster-fallback",
+			"split": "test",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150000,
+							"different": 4158,
+							"fraction": 0.02772
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "poster-fallback-sonnet-1",
+			"task": "poster-fallback",
+			"split": "test",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150000,
+							"different": 18214,
+							"fraction": 0.12142666666666667
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "poster-fallback-sonnet-2",
+			"task": "poster-fallback",
+			"split": "test",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150000,
+							"different": 9143,
+							"fraction": 0.06095333333333333
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "custom-fallback-haiku-1",
+			"task": "custom-fallback",
+			"split": "test",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150500,
+							"different": 149824,
+							"fraction": 0.9955083056478405
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "custom-fallback-haiku-2",
+			"task": "custom-fallback",
+			"split": "test",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150500,
+							"different": 149824,
+							"fraction": 0.9955083056478405
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "custom-fallback-sonnet-1",
+			"task": "custom-fallback",
+			"split": "test",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150000,
+							"different": 28045,
+							"fraction": 0.18696666666666667
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "custom-fallback-sonnet-2",
+			"task": "custom-fallback",
+			"split": "test",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150000,
+							"different": 14138,
+							"fraction": 0.09425333333333333
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "ready-error-haiku-1",
+			"task": "ready-error",
+			"split": "test",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150000,
+							"different": 489,
+							"fraction": 0.00326
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "ready-error-haiku-2",
+			"task": "ready-error",
+			"split": "test",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"missing onReady",
+						"missing onError"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150000,
+							"different": 4344,
+							"fraction": 0.02896
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "ready-error-sonnet-1",
+			"task": "ready-error",
+			"split": "test",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"missing onReady",
+						"missing onError"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150500,
+							"different": 150000,
+							"fraction": 0.9966777408637874
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "ready-error-sonnet-2",
+			"task": "ready-error",
+			"split": "test",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 150500,
+							"different": 150000,
+							"fraction": 0.9966777408637874
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "live-flow-haiku-1",
+			"task": "live-flow",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 476150,
+							"different": 414016,
+							"fraction": 0.8695075081381918
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": false,
+						"errors": [
+							"canvas CSS size != {\"width\":600,\"height\":360} (±2px)"
+						],
+						"rects": [
+							{
+								"width": 890,
+								"height": 534
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "typescript-inference"
+		},
+		{
+			"id": "live-flow-haiku-2",
+			"task": "live-flow",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 506736,
+							"different": 505818,
+							"fraction": 0.9981884057971014
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": false,
+						"errors": [
+							"canvas CSS size != {\"width\":600,\"height\":360} (±2px)"
+						],
+						"rects": [
+							{
+								"width": 918,
+								"height": 550.796875
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "typescript-inference"
+		},
+		{
+			"id": "live-flow-sonnet-1",
+			"task": "live-flow",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 216000,
+							"different": 215908,
+							"fraction": 0.9995740740740741
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 600,
+								"height": 360
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "live-flow-sonnet-2",
+			"task": "live-flow",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 216000,
+							"different": 44710,
+							"fraction": 0.20699074074074075
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 600,
+								"height": 360
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "flow-buoyancy-haiku-1",
+			"task": "flow-buoyancy",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 319124,
+							"different": 318240,
+							"fraction": 0.997229916897507
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": false,
+						"errors": [
+							"canvas CSS size != {\"width\":600,\"height\":360} (±2px)"
+						],
+						"rects": [
+							{
+								"width": 884,
+								"height": 360
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "typescript-inference"
+		},
+		{
+			"id": "flow-buoyancy-haiku-2",
+			"task": "flow-buoyancy",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 470466,
+							"different": 440996,
+							"fraction": 0.9373599792546113
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": false,
+						"errors": [
+							"canvas CSS size != {\"width\":600,\"height\":360} (±2px)"
+						],
+						"rects": [
+							{
+								"width": 886,
+								"height": 530.796875
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "typescript-inference"
+		},
+		{
+			"id": "flow-buoyancy-sonnet-1",
+			"task": "flow-buoyancy",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 216600,
+							"different": 216526,
+							"fraction": 0.9996583564173592
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 600,
+								"height": 360
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "flow-buoyancy-sonnet-2",
+			"task": "flow-buoyancy",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 216000,
+							"different": 215940,
+							"fraction": 0.9997222222222222
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 600,
+								"height": 360
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "circle-container-haiku-1",
+			"task": "circle-container",
+			"split": "test",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 462080,
+							"different": 462078,
+							"fraction": 0.9999956717451524
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": false,
+						"errors": [
+							"canvas CSS size != {\"width\":500,\"height\":400} (±2px)"
+						],
+						"rects": [
+							{
+								"width": 760,
+								"height": 608
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "presentation-size"
+		},
+		{
+			"id": "circle-container-haiku-2",
+			"task": "circle-container",
+			"split": "test",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 200000,
+							"different": 195424,
+							"fraction": 0.97712
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 400
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "circle-container-sonnet-1",
+			"task": "circle-container",
+			"split": "test",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 200500,
+							"different": 196343,
+							"fraction": 0.9792668329177058
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 400
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "circle-container-sonnet-2",
+			"task": "circle-container",
+			"split": "test",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 200500,
+							"different": 195049,
+							"fraction": 0.9728129675810474
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 400
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "rounded-container-haiku-1",
+			"task": "rounded-container",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 344132,
+							"different": 344055,
+							"fraction": 0.9997762486487743
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": false,
+						"errors": [
+							"canvas CSS size != {\"width\":600,\"height\":360} (±2px)"
+						],
+						"rects": [
+							{
+								"width": 758,
+								"height": 454
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "presentation-size"
+		},
+		{
+			"id": "rounded-container-haiku-2",
+			"task": "rounded-container",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 216000,
+							"different": 120566,
+							"fraction": 0.5581759259259259
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 600,
+								"height": 360
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "rounded-container-sonnet-1",
+			"task": "rounded-container",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 216600,
+							"different": 215860,
+							"fraction": 0.9965835641735918
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 600,
+								"height": 360
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "rounded-container-sonnet-2",
+			"task": "rounded-container",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 216600,
+							"different": 90110,
+							"fraction": 0.41602031394275163
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 600,
+								"height": 360
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "annulus-container-haiku-1",
+			"task": "annulus-container",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 200000,
+							"different": 198415,
+							"fraction": 0.992075
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 400
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "annulus-container-haiku-2",
+			"task": "annulus-container",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 200000,
+							"different": 198463,
+							"fraction": 0.992315
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 400
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "annulus-container-sonnet-1",
+			"task": "annulus-container",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 200000,
+							"different": 67329,
+							"fraction": 0.336645
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 400
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "annulus-container-sonnet-2",
+			"task": "annulus-container",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 200500,
+							"different": 199449,
+							"fraction": 0.9947581047381546
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 400
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "svg-container-haiku-1",
+			"task": "svg-container",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 200500,
+							"different": 29540,
+							"fraction": 0.14733167082294266
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 400
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "typescript-inference"
+		},
+		{
+			"id": "svg-container-haiku-2",
+			"task": "svg-container",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 170556,
+							"different": 170515,
+							"fraction": 0.9997596097469453
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": false,
+						"errors": [
+							"canvas CSS size != {\"width\":500,\"height\":400} (±2px)"
+						],
+						"rects": [
+							{
+								"width": 466,
+								"height": 366
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "presentation-size"
+		},
+		{
+			"id": "svg-container-sonnet-1",
+			"task": "svg-container",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 200000,
+							"different": 51265,
+							"fraction": 0.256325
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 400
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "svg-container-sonnet-2",
+			"task": "svg-container",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 200000,
+							"different": 54176,
+							"fraction": 0.27088
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 500,
+								"height": 400
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "ssr-route-haiku-1",
+			"task": "ssr-route",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": false,
+				"code": 143,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"missing Fluid instance/import",
+						"missing Welcome"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [
+						"target route did not return HTTP 200"
+					],
+					"fixtureError": false
+				}
+			},
+			"pass": false,
+			"cause": "subject-timeout"
+		},
+		{
+			"id": "ssr-route-haiku-2",
+			"task": "ssr-route",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": false,
+				"code": 143,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"missing Fluid instance/import",
+						"missing Welcome"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [
+						"target route did not return HTTP 200"
+					],
+					"fixtureError": false
+				}
+			},
+			"pass": false,
+			"cause": "subject-timeout"
+		},
+		{
+			"id": "ssr-route-sonnet-1",
+			"task": "ssr-route",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": false,
+				"code": 143,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"missing Fluid instance/import",
+						"missing Welcome"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [
+						"target route did not return HTTP 200"
+					],
+					"fixtureError": false
+				}
+			},
+			"pass": false,
+			"cause": "subject-timeout"
+		},
+		{
+			"id": "ssr-route-sonnet-2",
+			"task": "ssr-route",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 216600,
+							"different": 216000,
+							"fraction": 0.997229916897507
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 600,
+								"height": 360
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "multiple-presets-haiku-1",
+			"task": "multiple-presets",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 120400,
+							"different": 119993,
+							"fraction": 0.9966196013289037
+						},
+						{
+							"pixels": 120400,
+							"different": 120000,
+							"fraction": 0.9966777408637874
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 400,
+								"height": 300
+							},
+							{
+								"width": 400,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "multiple-presets-haiku-2",
+			"task": "multiple-presets",
+			"split": "train",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 120000,
+							"different": 56006,
+							"fraction": 0.46671666666666667
+						},
+						{
+							"pixels": 120000,
+							"different": 110750,
+							"fraction": 0.9229166666666667
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 400,
+								"height": 300
+							},
+							{
+								"width": 400,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "multiple-presets-sonnet-1",
+			"task": "multiple-presets",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": true
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 120400,
+							"different": 120000,
+							"fraction": 0.9966777408637874
+						},
+						{
+							"pixels": 120400,
+							"different": 119453,
+							"fraction": 0.9921345514950166
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 400,
+								"height": 300
+							},
+							{
+								"width": 400,
+								"height": 300
+							}
+						]
+					}
+				}
+			},
+			"pass": true
+		},
+		{
+			"id": "multiple-presets-sonnet-2",
+			"task": "multiple-presets",
+			"split": "train",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": true,
+					"errors": []
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 2512400,
+							"different": 2512000,
+							"fraction": 0.9998407896831715
+						},
+						{
+							"pixels": 3360400,
+							"different": 3360000,
+							"fraction": 0.999880966551601
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": false,
+						"errors": [
+							"canvas CSS size != {\"width\":400,\"height\":300} (±2px)",
+							"canvas CSS size != {\"width\":400,\"height\":300} (±2px)"
+						],
+						"rects": [
+							{
+								"width": 400,
+								"height": 4920
+							},
+							{
+								"width": 400,
+								"height": 7000
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "api-prop-type"
+		},
+		{
+			"id": "hover-cursor-haiku-1",
+			"task": "hover-cursor",
+			"split": "test",
+			"model": "haiku",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"A component can have a single top-level `<style>` element\nhttps://svelte.dev/e/style_duplicate"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": false
+				},
+				"render": {
+					"ok": false,
+					"errors": [
+						"target route did not return HTTP 200"
+					],
+					"fixtureError": false
+				}
+			},
+			"pass": false,
+			"cause": "svelte-syntax"
+		},
+		{
+			"id": "hover-cursor-haiku-2",
+			"task": "hover-cursor",
+			"split": "test",
+			"model": "haiku",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"Fluid.pointerTarget != \"window\"",
+						"Fluid.splatOnHover != true"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": false,
+					"errors": [],
+					"samples": [],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": []
+					}
+				}
+			},
+			"pass": false,
+			"cause": "typescript-inference"
+		},
+		{
+			"id": "hover-cursor-sonnet-1",
+			"task": "hover-cursor",
+			"split": "test",
+			"model": "sonnet",
+			"repeat": 1,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"Fluid.pointerTarget != \"window\"",
+						"Fluid.splatOnHover != true"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 1024000,
+							"different": 496903,
+							"fraction": 0.4852568359375
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 1280,
+								"height": 800
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "typescript-inference"
+		},
+		{
+			"id": "hover-cursor-sonnet-2",
+			"task": "hover-cursor",
+			"split": "test",
+			"model": "sonnet",
+			"repeat": 2,
+			"subject": {
+				"ok": true,
+				"code": 0,
+				"mutatedDocs": []
+			},
+			"checks": {
+				"assertions": {
+					"ok": false,
+					"errors": [
+						"Fluid.pointerTarget != \"window\"",
+						"Fluid.splatOnHover != true"
+					]
+				},
+				"check": {
+					"ok": false
+				},
+				"build": {
+					"ok": true
+				},
+				"render": {
+					"ok": true,
+					"errors": [],
+					"samples": [
+						{
+							"pixels": 1024000,
+							"different": 462702,
+							"fraction": 0.451857421875
+						}
+					],
+					"gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+					"size": {
+						"ok": true,
+						"errors": [],
+						"rects": [
+							{
+								"width": 1280,
+								"height": 800
+							}
+						]
+					}
+				}
+			},
+			"pass": false,
+			"cause": "typescript-inference"
+		}
+	],
+	"recordedAt": "2026-10-07",
+	"tasksSha": "4e304b637d154db38ba3a85c97e4f06f7100eae5",
+	"docsHashes": {
+		"llms-full.txt": "7da01e32cfff8b04206af88c013d608ee6d916d8e1951f6f63ec83a6d52c6178",
+		"SKILL.md": "54e685676023cf35c98ef6b62c2b4920ed77941708695a1ae44ab11732109dcd"
+	},
+	"timeoutPolicy": "intent-to-treat FAIL; secondary excludes timeouts",
+	"secondaryTimeoutExcluded": {
+		"haiku-train": {
+			"passed": 18,
+			"total": 40,
+			"rate": 0.45,
+			"lower": 0.3070530781090492,
+			"upper": 0.6017090820106794
+		},
+		"haiku-test": {
+			"passed": 6,
+			"total": 18,
+			"rate": 0.3333333333333333,
+			"lower": 0.1627877475083369,
+			"upper": 0.5625053270405489
+		},
+		"sonnet-train": {
+			"passed": 23,
+			"total": 38,
+			"rate": 0.6052631578947368,
+			"lower": 0.4471786799604255,
+			"upper": 0.744019242518399
+		},
+		"sonnet-test": {
+			"passed": 11,
+			"total": 17,
+			"rate": 0.6470588235294118,
+			"lower": 0.41300363485218694,
+			"upper": 0.8269027960275627
+		}
+	},
+	"failureCounts": {
+		"assertions": 35,
+		"check": 51,
+		"build": 2,
+		"render": 33
+	},
+	"failureBuckets": {
+		"train": {
+			"requirement-or-static-equivalence": 3,
+			"api-prop-type": 20,
+			"subject-timeout": 6,
+			"typescript-inference": 9,
+			"presentation-size": 3,
+			"svelte-syntax": 1,
+			"subject-no-route": 1
+		},
+		"test": {
+			"typescript-inference": 7,
+			"api-prop-type": 5,
+			"subject-timeout": 1,
+			"requirement-or-static-equivalence": 3,
+			"presentation-size": 2,
+			"svelte-syntax": 1
+		}
+	},
+	"graderFrozen": true,
+	"viewport": {
+		"width": 1280,
+		"height": 800
+	}
+}
