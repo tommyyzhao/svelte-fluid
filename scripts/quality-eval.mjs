@@ -121,10 +121,13 @@ let ownedLock, lastRelease = 0;
 async function acquire() {
 	const persisted = Number(await readFile(join(DIR, '.e2-last-release'), 'utf8').catch(() => '0'));
 	await Bun.sleep(Math.max(0, Math.max(lastRelease, persisted) + 180000 - Date.now()));
-	const owner = JSON.stringify({ lane: 'E2', worktree: ROOT, sha: sha(), pid: process.pid, token: randomUUID() });
+	const start = new Date().toISOString();
+	const owner = JSON.stringify({ lane: process.env.QUALITY_EVAL_LANE ?? 'E2', purpose: 'quality frame capture', start, worktree: ROOT, sha: sha(), pid: process.pid, token: randomUUID() });
+	await mkdir(DIR, { recursive: true });
+	const acquiredAt = join(LOCK, 'acquired-at');
 	for (;;) {
-		try { await mkdir(LOCK); ownedLock = owner; await writeFile(join(LOCK, 'owner'), owner); return; }
-		catch (e) { if (e.code !== 'EEXIST') throw e; console.log('GPU lock occupied; retry in 15 s'); await Bun.sleep(15000); }
+		try { await mkdir(LOCK); ownedLock = owner; await writeFile(join(LOCK, 'owner'), owner); await writeFile(acquiredAt, new Date().toISOString() + '\n'); return; }
+		catch (e) { if (e.code !== 'EEXIST') throw e; console.log('GPU lock occupied; retry in 75 s'); await Bun.sleep(75000); }
 	}
 }
 async function release() {
@@ -133,12 +136,12 @@ async function release() {
 	lastRelease = Date.now(); await mkdir(DIR, { recursive: true }); await writeFile(join(DIR, '.e2-last-release'), String(lastRelease));
 	await rm(LOCK, { recursive: true }); ownedLock = undefined;
 }
-async function withCapture(scenes, label, override = {}, degradation = '', sourceRoot = ROOT, grouped = null) {
+export async function withCapture(scenes, label, override = {}, degradation = '', sourceRoot = ROOT, grouped = null) {
 	const pending = [];
 	for (const item of grouped ?? scenes.map((scene) => ({ scene, label, degradation }))) {
-		const { scene, label, degradation } = item;
+		const { scene, label, degradation, override: itemOverride = override } = item;
 		const path = location(label, scene), meta = await json(join(path, 'capture.json')).catch(() => null);
-		if (meta && meta.sourceSha === execFileSync('git', ['rev-parse', 'HEAD'], { cwd: sourceRoot, encoding: 'utf8' }).trim() && JSON.stringify(meta.override) === JSON.stringify(override) && meta.degradation === degradation) continue;
+		if (meta && meta.sourceSha === execFileSync('git', ['rev-parse', 'HEAD'], { cwd: sourceRoot, encoding: 'utf8' }).trim() && JSON.stringify(meta.override) === JSON.stringify(itemOverride) && meta.degradation === degradation) continue;
 		pending.push(item);
 	}
 	// At most 25 scenes (~10 min plus startup); 12-minute ceiling, three-minute fairness pause.
@@ -164,7 +167,7 @@ async function withCapture(scenes, label, override = {}, degradation = '', sourc
 			for (let i = 0; i < 100; i++) { if (server.exitCode !== null) throw new Error('Vite exited before ready'); if (await fetch(url, { signal: AbortSignal.timeout(1000) }).then((r) => r.ok, () => false)) { ready = true; break; } await Bun.sleep(100); }
 			if (!ready) throw new Error('Vite startup timeout');
 			browser = await chromium.launch({ executablePath: CHROME, headless: true, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'], timeout: 30000 });
-			for (const { scene, label, degradation } of pending.slice(offset, offset + 25)) {
+			for (const { scene, label, degradation, override: itemOverride = override } of pending.slice(offset, offset + 25)) {
 				const context = await browser.newContext({ viewport: { width: scene.w, height: scene.h }, deviceScaleFactor: scene.dpr });
 				try {
 					const page = await context.newPage();
@@ -229,7 +232,7 @@ async function withCapture(scenes, label, override = {}, degradation = '', sourc
 							}
 							return { renderer, cfg, backing: [canvas.width, canvas.height], frames: output };
 						} finally { FluidEngine.prototype.update = originalUpdate; FluidEngine.prototype.renderCore = originalRender; e.stopRaf = naturalStop; e.dispose(); }
-					}, { scene, override, degradation, times: TIMES });
+					}, { scene, override: itemOverride, degradation, times: TIMES });
 					const path = location(label, scene); await mkdir(path, { recursive: true });
 					const stats = [];
 					for (const f of frames.frames) {
@@ -237,7 +240,7 @@ async function withCapture(scenes, label, override = {}, degradation = '', sourc
 						await save(join(path, `${f.wall}s-curl.json`), f.curl);
 						stats.push({ wall: f.wall, actualWall: f.actualWall, ...imageStats(PNG.sync.read(bytes), frames.cfg.backColor), ...spectrum(f.curl) });
 					}
-					await save(join(path, 'capture.json'), { sourceSha: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: sourceRoot, encoding: 'utf8' }).trim(), override, degradation, scene, renderer: frames.renderer, cfg: frames.cfg, backing: frames.backing, stats });
+					await save(join(path, 'capture.json'), { sourceSha: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: sourceRoot, encoding: 'utf8' }).trim(), override: itemOverride, degradation, scene, renderer: frames.renderer, cfg: frames.cfg, backing: frames.backing, stats });
 					console.log(`Captured ${label}/${sceneId(scene)}`);
 				} finally { await context.close(); }
 			}

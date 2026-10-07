@@ -1,0 +1,2433 @@
+{
+  "protocol": "Owner review; no E2 verdict",
+  "tile": 400,
+  "times": [
+    2,
+    5,
+    10,
+    20
+  ],
+  "labels": [
+    "owner-dye-1024",
+    "owner-dye-512"
+  ],
+  "jpegQuality": 0.9,
+  "records": [
+    {
+      "preset": "Plasma",
+      "file": "Plasma.jpg",
+      "bytes": 304198,
+      "anchors": [
+        [
+          2400,
+          1000
+        ],
+        [
+          400,
+          1000
+        ],
+        [
+          1600,
+          200
+        ],
+        [
+          1200,
+          1200
+        ]
+      ],
+      "captures": [
+        {
+          "sourceSha": "0456ebd3ca0c0a00d5e44c1b518ae7d54a027c8d",
+          "override": {},
+          "degradation": "",
+          "scene": {
+            "preset": "Plasma",
+            "w": 1440,
+            "h": 900,
+            "dpr": 2,
+            "seed": 5
+          },
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+          "cfg": {
+            "curl": 40,
+            "densityDissipation": 0.12,
+            "initialDensityDissipation": 0.6,
+            "initialDensityDissipationDuration": 2,
+            "velocityDissipation": 0.08,
+            "pressure": 0.8,
+            "splatRadius": 0.35,
+            "splatForce": 5000,
+            "shading": true,
+            "colorful": true,
+            "colorUpdateSpeed": 8,
+            "bloom": true,
+            "bloomThreshold": 0.6,
+            "bloomIntensity": 1.5,
+            "sunrays": true,
+            "sunraysWeight": 0.5,
+            "initialSplatCount": 0,
+            "backColor": {
+              "r": 4,
+              "g": 2,
+              "b": 12
+            },
+            "presetSplats": [
+              {
+                "x": 0.5,
+                "y": 0.95,
+                "dx": 0,
+                "dy": -600,
+                "color": {
+                  "r": 1.8,
+                  "g": 0.05,
+                  "b": 0.1
+                }
+              },
+              {
+                "x": 0.83,
+                "y": 0.83,
+                "dx": -424,
+                "dy": -424,
+                "color": {
+                  "r": 1.8,
+                  "g": 0.7,
+                  "b": 0.05
+                }
+              },
+              {
+                "x": 0.95,
+                "y": 0.5,
+                "dx": -600,
+                "dy": 0,
+                "color": {
+                  "r": 1.5,
+                  "g": 1.5,
+                  "b": 0.05
+                }
+              },
+              {
+                "x": 0.83,
+                "y": 0.17,
+                "dx": -424,
+                "dy": 424,
+                "color": {
+                  "r": 0.1,
+                  "g": 1.8,
+                  "b": 0.2
+                }
+              },
+              {
+                "x": 0.5,
+                "y": 0.05,
+                "dx": 0,
+                "dy": 600,
+                "color": {
+                  "r": 0.05,
+                  "g": 1.5,
+                  "b": 1.8
+                }
+              },
+              {
+                "x": 0.17,
+                "y": 0.17,
+                "dx": 424,
+                "dy": 424,
+                "color": {
+                  "r": 0.1,
+                  "g": 0.15,
+                  "b": 2.2
+                }
+              },
+              {
+                "x": 0.05,
+                "y": 0.5,
+                "dx": 600,
+                "dy": 0,
+                "color": {
+                  "r": 1,
+                  "g": 0.05,
+                  "b": 2
+                }
+              },
+              {
+                "x": 0.17,
+                "y": 0.83,
+                "dx": 424,
+                "dy": -424,
+                "color": {
+                  "r": 1.8,
+                  "g": 0.05,
+                  "b": 1.2
+                }
+              }
+            ],
+            "autoSplatRate": 0.4,
+            "autoSplatCount": 4,
+            "autoSplatEvenX": false,
+            "autoSplatCenterY": 0.5,
+            "seed": 5,
+            "pointerInput": false,
+            "requireHardwareAcceleration": true,
+            "dyeResolution": 1024,
+            "bloomResolution": 256,
+            "sunraysResolution": 196
+          },
+          "backing": [
+            2880,
+            1800
+          ],
+          "stats": [
+            {
+              "wall": 2,
+              "actualWall": 2.005100000023842,
+              "coverage": 1,
+              "chroma": 0.10077643041296735,
+              "low": 0.05734481707928449,
+              "mid": 0.22327213556718112,
+              "high": 0.7193830473535344
+            },
+            {
+              "wall": 5,
+              "actualWall": 5.005100000023842,
+              "coverage": 1,
+              "chroma": 0.06847544339075416,
+              "low": 0.01202339065779404,
+              "mid": 0.17067718209153807,
+              "high": 0.817299427250668
+            },
+            {
+              "wall": 10,
+              "actualWall": 10.00490000000596,
+              "coverage": 1,
+              "chroma": 0.032016171177985185,
+              "low": 0.003474825613123467,
+              "mid": 0.07269127441978454,
+              "high": 0.923833899967092
+            },
+            {
+              "wall": 20,
+              "actualWall": 20.00510000002384,
+              "coverage": 1,
+              "chroma": 0.0196251238558779,
+              "low": 0.0036655353908411287,
+              "mid": 0.06289600774215943,
+              "high": 0.9334384568669994
+            }
+          ]
+        },
+        {
+          "sourceSha": "0456ebd3ca0c0a00d5e44c1b518ae7d54a027c8d",
+          "override": {
+            "dyeResolution": 512
+          },
+          "degradation": "",
+          "scene": {
+            "preset": "Plasma",
+            "w": 1440,
+            "h": 900,
+            "dpr": 2,
+            "seed": 5
+          },
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+          "cfg": {
+            "curl": 40,
+            "densityDissipation": 0.12,
+            "initialDensityDissipation": 0.6,
+            "initialDensityDissipationDuration": 2,
+            "velocityDissipation": 0.08,
+            "pressure": 0.8,
+            "splatRadius": 0.35,
+            "splatForce": 5000,
+            "shading": true,
+            "colorful": true,
+            "colorUpdateSpeed": 8,
+            "bloom": true,
+            "bloomThreshold": 0.6,
+            "bloomIntensity": 1.5,
+            "sunrays": true,
+            "sunraysWeight": 0.5,
+            "initialSplatCount": 0,
+            "backColor": {
+              "r": 4,
+              "g": 2,
+              "b": 12
+            },
+            "presetSplats": [
+              {
+                "x": 0.5,
+                "y": 0.95,
+                "dx": 0,
+                "dy": -600,
+                "color": {
+                  "r": 1.8,
+                  "g": 0.05,
+                  "b": 0.1
+                }
+              },
+              {
+                "x": 0.83,
+                "y": 0.83,
+                "dx": -424,
+                "dy": -424,
+                "color": {
+                  "r": 1.8,
+                  "g": 0.7,
+                  "b": 0.05
+                }
+              },
+              {
+                "x": 0.95,
+                "y": 0.5,
+                "dx": -600,
+                "dy": 0,
+                "color": {
+                  "r": 1.5,
+                  "g": 1.5,
+                  "b": 0.05
+                }
+              },
+              {
+                "x": 0.83,
+                "y": 0.17,
+                "dx": -424,
+                "dy": 424,
+                "color": {
+                  "r": 0.1,
+                  "g": 1.8,
+                  "b": 0.2
+                }
+              },
+              {
+                "x": 0.5,
+                "y": 0.05,
+                "dx": 0,
+                "dy": 600,
+                "color": {
+                  "r": 0.05,
+                  "g": 1.5,
+                  "b": 1.8
+                }
+              },
+              {
+                "x": 0.17,
+                "y": 0.17,
+                "dx": 424,
+                "dy": 424,
+                "color": {
+                  "r": 0.1,
+                  "g": 0.15,
+                  "b": 2.2
+                }
+              },
+              {
+                "x": 0.05,
+                "y": 0.5,
+                "dx": 600,
+                "dy": 0,
+                "color": {
+                  "r": 1,
+                  "g": 0.05,
+                  "b": 2
+                }
+              },
+              {
+                "x": 0.17,
+                "y": 0.83,
+                "dx": 424,
+                "dy": -424,
+                "color": {
+                  "r": 1.8,
+                  "g": 0.05,
+                  "b": 1.2
+                }
+              }
+            ],
+            "autoSplatRate": 0.4,
+            "autoSplatCount": 4,
+            "autoSplatEvenX": false,
+            "autoSplatCenterY": 0.5,
+            "dyeResolution": 512,
+            "seed": 5,
+            "pointerInput": false,
+            "requireHardwareAcceleration": true,
+            "bloomResolution": 256,
+            "sunraysResolution": 196
+          },
+          "backing": [
+            2880,
+            1800
+          ],
+          "stats": [
+            {
+              "wall": 2,
+              "actualWall": 2.0097000000178813,
+              "coverage": 1,
+              "chroma": 0.09112922056563973,
+              "low": 0.054594156117701034,
+              "mid": 0.23920261810563728,
+              "high": 0.7062032257766618
+            },
+            {
+              "wall": 5,
+              "actualWall": 5.009700000017881,
+              "coverage": 1,
+              "chroma": 0.06422399925273431,
+              "low": 0.01387721746902286,
+              "mid": 0.1923455999015283,
+              "high": 0.7937771826294489
+            },
+            {
+              "wall": 10,
+              "actualWall": 10.009600000023841,
+              "coverage": 1,
+              "chroma": 0.03809218989365918,
+              "low": 0.004051923063750853,
+              "mid": 0.07721286218178017,
+              "high": 0.918735214754469
+            },
+            {
+              "wall": 20,
+              "actualWall": 20.007800000011922,
+              "coverage": 1,
+              "chroma": 0.024648276473708715,
+              "low": 0.004255533802206475,
+              "mid": 0.06236245731754706,
+              "high": 0.9333820088802465
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "preset": "LavaLamp",
+      "file": "LavaLamp.jpg",
+      "bytes": 331746,
+      "anchors": [
+        [
+          1000,
+          1200
+        ],
+        [
+          400,
+          800
+        ],
+        [
+          400,
+          800
+        ],
+        [
+          600,
+          1200
+        ]
+      ],
+      "captures": [
+        {
+          "sourceSha": "0456ebd3ca0c0a00d5e44c1b518ae7d54a027c8d",
+          "override": {},
+          "degradation": "",
+          "scene": {
+            "preset": "LavaLamp",
+            "w": 1440,
+            "h": 900,
+            "dpr": 2,
+            "seed": 5
+          },
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+          "cfg": {
+            "containerShape": {
+              "type": "roundedRect",
+              "cx": 0.5,
+              "cy": 0.5,
+              "halfW": 0.38,
+              "halfH": 0.45,
+              "cornerRadius": 0.15
+            },
+            "glass": true,
+            "glassRefraction": 0.3,
+            "glassReflectivity": 0.08,
+            "glassChromatic": 0.1,
+            "curl": 5,
+            "densityDissipation": 0,
+            "initialDensityDissipation": 0.25,
+            "initialDensityDissipationDuration": 1,
+            "velocityDissipation": 0,
+            "pressure": 0.8,
+            "splatRadius": 0.75,
+            "splatForce": 2200,
+            "shading": true,
+            "colorful": false,
+            "bloom": false,
+            "sunrays": false,
+            "initialSplatCount": 0,
+            "backColor": {
+              "r": 222,
+              "g": 218,
+              "b": 215
+            },
+            "presetSplats": [
+              {
+                "x": 0.18,
+                "y": 0.06,
+                "dx": 8,
+                "dy": 180,
+                "color": {
+                  "r": 1.7,
+                  "g": 0.12,
+                  "b": 0.08
+                }
+              },
+              {
+                "x": 0.32,
+                "y": 0.1,
+                "dx": -5,
+                "dy": 160,
+                "color": {
+                  "r": 1.8,
+                  "g": 0.45,
+                  "b": 0.08
+                }
+              },
+              {
+                "x": 0.46,
+                "y": 0.04,
+                "dx": 12,
+                "dy": 210,
+                "color": {
+                  "r": 1.7,
+                  "g": 0.95,
+                  "b": 0.18
+                }
+              },
+              {
+                "x": 0.6,
+                "y": 0.12,
+                "dx": -8,
+                "dy": 180,
+                "color": {
+                  "r": 1.8,
+                  "g": 0.62,
+                  "b": 0.12
+                }
+              },
+              {
+                "x": 0.74,
+                "y": 0.06,
+                "dx": -15,
+                "dy": 200,
+                "color": {
+                  "r": 1.7,
+                  "g": 0.3,
+                  "b": 0.22
+                }
+              },
+              {
+                "x": 0.86,
+                "y": 0.1,
+                "dx": -10,
+                "dy": 170,
+                "color": {
+                  "r": 1.6,
+                  "g": 0.18,
+                  "b": 0.4
+                }
+              },
+              {
+                "x": 0.5,
+                "y": 0.18,
+                "dx": 4,
+                "dy": 140,
+                "color": {
+                  "r": 1.7,
+                  "g": 0.55,
+                  "b": 0.05
+                }
+              },
+              {
+                "x": 0.28,
+                "y": 0.16,
+                "dx": 10,
+                "dy": 150,
+                "color": {
+                  "r": 1.5,
+                  "g": 0.08,
+                  "b": 0.18
+                }
+              }
+            ],
+            "seed": 5,
+            "pointerInput": false,
+            "requireHardwareAcceleration": true,
+            "dyeResolution": 1024,
+            "bloomResolution": 256,
+            "sunraysResolution": 196
+          },
+          "backing": [
+            2880,
+            1800
+          ],
+          "stats": [
+            {
+              "wall": 2,
+              "actualWall": 2.015,
+              "coverage": 0.04175385802469136,
+              "chroma": 0.053326805117179826,
+              "low": 0.2637805135660051,
+              "mid": 0.26843084755323116,
+              "high": 0.4677886388807637
+            },
+            {
+              "wall": 5,
+              "actualWall": 5.014099999994039,
+              "coverage": 0.04260609567901234,
+              "chroma": 0.057337590141424796,
+              "low": 0.12976375885800637,
+              "mid": 0.2918055097076095,
+              "high": 0.5784307314343841
+            },
+            {
+              "wall": 10,
+              "actualWall": 10.0135,
+              "coverage": 0.038956211419753084,
+              "chroma": 0.06466729336755389,
+              "low": 0.10317960800663555,
+              "mid": 0.23697255517912946,
+              "high": 0.659847836814235
+            },
+            {
+              "wall": 20,
+              "actualWall": 20.0135,
+              "coverage": 0.027698109567901235,
+              "chroma": 0.0709303493425954,
+              "low": 0.06156996673392124,
+              "mid": 0.17909828026514923,
+              "high": 0.7593317530009295
+            }
+          ]
+        },
+        {
+          "sourceSha": "0456ebd3ca0c0a00d5e44c1b518ae7d54a027c8d",
+          "override": {
+            "dyeResolution": 512
+          },
+          "degradation": "",
+          "scene": {
+            "preset": "LavaLamp",
+            "w": 1440,
+            "h": 900,
+            "dpr": 2,
+            "seed": 5
+          },
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+          "cfg": {
+            "containerShape": {
+              "type": "roundedRect",
+              "cx": 0.5,
+              "cy": 0.5,
+              "halfW": 0.38,
+              "halfH": 0.45,
+              "cornerRadius": 0.15
+            },
+            "glass": true,
+            "glassRefraction": 0.3,
+            "glassReflectivity": 0.08,
+            "glassChromatic": 0.1,
+            "curl": 5,
+            "densityDissipation": 0,
+            "initialDensityDissipation": 0.25,
+            "initialDensityDissipationDuration": 1,
+            "velocityDissipation": 0,
+            "pressure": 0.8,
+            "splatRadius": 0.75,
+            "splatForce": 2200,
+            "shading": true,
+            "colorful": false,
+            "bloom": false,
+            "sunrays": false,
+            "initialSplatCount": 0,
+            "backColor": {
+              "r": 222,
+              "g": 218,
+              "b": 215
+            },
+            "presetSplats": [
+              {
+                "x": 0.18,
+                "y": 0.06,
+                "dx": 8,
+                "dy": 180,
+                "color": {
+                  "r": 1.7,
+                  "g": 0.12,
+                  "b": 0.08
+                }
+              },
+              {
+                "x": 0.32,
+                "y": 0.1,
+                "dx": -5,
+                "dy": 160,
+                "color": {
+                  "r": 1.8,
+                  "g": 0.45,
+                  "b": 0.08
+                }
+              },
+              {
+                "x": 0.46,
+                "y": 0.04,
+                "dx": 12,
+                "dy": 210,
+                "color": {
+                  "r": 1.7,
+                  "g": 0.95,
+                  "b": 0.18
+                }
+              },
+              {
+                "x": 0.6,
+                "y": 0.12,
+                "dx": -8,
+                "dy": 180,
+                "color": {
+                  "r": 1.8,
+                  "g": 0.62,
+                  "b": 0.12
+                }
+              },
+              {
+                "x": 0.74,
+                "y": 0.06,
+                "dx": -15,
+                "dy": 200,
+                "color": {
+                  "r": 1.7,
+                  "g": 0.3,
+                  "b": 0.22
+                }
+              },
+              {
+                "x": 0.86,
+                "y": 0.1,
+                "dx": -10,
+                "dy": 170,
+                "color": {
+                  "r": 1.6,
+                  "g": 0.18,
+                  "b": 0.4
+                }
+              },
+              {
+                "x": 0.5,
+                "y": 0.18,
+                "dx": 4,
+                "dy": 140,
+                "color": {
+                  "r": 1.7,
+                  "g": 0.55,
+                  "b": 0.05
+                }
+              },
+              {
+                "x": 0.28,
+                "y": 0.16,
+                "dx": 10,
+                "dy": 150,
+                "color": {
+                  "r": 1.5,
+                  "g": 0.08,
+                  "b": 0.18
+                }
+              }
+            ],
+            "dyeResolution": 512,
+            "seed": 5,
+            "pointerInput": false,
+            "requireHardwareAcceleration": true,
+            "bloomResolution": 256,
+            "sunraysResolution": 196
+          },
+          "backing": [
+            2880,
+            1800
+          ],
+          "stats": [
+            {
+              "wall": 2,
+              "actualWall": 2.0075,
+              "coverage": 0.041762152777777777,
+              "chroma": 0.0530488612512487,
+              "low": 0.2662360128512325,
+              "mid": 0.25877836890164574,
+              "high": 0.47498561824712165
+            },
+            {
+              "wall": 5,
+              "actualWall": 5.006700000017881,
+              "coverage": 0.04215991512345679,
+              "chroma": 0.058778984179178345,
+              "low": 0.1315188831067016,
+              "mid": 0.2525480306814104,
+              "high": 0.615933086211888
+            },
+            {
+              "wall": 10,
+              "actualWall": 10.006100000023842,
+              "coverage": 0.03476581790123457,
+              "chroma": 0.06757216615726316,
+              "low": 0.09868621681956638,
+              "mid": 0.22507927783704992,
+              "high": 0.6762345053433837
+            },
+            {
+              "wall": 20,
+              "actualWall": 20.006,
+              "coverage": 0.025001350308641975,
+              "chroma": 0.06976919475233195,
+              "low": 0.06004688616072719,
+              "mid": 0.1814751225627701,
+              "high": 0.7584779912765027
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "preset": "Aurora",
+      "file": "Aurora.jpg",
+      "bytes": 373754,
+      "anchors": [
+        [
+          1400,
+          600
+        ],
+        [
+          2000,
+          600
+        ],
+        [
+          2400,
+          200
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "captures": [
+        {
+          "sourceSha": "0456ebd3ca0c0a00d5e44c1b518ae7d54a027c8d",
+          "override": {},
+          "degradation": "",
+          "scene": {
+            "preset": "Aurora",
+            "w": 1440,
+            "h": 900,
+            "dpr": 2,
+            "seed": 5
+          },
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+          "cfg": {
+            "curl": 40,
+            "densityDissipation": 0,
+            "velocityDissipation": 0.3,
+            "pressure": 0.85,
+            "splatRadius": 0.4,
+            "splatForce": 6000,
+            "shading": true,
+            "colorful": false,
+            "bloom": true,
+            "bloomIntensity": 1.5,
+            "sunrays": true,
+            "sunraysWeight": 1.4,
+            "initialSplatCount": 0,
+            "backColor": {
+              "r": 2,
+              "g": 4,
+              "b": 18
+            },
+            "presetSplats": [
+              {
+                "x": 0.15,
+                "y": 0.55,
+                "dx": 700,
+                "dy": 80,
+                "color": {
+                  "r": 0.1,
+                  "g": 1.6,
+                  "b": 0.45
+                }
+              },
+              {
+                "x": 0.45,
+                "y": 0.6,
+                "dx": 600,
+                "dy": -60,
+                "color": {
+                  "r": 0.15,
+                  "g": 1.4,
+                  "b": 0.55
+                }
+              },
+              {
+                "x": 0.78,
+                "y": 0.5,
+                "dx": -550,
+                "dy": 90,
+                "color": {
+                  "r": 1.5,
+                  "g": 0.25,
+                  "b": 1.4
+                }
+              },
+              {
+                "x": 0.3,
+                "y": 0.45,
+                "dx": 500,
+                "dy": 30,
+                "color": {
+                  "r": 0.45,
+                  "g": 0.9,
+                  "b": 1.6
+                }
+              },
+              {
+                "x": 0.65,
+                "y": 0.62,
+                "dx": -650,
+                "dy": -40,
+                "color": {
+                  "r": 0.3,
+                  "g": 1.5,
+                  "b": 0.85
+                }
+              }
+            ],
+            "seed": 5,
+            "pointerInput": false,
+            "requireHardwareAcceleration": true,
+            "dyeResolution": 1024,
+            "bloomResolution": 256,
+            "sunraysResolution": 196
+          },
+          "backing": [
+            2880,
+            1800
+          ],
+          "stats": [
+            {
+              "wall": 2,
+              "actualWall": 2.0079000000059604,
+              "coverage": 1,
+              "chroma": 0.077386269792097,
+              "low": 0.03858473095205533,
+              "mid": 0.20080488857652198,
+              "high": 0.7606103804714227
+            },
+            {
+              "wall": 5,
+              "actualWall": 5.007900000005961,
+              "coverage": 1,
+              "chroma": 0.1021411014373179,
+              "low": 0.005646882363994401,
+              "mid": 0.13852252855798688,
+              "high": 0.8558305890780187
+            },
+            {
+              "wall": 10,
+              "actualWall": 10.0065,
+              "coverage": 1,
+              "chroma": 0.0981993125936691,
+              "low": 0.0039096167548161856,
+              "mid": 0.06451542177762874,
+              "high": 0.931574961467555
+            },
+            {
+              "wall": 20,
+              "actualWall": 20.0135,
+              "coverage": 1,
+              "chroma": 0.09453261881124912,
+              "low": 0.004059279305734126,
+              "mid": 0.05762562649269476,
+              "high": 0.938315094201571
+            }
+          ]
+        },
+        {
+          "sourceSha": "0456ebd3ca0c0a00d5e44c1b518ae7d54a027c8d",
+          "override": {
+            "dyeResolution": 512
+          },
+          "degradation": "",
+          "scene": {
+            "preset": "Aurora",
+            "w": 1440,
+            "h": 900,
+            "dpr": 2,
+            "seed": 5
+          },
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+          "cfg": {
+            "curl": 40,
+            "densityDissipation": 0,
+            "velocityDissipation": 0.3,
+            "pressure": 0.85,
+            "splatRadius": 0.4,
+            "splatForce": 6000,
+            "shading": true,
+            "colorful": false,
+            "bloom": true,
+            "bloomIntensity": 1.5,
+            "sunrays": true,
+            "sunraysWeight": 1.4,
+            "initialSplatCount": 0,
+            "backColor": {
+              "r": 2,
+              "g": 4,
+              "b": 18
+            },
+            "presetSplats": [
+              {
+                "x": 0.15,
+                "y": 0.55,
+                "dx": 700,
+                "dy": 80,
+                "color": {
+                  "r": 0.1,
+                  "g": 1.6,
+                  "b": 0.45
+                }
+              },
+              {
+                "x": 0.45,
+                "y": 0.6,
+                "dx": 600,
+                "dy": -60,
+                "color": {
+                  "r": 0.15,
+                  "g": 1.4,
+                  "b": 0.55
+                }
+              },
+              {
+                "x": 0.78,
+                "y": 0.5,
+                "dx": -550,
+                "dy": 90,
+                "color": {
+                  "r": 1.5,
+                  "g": 0.25,
+                  "b": 1.4
+                }
+              },
+              {
+                "x": 0.3,
+                "y": 0.45,
+                "dx": 500,
+                "dy": 30,
+                "color": {
+                  "r": 0.45,
+                  "g": 0.9,
+                  "b": 1.6
+                }
+              },
+              {
+                "x": 0.65,
+                "y": 0.62,
+                "dx": -650,
+                "dy": -40,
+                "color": {
+                  "r": 0.3,
+                  "g": 1.5,
+                  "b": 0.85
+                }
+              }
+            ],
+            "dyeResolution": 512,
+            "seed": 5,
+            "pointerInput": false,
+            "requireHardwareAcceleration": true,
+            "bloomResolution": 256,
+            "sunraysResolution": 196
+          },
+          "backing": [
+            2880,
+            1800
+          ],
+          "stats": [
+            {
+              "wall": 2,
+              "actualWall": 2.015899999976158,
+              "coverage": 1,
+              "chroma": 0.08464194469564229,
+              "low": 0.040554645163896424,
+              "mid": 0.20968788828381232,
+              "high": 0.7497574665522914
+            },
+            {
+              "wall": 5,
+              "actualWall": 5.008399999976158,
+              "coverage": 1,
+              "chroma": 0.10060264489633176,
+              "low": 0.007361454559979442,
+              "mid": 0.1399813734087585,
+              "high": 0.852657172031262
+            },
+            {
+              "wall": 10,
+              "actualWall": 10.008,
+              "coverage": 1,
+              "chroma": 0.09497469053871954,
+              "low": 0.004780984734060126,
+              "mid": 0.0641534274864126,
+              "high": 0.9310655877795273
+            },
+            {
+              "wall": 20,
+              "actualWall": 20.00859999999404,
+              "coverage": 1,
+              "chroma": 0.09221316075431928,
+              "low": 0.00378326022278241,
+              "mid": 0.05574508209324314,
+              "high": 0.9404716576839743
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "preset": "InkInWater",
+      "file": "InkInWater.jpg",
+      "bytes": 150729,
+      "anchors": [
+        [
+          1000,
+          200
+        ],
+        [
+          1600,
+          600
+        ],
+        [
+          0,
+          400
+        ],
+        [
+          400,
+          400
+        ]
+      ],
+      "captures": [
+        {
+          "sourceSha": "0456ebd3ca0c0a00d5e44c1b518ae7d54a027c8d",
+          "override": {},
+          "degradation": "",
+          "scene": {
+            "preset": "InkInWater",
+            "w": 1440,
+            "h": 900,
+            "dpr": 2,
+            "seed": 5
+          },
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+          "cfg": {
+            "curl": 8,
+            "densityDissipation": 0.3,
+            "velocityDissipation": 0.15,
+            "pressure": 0.85,
+            "splatRadius": 0.12,
+            "splatForce": 800,
+            "shading": true,
+            "colorful": false,
+            "bloom": true,
+            "bloomIntensity": 0.6,
+            "bloomThreshold": 0.4,
+            "sunrays": false,
+            "autoSplatRate": 0.2,
+            "autoSplatColor": {
+              "r": 0.06,
+              "g": 0.07,
+              "b": 0.5
+            },
+            "autoSplatVelocityX": 0,
+            "autoSplatVelocityY": -180,
+            "autoSplatCenterY": 0.9,
+            "initialSplatCount": 0,
+            "backColor": {
+              "r": 6,
+              "g": 8,
+              "b": 20
+            },
+            "presetSplats": [
+              {
+                "x": 0.3,
+                "y": 0.9,
+                "dx": 15,
+                "dy": -180,
+                "color": {
+                  "r": 0.08,
+                  "g": 0.06,
+                  "b": 0.55
+                }
+              },
+              {
+                "x": 0.5,
+                "y": 0.94,
+                "dx": -10,
+                "dy": -220,
+                "color": {
+                  "r": 0.04,
+                  "g": 0.1,
+                  "b": 0.5
+                }
+              },
+              {
+                "x": 0.7,
+                "y": 0.88,
+                "dx": 12,
+                "dy": -200,
+                "color": {
+                  "r": 0.12,
+                  "g": 0.05,
+                  "b": 0.45
+                }
+              },
+              {
+                "x": 0.42,
+                "y": 0.85,
+                "dx": -8,
+                "dy": -160,
+                "color": {
+                  "r": 0.03,
+                  "g": 0.08,
+                  "b": 0.48
+                }
+              },
+              {
+                "x": 0.6,
+                "y": 0.92,
+                "dx": 5,
+                "dy": -190,
+                "color": {
+                  "r": 0.06,
+                  "g": 0.04,
+                  "b": 0.52
+                }
+              }
+            ],
+            "seed": 5,
+            "pointerInput": false,
+            "requireHardwareAcceleration": true,
+            "dyeResolution": 1024,
+            "bloomResolution": 256,
+            "sunraysResolution": 196
+          },
+          "backing": [
+            2880,
+            1800
+          ],
+          "stats": [
+            {
+              "wall": 2,
+              "actualWall": 2.0092000000178816,
+              "coverage": 0.00498707561728395,
+              "chroma": 0.02817083912343915,
+              "low": 0.1222705568936775,
+              "mid": 0.5243618498312762,
+              "high": 0.3533675932750463
+            },
+            {
+              "wall": 5,
+              "actualWall": 5.008700000017881,
+              "coverage": 0.7071035879629629,
+              "chroma": 0.07437908653531723,
+              "low": 0.12680640450162214,
+              "mid": 0.4216007990620534,
+              "high": 0.45159279643632444
+            },
+            {
+              "wall": 10,
+              "actualWall": 10.011600000023842,
+              "coverage": 0.5662436342592593,
+              "chroma": 0.07095581281080826,
+              "low": 0.10224843624708466,
+              "mid": 0.3925779098688834,
+              "high": 0.505173653884032
+            },
+            {
+              "wall": 20,
+              "actualWall": 20.00810000002384,
+              "coverage": 0.34148109567901236,
+              "chroma": 0.05722596524519585,
+              "low": 0.09841243041162011,
+              "mid": 0.3047074364939836,
+              "high": 0.5968801330943964
+            }
+          ]
+        },
+        {
+          "sourceSha": "0456ebd3ca0c0a00d5e44c1b518ae7d54a027c8d",
+          "override": {
+            "dyeResolution": 512
+          },
+          "degradation": "",
+          "scene": {
+            "preset": "InkInWater",
+            "w": 1440,
+            "h": 900,
+            "dpr": 2,
+            "seed": 5
+          },
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+          "cfg": {
+            "curl": 8,
+            "densityDissipation": 0.3,
+            "velocityDissipation": 0.15,
+            "pressure": 0.85,
+            "splatRadius": 0.12,
+            "splatForce": 800,
+            "shading": true,
+            "colorful": false,
+            "bloom": true,
+            "bloomIntensity": 0.6,
+            "bloomThreshold": 0.4,
+            "sunrays": false,
+            "autoSplatRate": 0.2,
+            "autoSplatColor": {
+              "r": 0.06,
+              "g": 0.07,
+              "b": 0.5
+            },
+            "autoSplatVelocityX": 0,
+            "autoSplatVelocityY": -180,
+            "autoSplatCenterY": 0.9,
+            "initialSplatCount": 0,
+            "backColor": {
+              "r": 6,
+              "g": 8,
+              "b": 20
+            },
+            "presetSplats": [
+              {
+                "x": 0.3,
+                "y": 0.9,
+                "dx": 15,
+                "dy": -180,
+                "color": {
+                  "r": 0.08,
+                  "g": 0.06,
+                  "b": 0.55
+                }
+              },
+              {
+                "x": 0.5,
+                "y": 0.94,
+                "dx": -10,
+                "dy": -220,
+                "color": {
+                  "r": 0.04,
+                  "g": 0.1,
+                  "b": 0.5
+                }
+              },
+              {
+                "x": 0.7,
+                "y": 0.88,
+                "dx": 12,
+                "dy": -200,
+                "color": {
+                  "r": 0.12,
+                  "g": 0.05,
+                  "b": 0.45
+                }
+              },
+              {
+                "x": 0.42,
+                "y": 0.85,
+                "dx": -8,
+                "dy": -160,
+                "color": {
+                  "r": 0.03,
+                  "g": 0.08,
+                  "b": 0.48
+                }
+              },
+              {
+                "x": 0.6,
+                "y": 0.92,
+                "dx": 5,
+                "dy": -190,
+                "color": {
+                  "r": 0.06,
+                  "g": 0.04,
+                  "b": 0.52
+                }
+              }
+            ],
+            "dyeResolution": 512,
+            "seed": 5,
+            "pointerInput": false,
+            "requireHardwareAcceleration": true,
+            "bloomResolution": 256,
+            "sunraysResolution": 196
+          },
+          "backing": [
+            2880,
+            1800
+          ],
+          "stats": [
+            {
+              "wall": 2,
+              "actualWall": 2.002800000011921,
+              "coverage": 0.0023117283950617284,
+              "chroma": 0.02829968835758385,
+              "low": 0.12133558482406055,
+              "mid": 0.5091608989625861,
+              "high": 0.3695035162133534
+            },
+            {
+              "wall": 5,
+              "actualWall": 5.0178000000119205,
+              "coverage": 0.5737337962962963,
+              "chroma": 0.06998123898312252,
+              "low": 0.10861250828382363,
+              "mid": 0.4455300368220013,
+              "high": 0.44585745489417505
+            },
+            {
+              "wall": 10,
+              "actualWall": 10.017700000017882,
+              "coverage": 0.45827141203703703,
+              "chroma": 0.06504526122873384,
+              "low": 0.09774759186771122,
+              "mid": 0.35872231681179095,
+              "high": 0.5435300913204979
+            },
+            {
+              "wall": 20,
+              "actualWall": 20.01760000002384,
+              "coverage": 0.5770522762345679,
+              "chroma": 0.07200465107422943,
+              "low": 0.13483649983577192,
+              "mid": 0.4751226151350647,
+              "high": 0.3900408850291634
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "preset": "CircularFluid",
+      "file": "CircularFluid.jpg",
+      "bytes": 332175,
+      "anchors": [
+        [
+          600,
+          800
+        ],
+        [
+          800,
+          600
+        ],
+        [
+          1600,
+          200
+        ],
+        [
+          600,
+          800
+        ]
+      ],
+      "captures": [
+        {
+          "sourceSha": "0456ebd3ca0c0a00d5e44c1b518ae7d54a027c8d",
+          "override": {},
+          "degradation": "",
+          "scene": {
+            "preset": "CircularFluid",
+            "w": 1440,
+            "h": 900,
+            "dpr": 2,
+            "seed": 5
+          },
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+          "cfg": {
+            "containerShape": {
+              "type": "circle",
+              "cx": 0.5,
+              "cy": 0.5,
+              "radius": 0.45
+            },
+            "curl": 35,
+            "densityDissipation": 0.15,
+            "initialDensityDissipation": 0.5,
+            "initialDensityDissipationDuration": 2,
+            "velocityDissipation": 0.06,
+            "pressure": 0.8,
+            "splatRadius": 0.38,
+            "splatForce": 5000,
+            "shading": true,
+            "colorful": true,
+            "colorUpdateSpeed": 8,
+            "bloom": true,
+            "bloomThreshold": 0.6,
+            "bloomIntensity": 1,
+            "sunrays": false,
+            "initialSplatCount": 0,
+            "backColor": {
+              "r": 4,
+              "g": 2,
+              "b": 12
+            },
+            "presetSplats": [
+              {
+                "x": 0.5,
+                "y": 0.85,
+                "dx": 0,
+                "dy": -500,
+                "color": {
+                  "r": 0.9,
+                  "g": 0.03,
+                  "b": 0.05
+                }
+              },
+              {
+                "x": 0.64,
+                "y": 0.75,
+                "dx": -354,
+                "dy": -354,
+                "color": {
+                  "r": 0.9,
+                  "g": 0.35,
+                  "b": 0.03
+                }
+              },
+              {
+                "x": 0.69,
+                "y": 0.5,
+                "dx": -500,
+                "dy": 0,
+                "color": {
+                  "r": 0.8,
+                  "g": 0.8,
+                  "b": 0.03
+                }
+              },
+              {
+                "x": 0.64,
+                "y": 0.25,
+                "dx": -354,
+                "dy": 354,
+                "color": {
+                  "r": 0.05,
+                  "g": 0.9,
+                  "b": 0.1
+                }
+              },
+              {
+                "x": 0.5,
+                "y": 0.15,
+                "dx": 0,
+                "dy": 500,
+                "color": {
+                  "r": 0.03,
+                  "g": 0.75,
+                  "b": 0.9
+                }
+              },
+              {
+                "x": 0.36,
+                "y": 0.25,
+                "dx": 354,
+                "dy": 354,
+                "color": {
+                  "r": 0.05,
+                  "g": 0.08,
+                  "b": 1.1
+                }
+              },
+              {
+                "x": 0.31,
+                "y": 0.5,
+                "dx": 500,
+                "dy": 0,
+                "color": {
+                  "r": 0.5,
+                  "g": 0.03,
+                  "b": 1
+                }
+              },
+              {
+                "x": 0.36,
+                "y": 0.75,
+                "dx": 354,
+                "dy": -354,
+                "color": {
+                  "r": 0.9,
+                  "g": 0.03,
+                  "b": 0.6
+                }
+              }
+            ],
+            "autoSplatRate": 1.2,
+            "autoSplatCount": 1,
+            "autoSplatCenterY": 0.5,
+            "autoSplatBandHeight": 0.8,
+            "autoSplatSwirl": 500,
+            "seed": 5,
+            "pointerInput": false,
+            "requireHardwareAcceleration": true,
+            "dyeResolution": 1024,
+            "bloomResolution": 256,
+            "sunraysResolution": 196
+          },
+          "backing": [
+            2880,
+            1800
+          ],
+          "stats": [
+            {
+              "wall": 2,
+              "actualWall": 2.0056000000238416,
+              "coverage": 0.3979672067901235,
+              "chroma": 0.05526758846563777,
+              "low": 0.06227535622116411,
+              "mid": 0.2709520880202969,
+              "high": 0.666772555758539
+            },
+            {
+              "wall": 5,
+              "actualWall": 5.003600000023842,
+              "coverage": 0.39800096450617284,
+              "chroma": 0.04776073584265832,
+              "low": 0.07852704225006624,
+              "mid": 0.22399124732061,
+              "high": 0.6974817104293237
+            },
+            {
+              "wall": 10,
+              "actualWall": 10.003200000017882,
+              "coverage": 0.3980094521604938,
+              "chroma": 0.06320407945209745,
+              "low": 0.09738675718333574,
+              "mid": 0.2105147806775493,
+              "high": 0.692098462139115
+            },
+            {
+              "wall": 20,
+              "actualWall": 20.003300000011922,
+              "coverage": 0.39800675154320986,
+              "chroma": 0.04945582862112058,
+              "low": 0.07566771279987256,
+              "mid": 0.23067154957421065,
+              "high": 0.6936607376259167
+            }
+          ]
+        },
+        {
+          "sourceSha": "0456ebd3ca0c0a00d5e44c1b518ae7d54a027c8d",
+          "override": {
+            "dyeResolution": 512
+          },
+          "degradation": "",
+          "scene": {
+            "preset": "CircularFluid",
+            "w": 1440,
+            "h": 900,
+            "dpr": 2,
+            "seed": 5
+          },
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+          "cfg": {
+            "containerShape": {
+              "type": "circle",
+              "cx": 0.5,
+              "cy": 0.5,
+              "radius": 0.45
+            },
+            "curl": 35,
+            "densityDissipation": 0.15,
+            "initialDensityDissipation": 0.5,
+            "initialDensityDissipationDuration": 2,
+            "velocityDissipation": 0.06,
+            "pressure": 0.8,
+            "splatRadius": 0.38,
+            "splatForce": 5000,
+            "shading": true,
+            "colorful": true,
+            "colorUpdateSpeed": 8,
+            "bloom": true,
+            "bloomThreshold": 0.6,
+            "bloomIntensity": 1,
+            "sunrays": false,
+            "initialSplatCount": 0,
+            "backColor": {
+              "r": 4,
+              "g": 2,
+              "b": 12
+            },
+            "presetSplats": [
+              {
+                "x": 0.5,
+                "y": 0.85,
+                "dx": 0,
+                "dy": -500,
+                "color": {
+                  "r": 0.9,
+                  "g": 0.03,
+                  "b": 0.05
+                }
+              },
+              {
+                "x": 0.64,
+                "y": 0.75,
+                "dx": -354,
+                "dy": -354,
+                "color": {
+                  "r": 0.9,
+                  "g": 0.35,
+                  "b": 0.03
+                }
+              },
+              {
+                "x": 0.69,
+                "y": 0.5,
+                "dx": -500,
+                "dy": 0,
+                "color": {
+                  "r": 0.8,
+                  "g": 0.8,
+                  "b": 0.03
+                }
+              },
+              {
+                "x": 0.64,
+                "y": 0.25,
+                "dx": -354,
+                "dy": 354,
+                "color": {
+                  "r": 0.05,
+                  "g": 0.9,
+                  "b": 0.1
+                }
+              },
+              {
+                "x": 0.5,
+                "y": 0.15,
+                "dx": 0,
+                "dy": 500,
+                "color": {
+                  "r": 0.03,
+                  "g": 0.75,
+                  "b": 0.9
+                }
+              },
+              {
+                "x": 0.36,
+                "y": 0.25,
+                "dx": 354,
+                "dy": 354,
+                "color": {
+                  "r": 0.05,
+                  "g": 0.08,
+                  "b": 1.1
+                }
+              },
+              {
+                "x": 0.31,
+                "y": 0.5,
+                "dx": 500,
+                "dy": 0,
+                "color": {
+                  "r": 0.5,
+                  "g": 0.03,
+                  "b": 1
+                }
+              },
+              {
+                "x": 0.36,
+                "y": 0.75,
+                "dx": 354,
+                "dy": -354,
+                "color": {
+                  "r": 0.9,
+                  "g": 0.03,
+                  "b": 0.6
+                }
+              }
+            ],
+            "autoSplatRate": 1.2,
+            "autoSplatCount": 1,
+            "autoSplatCenterY": 0.5,
+            "autoSplatBandHeight": 0.8,
+            "autoSplatSwirl": 500,
+            "dyeResolution": 512,
+            "seed": 5,
+            "pointerInput": false,
+            "requireHardwareAcceleration": true,
+            "bloomResolution": 256,
+            "sunraysResolution": 196
+          },
+          "backing": [
+            2880,
+            1800
+          ],
+          "stats": [
+            {
+              "wall": 2,
+              "actualWall": 2.0137000000178813,
+              "coverage": 0.3979604552469136,
+              "chroma": 0.05579014683159494,
+              "low": 0.05206036381172241,
+              "mid": 0.2590437868466369,
+              "high": 0.6888958493416407
+            },
+            {
+              "wall": 5,
+              "actualWall": 5.014300000011921,
+              "coverage": 0.3979795524691358,
+              "chroma": 0.04766914214522062,
+              "low": 0.057520797089627755,
+              "mid": 0.2503498954350096,
+              "high": 0.6921293074753627
+            },
+            {
+              "wall": 10,
+              "actualWall": 10.01370000001788,
+              "coverage": 0.39799151234567903,
+              "chroma": 0.043559225664445804,
+              "low": 0.09207467927201138,
+              "mid": 0.22468148852679315,
+              "high": 0.6832438322011956
+            },
+            {
+              "wall": 20,
+              "actualWall": 20.01440000000596,
+              "coverage": 0.39796836419753084,
+              "chroma": 0.03888614657847341,
+              "low": 0.11055455814753891,
+              "mid": 0.22514568514082303,
+              "high": 0.6642997567116381
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "preset": "Karman",
+      "file": "Karman.jpg",
+      "bytes": 214456,
+      "anchors": [
+        [
+          400,
+          800
+        ],
+        [
+          600,
+          800
+        ],
+        [
+          1200,
+          800
+        ],
+        [
+          1200,
+          800
+        ]
+      ],
+      "captures": [
+        {
+          "sourceSha": "0456ebd3ca0c0a00d5e44c1b518ae7d54a027c8d",
+          "override": {},
+          "degradation": "",
+          "scene": {
+            "preset": "Karman",
+            "w": 1440,
+            "h": 900,
+            "dpr": 2,
+            "seed": 5
+          },
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+          "cfg": {
+            "obstructions": [
+              {
+                "d": "M 25 52 A 10 10 0 1 0 45 52 A 10 10 0 1 0 25 52 Z",
+                "viewBox": [
+                  0,
+                  0,
+                  100,
+                  100
+                ],
+                "fit": "fill"
+              }
+            ],
+            "obstructionColor": {
+              "r": 86,
+              "g": 98,
+              "b": 122
+            },
+            "flow": {
+              "mode": "live",
+              "boundary": {
+                "left": "open",
+                "right": "open",
+                "top": "open",
+                "bottom": "open"
+              },
+              "forces": [
+                {
+                  "kind": "pressureGradient",
+                  "vector": {
+                    "x": 40,
+                    "y": 0
+                  }
+                }
+              ],
+              "sources": [
+                {
+                  "kind": "point",
+                  "x": 0.03,
+                  "y": 0.2,
+                  "dye": {
+                    "r": 0.42,
+                    "g": 0.07,
+                    "b": 0.1
+                  },
+                  "rate": 26,
+                  "radius": 0.028
+                },
+                {
+                  "kind": "point",
+                  "x": 0.03,
+                  "y": 0.32,
+                  "dye": {
+                    "r": 0.42,
+                    "g": 0.26,
+                    "b": 0.05
+                  },
+                  "rate": 26,
+                  "radius": 0.028
+                },
+                {
+                  "kind": "point",
+                  "x": 0.03,
+                  "y": 0.44,
+                  "dye": {
+                    "r": 0.36,
+                    "g": 0.4,
+                    "b": 0.07
+                  },
+                  "rate": 26,
+                  "radius": 0.028
+                },
+                {
+                  "kind": "point",
+                  "x": 0.03,
+                  "y": 0.56,
+                  "dye": {
+                    "r": 0.07,
+                    "g": 0.38,
+                    "b": 0.18
+                  },
+                  "rate": 26,
+                  "radius": 0.028
+                },
+                {
+                  "kind": "point",
+                  "x": 0.03,
+                  "y": 0.68,
+                  "dye": {
+                    "r": 0.06,
+                    "g": 0.26,
+                    "b": 0.44
+                  },
+                  "rate": 26,
+                  "radius": 0.028
+                },
+                {
+                  "kind": "point",
+                  "x": 0.03,
+                  "y": 0.8,
+                  "dye": {
+                    "r": 0.34,
+                    "g": 0.1,
+                    "b": 0.4
+                  },
+                  "rate": 26,
+                  "radius": 0.028
+                }
+              ],
+              "outlets": [
+                {
+                  "edge": "right",
+                  "from": 0,
+                  "to": 1,
+                  "width": 0.075,
+                  "clearDye": 0.0064,
+                  "clearScalars": true,
+                  "clearVelocity": true
+                },
+                {
+                  "edge": "top",
+                  "from": 0,
+                  "to": 1,
+                  "width": 0.045,
+                  "clearDye": 0.0144,
+                  "clearScalars": true,
+                  "clearVelocity": false
+                },
+                {
+                  "edge": "bottom",
+                  "from": 0,
+                  "to": 1,
+                  "width": 0.045,
+                  "clearDye": 0.0144,
+                  "clearScalars": true,
+                  "clearVelocity": false
+                },
+                {
+                  "edge": "left",
+                  "from": 0,
+                  "to": 1,
+                  "width": 0.02,
+                  "clearDye": 0.2025,
+                  "clearScalars": true,
+                  "clearVelocity": false
+                }
+              ],
+              "visualization": {
+                "colorBy": "dye"
+              }
+            },
+            "openBoundary": true,
+            "curl": 15,
+            "densityDissipation": 0.7,
+            "velocityDissipation": 0.075,
+            "maxTimeStep": 0.016666666666666666,
+            "substeps": 1,
+            "viscosity": 0.009333,
+            "viscosityIterations": 8,
+            "wallFriction": 0.2944,
+            "wallFrictionWidth": 2,
+            "pressure": 0.9,
+            "pressureIterations": 34,
+            "splatRadius": 0.06,
+            "splatForce": 6000,
+            "shading": false,
+            "colorful": false,
+            "bloom": false,
+            "sunrays": false,
+            "simResolution": 192,
+            "dyeResolution": 1024,
+            "initialSplatCount": 0,
+            "presetSplats": [
+              {
+                "x": 0.04,
+                "y": 0.14,
+                "dx": 460,
+                "dy": 0,
+                "color": {
+                  "r": 0.2,
+                  "g": 0.12,
+                  "b": 0.3
+                }
+              },
+              {
+                "x": 0.04,
+                "y": 0.32,
+                "dx": 460,
+                "dy": 0,
+                "color": {
+                  "r": 0.1,
+                  "g": 0.25,
+                  "b": 0.3
+                }
+              },
+              {
+                "x": 0.04,
+                "y": 0.5,
+                "dx": 460,
+                "dy": 0,
+                "color": {
+                  "r": 0.28,
+                  "g": 0.22,
+                  "b": 0.1
+                }
+              },
+              {
+                "x": 0.04,
+                "y": 0.68,
+                "dx": 460,
+                "dy": 0,
+                "color": {
+                  "r": 0.1,
+                  "g": 0.28,
+                  "b": 0.16
+                }
+              },
+              {
+                "x": 0.04,
+                "y": 0.86,
+                "dx": 460,
+                "dy": 0,
+                "color": {
+                  "r": 0.3,
+                  "g": 0.12,
+                  "b": 0.18
+                }
+              }
+            ],
+            "backColor": {
+              "r": 4,
+              "g": 6,
+              "b": 14
+            },
+            "seed": 5,
+            "pointerInput": false,
+            "requireHardwareAcceleration": true,
+            "bloomResolution": 256,
+            "sunraysResolution": 196
+          },
+          "backing": [
+            2880,
+            1800
+          ],
+          "stats": [
+            {
+              "wall": 2,
+              "actualWall": 2.005,
+              "coverage": 0.1775895061728395,
+              "chroma": 0.03140612700270663,
+              "low": 0.14275593264164277,
+              "mid": 0.39755226194069715,
+              "high": 0.4596918054176599
+            },
+            {
+              "wall": 5,
+              "actualWall": 5.006399999976158,
+              "coverage": 0.3694735725308642,
+              "chroma": 0.031844855481559596,
+              "low": 0.19332543157303186,
+              "mid": 0.3584930360364232,
+              "high": 0.44818153239054503
+            },
+            {
+              "wall": 10,
+              "actualWall": 10.0045,
+              "coverage": 0.3781255787037037,
+              "chroma": 0.03029133519062887,
+              "low": 0.21764898430288246,
+              "mid": 0.3840122660082041,
+              "high": 0.3983387496889134
+            },
+            {
+              "wall": 20,
+              "actualWall": 20.00429999998212,
+              "coverage": 0.38010918209876543,
+              "chroma": 0.02979283204678375,
+              "low": 0.22056072365314652,
+              "mid": 0.3514244955354814,
+              "high": 0.4280147808113722
+            }
+          ]
+        },
+        {
+          "sourceSha": "0456ebd3ca0c0a00d5e44c1b518ae7d54a027c8d",
+          "override": {
+            "dyeResolution": 512
+          },
+          "degradation": "",
+          "scene": {
+            "preset": "Karman",
+            "w": 1440,
+            "h": 900,
+            "dpr": 2,
+            "seed": 5
+          },
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+          "cfg": {
+            "obstructions": [
+              {
+                "d": "M 25 52 A 10 10 0 1 0 45 52 A 10 10 0 1 0 25 52 Z",
+                "viewBox": [
+                  0,
+                  0,
+                  100,
+                  100
+                ],
+                "fit": "fill"
+              }
+            ],
+            "obstructionColor": {
+              "r": 86,
+              "g": 98,
+              "b": 122
+            },
+            "flow": {
+              "mode": "live",
+              "boundary": {
+                "left": "open",
+                "right": "open",
+                "top": "open",
+                "bottom": "open"
+              },
+              "forces": [
+                {
+                  "kind": "pressureGradient",
+                  "vector": {
+                    "x": 40,
+                    "y": 0
+                  }
+                }
+              ],
+              "sources": [
+                {
+                  "kind": "point",
+                  "x": 0.03,
+                  "y": 0.2,
+                  "dye": {
+                    "r": 0.42,
+                    "g": 0.07,
+                    "b": 0.1
+                  },
+                  "rate": 26,
+                  "radius": 0.028
+                },
+                {
+                  "kind": "point",
+                  "x": 0.03,
+                  "y": 0.32,
+                  "dye": {
+                    "r": 0.42,
+                    "g": 0.26,
+                    "b": 0.05
+                  },
+                  "rate": 26,
+                  "radius": 0.028
+                },
+                {
+                  "kind": "point",
+                  "x": 0.03,
+                  "y": 0.44,
+                  "dye": {
+                    "r": 0.36,
+                    "g": 0.4,
+                    "b": 0.07
+                  },
+                  "rate": 26,
+                  "radius": 0.028
+                },
+                {
+                  "kind": "point",
+                  "x": 0.03,
+                  "y": 0.56,
+                  "dye": {
+                    "r": 0.07,
+                    "g": 0.38,
+                    "b": 0.18
+                  },
+                  "rate": 26,
+                  "radius": 0.028
+                },
+                {
+                  "kind": "point",
+                  "x": 0.03,
+                  "y": 0.68,
+                  "dye": {
+                    "r": 0.06,
+                    "g": 0.26,
+                    "b": 0.44
+                  },
+                  "rate": 26,
+                  "radius": 0.028
+                },
+                {
+                  "kind": "point",
+                  "x": 0.03,
+                  "y": 0.8,
+                  "dye": {
+                    "r": 0.34,
+                    "g": 0.1,
+                    "b": 0.4
+                  },
+                  "rate": 26,
+                  "radius": 0.028
+                }
+              ],
+              "outlets": [
+                {
+                  "edge": "right",
+                  "from": 0,
+                  "to": 1,
+                  "width": 0.075,
+                  "clearDye": 0.0064,
+                  "clearScalars": true,
+                  "clearVelocity": true
+                },
+                {
+                  "edge": "top",
+                  "from": 0,
+                  "to": 1,
+                  "width": 0.045,
+                  "clearDye": 0.0144,
+                  "clearScalars": true,
+                  "clearVelocity": false
+                },
+                {
+                  "edge": "bottom",
+                  "from": 0,
+                  "to": 1,
+                  "width": 0.045,
+                  "clearDye": 0.0144,
+                  "clearScalars": true,
+                  "clearVelocity": false
+                },
+                {
+                  "edge": "left",
+                  "from": 0,
+                  "to": 1,
+                  "width": 0.02,
+                  "clearDye": 0.2025,
+                  "clearScalars": true,
+                  "clearVelocity": false
+                }
+              ],
+              "visualization": {
+                "colorBy": "dye"
+              }
+            },
+            "openBoundary": true,
+            "curl": 15,
+            "densityDissipation": 0.7,
+            "velocityDissipation": 0.075,
+            "maxTimeStep": 0.016666666666666666,
+            "substeps": 1,
+            "viscosity": 0.009333,
+            "viscosityIterations": 8,
+            "wallFriction": 0.2944,
+            "wallFrictionWidth": 2,
+            "pressure": 0.9,
+            "pressureIterations": 34,
+            "splatRadius": 0.06,
+            "splatForce": 6000,
+            "shading": false,
+            "colorful": false,
+            "bloom": false,
+            "sunrays": false,
+            "simResolution": 192,
+            "dyeResolution": 512,
+            "initialSplatCount": 0,
+            "presetSplats": [
+              {
+                "x": 0.04,
+                "y": 0.14,
+                "dx": 460,
+                "dy": 0,
+                "color": {
+                  "r": 0.2,
+                  "g": 0.12,
+                  "b": 0.3
+                }
+              },
+              {
+                "x": 0.04,
+                "y": 0.32,
+                "dx": 460,
+                "dy": 0,
+                "color": {
+                  "r": 0.1,
+                  "g": 0.25,
+                  "b": 0.3
+                }
+              },
+              {
+                "x": 0.04,
+                "y": 0.5,
+                "dx": 460,
+                "dy": 0,
+                "color": {
+                  "r": 0.28,
+                  "g": 0.22,
+                  "b": 0.1
+                }
+              },
+              {
+                "x": 0.04,
+                "y": 0.68,
+                "dx": 460,
+                "dy": 0,
+                "color": {
+                  "r": 0.1,
+                  "g": 0.28,
+                  "b": 0.16
+                }
+              },
+              {
+                "x": 0.04,
+                "y": 0.86,
+                "dx": 460,
+                "dy": 0,
+                "color": {
+                  "r": 0.3,
+                  "g": 0.12,
+                  "b": 0.18
+                }
+              }
+            ],
+            "backColor": {
+              "r": 4,
+              "g": 6,
+              "b": 14
+            },
+            "seed": 5,
+            "pointerInput": false,
+            "requireHardwareAcceleration": true,
+            "bloomResolution": 256,
+            "sunraysResolution": 196
+          },
+          "backing": [
+            2880,
+            1800
+          ],
+          "stats": [
+            {
+              "wall": 2,
+              "actualWall": 2.0120999999940397,
+              "coverage": 0.20560609567901234,
+              "chroma": 0.03154913086294409,
+              "low": 0.13803002581754656,
+              "mid": 0.3977703135577726,
+              "high": 0.4641996606246809
+            },
+            {
+              "wall": 5,
+              "actualWall": 5.01209999999404,
+              "coverage": 0.3930223765432099,
+              "chroma": 0.031460233530144405,
+              "low": 0.18634083953133526,
+              "mid": 0.36549541693017534,
+              "high": 0.44816374353848937
+            },
+            {
+              "wall": 10,
+              "actualWall": 10.011899999976158,
+              "coverage": 0.39569695216049383,
+              "chroma": 0.030003244855167227,
+              "low": 0.22229326965490198,
+              "mid": 0.36712865006232875,
+              "high": 0.4105780802827694
+            },
+            {
+              "wall": 20,
+              "actualWall": 20.01189999997616,
+              "coverage": 0.3860679012345679,
+              "chroma": 0.0291586258412341,
+              "low": 0.25719860906338804,
+              "mid": 0.34680560303370456,
+              "high": 0.39599578790290735
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
