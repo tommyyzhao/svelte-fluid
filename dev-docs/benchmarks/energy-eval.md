@@ -105,4 +105,21 @@ Non-settling diagnostics observed only through 40 s. “Not observed” is censo
 
 ## Rounds
 
-No E1 keep/revert round completed. Solve-rate cap `8f27341` received no E1 candidate captures: E2 rejected it first. Presentation-only cap train go/no-go pending. Six-scene, one-run **15%** saving heuristic is scheduling only, not ADR 0107 keep rule. Any later train candidate R2 is exploratory, n shown; held-out candidate R3 remains required.
+No E1 keep/revert round completed. Solve-rate cap `8f27341` received no E1 candidate captures: E2 rejected it first.
+
+### Round 2 — presentation-only cap, train scheduling heuristic
+
+Candidate `2a57fcb4fe9612ef10fc5fd6b3f7120d8184d290`. Six train presets, 1440×900 DPR2 seed5, one run; comparison to frozen train R1. **15%** saving threshold is a scheduling heuristic, not ADR 0107 keep rule. Default settles during active t=5–15 s, so its partial-active window is separate, excluded from heuristic decision. Remaining five fully-active scenes: **median saving 44.602%**, continue. No held-out tuning.
+
+| Scene | Frozen R1 ms/s | Candidate ms/s | Ratio | Saving | Engine Hz | Present Hz |
+|---|---:|---:|---:|---:|---:|---:|
+| `(default)` — partial, settles 8.561 s | 82.095 | 49.565 | 0.60375 | 39.63% | 42.8 | 21.5 |
+| LavaLamp | 198.241 | 111.560 | 0.56275 | 43.73% | 120 | 60 |
+| Plasma | 219.881 | 121.404 | 0.55214 | 44.79% | 120 | 60 |
+| InkInWater | 170.435 | 94.417 | 0.55398 | 44.60% | 120 | 60 |
+| Aurora | 224.231 | 120.062 | 0.53544 | 46.46% | 120 | 60 |
+| CircularFluid | 188.288 | 114.795 | 0.60968 | 39.03% | 120 | 60 |
+
+All refresh probes 120 Hz; offscreen/hidden/control 0 GPU-ms/s. Parsed ratios: `/tmp/energy-eval/round2-go-no-go/paired-ratios.json`. Large elapsed machine-time gap from frozen train R1 makes drift a concern: this is not a keep result.
+
+Decisive work pending: held-out candidate R3 plus adjacent fresh baseline R3 pairs, alternating order; report frozen-baseline comparison (pre-registered keep rule) and paired ratios with bootstrap interval separately. Flag disagreement exceeding 10 percentage points. Train scheduling deviation: separate paired-baseline train R2 plus frozen train R1, **n=2 rather than registered R=3**; candidate train R1 only. Do not replace frozen R1 or claim a registered R3 noise floor from two runs. Evidence labels remain distinct.
