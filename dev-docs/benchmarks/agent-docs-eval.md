@@ -125,3 +125,76 @@ Future subject runs hash both supplied docs after each trial and record `subject
 
 ## Rounds
 
+### Round 1 — KEEP (2026-10-07)
+
+Candidate docs source `2c11c614e97abeb3959878e2236e08d6cfa0b20c`; baseline measurement `d7471aa24c982ae4551e74bee0fe9e7d2b3e2221`. Fresh 120 subjects, identical frozen tasks/prompts/grading functions, routed models, two repeats, six-minute timeout, concurrency four, fixture dependencies, hardware Chrome and viewport. Only supplied docs changed; baseline library tarball and installed fixture copied unchanged. Temporary driver changed storage/output, bypassed packaging and deferred GPU work; repository grader untouched. CPU checks preceded three exclusive GPU batches (50/50/20), alternating with E1; each hold under twelve minutes. No selective reruns. Raw evidence `/tmp/agent-docs-round1/`; compact results `evals/agent-docs/round-1.json`.
+
+SHA256 provenance:
+
+| Artifact | SHA256 |
+| --- | --- |
+| Candidate llms-full.txt | `db01f68f071471cc30adec379c0e783ed0c405ecd7e94bd97d7f4743a5fd5377` |
+| Candidate SKILL.md | `4d98989831e9590bcd4318451904ff490f893ccff42d96c2b708f2179ee1e239` |
+| Unchanged baseline package | `6d78663eba359431246495bb08495978320b87412656f000fa87d618f746db69` |
+| Frozen grader | `616073de149e8f9996a606dad83ffcce681429765073d6823302085e97bbede6` |
+
+Docs supplied mode 0444, audited after every subject: zero mutations. This is not an OS sandbox. Package/config/app/static fixture byte audit: zero mutations. Zero fixture errors, all 120 hardware renders completed. Ninety pass, thirty fail.
+
+#### Primary — intent-to-treat
+
+| Model | Split | Baseline | Candidate | Candidate Wilson 95% CI | Delta |
+| --- | --- | --- | --- | --- | --- |
+| Haiku | Train | 18/42, 42.9% | 25/42, 59.5% | 44.5–73.0% | +16.7pp |
+| Haiku | Held out | 6/18, 33.3% | 12/18, 66.7% | 43.7–83.7% | +33.3pp |
+| Sonnet | Train | 23/42, 54.8% | 35/42, 83.3% | 69.4–91.7% | +28.6pp |
+| Sonnet | Held out | 11/18, 61.1% | 18/18, 100% | 82.4–100% | +38.9pp |
+| Pooled | Train | 41/84, 48.8% | 60/84, 71.4% | 61.0–80.0% | +22.6pp |
+| Pooled | Held out | 17/36, 47.2% | 30/36, 83.3% | 68.1–92.1% | +36.1pp |
+
+#### Secondary — infrastructure-sensitive, timeouts excluded from both runs
+
+Candidate denominators/rates/CIs unchanged: zero timeouts. Baseline excluded seven recorded subject-timeouts (SIGTERM exit 143).
+
+| Model | Split | Baseline excluding timeouts | Candidate | Delta |
+| --- | --- | --- | --- | --- |
+| Haiku | Train | 18/40, 45.0% | 25/42, 59.5% | +14.5pp |
+| Haiku | Held out | 6/18, 33.3% | 12/18, 66.7% | +33.3pp |
+| Sonnet | Train | 23/38, 60.5% | 35/42, 83.3% | +22.8pp |
+| Sonnet | Held out | 11/17, 64.7% | 18/18, 100% | +35.3pp |
+| Pooled | Train | 41/78, 52.6% | 60/84, 71.4% | +18.9pp |
+| Pooled | Held out | 17/35, 48.6% | 30/36, 83.3% | +34.8pp |
+
+**Verdict: KEEP for Haiku, Sonnet and pooled under both views.** Each train point estimate increases; each candidate held-out lower CI exceeds its baseline point estimate, including timeout-excluded baseline. This follows the registered lower-bound-versus-point gate, not a non-overlapping-CI claim. Repeated tasks and wide intervals retain the baseline limitations.
+
+#### Timeouts and subject duration
+
+Timeouts fall 7/120 to 0/120 (Haiku 2→0, Sonnet 5→0). Could reflect infrastructure or easier completion with better docs; cannot identify causality. Gains survive removing baseline timeouts, so KEEP does not rest on the timeout reduction.
+
+CLI terminal `duration_ms` estimates subject wall duration, not an independently recorded process clock. Completed-subject medians:
+
+| Model | Baseline | Candidate |
+| --- | --- | --- |
+| Haiku | 18.206s (58 completed) | 17.345s (60) |
+| Sonnet | 40.440s (55) | 35.356s (60) |
+| Pooled | 27.810s (113) | 24.063s (120) |
+
+Censoring seven missing baseline terminal durations at the 360s deadline gives baseline intent-to-treat medians 18.447s / 41.011s / 28.403s respectively. Modest median speedup does not explain or disprove disappearance of the extreme timeout tail.
+
+#### Failure buckets
+
+| Primary cause | Train | Held out | Total |
+| --- | --- | --- | --- |
+| API prop/type | 0 | 1 | 1 |
+| TypeScript inference | 2 | 2 | 4 |
+| Svelte warnings | 4 | 0 | 4 |
+| Requirement/static limitation | 7 | 1 | 8 |
+| Presentation size | 9 | 2 | 11 |
+| Svelte syntax | 1 | 0 | 1 |
+| Subject no route | 1 | 0 | 1 |
+| Timeout / fixture error | 0 | 0 | 0 |
+| **Total failures** | **24** | **6** | **30** |
+
+Overlapping failed checks: assertions 10, svelte-check 11, build 1, render/size 18. API/TypeScript primary failures fall from baseline 41 to 5; remaining failures include warning-free compilation and size mismatches. Known frozen static limitation: one Fluid node inside a two-item `{#each}` is counted as one AST instance (lazy-gallery subjects); no repair or rerun. Explicit named presets still reject hand-coded core Fluid lookalikes. Size remains actual canvas size, not wrapper dimensions. Held-out failures remain report-only, not design inputs. Diagnostic labels are hypotheses, not a fifth check.
+
+Owned subject/server/browser processes ended; exact E3 locks released after each batch. Raw fixtures and dirty/unmerged worktree retained; no push, merge or publish.
+
