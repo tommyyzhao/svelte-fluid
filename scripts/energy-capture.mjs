@@ -122,7 +122,7 @@ if (process.argv[2] === '--analyse-worker') {
 	process.exit(0);
 }
 const { values: options } = parseArgs({ options: {
-	label: { type: 'string', default: 'baseline' }, split: { type: 'string', default: 'all' }, subset: { type: 'string' }, cases: { type: 'string' }, 'source-root': { type: 'string' },
+	label: { type: 'string', default: 'baseline' }, split: { type: 'string', default: 'all' }, subset: { type: 'string' }, cases: { type: 'string' }, 'source-root': { type: 'string' }, 'engine-sha': { type: 'string' },
 	runs: { type: 'string', default: '3' }, 'run-start': { type: 'string', default: '1' }, override: { type: 'string' },
 	'self-check': { type: 'boolean' }, 'summary-only': { type: 'boolean' }, resume: { type: 'boolean' }, help: { type: 'boolean' }
 } });
@@ -144,7 +144,9 @@ assert.ok(cases.length);
 const DIR = `/tmp/energy-eval/${options.label}`, harnessSha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 const sourceRoot = options['source-root'] ?? ROOT;
 assert.ok(sourceRoot.startsWith('/'), '--source-root requires an absolute directory');
-const engineSourceSha = sourceRoot === ROOT ? 'e4be335997ed2cd9ee1922879efaeea8f6a4b22e' : execFileSync('git', ['-C', sourceRoot, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+const engineSourceSha = sourceRoot === ROOT ? 'e4be335997ed2cd9ee1922879efaeea8f6a4b22e' : options['engine-sha'];
+assert.match(engineSourceSha ?? '', /^[a-f0-9]{7,40}$/, '--source-root requires supplied --engine-sha; no cross-worktree Git operations');
+const engineFileHash = createHash('sha256').update(await readFile(`${sourceRoot}/src/lib/engine/FluidEngine.ts`)).digest('hex');
 if (sourceRoot === ROOT) assert.equal(execFileSync('git', ['diff', 'e4be335', '--', 'src/lib'], { encoding: 'utf8' }), '', 'Baseline engine source changed');
 const sha = engineSourceSha;
 const source = await readFile(process.argv[1], 'utf8');
@@ -152,7 +154,7 @@ const measurementParts = (s) => s.slice(s.indexOf('function slice('), s.indexOf(
 const frozenSource = execFileSync('git', ['show', 'e4be335:scripts/energy-capture.mjs'], { cwd: ROOT, encoding: 'utf8' });
 assert.equal(measurementParts(source), measurementParts(frozenSource), 'Frozen window/parser/metric logic changed');
 const measurementLogicHash = createHash('sha256').update(measurementParts(source)).update(await readFile(`${ROOT}/src/energy-capture.js`, 'utf8')).digest('hex');
-const metadata = { sha, harnessSha, engineSourceSha, measurementLogicHash, root: ROOT, sourceRoot, chrome: CHROME, driver: 'direct ordinary Chrome + CDP noDefaults:true; native focus/visibility, CDP device metrics', override, protocol: 'ADR 0107 E1', requestedRuns: RUNS, runStart: RUN_START, requestedScenes: cases, refresh: 'native; 60 Hz not measurable without changing system settings' };
+const metadata = { sha, harnessSha, engineSourceSha, engineFileHash, measurementLogicHash, root: ROOT, sourceRoot, chrome: CHROME, driver: 'direct ordinary Chrome + CDP noDefaults:true; native focus/visibility, CDP device metrics', override, protocol: 'ADR 0107 E1', requestedRuns: RUNS, runStart: RUN_START, requestedScenes: cases, refresh: 'native; 60 Hz not measurable without changing system settings' };
 function summaries(rows) {
 	const scenes = cases.map((c) => {
 		const repeats = rows.filter((r) => key(r) === key(c) && r.status === 'OK');
@@ -206,6 +208,7 @@ if (options.resume || options['summary-only']) for (const f of await readdir(DIR
 	const row = JSON.parse(await readFile(`${DIR}/${f}`, 'utf8'));
 	assert.equal(row.engineSourceSha ?? row.sha, engineSourceSha, 'Cannot mix captures from different engine commits');
 	if (row.measurementLogicHash) assert.equal(row.measurementLogicHash, measurementLogicHash, 'Cannot mix measurement logic');
+	if (row.engineFileHash) assert.equal(row.engineFileHash, engineFileHash, 'Engine source-file hash changed');
 	assert.deepEqual(row.override, override, 'Cannot mix candidate overrides');
 	results.push(row);
 }
@@ -291,7 +294,7 @@ async function bytes(path) {
 }
 async function capture(c, run) {
 	const name = `${fileKey(c)}-r${run}${c.infraRetry ? '-infra-retry' : ''}`, trace = `${DIR}/${name}.trace`, windows = {}, states = {};
-	const row = { ...c, run, sha, harnessSha, engineSourceSha, measurementLogicHash, override, trace, startedAt: new Date().toISOString(), status: 'FAILED' };
+	const row = { ...c, run, sha, harnessSha, engineSourceSha, engineFileHash, measurementLogicHash, override, trace, startedAt: new Date().toISOString(), status: 'FAILED' };
 	let gpuPid, phase = 'browser launch', stopped = false;
 	const progress = (p) => { phase = p; writeFileSync(`${DIR}/${name}.progress.json`, JSON.stringify({ ...row, phase, windows, states })); console.log(JSON.stringify({ name, phase })); };
 	const controller = new AbortController(), deadline = setTimeout(() => { controller.abort(new Error(`Attempt timeout in ${phase}`)); cleanup(); }, 600000);
