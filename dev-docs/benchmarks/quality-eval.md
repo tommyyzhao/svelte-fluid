@@ -97,3 +97,69 @@ This serves/builds the candidate modules through its own Vite checkout. The reco
 An independently built candidate checkout: `--source-root /absolute/candidate/worktree`; Vite serves that checkout without changing this lane. Default compare: test seeds 11/23, both DPRs; `--split train` supports train-only diagnostics at seed 5. Results: `/tmp/quality-eval/<label>/verdict.json`. Labels must be unique per variant; cached captures verify source SHA/config. GPU lock acquired automatically, ports 5230–5239 only, ≤25-scene capture chunks.
 
 ## Rounds
+
+### Round 1 — 60 fps frame cap (8f27341)
+
+2026-10-07. Scheduling-only candidate `8f27341a86eb47238a5efd00808c3d8c99533518`, frozen baseline `1006e8fae1e670a72be67e1ff75800a43b35ff5e`; empty props override, `--spatial-safe`, ADR 0107 Amendment 1 scoped calibration. Held-out test: four presets × DPR2/DPR1 × seeds 11/23, 1024×640, 16 pairs.
+
+**ADR verdict: WORSE.** Six losses / seven non-tie pairs = **85.7143%** (limit 33.3333%); one candidate win, nine ties. Statistics fail: **45 violations across 15/16 scenes** (low 30, mid 6, chroma 9; coverage/high none). Both independent gates fail; this round does not satisfy the keep rule. Diagnostic-only null comparison: **WORSE**, candidate losses over all pairs **6/16 = 37.5%**, pooled identical-render null **2/18 = 11.1111%**. The null remains train calibration, not a held-out null estimate.
+
+Result JSON: `/tmp/quality-eval/cap-8f27341/verdict.json`. Command: `bun scripts/quality-eval.mjs compare --label cap-8f27341 --source-root /Users/admin/Projects/personal-archive/fluid-project/svelte-fluid/.claude/worktrees/agent-ad633c470d2438e83 --props '{}' --spatial-safe`.
+
+GPU fairness: observed E1 release 06:23:27, E2 acquire 06:23:32, E2 release 06:29:17, E1 acquire 06:29:32 (local time; 5-second observation granularity). One 16-scene hold, approximately **5 min 45 s**, below 12 minutes; no reacquisition. Ordinary installed hardware Chrome. Nonfatal Vite dependency-scan warning on the unrelated missing `SplashCursor.svelte` docs import; all 16 engine captures and 32 judge trials completed successfully.
+
+Agent sanity read (not owner review): read three actual composite images plus both judge reasons, FrozenSwirl DPR2 seed23 and DPR1 seeds11/23. All three final ties look sane: comparable broad cyan plumes, smooth gradients and late diffusion; local folds/brightness differ without a consistent winner. Each pair had a preference in one trial and a tie in the swapped trial, so conservative split-to-tie handling is appropriate. Images: `/tmp/quality-eval/judge-inputs/1ab74f56-e7f7-4655-b181-8d87354a1719/pair.png`, `/tmp/quality-eval/judge-inputs/5f310b48-b8ae-4f04-8136-8661688bea5d/pair.png`, `/tmp/quality-eval/judge-inputs/53039ff1-dbbb-4c12-83d7-c089cf805c42/pair.png`. Owner review remains pending; stills do not establish temporal smoothness.
+
+#### Out-of-band statistics
+
+All scenes are 1024×640. Wall times in seconds; values and widened bands rounded to nine significant digits here, full precision in verdict JSON.
+
+| Scene | Wall | Metric | Value | Band [lower, upper] |
+|---|---:|---|---:|---|
+| FrozenSwirl-dpr2-seed11 | 2 | low | 0.00840443342 | [0.00941216417, 0.0165486219] |
+| FrozenSwirl-dpr2-seed11 | 5 | low | 0.00232587563 | [0.00247698896, 0.00575841019] |
+| FrozenSwirl-dpr2-seed11 | 10 | low | 0.00288354621 | [0.00333679221, 0.00578066845] |
+| FrozenSwirl-dpr2-seed11 | 10 | mid | 0.0407400953 | [0.0517156925, 0.0668955852] |
+| FrozenSwirl-dpr2-seed11 | 20 | low | 0.00366122483 | [0.00419251772, 0.00676904949] |
+| FrozenSwirl-dpr2-seed23 | 2 | low | 0.00627205271 | [0.00941216417, 0.0165486219] |
+| FrozenSwirl-dpr2-seed23 | 20 | low | 0.00416444577 | [0.00419251772, 0.00676904949] |
+| FrozenSwirl-dpr1-seed11 | 2 | low | 0.00794793088 | [0.00992226737, 0.0181744746] |
+| FrozenSwirl-dpr1-seed11 | 5 | low | 0.00254838798 | [0.00373497254, 0.00533480801] |
+| FrozenSwirl-dpr1-seed11 | 5 | mid | 0.0470242028 | [0.0475017942, 0.0630303411] |
+| FrozenSwirl-dpr1-seed11 | 10 | low | 0.00359543197 | [0.00387007101, 0.00611872105] |
+| FrozenSwirl-dpr1-seed11 | 10 | mid | 0.0499802671 | [0.0503635465, 0.066753209] |
+| FrozenSwirl-dpr1-seed23 | 2 | low | 0.0069933936 | [0.00992226737, 0.0181744746] |
+| FrozenSwirl-dpr1-seed23 | 5 | mid | 0.0470042233 | [0.0475017942, 0.0630303411] |
+| FrozenSwirl-dpr1-seed23 | 10 | mid | 0.0496220823 | [0.0503635465, 0.066753209] |
+| FrozenSwirl-dpr1-seed23 | 20 | mid | 0.0476622827 | [0.0480221342, 0.0606669392] |
+| AnnularFluid-dpr2-seed11 | 5 | low | 0.089421831 | [0.0958143351, 0.141195153] |
+| AnnularFluid-dpr2-seed11 | 10 | low | 0.120073425 | [0.140507506, 0.173313206] |
+| AnnularFluid-dpr2-seed11 | 20 | low | 0.12031255 | [0.120943587, 0.16237563] |
+| AnnularFluid-dpr2-seed23 | 10 | low | 0.122811653 | [0.140507506, 0.173313206] |
+| AnnularFluid-dpr1-seed11 | 5 | low | 0.0839700094 | [0.089480601, 0.140602688] |
+| AnnularFluid-dpr1-seed11 | 10 | low | 0.127184213 | [0.132633877, 0.175287291] |
+| AnnularFluid-dpr1-seed11 | 20 | chroma | 0.0233137559 | [0.0189709743, 0.0232899336] |
+| AnnularFluid-dpr1-seed11 | 20 | low | 0.108601831 | [0.124104695, 0.176211846] |
+| AnnularFluid-dpr1-seed23 | 2 | low | 0.0821623974 | [0.0924551079, 0.135083097] |
+| AnnularFluid-dpr1-seed23 | 5 | chroma | 0.0491586122 | [0.03221169, 0.044957232] |
+| AnnularFluid-dpr1-seed23 | 5 | low | 0.0769989111 | [0.089480601, 0.140602688] |
+| AnnularFluid-dpr1-seed23 | 10 | low | 0.124566752 | [0.132633877, 0.175287291] |
+| AnnularFluid-dpr1-seed23 | 20 | low | 0.106347988 | [0.124104695, 0.176211846] |
+| FrameFluid-dpr2-seed11 | 20 | chroma | 0.0484403184 | [0.0261037297, 0.0473217535] |
+| FrameFluid-dpr2-seed11 | 20 | low | 0.128562537 | [0.0775906139, 0.110730389] |
+| FrameFluid-dpr2-seed23 | 2 | chroma | 0.0469261778 | [0.0520633403, 0.0754369157] |
+| FrameFluid-dpr2-seed23 | 5 | chroma | 0.078223714 | [0.0447775302, 0.0641507963] |
+| FrameFluid-dpr2-seed23 | 20 | low | 0.139525363 | [0.0775906139, 0.110730389] |
+| FrameFluid-dpr1-seed11 | 20 | chroma | 0.0555959817 | [0.0192346053, 0.0262455202] |
+| FrameFluid-dpr1-seed11 | 20 | low | 0.127979136 | [0.0790481406, 0.109230079] |
+| FrameFluid-dpr1-seed23 | 2 | chroma | 0.0461502574 | [0.0525859568, 0.0775492103] |
+| FrameFluid-dpr1-seed23 | 5 | chroma | 0.0725075047 | [0.0473173119, 0.0634929955] |
+| FrameFluid-dpr1-seed23 | 5 | low | 0.0969794781 | [0.0692214535, 0.0931176073] |
+| FrameFluid-dpr1-seed23 | 10 | low | 0.126825249 | [0.0623182444, 0.117306449] |
+| FrameFluid-dpr1-seed23 | 20 | low | 0.14232149 | [0.0790481406, 0.109230079] |
+| TeslaValve-dpr2-seed23 | 5 | chroma | 0.0123122074 | [0.0124645971, 0.0175508271] |
+| TeslaValve-dpr2-seed23 | 20 | low | 0.11152596 | [0.0811409342, 0.105295033] |
+| TeslaValve-dpr1-seed11 | 2 | low | 0.103648264 | [0.0812689053, 0.103066669] |
+| TeslaValve-dpr1-seed23 | 2 | low | 0.120402125 | [0.0812689053, 0.103066669] |
+
+Verification: harness `--self-check`, `bun run test` (52 files, 870 tests) and `bun run check` (zero errors/warnings) passed.
