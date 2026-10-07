@@ -102,6 +102,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0106](./0106-teslavalve-quality-budget.md) | TeslaValve quality budget: sim 128 / pressure 26 / dye 512 | Accepted |
 | [0107](./0107-energy-quality-docs-eval-protocol.md) | Pre-registered energy / visual-quality / agent-docs eval protocol and hill-climb rule | Accepted |
 | [0108](./0108-dv2-engine-contract-closure.md) | dv2 bounded idle/cache/geometry contract closure | Accepted (scope/contract); owner appearance pending |
+| [0109](./0109-frame-rate-cap.md) | Per-instance 60 fps frame cap: rejected by E2 visual guardrail (step-count-dependent physics) | Rejected |
 
 ADRs 0067-0078 exist only on the private R&D branch (`rd/webgpu-replacement`); the numbering gap here is intentional.
 
