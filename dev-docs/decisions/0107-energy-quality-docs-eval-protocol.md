@@ -162,3 +162,32 @@ Rationale: the scheduling candidates in this sprint (frame-rate cap, idle
 settling) change temporal cadence, not spatial filtering, so the blind spot
 does not bear on them; the judge sees same-wall-time stills, and temporal
 smoothness remains an owner-review item as stated above.
+
+## Amendment 2: E2 gates are relative to a measured null (added after seeing the data, 2026-10-07)
+
+**Added after seeing the data:** written after Round 1 failed and Round 2 failed on train,
+and after seeing the null-train statistics (baseline re-render vs baseline:
+15/440 checks out of band, 3.4%). It is written **before** the null-test
+results, the null-train judge verdicts and any replicate, and it is applied
+unchanged to every round, including re-judging Rounds 1–2.
+
+Finding: the statistics bands (min–max of 3 seeds, widened 10%) reject an
+unchanged re-render of the frozen engine in 9 of 22 train scenes. Read as an
+absolute zero-violation rule, the statistics gate falsely rejects a
+null candidate. The identical-render calibration measured only the judge.
+
+Decision:
+1. **Null distribution.** For each split, capture K = 3 fresh baseline
+   re-renders (stats; one of them also judged). The pooled null per-check
+   violation rate is p0 = Σ null violations / Σ null checks.
+2. **Statistics gate.** A candidate is WORSE on statistics if and only if its
+   violations, pooled over its replicates, exceed p0 under a one-sided
+   binomial test with p < 0.01. The test is stricter than 0.05 to allow
+   loosely for scene-level clustering. Replicates: at least 1 on the test
+   split; the train pre-check may use 1.
+3. **Judge gate.** WORSE if and only if the non-tie loss fraction is greater
+   than 1/3 **and** the all-pair candidate loss rate exceeds the pooled null
+   all-pair loss rate (identical-render calibration plus null-split judge
+   verdicts) under a one-sided binomial test with p < 0.05.
+4. "No worse" requires both gates to pass. Calibration controls, bands,
+   seeds and the Amendment 1 scope are unchanged.
