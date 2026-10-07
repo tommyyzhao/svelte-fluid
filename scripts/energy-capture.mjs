@@ -234,17 +234,18 @@ async function release() {
 	if (!lockOwned) return;
 	assert.equal(await readFile(`${LOCK}/owner`, 'utf8'), ownerText, 'GPU lock ownership changed');
 	await rm(LOCK, { recursive: true }); lockOwned = false; lastReleasedAt = Date.now();
+	console.log(JSON.stringify({ phase: 'disk accounting', energyEvalBytes: await bytes('/tmp/energy-eval') }));
 	console.log(JSON.stringify({ phase: 'GPU lock released', pid: process.pid }));
 }
 async function acquire() {
 	if (lockOwned) return;
-	if (lastReleasedAt) {
+	if (lastReleasedAt && process.env.ENERGY_CAPTURE_SOLO !== '1') {
 		await Bun.sleep(Math.max(0, lastReleasedAt + 180000 - Date.now()));
 		let freeSince = Date.now(), sawNext = false;
 		while (true) {
 			let owner;
 			try { owner = JSON.parse(await readFile(`${LOCK}/owner`, 'utf8')); } catch (e) { if (e.code !== 'ENOENT') throw e; }
-			if (owner) { freeSince = Date.now(); if (owner.lane === 'E2' || owner.lane === 'E3') sawNext = true; }
+			if (owner) { freeSince = Date.now(); if (owner.lane !== 'E1') sawNext = true; }
 			else if (sawNext || Date.now() - freeSince >= 300000) break;
 			console.log(JSON.stringify({ phase: 'waiting for next GPU lane turn', owner: owner?.lane })); await Bun.sleep(30000);
 		}
@@ -286,6 +287,14 @@ async function pageFor(context, dpr) {
 		await page.route('**/src/energy-capture.js', (r) => r.fulfill({ contentType: 'text/javascript', body: entry.replace("from 'svelte'", `from '${svelteUrl}'`).replace('./lib/engine/FluidEngine.js', './lib/engine/FluidEngine.ts').replace('./lib/presets/registry.js', './lib/presets/registry.ts') }));
 	}
 	await page.goto(`${URL}/__energy_capture__`); await page.waitForFunction(() => !!window.__energy);
+	await page.evaluate(async () => {
+		const { FluidEngine } = await import('/src/lib/engine/FluidEngine.ts');
+		const original = FluidEngine.prototype.renderCore;
+		window.__energyPresentations = [];
+		const snapshot = window.__energy.snapshot.bind(window.__energy);
+		window.__energy.snapshot = () => ({ ...snapshot(), presentations: window.__energyPresentations });
+		FluidEngine.prototype.renderCore = function (...args) { window.__energyPresentations.push(performance.timeOrigin + performance.now()); return original.apply(this, args); };
+	});
 	return page;
 }
 async function bytes(path) {
@@ -294,6 +303,8 @@ async function bytes(path) {
 }
 async function capture(c, run) {
 	const name = `${fileKey(c)}-r${run}${c.infraRetry ? '-infra-retry' : ''}`, trace = `${DIR}/${name}.trace`, windows = {}, states = {};
+	const disk = execFileSync('df', ['-k', DIR], { encoding: 'utf8' }).trim().split('\n').at(-1).trim().split(/\s+/);
+	assert.ok(Number(disk[3]) * 1024 >= 8 * 1024 ** 3, 'Disk free below 8 GiB; stop captures');
 	const row = { ...c, run, sha, harnessSha, engineSourceSha, engineFileHash, measurementLogicHash, override, trace, startedAt: new Date().toISOString(), status: 'FAILED' };
 	let gpuPid, phase = 'browser launch', stopped = false;
 	const progress = (p) => { phase = p; writeFileSync(`${DIR}/${name}.progress.json`, JSON.stringify({ ...row, phase, windows, states })); console.log(JSON.stringify({ name, phase })); };
@@ -400,7 +411,11 @@ async function capture(c, run) {
 		const input = `${DIR}/${name}.analysis-input.json`, output = `${DIR}/${name}.analysis.json`;
 		await writeFile(input, JSON.stringify({ trace, gpuPid, windows }));
 		await execAsync(process.execPath, [process.argv[1], '--analyse-worker', input, output], { timeout: 210000, signal, maxBuffer: 1 << 20 });
-		Object.assign(row, JSON.parse(await readFile(output, 'utf8'))); row.traceBytes = await bytes(trace);
+		Object.assign(row, JSON.parse(await readFile(output, 'utf8')));
+		// Additional read-only presentation counter; frozen metric/windows/parser remain identical.
+		const presentations = row.snapshot.presentations ?? [];
+		for (const w of Object.values(row.windows)) w.presentHz = presentations.filter((t) => t >= w.start && t < w.end).length / w.seconds;
+		row.traceBytes = await bytes(trace);
 		row.status = 'OK';
 		await writeFile(`${DIR}/${name}.json`, JSON.stringify(row, null, 2));
 		await rm(trace, { recursive: true }); row.traceDeleted = true;
@@ -410,6 +425,8 @@ async function capture(c, run) {
 		row.error = String(error.message ?? error); row.phase = phase; row.windows = windows; row.traceDeleted = false;
 		if (recording && !stopped) { try { recording.kill('SIGINT'); await Promise.race([recording.exited, Bun.sleep(180000)]); } catch {} }
 		row.traceBytes = await bytes(trace);
+		await writeFile(`${DIR}/${name}.parse-failure.json`, JSON.stringify({ error: row.error, traceBytes: row.traceBytes, windows, gpuPid }, null, 2));
+		await rm(trace, { recursive: true, force: true }); row.traceDeleted = true;
 		cleanup();
 	} finally {
 		clearTimeout(deadline);
@@ -432,7 +449,7 @@ try {
 		if (r.status !== 'OK') { await release(); await Bun.sleep(60000); }
 	}
 	// Exactly one end-of-run retry for recorder infrastructure timeout, never a clean metric.
-	for (const failed of results.filter((r) => ['Recorder finalisation timeout', 'Outer background task ceiling interrupted recorder finalisation'].includes(r.error) && !r.infraRetry && cases.some((c) => key(c) === key(r)) && r.run >= RUN_START && r.run < RUN_START + RUNS)) {
+	for (const failed of results.filter((r) => (['Recorder tracing-started notification timeout', 'Recorder finalisation timeout', 'Outer background task ceiling interrupted recorder finalisation'].includes(r.error) || /missing execution coverage|GPU process exited/.test(r.error ?? '')) && !r.infraRetry && cases.some((c) => key(c) === key(r)) && r.run >= RUN_START && r.run < RUN_START + RUNS)) {
 		if (results.some((r) => key(r) === key(failed) && r.run === failed.run && r.infraRetry)) continue;
 		if (lockOwned && Date.now() - lockedAt >= 15 * 60000) await release();
 		await acquire();
