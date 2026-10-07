@@ -253,3 +253,124 @@ Wall times seconds; values/bands rounded to nine significant digits, full precis
 | GasFlare-800x500-dpr2-seed5 | 20 | low | 0.207494792 | [0.211677047, 0.326250516] |
 
 Verification: harness `--self-check`, `bun run test` (52 files, 870 tests), `bun run check` (496 files, zero errors/warnings) passed. Label PNG/curl capture directories removed after recording verdict, offsets and three cited composites; verdict JSON and those three `pair.png` files retained. Owned browser, Vite, judge and observer processes exited; no owned GPU lock remains. No package/library change, no push.
+
+### Eval diagnostic — null control (baseline vs itself)
+
+2026-10-07. Candidate is the unmodified frozen baseline `1006e8fae1e670a72be67e1ff75800a43b35ff5e`, detached checkout `/tmp/e2-null-1006e8f`, dependencies symlinked from main. Empty props, `--spatial-safe`; identical scene seeds/configuration. Commands: `bun scripts/quality-eval.mjs compare --label null-train --source-root /tmp/e2-null-1006e8f --props '{}' --spatial-safe --split train`, then equivalent `null-test --split test`. Coordinator authorised overlapping test captures with train judging, after the intervening E1 hold/release. This diagnoses the gate; it is not candidate tuning or evidence of physical regression.
+
+Freshness verified: both labels absent before launch; capture cache is **label-scoped**, not shared by source SHA. All 38 new capture records identify the baseline SHA; none equal matching baseline capture JSON bytes. Train capture mtimes 10:22:19–10:29:59; test 11:06:23–11:11:41, local time −0700. Frozen 90-record baseline manifest SHA256 remained `3b01821e3bf72fdf1bbaa95da1f4d8fbe5ff3252fa64740040d1ff4cf58e97cc`. No library/harness edits. Nonfatal Vite missing generated tsconfig/dependency-scan warnings did not prevent engine captures.
+
+#### Original gate: unchanged engine rejected on both splits
+
+| Split | Losses / wins / ties | Non-tie loss fraction | ADR Amendment 1 verdict | Violations / checks | Scenes affected | Metrics: coverage / chroma / low / mid / high |
+|---|---|---|---|---|---|---|
+| TRAIN | 4 / 0 / 18 | 4/4 = 100% | WORSE | 15/440 = 3.4091% | 9/22 | 2 / 2 / 9 / 2 / 0 |
+| TEST | 4 / 1 / 11 | 4/5 = 80% | WORSE | 17/320 = 5.3125% | 11/16 | 0 / 2 / 9 / 5 / 1 |
+| Round 2 TRAIN | 6 / 0 / 16 | 6/6 = 100% | WORSE | 29/440 = 6.5909% | 14/22 | 3 / 2 / 16 / 7 / 1 |
+| Round 1 TEST | 6 / 1 / 9 | 6/7 = 85.7143% | WORSE | 45/320 = 14.0625% | 15/16 | 0 / 9 / 30 / 6 / 0 |
+
+Original diagnostic-only null comparison also returns **WORSE** for both unchanged-engine splits: train all-pair loss 4/22 = 18.1818%, test 4/16 = 25%, versus frozen calibration 2/18 = 11.1111%. That calibration was train-only; these are candidate-scale fresh nulls, including held-out scenes. Results retained at `/tmp/quality-eval/null-train/verdict.json` and `/tmp/quality-eval/null-test/verdict.json`.
+
+**Conclusion:** the absolute gate false-rejects the baseline itself on both splits. TRAIN null non-tie loss fraction equals Round 2; TEST null 80% is below Round 1's 85.7143%. All-pair loss rates and per-check violations are lower than the corresponding rounds, so the null does **not** establish that every observed candidate failure is noise. One judged null per split cannot estimate a population-level whole-run false-rejection probability.
+
+#### Checks, replicates and Amendment 2
+
+Verified from `baseline-bands.json`: all 30 scene groups have four wall times and five metrics, **20 checks per scene**, 600 distinct group-wall-metric bands. A new independent exchangeable continuous observation falls outside a three-observation raw min–max with probability **2/(3+1) = 50%**. This is before 10% widening; repeated scene seeds, deterministic/zero metrics, correlated walls/metrics and RAF variation violate a simple independent-check model. The empirical widened-band rates below, not 50%, are the relevant estimates.
+
+Amendment 2 was committed before test-null results, completed train judging or replicates. Two additional fresh re-renders per split were explicitly authorised. Labels `null-train-2`, `null-train-3`, `null-test-2`, `null-test-3`: **stats-only (judge stubbed)**. An owned temporary `claude` executable exited 99 through command-local PATH; real CLI/global PATH unchanged. Every expected capture JSON parsed; no partial judgment cache was written. Compact stats-only `verdict.json` records were saved before capture cleanup.
+
+| Label | Violations / checks | Scenes | coverage / chroma / low / mid / high | Fresh capture mtimes (−0700) |
+|---|---|---|---|---|
+| null-train-2 | 18/440 | 12/22 | 2 / 2 / 11 / 3 / 0 | 11:20:21–11:28:01 |
+| null-train-3 | 17/440 | 9/22 | 2 / 1 / 12 / 2 / 0 | 12:04:23–12:12:04 |
+| null-test-2 | 20/320 | 9/16 | 0 / 4 / 12 / 4 / 0 | 11:46:56–11:52:13 |
+| null-test-3 | 10/320 | 8/16 | 0 / 3 / 7 / 0 / 0 | 12:33:29–12:38:46 |
+
+Pooled null **TRAIN p0 = 50/1320 = 3.787879%**, **TEST p0 = 47/960 = 4.895833%**. One-sided exact binomial tails use P[X ≥ observed violations], fixed pooled p0; this plug-in calculation does not propagate p0 uncertainty or fully account for scene clustering.
+
+| Comparison | Candidate checks | Statistics p-value | Amendment 2 statistics | Judge p-value / gate |
+|---|---|---|---|---|
+| Round 2 original TRAIN | 29/440 | 0.0031970982 | WORSE (<0.01) | 0.0999452491 / NO_WORSE |
+| Round 2 pooled two TRAIN runs | 47/880 | 0.0130842313 | NO_WORSE (≥0.01) | 0.0999452491 / NO_WORSE; original judged run only |
+| Round 1 TEST | 45/320 | 2.80615056×10⁻¹⁰ | WORSE | 0.0484557179 / WORSE |
+
+Judge null pools combine identical calibration with the corresponding split: TRAIN 6/40 = 15%; TEST 6/34 = 17.6471%. Candidate losses remain 6/22 and 6/16. Amendment 2's >1/3 non-tie condition holds for both rounds, but its one-sided all-pair loss test rejects only Round 1. Thus Round 1 remains **WORSE**; Round 2's original single-run pre-check is **WORSE** on statistics, while its authorised pooled two-run TRAIN check is **NO_WORSE**. No Round 2 held-out keep verdict or energy claim follows. **Round 2 train pooled stats p = 0.013, a borderline pass; the single-run result failed (p = 0.003). The pass depends on the replicate that Amendment 2 §2 permits, and the excess over null is small and weakly linked to timing.**
+
+#### Where Round 2's original excess occurs
+
+Original null / Round 2 violations by wall 2/5/10/20 s: **1/6/2/6 versus 2/3/12/12**; net +1/−3/+10/+6. Excess concentrates at 10/20 s, not the 2 s sample. Exact scene-wall-metric overlap 8; null-only 7; Round-2-only 21 (1/2/10/8 by wall). Entries below are `wall:metric`; unchanged scenes InkInWater at both sizes, Venturi at both sizes and Karman at both sizes have no violations in either run. All listed scenes DPR2 seed5.
+
+| Scene | null-train | Round 2 original |
+|---|---|---|
+| default 1440×900 | 5:low | 5:low |
+| default 800×500 | 5:low | — |
+| LavaLamp 1440×900 | — | 10:low |
+| LavaLamp 800×500 | — | 5:low, 10:low/mid |
+| Plasma 1440×900 | 10:chroma, 20:chroma/low | 10:chroma, 20:mid |
+| Plasma 800×500 | — | — |
+| Aurora 1440×900 | 5:mid | 10:low |
+| Aurora 800×500 | 5:low | 2:low, 20:low |
+| CircularFluid 1440×900 | 20:low | 20:low |
+| CircularFluid 800×500 | — | 10:chroma/low, 20:low/mid |
+| SvgPathFluid 1440×900 | 10:low, 20:low | 10:low, 20:low/mid |
+| SvgPathFluid 800×500 | 5:coverage, 20:coverage/low | 10:coverage, 20:coverage/low/mid |
+| Toroidal 1440×900 | 2:mid, 5:low | 2:mid |
+| Toroidal 800×500 | — | 5:low, 20:coverage |
+| GasFlare 1440×900 | — | 10:mid |
+| GasFlare 800×500 | — | 10:low/high, 20:low |
+
+#### Round 2 full-stat replicate and timing diagnosis
+
+Original Round 2 captures were previously deleted; its full-stat z analysis is unavailable. Coordinator authorised fresh `r2-train-rep2`, source `2a57fcb4fe9612ef10fc5fd6b3f7120d8184d290`, stats-only (judge stubbed). **HEADED (pre-directive launch):** all 22 captures completed, including the last two scenes within approximately one minute after the headless-only directive arrived; no subsequent browser launched. These captures are **retained** at `/tmp/quality-eval/r2-train-rep2/` until coordinator releases them. 18 violations/440 = 4.0909%, 11/22 scenes: coverage5/chroma2/low9/mid2/high0; wall counts 0/6/5/7. Failures affect **appearance and dynamics**, not curl spectrum alone.
+
+Mean signed z = (rep2 value − mean of three matching null values) / sample SD of those null values, computed separately per scene/wall then averaged across scenes. Zero-SD entries excluded, never assigned zero. These descriptive z values have noisy three-run denominators, not Gaussian significance tests.
+
+| Wall | coverage mean z (n) | chroma | low | mid | high |
+|---|---|---|---|---|---|
+| 2 | +1.0042 (18) | +0.3750 (22) | +1.4985 (20) | +0.3923 (20) | −0.1374 (20) |
+| 5 | +0.2615 (18) | +0.5327 (22) | +0.6950 (20) | −0.9666 (20) | +1.0495 (20) |
+| 10 | −1.0974 (18) | +0.3467 (22) | −0.8313 (20) | −0.3096 (20) | +0.6314 (20) |
+| 20 | +0.1051 (17) | +0.6571 (22) | −0.2719 (20) | +0.8888 (20) | −0.9118 (20) |
+
+No consistently lower low-band bias: rep2 out-of-band low values are six above / three below; chroma one above / one below; coverage two above / three below; mid two above. Chroma mean z is positive at every wall, but does not establish a consistent visual degradation.
+
+Rep2 `actualWall` minus matching three-null mean: min −6.4333, median +2.8000, max +22.4667 ms. Pearson offset versus violations/sample **r = 0.09290**, versus excess over null mean violations **r = −0.05995**. Violating samples mean +3.2804 ms; clean +2.6920 ms. Original 88 documented Round-2-minus-frozen offsets correlate weakly with violation count (**r = 0.16627**; violating +2.3182 ms, clean +1.3303 ms). No strong linear timing association; sample-offset data cannot establish solver-step counts or causally explain live divergence. Real RAF integration/readback/presentation timing remains a plausible source, not a demonstrated cause.
+
+#### Judge infrastructure and capacity
+
+Inherited `ANTHROPIC_DEFAULT_OPUS_MODEL=opus-class[1m]` replaced proactively with command-local `opus-class`, using the previously verified Round 2 workaround; no new alias rejection claimed. First TRAIN attempt completed five pairs then a Plasma 800×500 call timed out at 600 s (exit143; unknown-model catalog warning). Retried once from fresh cached captures; all remaining pairs completed, no timeout manufactured as tie. TEST completed without retry. Rubric/calibration unchanged.
+
+Per-pair successful judging wall time (seconds), first `pair.png` mtime to cached judgment JSON mtime, includes both swapped trials; excludes failed attempt, capture and queue time. TRAIN median53.84 s, range38.51–359.51, 3/22 pairs ≥120 s; TEST median61.64 s, range37.47–682.23, 3/16 ≥120 s. Successful total28.14/36.00 min; additionally approximately10 min lost to infrastructure timeout. Individual successful calls ≥120 s: 2/44 TRAIN, 4/32 TEST. Typical throughput is roughly one pair/minute; long-tail stalls matter, but ≥2-minute calls are not routine.
+
+| TRAIN scene | Seconds | TEST scene | Seconds |
+|---|---:|---|---:|
+| default 1440×900 | 46.5 | FrozenSwirl DPR2 seed11 | 58.9 |
+| default 800×500 | 49.9 | FrozenSwirl DPR2 seed23 | 69.5 |
+| LavaLamp 1440×900 | 359.5 | FrozenSwirl DPR1 seed11 | 50.2 |
+| LavaLamp 800×500 | 64.1 | FrozenSwirl DPR1 seed23 | 37.5 |
+| Plasma 1440×900 | 57.5 | AnnularFluid DPR2 seed11 | 60.5 |
+| Plasma 800×500 | 169.3 | AnnularFluid DPR2 seed23 | 345.6 |
+| InkInWater 1440×900 | 41.2 | AnnularFluid DPR1 seed11 | 73.4 |
+| InkInWater 800×500 | 45.8 | AnnularFluid DPR1 seed23 | 62.8 |
+| Aurora 1440×900 | 71.1 | FrameFluid DPR2 seed11 | 76.0 |
+| Aurora 800×500 | 43.6 | FrameFluid DPR2 seed23 | 367.4 |
+| CircularFluid 1440×900 | 56.7 | FrameFluid DPR1 seed11 | 51.6 |
+| CircularFluid 800×500 | 48.9 | FrameFluid DPR1 seed23 | 54.2 |
+| SvgPathFluid 1440×900 | 56.9 | TeslaValve DPR2 seed11 | 69.1 |
+| SvgPathFluid 800×500 | 55.0 | TeslaValve DPR2 seed23 | 682.2 |
+| Toroidal 1440×900 | 51.6 | TeslaValve DPR1 seed11 | 59.1 |
+| Toroidal 800×500 | 43.7 | TeslaValve DPR1 seed23 | 41.9 |
+| GasFlare 1440×900 | 64.5 | — | — |
+| GasFlare 800×500 | 88.7 | — | — |
+| Venturi 1440×900 | 47.1 | — | — |
+| Venturi 800×500 | 135.3 | — | — |
+| Karman 1440×900 | 52.7 | — | — |
+| Karman 800×500 | 38.5 | — | — |
+
+#### GPU fairness, headless directive and cleanup
+
+Ordinary installed hardware Chrome, no unsafe WebGPU. Harness launch at `scripts/quality-eval.mjs:166`: `headless: false`, `ignoreDefaultArgs: ['--enable-unsafe-swiftshader']`. Future headless hardware captures require `headless: true` (Playwright supplies headless mode) while retaining that default-argument exclusion, without `--disable-gpu`, SwiftShader forcing or `--enable-unsafe-webgpu`; adapter availability must still be verified. No claim that headed and headless performance distributions are equivalent.
+
+Observed E2 holds (−0700, one-second granularity except original TEST release, bounded by final capture11:11:41 and next E1 observation11:12:46): TRAIN10:21:55–10:30:01 (8m06s); TEST11:06:00–approximately11:11:42 (about5m42s); TRAIN2 11:19:58–11:28:03 (8m05s); TEST2 11:46:33–11:52:15 (5m42s); TRAIN3 12:04:00–12:12:05 (8m05s); TEST3 12:33:05–12:38:49 (5m44s); R2 replicate12:41:48–12:50:01 (8m13s). Every reacquisition followed observed E1 ownership/release. All below12-minute ceiling. Disk preflight before every capture exceeded15 GiB (initial444 GiB). No foreign lock/process removal; protected Chrome PIDs untouched.
+
+Verification: harness self-check; 52 test files/870 tests; Svelte check496 files, zero errors/warnings. Null capture directories and owned detached baseline checkout removed after recording; six null verdict JSONs retained. R2 replicate captures/verdict retained intentionally. Owned judge stub, browser/Vite/judge processes and lock/timing observers cleaned; no owned GPU lock remains. Frozen baseline untouched; no package/library change, no push.
