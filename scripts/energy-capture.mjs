@@ -9,6 +9,7 @@ import { mkdir, readFile, writeFile, rm, readdir, stat, mkdtemp } from 'node:fs/
 import { writeFileSync } from 'node:fs';
 import { parseArgs, promisify } from 'node:util';
 import { createHash } from 'node:crypto';
+import { loadavg } from 'node:os';
 import { hasContinuousDriver } from '../src/lib/engine/settle.js';
 const execAsync = promisify(execFile);
 const ROOT = process.cwd(), PORT = 5201, URL = `http://127.0.0.1:${PORT}`;
@@ -305,7 +306,7 @@ async function capture(c, run) {
 	const name = `${fileKey(c)}-r${run}${c.infraRetry ? '-infra-retry' : ''}`, trace = `${DIR}/${name}.trace`, windows = {}, states = {};
 	const disk = execFileSync('df', ['-k', DIR], { encoding: 'utf8' }).trim().split('\n').at(-1).trim().split(/\s+/);
 	assert.ok(Number(disk[3]) * 1024 >= 8 * 1024 ** 3, 'Disk free below 8 GiB; stop captures');
-	const row = { ...c, run, sha, harnessSha, engineSourceSha, engineFileHash, measurementLogicHash, override, trace, startedAt: new Date().toISOString(), status: 'FAILED' };
+	const row = { ...c, run, sha, harnessSha, engineSourceSha, engineFileHash, measurementLogicHash, override, trace, loadAverage: loadavg(), recorderStartTimeoutSeconds: 45, startedAt: new Date().toISOString(), status: 'FAILED' };
 	let gpuPid, phase = 'browser launch', stopped = false;
 	const progress = (p) => { phase = p; writeFileSync(`${DIR}/${name}.progress.json`, JSON.stringify({ ...row, phase, windows, states })); console.log(JSON.stringify({ name, phase })); };
 	const controller = new AbortController(), deadline = setTimeout(() => { controller.abort(new Error(`Attempt timeout in ${phase}`)); cleanup(); }, 600000);
@@ -343,7 +344,7 @@ async function capture(c, run) {
 		const note = `svelte-fluid.energy.E1.${process.pid}.${name}`;
 		notifier = Bun.spawn(['/usr/bin/notifyutil', '-1', note], { stdout: 'ignore' });
 		recording = Bun.spawn(['env', `DEVELOPER_DIR=${XCODE.DEVELOPER_DIR}`, 'xcrun', 'xctrace', 'record', '--template', 'Metal System Trace', '--attach', String(gpuPid), '--time-limit', '110s', '--no-prompt', '--notify-tracing-started', note, '--output', trace], { env: XCODE, stdout: 'pipe', stderr: 'pipe' }); remember();
-		const notified = await Promise.race([notifier.exited.then(() => true), Bun.sleep(15000).then(() => false)]); notifier.kill(); notifier = null;
+		const notified = await Promise.race([notifier.exited.then(() => true), Bun.sleep(45000).then(() => false)]); notifier.kill(); notifier = null;
 		assert.ok(notified, 'Recorder tracing-started notification timeout'); await Bun.sleep(300); alive();
 		progress('mount'); Object.assign(row, await page.evaluate((c) => window.__energy.mount(c), { ...c, override }));
 		assert.deepEqual(row.cssActual, [c.w, c.h]); assert.equal(row.dprActual, c.dpr);
@@ -449,7 +450,7 @@ try {
 		if (r.status !== 'OK') { await release(); await Bun.sleep(60000); }
 	}
 	// Exactly one end-of-run retry for recorder infrastructure timeout, never a clean metric.
-	for (const failed of results.filter((r) => (['Recorder tracing-started notification timeout', 'Recorder finalisation timeout', 'Outer background task ceiling interrupted recorder finalisation'].includes(r.error) || /missing execution coverage|GPU process exited/.test(r.error ?? '')) && !r.infraRetry && cases.some((c) => key(c) === key(r)) && r.run >= RUN_START && r.run < RUN_START + RUNS)) {
+	for (const failed of results.filter((r) => (['Recorder tracing-started notification timeout', 'Recorder finalisation timeout', 'Outer background task ceiling interrupted recorder finalisation'].includes(r.error) || /missing execution coverage|GPU process exited|No space left on device|ENOSPC/.test(r.error ?? '')) && !r.infraRetry && cases.some((c) => key(c) === key(r)) && r.run >= RUN_START && r.run < RUN_START + RUNS)) {
 		if (results.some((r) => key(r) === key(failed) && r.run === failed.run && r.infraRetry)) continue;
 		if (lockOwned && Date.now() - lockedAt >= 15 * 60000) await release();
 		await acquire();
