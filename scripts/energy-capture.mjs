@@ -155,7 +155,8 @@ const measurementParts = (s) => s.slice(s.indexOf('function slice('), s.indexOf(
 const frozenSource = execFileSync('git', ['show', 'e4be335:scripts/energy-capture.mjs'], { cwd: ROOT, encoding: 'utf8' });
 assert.equal(measurementParts(source), measurementParts(frozenSource), 'Frozen window/parser/metric logic changed');
 const measurementLogicHash = createHash('sha256').update(measurementParts(source)).update(await readFile(`${ROOT}/src/energy-capture.js`, 'utf8')).digest('hex');
-const metadata = { sha, harnessSha, engineSourceSha, engineFileHash, measurementLogicHash, root: ROOT, sourceRoot, chrome: CHROME, driver: 'direct ordinary Chrome + CDP noDefaults:true; native focus/visibility, CDP device metrics', override, protocol: 'ADR 0107 E1', requestedRuns: RUNS, runStart: RUN_START, requestedScenes: cases, refresh: 'native; 60 Hz not measurable without changing system settings' };
+const browserMode = 'headless';
+const metadata = { sha, harnessSha, engineSourceSha, engineFileHash, measurementLogicHash, browserMode, root: ROOT, sourceRoot, chrome: CHROME, driver: 'headless installed Chrome --headless=new + CDP noDefaults:true; ordinary hardware flags, CDP device metrics', override, protocol: 'ADR 0107 E1', requestedRuns: RUNS, runStart: RUN_START, requestedScenes: cases, refresh: 'native; 60 Hz not measurable without changing system settings' };
 function summaries(rows) {
 	const scenes = cases.map((c) => {
 		const repeats = rows.filter((r) => key(r) === key(c) && (r.status === 'OK' || r.status === 'PARTIAL'));
@@ -207,6 +208,7 @@ await mkdir(DIR, { recursive: true });
 const results = [];
 if (options.resume || options['summary-only']) for (const f of await readdir(DIR)) if (/^.*-r\d+(?:-infra-retry)?\.json$/.test(f)) {
 	const row = JSON.parse(await readFile(`${DIR}/${f}`, 'utf8'));
+	if (!options['summary-only']) assert.equal(row.browserMode ?? 'headed', browserMode, 'Cannot mix headed and headless captures');
 	assert.equal(row.engineSourceSha ?? row.sha, engineSourceSha, 'Cannot mix captures from different engine commits');
 	if (row.measurementLogicHash) assert.equal(row.measurementLogicHash, measurementLogicHash, 'Cannot mix measurement logic');
 	if (row.engineFileHash) assert.equal(row.engineFileHash, engineFileHash, 'Engine source-file hash changed');
@@ -274,6 +276,9 @@ async function startServer() {
 const HTML = '<!doctype html><html><head><style>html{scrollbar-width:none}body{margin:0;background:#000}#target{width:max-content}</style></head><body><div id="target"></div><script type="module" src="/src/energy-capture.js"></script></body></html>';
 async function pageFor(context, dpr) {
 	const page = await context.newPage();
+	page.__energyErrors = [];
+	page.on('console', (event) => { if (event.type() === 'error' || event.type() === 'warning') page.__energyErrors.push({ type: event.type(), text: event.text() }); });
+	page.on('pageerror', (error) => page.__energyErrors.push({ type: 'pageerror', text: String(error) }));
 	const session = await context.newCDPSession(page);
 	await session.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: dpr, mobile: false });
 	await session.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
@@ -306,8 +311,8 @@ async function capture(c, run) {
 	const name = `${fileKey(c)}-r${run}${c.infraRetry ? '-infra-retry' : ''}`, trace = `${DIR}/${name}.trace`, windows = {}, states = {};
 	const disk = execFileSync('df', ['-k', DIR], { encoding: 'utf8' }).trim().split('\n').at(-1).trim().split(/\s+/);
 	assert.ok(Number(disk[3]) * 1024 >= 15 * 1024 ** 3, 'Disk free below 15 GiB; stop captures');
-	const row = { ...c, run, sha, harnessSha, engineSourceSha, engineFileHash, measurementLogicHash, override, trace, loadAverage: loadavg(), recorderStartTimeoutSeconds: 45, startedAt: new Date().toISOString(), status: 'FAILED' };
-	let gpuPid, phase = 'browser launch', stopped = false, sizeWatch, scratchBefore;
+	const row = { ...c, run, sha, harnessSha, engineSourceSha, engineFileHash, measurementLogicHash, browserMode, override, trace, loadAverage: loadavg(), recorderStartTimeoutSeconds: 45, startedAt: new Date().toISOString(), status: 'FAILED' };
+	let gpuPid, phase = 'browser launch', stopped = false, sizeWatch, scratchBefore, page;
 	const scratchNames = async () => (await readdir(tmpdir())).filter((name) => /^instruments.*\.ktrace$/.test(name));
 	const scratchNew = async () => scratchBefore ? (await scratchNames()).filter((name) => !scratchBefore.has(name)) : [];
 	const traceTmp = `${DIR}/${name}-tmp`;
@@ -318,7 +323,7 @@ async function capture(c, run) {
 	try {
 		await startServer(); signal.throwIfAborted();
 		profile = await mkdtemp('/tmp/svelte-fluid-energy-chrome-');
-		chrome = Bun.spawn([CHROME, `--user-data-dir=${profile}`, '--remote-debugging-port=0', '--no-first-run', '--no-default-browser-check', 'about:blank'], { stdout: 'ignore', stderr: 'ignore' }); remember();
+		chrome = Bun.spawn([CHROME, '--headless=new', `--user-data-dir=${profile}`, '--remote-debugging-port=0', '--no-first-run', '--no-default-browser-check', 'about:blank'], { stdout: 'ignore', stderr: 'ignore' }); remember();
 		let endpoint;
 		for (let i = 0; i < 100; i++) {
 			signal.throwIfAborted();
@@ -336,7 +341,7 @@ async function capture(c, run) {
 		const chromePid = chrome.pid;
 		const context = browser.contexts()[0];
 		for (const blank of context.pages()) await blank.close();
-		const page = await pageFor(context, c.dpr); await page.bringToFront();
+		page = await pageFor(context, c.dpr); await page.bringToFront();
 		for (let i = 0; i < 40; i++) { gpuPid = census().find((r) => r.ppid === chromePid && r.command.includes('--type=gpu-process'))?.pid; if (gpuPid) break; await Bun.sleep(100); }
 		assert.ok(gpuPid, 'Owned Chrome GPU PID unavailable'); row.gpuPid = gpuPid;
 		const alive = () => { signal.throwIfAborted(); assert.ok(census().some((r) => r.pid === gpuPid), 'GPU process exited during recording'); };
@@ -438,6 +443,7 @@ async function capture(c, run) {
 	} catch (error) {
 		row.status = 'FAILED';
 		row.error = String(controller.signal.reason?.message ?? error.message ?? error); row.phase = phase; row.windows = windows; row.traceDeleted = false;
+		row.browserErrors = page?.__energyErrors ?? [];
 		if (recording && !stopped) { try { recording.kill('SIGINT'); await Promise.race([recording.exited, Bun.sleep(180000)]); } catch {} }
 		// Per-window control failure: preserve already-completed correctly-visible windows.
 		if (c.infraRetry && /hidden: incorrect visibility|hidden: visibility changed/.test(row.error) && windows.active && windows.untouched) {
