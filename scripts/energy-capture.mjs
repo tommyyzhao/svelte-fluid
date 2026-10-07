@@ -1,4 +1,5 @@
-// ADR 0107 E1. Real <Fluid>, normal RAF, native headed hardware Chrome.
+// ADR 0107 E1. Real <Fluid>, normal RAF; headless hardware Chrome per user directive.
+// Historical headed120Hz results stay separate; headless60Hz is not comparable.
 // bun scripts/energy-capture.mjs --label baseline [--split train|test|all] [--subset Preset,...]
 // --cases 'Preset@1440x900:2:5,...' selects only members of the frozen matrix.
 // --runs 3 --run-start 1 --override '{"pressureIterations":26}' (or ENERGY_CAPTURE_OVERRIDE).
