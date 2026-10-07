@@ -143,6 +143,11 @@ Tests at `c873fdf`: `src/lib/engine/__tests__/lighting.test.ts`,
   retained-trace export took24.258628s, no new capture or verdict replacement.
   GPU lock released; exact owned processes absent; user Chrome untouched.
   Scanout, per-shader shares and total browser/OS-cost compliance remain unproved.
+  **Closed by owner reprioritisation (2026-10-06):** <2 ms p95 is a guideline, not a
+  gate; the requirement is not draining laptop/phone batteries. Accepted
+  [ADR 0106](../decisions/0106-teslavalve-quality-budget.md) (TeslaValve sim128/p26/d512,
+  certified PASS). Karman, GasFlare and the near-misses stay unchanged as accepted
+  overage; `autoPause` (default on) stops offscreen and hidden-tab instances.
 - `svelte-fluid-dv2`: geometry implemented; hybrid cache scope narrowly accepted via
   owner delegation, not universal shared compilation. See amended
   [ADR 0093](../decisions/0093-fluid-engine-on-shared-gl-host.md) at `c873fdf`.
