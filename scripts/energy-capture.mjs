@@ -5,7 +5,7 @@
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { execFile, execFileSync } from 'node:child_process';
-import { mkdir, readFile, writeFile, rm, readdir, stat } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, rm, readdir, stat, mkdtemp } from 'node:fs/promises';
 import { writeFileSync } from 'node:fs';
 import { parseArgs, promisify } from 'node:util';
 import { createHash } from 'node:crypto';
@@ -142,7 +142,7 @@ if (requested) for (const k of requested) assert.ok(matrix.some((c) => key(c) ==
 const cases = matrix.filter((c) => (options.split === 'all' || c.split === options.split) && (!subset || subset.includes(c.preset)) && (!requested || requested.includes(key(c))));
 assert.ok(cases.length);
 const DIR = `/tmp/energy-eval/${options.label}`, sha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-const metadata = { sha, root: ROOT, chrome: CHROME, override, protocol: 'ADR 0107 E1', requestedRuns: RUNS, runStart: RUN_START, requestedScenes: cases, refresh: 'native; 60 Hz not measurable without changing system settings' };
+const metadata = { sha, root: ROOT, chrome: CHROME, driver: 'direct ordinary Chrome + CDP noDefaults:true; native focus/visibility, CDP device metrics', override, protocol: 'ADR 0107 E1', requestedRuns: RUNS, runStart: RUN_START, requestedScenes: cases, refresh: 'native; 60 Hz not measurable without changing system settings' };
 function summaries(rows) {
 	const scenes = cases.map((c) => {
 		const repeats = rows.filter((r) => key(r) === key(c) && r.status === 'OK');
@@ -204,7 +204,7 @@ if (!options.resume && !options['summary-only']) for (let run = RUN_START; run <
 const save = () => writeFileSync(`${DIR}/summary.json`, JSON.stringify(summaries(results), null, 2));
 if (options['summary-only']) { save(); console.log(JSON.stringify(summaries(results).headline)); process.exit(0); }
 const census = () => execFileSync('ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' }).split('\n').map((l) => { const m = l.match(/^\s*(\d+)\s+(\d+)\s+(.*)$/); return m && { pid: +m[1], ppid: +m[2], command: m[3] }; }).filter(Boolean);
-const owned = new Map(); let browser, server, recording, notifier, lockOwned = false, lastReleasedAt = 0;
+const owned = new Map(); let browser, chrome, profile, server, recording, notifier, lockOwned = false, lastReleasedAt = 0;
 const ownerText = JSON.stringify({ lane: 'E1', worktree: ROOT, sha, pid: process.pid });
 function remember() {
 	const rows = census(), ids = new Set([process.pid]);
@@ -245,10 +245,11 @@ async function startServer() {
 	throw new Error('Dev server startup timeout');
 }
 const HTML = '<!doctype html><html><head><style>html{scrollbar-width:none}body{margin:0;background:#000}#target{width:max-content}</style></head><body><div id="target"></div><script type="module" src="/src/energy-capture.js"></script></body></html>';
-async function pageFor(context) {
+async function pageFor(context, dpr) {
 	const page = await context.newPage();
 	const session = await context.newCDPSession(page);
-	await session.send('Emulation.setFocusEmulationEnabled', { enabled: false }); // Undo Playwright's always-visible override.
+	await session.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: dpr, mobile: false });
+	await session.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
 	page.setDefaultTimeout(15000);
 	await page.route('**/__energy_capture__', (r) => r.fulfill({ contentType: 'text/html', body: HTML }));
 	await page.goto(`${URL}/__energy_capture__`); await page.waitForFunction(() => !!window.__energy);
@@ -267,10 +268,26 @@ async function capture(c, run) {
 	const signal = controller.signal;
 	try {
 		await startServer(); signal.throwIfAborted();
-		browser = await chromium.launch({ executablePath: CHROME, headless: false, ignoreDefaultArgs: ['--enable-unsafe-swiftshader', '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'], args: ['--enable-logging=stderr', '--v=0'], timeout: 30000 }); remember();
-		const chromePid = census().find((r) => r.ppid === process.pid && r.command.startsWith(CHROME))?.pid;
-		const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: c.dpr, reducedMotion: 'no-preference' });
-		const page = await pageFor(context); await page.bringToFront();
+		profile = await mkdtemp('/tmp/svelte-fluid-energy-chrome-');
+		chrome = Bun.spawn([CHROME, `--user-data-dir=${profile}`, '--remote-debugging-port=0', '--no-first-run', '--no-default-browser-check', 'about:blank'], { stdout: 'ignore', stderr: 'ignore' }); remember();
+		let endpoint;
+		for (let i = 0; i < 100; i++) {
+			signal.throwIfAborted();
+			try { const lines = (await readFile(`${profile}/DevToolsActivePort`, 'utf8')).trim().split('\n'); endpoint = `ws://127.0.0.1:${lines[0]}${lines[1]}`; break; } catch {}
+			await Bun.sleep(100);
+		}
+		assert.ok(endpoint, 'Owned Chrome CDP endpoint unavailable');
+		// Bun's WebSocket avoids Playwright's Node transport handshake on this machine.
+		const socket = new WebSocket(endpoint);
+		await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject; });
+		const transport = { send(message) { socket.send(JSON.stringify(message)); }, close() { socket.close(); } };
+		socket.onmessage = (event) => transport.onmessage?.(JSON.parse(event.data));
+		socket.onclose = () => transport.onclose?.();
+		browser = await chromium.connectOverCDP(transport, { noDefaults: true, timeout: 30000 });
+		const chromePid = chrome.pid;
+		const context = browser.contexts()[0];
+		for (const blank of context.pages()) await blank.close();
+		const page = await pageFor(context, c.dpr); await page.bringToFront();
 		for (let i = 0; i < 40; i++) { gpuPid = census().find((r) => r.ppid === chromePid && r.command.includes('--type=gpu-process'))?.pid; if (gpuPid) break; await Bun.sleep(100); }
 		assert.ok(gpuPid, 'Owned Chrome GPU PID unavailable'); row.gpuPid = gpuPid;
 		const alive = () => { signal.throwIfAborted(); assert.ok(census().some((r) => r.pid === gpuPid), 'GPU process exited during recording'); };
@@ -301,26 +318,13 @@ async function capture(c, run) {
 		const offscreen = await page.evaluate(() => document.querySelector('canvas').getBoundingClientRect().bottom < -50); assert.ok(offscreen, 'Canvas did not scroll beyond autoPause root margin');
 		// Restore viewport first: hidden tests tab visibility independently of scroll pause.
 		await page.evaluate(() => scrollTo(0, 0)); await Bun.sleep(500);
-		// window.open stays in the originating window; context.newPage creates a separate window.
-		const popup = page.waitForEvent('popup');
-		await page.evaluate(() => window.open('about:blank', '_blank'));
-		const cover = await popup; await cover.bringToFront();
-		await writeFile(`${DIR}/${name}.hidden-debug.json`, JSON.stringify({ original: await page.evaluate(() => ({ visibility: document.visibilityState, focus: document.hasFocus() })), cover: await cover.evaluate(() => ({ visibility: document.visibilityState, focus: document.hasFocus() })) }));
-		let hiddenMode = 'background tab';
-		if (await page.evaluate(() => document.visibilityState !== 'hidden')) {
-			const session = await context.newCDPSession(page), win = await session.send('Browser.getWindowForTarget');
-			await session.send('Browser.setWindowBounds', { windowId: win.windowId, bounds: { windowState: 'minimized' } });
-			await Bun.sleep(500); hiddenMode = 'minimized window';
-		}
-		if (await page.evaluate(() => document.visibilityState === 'hidden')) {
-			const hideAt = await page.evaluate(() => performance.timeOrigin + performance.now());
-			await measured('hidden', hideAt + 5000, 'hidden'); row.hiddenMode = hiddenMode;
-		} else {
-			windows.hidden = { unavailable: 'document.visibilityState remains visible in background tab and minimized window; no lifecycle freezing or synthetic visibility', gpuBusyMsPerSecond: null, rafHz: null, engineHz: null };
-			row.hiddenMode = 'not measurable';
-		}
-		const session = await context.newCDPSession(page), win = await session.send('Browser.getWindowForTarget');
-		await session.send('Browser.setWindowBounds', { windowId: win.windowId, bounds: { windowState: 'normal' } });
+		const session = await context.newCDPSession(page);
+		const target = await session.send('Target.createTarget', { url: 'about:blank', newWindow: false, background: false });
+		await session.send('Target.activateTarget', { targetId: target.targetId });
+		await page.waitForFunction(() => document.visibilityState === 'hidden', undefined, { polling: 100 });
+		const hideAt = await page.evaluate(() => performance.timeOrigin + performance.now());
+		await measured('hidden', hideAt + 5000, 'hidden'); row.hiddenMode = 'native background tab';
+		const cover = context.pages().find((p) => p !== page); assert.ok(cover, 'Foreground control tab unavailable');
 		const snapshot = await page.evaluate(() => window.__energy.snapshot());
 		row.settleTimeSeconds = snapshot.settledAt === null ? null : (snapshot.settledAt - row.mountedAt) / 1000;
 		row.snapshot = snapshot;
@@ -347,7 +351,7 @@ async function capture(c, run) {
 		if (run === 1) {
 			const continuous = hasContinuousDriver(row.config, 40);
 			if (!continuous) {
-				progress('separate settle diagnostic'); const diag = await pageFor(context); await diag.bringToFront();
+				progress('separate settle diagnostic'); const diag = await pageFor(context, c.dpr); await diag.bringToFront();
 				const setup = await diag.evaluate((c) => window.__energy.mount({ ...c, diagnostic: true }), { ...c, override });
 				let state;
 				for (let i = 0; i < 80; i++) { signal.throwIfAborted(); state = await diag.evaluate(() => window.__energy.state()); if (state.settledAt !== null || state.errors.length) break; await Bun.sleep(500); }
@@ -355,7 +359,10 @@ async function capture(c, run) {
 				await diag.close();
 			}
 		}
-		progress('browser cleanup'); await browser.close(); browser = null; Bun.gc(true);
+		progress('browser cleanup');
+		const closeSession = await browser.newBrowserCDPSession(); await closeSession.send('Browser.close').catch(() => {});
+		await chrome.exited; chrome = null; await browser.close(); browser = null;
+		await rm(profile, { recursive: true }); profile = null; Bun.gc(true);
 		await release(); // Exports/parsing do not own the GPU; other lanes can capture now.
 		progress('trace export');
 		const input = `${DIR}/${name}.analysis-input.json`, output = `${DIR}/${name}.analysis.json`;
@@ -372,7 +379,13 @@ async function capture(c, run) {
 		if (recording && !stopped) { try { recording.kill('SIGINT'); await Promise.race([recording.exited, Bun.sleep(180000)]); } catch {} }
 		row.traceBytes = await bytes(trace);
 		cleanup();
-	} finally { clearTimeout(deadline); if (browser) { await browser.close().catch(() => {}); browser = null; } if (notifier) { notifier.kill(); notifier = null; } }
+	} finally {
+		clearTimeout(deadline);
+		if (browser) { await browser.close().catch(() => {}); browser = null; }
+		if (chrome) { chrome.kill(); await chrome.exited; chrome = null; }
+		if (profile) { await rm(profile, { recursive: true }); profile = null; }
+		if (notifier) { notifier.kill(); notifier = null; }
+	}
 	await writeFile(`${DIR}/${name}.json`, JSON.stringify(row, null, 2));
 	console.log(JSON.stringify({ name, status: row.status, error: row.error, active: row.windows?.active?.gpuBusyMsPerSecond, untouched: row.windows?.untouched?.gpuBusyMsPerSecond, traceBytes: row.traceBytes, traceDeleted: row.traceDeleted }));
 	return row;
