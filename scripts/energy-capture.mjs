@@ -270,7 +270,7 @@ async function acquire() {
 	}
 	console.log(execFileSync('df', ['-h', '/'], { encoding: 'utf8' }));
 	while (!lockOwned) {
-		try { await mkdir(LOCK); lockOwned = true; lockedAt = Date.now(); await writeFile(`${LOCK}/owner`, ownerText); }
+		try { await mkdir(LOCK); lockOwned = true; lockedAt = Date.now(); await writeFile(`${LOCK}/owner`, ownerText); await writeFile(`${LOCK}/acquired-at`, new Date(lockedAt).toISOString()); }
 		catch (e) { if (e.code !== 'EEXIST') throw e; console.log(JSON.stringify({ phase: 'waiting for GPU lock' })); await Bun.sleep(30000); }
 	}
 }
