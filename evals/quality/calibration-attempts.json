@@ -1,0 +1,214 @@
+[
+  {
+    "attempt": 1,
+    "rubric": "Read only pair.png in the current directory. Blind pairwise visual-quality evaluation of fluid renders. Left/right panels each show the SAME scene at wall times 2, 5, 10, 20 seconds, left-to-right. Top row: whole frames. Bottom row: matching native-pixel detail crops, chosen from one variant without regard to quality. Compare fluid render quality, NOT the preferred arrangement of chaotic swirls. Prefer more resolved fine detail, richer vivid colour, clean smooth gradients, coherent filaments and vortices; penalize blur, muddy/desaturated colour, coarse numerical diffusion, blockiness or aliasing. Do not infer labels or which side is a reference. Different swirl positions alone are not quality differences. Tie if visually indistinguishable in quality. Stills cannot establish temporal/frame-rate smoothness; assess only spatial smoothness. Return ONLY JSON {\"verdict\":\"left\"|\"right\"|\"tie\",\"reason\":\"short visual evidence\"}.",
+    "rubricHash": "a3edc303a197181f480d8213c6eca112061d3307817f153cbca7d456658928ef",
+    "passed": false,
+    "summary": [
+      {
+        "degradation": "identical",
+        "pairs": 6,
+        "referencePreferred": 1,
+        "referencePreferredFraction": 0.16666666666666666,
+        "ties": 5,
+        "inconsistent": 4,
+        "pass": true
+      },
+      {
+        "degradation": "blur",
+        "pairs": 6,
+        "referencePreferred": 6,
+        "referencePreferredFraction": 1,
+        "ties": 0,
+        "inconsistent": 0,
+        "pass": true
+      },
+      {
+        "degradation": "half-resolution",
+        "pairs": 6,
+        "referencePreferred": 4,
+        "referencePreferredFraction": 0.6666666666666666,
+        "ties": 0,
+        "inconsistent": 0,
+        "pass": false
+      },
+      {
+        "degradation": "karman128-p24",
+        "pairs": 2,
+        "referencePreferred": 0,
+        "referencePreferredFraction": 0,
+        "ties": 1,
+        "inconsistent": 1,
+        "pass": false
+      },
+      {
+        "degradation": "desaturation",
+        "pairs": 6,
+        "referencePreferred": 6,
+        "referencePreferredFraction": 1,
+        "ties": 0,
+        "inconsistent": 0,
+        "pass": true
+      }
+    ]
+  },
+  {
+    "attempt": 2,
+    "rubric": "Read only pair.png in the current directory. Blind pairwise visual-quality evaluation of fluid renders. Left/right panels each show the SAME scene at wall times 2, 5, 10, 20 seconds, left-to-right. Top row: whole frames. Bottom row: matching native-pixel detail crops, selected without comparing variant quality. Describe the left and right briefly before choosing. Read each filmstrip as a sequence: assess whether coherent flow structures develop and persist across the scene, not whether individual tiny curls look exciting. Evaluate at both whole-scene and native-detail scales. Quality means resolved, structurally coherent filaments/vortices, clean smooth gradients and vivid colour. Additional jagged, noisy or incoherent fine curls are not useful detail. Do not reward sharpness alone; weigh large-scale flow organization equally with small-scale clarity. Do not judge swirl arrangement or infer variant labels. Tie if any difference is merely chaotic layout, or quality is indistinguishable. Stills cannot establish frame-rate smoothness; assess spatial smoothness and structural evolution only. Return ONLY JSON {\"verdict\":\"left\"|\"right\"|\"tie\",\"reason\":\"left: …; right: …; deciding evidence: …\"}.",
+    "rubricHash": "2cef6696665bbf576d9e9f646f83dfd444ec3bc615a3e939a7eb2abc9018569e",
+    "passed": false,
+    "summary": [
+      {
+        "degradation": "identical",
+        "pairs": 6,
+        "referencePreferred": 0,
+        "referencePreferredFraction": 0,
+        "ties": 6,
+        "inconsistent": 2,
+        "pass": true
+      },
+      {
+        "degradation": "blur",
+        "pairs": 6,
+        "referencePreferred": 4,
+        "referencePreferredFraction": 0.6666666666666666,
+        "ties": 2,
+        "inconsistent": 2,
+        "pass": false
+      },
+      {
+        "degradation": "half-resolution",
+        "pairs": 6,
+        "referencePreferred": 5,
+        "referencePreferredFraction": 0.8333333333333334,
+        "ties": 1,
+        "inconsistent": 1,
+        "pass": true
+      },
+      {
+        "degradation": "karman128-p24",
+        "pairs": 2,
+        "referencePreferred": 2,
+        "referencePreferredFraction": 1,
+        "ties": 0,
+        "inconsistent": 0,
+        "pass": true
+      },
+      {
+        "degradation": "desaturation",
+        "pairs": 6,
+        "referencePreferred": 6,
+        "referencePreferredFraction": 1,
+        "ties": 0,
+        "inconsistent": 0,
+        "pass": true
+      }
+    ]
+  },
+  {
+    "attempt": 3,
+    "rubric": "Read only pair.png in the current directory. Blind pairwise visual-quality evaluation of fluid renders. Left/right panels each show the SAME scene at wall times 2, 5, 10, 20 seconds, left-to-right. Top row: whole frames. Bottom row: matching native-pixel detail crops, selected without comparing variant quality. Describe the left and right briefly before choosing. Read each filmstrip as a sequence: assess whether coherent flow structures develop and persist across the scene, not whether individual tiny curls look exciting. Evaluate at both whole-scene and native-detail scales. Judge the fluid itself, not the crispness of static masks or obstacle silhouettes. Quality means resolved, structurally coherent filaments/vortices, clean smooth gradients and vivid colour. Additional jagged, noisy or incoherent fine curls are not useful detail. Do not reward sharpness alone; weigh large-scale flow organization equally with small-scale clarity. When structural coherence is comparable, use loss of filament separation or colour richness to decide; modest but consistently visible quality differences count. Do not judge swirl arrangement or infer variant labels. Tie if any difference is merely chaotic layout, or quality is indistinguishable. Stills cannot establish frame-rate smoothness; assess spatial smoothness and structural evolution only. Return ONLY JSON {\"verdict\":\"left\"|\"right\"|\"tie\",\"reason\":\"left: …; right: …; deciding evidence: …\"}.",
+    "rubricHash": "6f6c346436d32cb7f2abbb8448650e7f52a638d81c0ee9a26478cb12c3634e31",
+    "passed": false,
+    "summary": [
+      {
+        "degradation": "identical",
+        "pairs": 6,
+        "referencePreferred": 4,
+        "referencePreferredFraction": 0.6666666666666666,
+        "ties": 2,
+        "inconsistent": 2,
+        "pass": false
+      },
+      {
+        "degradation": "blur",
+        "pairs": 6,
+        "referencePreferred": 5,
+        "referencePreferredFraction": 0.8333333333333334,
+        "ties": 1,
+        "inconsistent": 1,
+        "pass": true
+      },
+      {
+        "degradation": "half-resolution",
+        "pairs": 6,
+        "referencePreferred": 5,
+        "referencePreferredFraction": 0.8333333333333334,
+        "ties": 0,
+        "inconsistent": 0,
+        "pass": true
+      },
+      {
+        "degradation": "karman128-p24",
+        "pairs": 2,
+        "referencePreferred": 2,
+        "referencePreferredFraction": 1,
+        "ties": 0,
+        "inconsistent": 0,
+        "pass": true
+      },
+      {
+        "degradation": "desaturation",
+        "pairs": 6,
+        "referencePreferred": 6,
+        "referencePreferredFraction": 1,
+        "ties": 0,
+        "inconsistent": 0,
+        "pass": true
+      }
+    ]
+  },
+  {
+    "attempt": 4,
+    "rubric": "Read only pair.png in the current directory. Blind pairwise visual-quality evaluation of fluid renders. Left/right panels each show the SAME scene at wall times 2, 5, 10, 20 seconds, left-to-right. Top row: whole frames. Bottom row: matching native-pixel detail crops, selected without comparing variant quality. Describe the left and right briefly before choosing. Read each filmstrip as a sequence: assess whether coherent flow structures develop and persist across the scene, not whether individual tiny curls look exciting. Evaluate at both whole-scene and native-detail scales. Judge the fluid itself, not the crispness of static masks or obstacle silhouettes. Quality means resolved, structurally coherent filaments/vortices, clean smooth gradients and vivid colour. Additional jagged, noisy or incoherent fine curls are not useful detail. Do not reward sharpness alone; weigh large-scale flow organization equally with small-scale clarity. Do not judge swirl arrangement or infer variant labels. Tie if any difference is merely chaotic layout, or quality is indistinguishable. Stills cannot establish frame-rate smoothness; assess spatial smoothness and structural evolution only. Return ONLY JSON {\"verdict\":\"left\"|\"right\"|\"tie\",\"reason\":\"left: …; right: …; deciding evidence: …\"}.",
+    "rubricHash": "c29e7b2cc65f423a0b95219176cda611c7d368ad7314ba47d87e8ab4fa43a099",
+    "passed": false,
+    "summary": [
+      {
+        "degradation": "identical",
+        "pairs": 6,
+        "referencePreferred": 0,
+        "referencePreferredFraction": 0,
+        "ties": 6,
+        "inconsistent": 3,
+        "pass": true
+      },
+      {
+        "degradation": "blur",
+        "pairs": 6,
+        "referencePreferred": 4,
+        "referencePreferredFraction": 0.6666666666666666,
+        "ties": 2,
+        "inconsistent": 0,
+        "pass": false
+      },
+      {
+        "degradation": "half-resolution",
+        "pairs": 6,
+        "referencePreferred": 5,
+        "referencePreferredFraction": 0.8333333333333334,
+        "ties": 0,
+        "inconsistent": 0,
+        "pass": true
+      },
+      {
+        "degradation": "karman128-p24",
+        "pairs": 2,
+        "referencePreferred": 2,
+        "referencePreferredFraction": 1,
+        "ties": 0,
+        "inconsistent": 0,
+        "pass": true
+      },
+      {
+        "degradation": "desaturation",
+        "pairs": 6,
+        "referencePreferred": 6,
+        "referencePreferredFraction": 1,
+        "ties": 0,
+        "inconsistent": 0,
+        "pass": true
+      }
+    ]
+  }
+]
