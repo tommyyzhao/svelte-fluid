@@ -24,6 +24,7 @@ function sampleMotion(e) {
 				if (!Number.isFinite(speed)) throw new Error('Nonfinite velocity readback');
 				maxVelocityTexelsPerSecond = Math.max(maxVelocityTexelsPerSecond, speed);
 			}
+			if (gl.getError() !== gl.NO_ERROR) throw new Error('GL error during motion readback');
 			motionPair = { at, targetSeconds, dye, maxVelocityTexelsPerSecond };
 		} else {
 			if (dye.width !== motionPair.dye.width || dye.height !== motionPair.dye.height) throw new Error('Dye dimensions changed');
@@ -33,6 +34,7 @@ function sampleMotion(e) {
 				if (!Number.isFinite(delta)) throw new Error('Nonfinite dye readback');
 				maxPerFrameDyeChange = Math.max(maxPerFrameDyeChange, delta);
 			}
+			if (gl.getError() !== gl.NO_ERROR) throw new Error('GL error during motion readback');
 			motion.samples.push({ targetSeconds, firstSeconds: (motionPair.at - mountedAt) / 1000, secondSeconds: (at - mountedAt) / 1000, frameIntervalMs: at - motionPair.at, maxVelocityTexelsPerSecond: motionPair.maxVelocityTexelsPerSecond, maxPerFrameDyeChange });
 			motionPair = null;
 		}

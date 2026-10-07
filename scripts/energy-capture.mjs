@@ -427,7 +427,7 @@ async function capture(c, run) {
 		row.states = states;
 		assert.ok(snapshot.visibility.filter((v) => v.at >= windows.active.start && v.at < windows.untouched.end).every((v) => v.state === 'visible'), 'Foreground visibility lost during visible windows');
 		assert.ok(snapshot.visibility.filter((v) => v.at >= windows.hidden.start && v.at < windows.hidden.end).every((v) => v.state === 'hidden'), 'Background visibility lost during hidden window');
-		// Diagnostic run is separate; no extra GPU reads, thresholds or solver changes.
+		// Diagnostic run is separate; field readbacks never enter the energy trace.
 		if (run === 1) {
 			const continuous = hasContinuousDriver(row.config, 40);
 			if (!continuous) {
