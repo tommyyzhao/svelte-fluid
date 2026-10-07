@@ -9,6 +9,7 @@ import { mkdir, readFile, writeFile, rm, readdir, stat } from 'node:fs/promises'
 import { writeFileSync } from 'node:fs';
 import { parseArgs, promisify } from 'node:util';
 import { createHash } from 'node:crypto';
+import { hasContinuousDriver } from '../src/lib/engine/settle.js';
 const execAsync = promisify(execFile);
 const ROOT = process.cwd(), PORT = 5201, URL = `http://127.0.0.1:${PORT}`;
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
@@ -344,7 +345,7 @@ async function capture(c, run) {
 		assert.ok(snapshot.visibility.filter((v) => v.at >= windows.hidden.start && v.at < windows.hidden.end).every((v) => v.state === 'hidden'), 'Background visibility lost during hidden window');
 		// Diagnostic run is separate; no extra GPU reads, thresholds or solver changes.
 		if (run === 1) {
-			const continuous = await page.evaluate(async (config) => { const { hasContinuousDriver } = await import('/src/lib/engine/settle.ts'); return hasContinuousDriver(config, 40); }, row.config);
+			const continuous = hasContinuousDriver(row.config, 40);
 			if (!continuous) {
 				progress('separate settle diagnostic'); const diag = await pageFor(context); await diag.bringToFront();
 				const setup = await diag.evaluate((c) => window.__energy.mount({ ...c, diagnostic: true }), { ...c, override });
