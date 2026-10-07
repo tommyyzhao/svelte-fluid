@@ -1,5 +1,5 @@
 import { mount, unmount } from 'svelte';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import FluidReveal from '../../FluidReveal.svelte';
 import { FluidEngine, _setContextTier } from '../FluidEngine.js';
 import { activeFrameSubscribers } from '../frame-scheduler.js';
@@ -338,6 +338,70 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		console.info(`[idle ${mode}] CPU stage ${(stats.stageMs / stats.checks).toFixed(3)} ms/check, readback ${(stats.readbackMs / stats.checks).toFixed(3)} ms/check; not GPU certification`);
 	}, 60_000);
 
+	it.each(['webgl1', 'webgl2-byte'] as const)('%s delayed image/dither readiness wakes empty special renderers and re-settles', async (mode) => {
+		const NativeImage = window.Image;
+		const pending: { image: HTMLImageElement; ready: boolean; release(): void }[] = [];
+		vi.stubGlobal('Image', function () {
+			const image = new NativeImage();
+			let callback: ((event: Event) => void) | null = null;
+			const entry = { image, ready: false, release: () => callback?.call(image, new Event('load')) };
+			image.addEventListener('load', () => { entry.ready = true; });
+			Object.defineProperty(image, 'onload', { set: (value) => { callback = value; } });
+			pending.push(entry);
+			return image;
+		});
+		try {
+			const source = document.createElement('canvas');
+			source.width = 8; source.height = 4;
+			const context = source.getContext('2d')!;
+			context.fillStyle = '#f00'; context.fillRect(0, 0, 8, 4);
+			const url = source.toDataURL();
+			for (const special of ['reveal', 'distortion'] as const) {
+				pending.length = 0;
+				const canvas = document.createElement('canvas');
+				if (mode === 'webgl1') {
+					const get = canvas.getContext.bind(canvas) as (t: string, ...args: unknown[]) => unknown;
+					(canvas as unknown as { getContext: unknown }).getContext = (t: string, ...args: unknown[]) => t === 'webgl2' || t === 'bitmaprenderer' ? null : get(t, ...args);
+				}
+				const e = engine({ initialSplatCount: 0, autoSplatRate: 0, [special]: true,
+					distortionImageUrl: special === 'distortion' ? url : undefined }, false, canvas);
+				const p = e as unknown as InertProbe & { distortionLoadedUrl: string | null; distortionTextureW: number };
+				if (mode === 'webgl2-byte') p.canReadSettleFloat = () => false;
+				p.autoStart = true; p.deterministicMode = false; e.resume();
+				await until(() => pending.every((entry) => entry.ready), 5000);
+				expect(pending).toHaveLength(special === 'distortion' ? 2 : 1);
+				await until(() => e.isSettled, 10_000);
+				expect(p.ditheringTexture.width).toBe(1);
+				// Decode real images normally; defer only delivery of readiness callbacks.
+				for (const entry of pending) {
+					expect(activeFrameSubscribers()).toBe(0);
+					entry.release();
+					expect(e.isSettled).toBe(false);
+					expect(activeFrameSubscribers()).toBe(1);
+					await until(() => e.isSettled, 10_000);
+					expect(activeFrameSubscribers()).toBe(0);
+				}
+				expect(p.ditheringTexture.width).toBe(64);
+				if (special === 'distortion') {
+					expect(p.distortionLoadedUrl).toBe(url);
+					expect(p.distortionTextureW).toBe(8);
+					const target = createFBO(p.gl, 128, 128, mode === 'webgl1' ? p.gl.RGBA : p.gl.RGBA8, p.gl.RGBA, p.gl.UNSIGNED_BYTE, p.gl.NEAREST);
+					try {
+						p.renderCore(target);
+						const pixel = new Uint8Array(4);
+						p.gl.bindFramebuffer(p.gl.FRAMEBUFFER, target.fbo);
+						p.gl.readPixels(64, 64, 1, 1, p.gl.RGBA, p.gl.UNSIGNED_BYTE, pixel);
+						expect(pixel[0]).toBeGreaterThan(200);
+						expect(pixel[1]).toBeLessThan(40);
+					} finally { disposeFBO(p.gl, target); }
+				}
+				expect(p.gl.getError()).toBe(p.gl.NO_ERROR);
+				expect(await rafCount(250)).toBe(0);
+				e.dispose();
+			}
+		} finally { vi.unstubAllGlobals(); }
+	}, 60_000);
+
 	it.each(['webgl1', 'webgl2-byte'] as const)('%s flags equal issue-time signed velocity/HDR dye maxima across odd edges', async (mode) => {
 		const canvas = document.createElement('canvas');
 		if (mode === 'webgl1') {
@@ -412,6 +476,41 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		expect(p.settleCheckCount).toBe(0);
 		expect(e.isSettled).toBe(false);
 	});
+
+	it.each([false, true])('shared byte settle-probe failure isolates its instance, sibling still renders and settles (silent=%s)', async (silent) => {
+		_setContextTier('shared');
+		try {
+			const e = engine({ initialSplatCount: 0 }, false);
+			const sibling = engine({ initialSplatCount: 0 }, false);
+			const p = e as unknown as InertProbe & { failed: boolean; settleCheckCount: number };
+			const other = sibling as unknown as InertProbe & { failed: boolean };
+			p.canReadSettleFloat = other.canReadSettleFloat = () => false;
+			expect(p.gl).toBe(other.gl);
+			const read = p.gl.readPixels;
+			p.gl.readPixels = (() => { if (silent) p.gl.bindBuffer(-1, null); else throw new Error('injected shared byte readback failure'); }) as typeof read;
+			try {
+				p.issueSettleProbe();
+				for (let i = 0; i < 12 && p.settleProbe; i++) p.advanceSettleProbe();
+			} finally { p.gl.readPixels = read; }
+			expect(p.failed).toBe(true);
+			expect(p.settleProbe).toBeNull();
+			expect(p.settleCheckCount).toBe(0);
+			expect(e.isSettled).toBe(false);
+			sibling.splat(0.5, 0.5, 0, 0, { r: 1, g: 0.2, b: 0.1 });
+			sibling.advance(2, 1 / 60);
+			sibling.renderOnce();
+			await sibling.presented();
+			expect(sibling.readField('dye').data.some((v) => v > 0)).toBe(true);
+			expect(other.failed).toBe(false);
+			expect(other.gl.getError()).toBe(other.gl.NO_ERROR);
+			e.dispose();
+			sibling.setConfig({ densityDissipation: 100 });
+			other.autoStart = true; other.deterministicMode = false; sibling.resume();
+			await until(() => sibling.isSettled, 10_000);
+			expect(other.failed).toBe(false);
+			expect(activeFrameSubscribers()).toBe(0);
+		} finally { _setContextTier('auto'); }
+	}, 20_000);
 
 	it.each(['distortion', 'reveal'] as const)('%s amplifies sub-epsilon dye; only exact zero may settle', async (mode) => {
 		for (const bytes of [false, true]) {
