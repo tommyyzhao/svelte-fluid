@@ -122,7 +122,7 @@ if (process.argv[2] === '--analyse-worker') {
 	process.exit(0);
 }
 const { values: options } = parseArgs({ options: {
-	label: { type: 'string', default: 'baseline' }, split: { type: 'string', default: 'all' }, subset: { type: 'string' }, cases: { type: 'string' },
+	label: { type: 'string', default: 'baseline' }, split: { type: 'string', default: 'all' }, subset: { type: 'string' }, cases: { type: 'string' }, 'source-root': { type: 'string' },
 	runs: { type: 'string', default: '3' }, 'run-start': { type: 'string', default: '1' }, override: { type: 'string' },
 	'self-check': { type: 'boolean' }, 'summary-only': { type: 'boolean' }, resume: { type: 'boolean' }, help: { type: 'boolean' }
 } });
@@ -141,8 +141,18 @@ if (subset) for (const p of subset) assert.ok([...TRAIN, ...TEST].includes(p), `
 if (requested) for (const k of requested) assert.ok(matrix.some((c) => key(c) === k), `Scene outside frozen matrix ${k}`);
 const cases = matrix.filter((c) => (options.split === 'all' || c.split === options.split) && (!subset || subset.includes(c.preset)) && (!requested || requested.includes(key(c))));
 assert.ok(cases.length);
-const DIR = `/tmp/energy-eval/${options.label}`, sha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-const metadata = { sha, root: ROOT, chrome: CHROME, driver: 'direct ordinary Chrome + CDP noDefaults:true; native focus/visibility, CDP device metrics', override, protocol: 'ADR 0107 E1', requestedRuns: RUNS, runStart: RUN_START, requestedScenes: cases, refresh: 'native; 60 Hz not measurable without changing system settings' };
+const DIR = `/tmp/energy-eval/${options.label}`, harnessSha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+const sourceRoot = options['source-root'] ?? ROOT;
+assert.ok(sourceRoot.startsWith('/'), '--source-root requires an absolute directory');
+const engineSourceSha = sourceRoot === ROOT ? 'e4be335997ed2cd9ee1922879efaeea8f6a4b22e' : execFileSync('git', ['-C', sourceRoot, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+if (sourceRoot === ROOT) assert.equal(execFileSync('git', ['diff', 'e4be335', '--', 'src/lib'], { encoding: 'utf8' }), '', 'Baseline engine source changed');
+const sha = engineSourceSha;
+const source = await readFile(process.argv[1], 'utf8');
+const measurementParts = (s) => s.slice(s.indexOf('function slice('), s.indexOf("const { values: options }")) + s.slice(s.indexOf("\t\tprogress('mount');"), s.indexOf("\t\tprogress('browser cleanup');"));
+const frozenSource = execFileSync('git', ['show', 'e4be335:scripts/energy-capture.mjs'], { cwd: ROOT, encoding: 'utf8' });
+assert.equal(measurementParts(source), measurementParts(frozenSource), 'Frozen window/parser/metric logic changed');
+const measurementLogicHash = createHash('sha256').update(measurementParts(source)).update(await readFile(`${ROOT}/src/energy-capture.js`, 'utf8')).digest('hex');
+const metadata = { sha, harnessSha, engineSourceSha, measurementLogicHash, root: ROOT, sourceRoot, chrome: CHROME, driver: 'direct ordinary Chrome + CDP noDefaults:true; native focus/visibility, CDP device metrics', override, protocol: 'ADR 0107 E1', requestedRuns: RUNS, runStart: RUN_START, requestedScenes: cases, refresh: 'native; 60 Hz not measurable without changing system settings' };
 function summaries(rows) {
 	const scenes = cases.map((c) => {
 		const repeats = rows.filter((r) => key(r) === key(c) && r.status === 'OK');
@@ -192,9 +202,10 @@ if (options['self-check']) {
 }
 await mkdir(DIR, { recursive: true });
 const results = [];
-if (options.resume || options['summary-only']) for (const f of await readdir(DIR)) if (/^.*-r\d+\.json$/.test(f)) {
+if (options.resume || options['summary-only']) for (const f of await readdir(DIR)) if (/^.*-r\d+(?:-infra-retry)?\.json$/.test(f)) {
 	const row = JSON.parse(await readFile(`${DIR}/${f}`, 'utf8'));
-	assert.equal(row.sha, sha, 'Cannot mix captures from different commits');
+	assert.equal(row.engineSourceSha ?? row.sha, engineSourceSha, 'Cannot mix captures from different engine commits');
+	if (row.measurementLogicHash) assert.equal(row.measurementLogicHash, measurementLogicHash, 'Cannot mix measurement logic');
 	assert.deepEqual(row.override, override, 'Cannot mix candidate overrides');
 	results.push(row);
 }
@@ -204,7 +215,7 @@ if (!options.resume && !options['summary-only']) for (let run = RUN_START; run <
 const save = () => writeFileSync(`${DIR}/summary.json`, JSON.stringify(summaries(results), null, 2));
 if (options['summary-only']) { save(); console.log(JSON.stringify(summaries(results).headline)); process.exit(0); }
 const census = () => execFileSync('ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' }).split('\n').map((l) => { const m = l.match(/^\s*(\d+)\s+(\d+)\s+(.*)$/); return m && { pid: +m[1], ppid: +m[2], command: m[3] }; }).filter(Boolean);
-const owned = new Map(); let browser, chrome, profile, server, recording, notifier, lockOwned = false, lastReleasedAt = 0;
+const owned = new Map(); let browser, chrome, profile, server, recording, notifier, lockOwned = false, lastReleasedAt = 0, lockedAt = 0;
 const ownerText = JSON.stringify({ lane: 'E1', worktree: ROOT, sha, pid: process.pid });
 function remember() {
 	const rows = census(), ids = new Set([process.pid]);
@@ -223,9 +234,20 @@ async function release() {
 	console.log(JSON.stringify({ phase: 'GPU lock released', pid: process.pid }));
 }
 async function acquire() {
-	if (lastReleasedAt) await Bun.sleep(Math.max(0, lastReleasedAt + 60000 - Date.now()));
+	if (lockOwned) return;
+	if (lastReleasedAt) {
+		await Bun.sleep(Math.max(0, lastReleasedAt + 180000 - Date.now()));
+		let freeSince = Date.now(), sawNext = false;
+		while (true) {
+			let owner;
+			try { owner = JSON.parse(await readFile(`${LOCK}/owner`, 'utf8')); } catch (e) { if (e.code !== 'ENOENT') throw e; }
+			if (owner) { freeSince = Date.now(); if (owner.lane === 'E2' || owner.lane === 'E3') sawNext = true; }
+			else if (sawNext || Date.now() - freeSince >= 300000) break;
+			console.log(JSON.stringify({ phase: 'waiting for next GPU lane turn', owner: owner?.lane })); await Bun.sleep(30000);
+		}
+	}
 	while (!lockOwned) {
-		try { await mkdir(LOCK); lockOwned = true; await writeFile(`${LOCK}/owner`, ownerText); }
+		try { await mkdir(LOCK); lockOwned = true; lockedAt = Date.now(); await writeFile(`${LOCK}/owner`, ownerText); }
 		catch (e) { if (e.code !== 'EEXIST') throw e; console.log(JSON.stringify({ phase: 'waiting for GPU lock' })); await Bun.sleep(30000); }
 	}
 }
@@ -236,7 +258,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, async () => {
 });
 async function startServer() {
 	if (server) return;
-	server = Bun.spawn(['bun', 'run', 'dev', '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'], { stdout: 'ignore', stderr: 'inherit' }); remember();
+	server = Bun.spawn(['bun', 'run', 'dev', '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'], { cwd: sourceRoot, stdout: 'ignore', stderr: 'inherit' }); remember();
 	for (let i = 0; i < 150; i++) {
 		if (await fetch(URL, { signal: AbortSignal.timeout(1000) }).then((r) => r.ok, () => false)) return;
 		if (server.exitCode !== null) throw new Error('Owned dev server exited');
@@ -252,6 +274,14 @@ async function pageFor(context, dpr) {
 	await session.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
 	page.setDefaultTimeout(15000);
 	await page.route('**/__energy_capture__', (r) => r.fulfill({ contentType: 'text/html', body: HTML }));
+	// Transform the unchanged measurement entry in the selected Vite root, without writing there.
+	if (sourceRoot !== ROOT) {
+		const entry = await readFile(`${ROOT}/src/energy-capture.js`, 'utf8');
+		const transformed = await fetch(`${URL}/src/lib/Fluid.svelte`).then((r) => r.text());
+		const svelteUrl = transformed.match(/from\s+["']([^"']*\/svelte\.js[^"']*)["']/)?.[1];
+		assert.ok(svelteUrl, 'Cannot resolve source-root Svelte browser runtime');
+		await page.route('**/src/energy-capture.js', (r) => r.fulfill({ contentType: 'text/javascript', body: entry.replace("from 'svelte'", `from '${svelteUrl}'`).replace('./lib/engine/FluidEngine.js', './lib/engine/FluidEngine.ts').replace('./lib/presets/registry.js', './lib/presets/registry.ts') }));
+	}
 	await page.goto(`${URL}/__energy_capture__`); await page.waitForFunction(() => !!window.__energy);
 	return page;
 }
@@ -260,8 +290,8 @@ async function bytes(path) {
 	catch (e) { if (e.code === 'ENOENT') return 0; throw e; }
 }
 async function capture(c, run) {
-	const name = `${fileKey(c)}-r${run}`, trace = `${DIR}/${name}.trace`, windows = {}, states = {};
-	const row = { ...c, run, sha, override, trace, startedAt: new Date().toISOString(), status: 'FAILED' };
+	const name = `${fileKey(c)}-r${run}${c.infraRetry ? '-infra-retry' : ''}`, trace = `${DIR}/${name}.trace`, windows = {}, states = {};
+	const row = { ...c, run, sha, harnessSha, engineSourceSha, measurementLogicHash, override, trace, startedAt: new Date().toISOString(), status: 'FAILED' };
 	let gpuPid, phase = 'browser launch', stopped = false;
 	const progress = (p) => { phase = p; writeFileSync(`${DIR}/${name}.progress.json`, JSON.stringify({ ...row, phase, windows, states })); console.log(JSON.stringify({ name, phase })); };
 	const controller = new AbortController(), deadline = setTimeout(() => { controller.abort(new Error(`Attempt timeout in ${phase}`)); cleanup(); }, 600000);
@@ -363,7 +393,6 @@ async function capture(c, run) {
 		const closeSession = await browser.newBrowserCDPSession(); await closeSession.send('Browser.close').catch(() => {});
 		await chrome.exited; chrome = null; await browser.close(); browser = null;
 		await rm(profile, { recursive: true }); profile = null; Bun.gc(true);
-		await release(); // Exports/parsing do not own the GPU; other lanes can capture now.
 		progress('trace export');
 		const input = `${DIR}/${name}.analysis-input.json`, output = `${DIR}/${name}.analysis.json`;
 		await writeFile(input, JSON.stringify({ trace, gpuPid, windows }));
@@ -393,9 +422,20 @@ async function capture(c, run) {
 try {
 	for (let run = RUN_START; run < RUN_START + RUNS; run++) for (const c of cases) {
 		if (options.resume && results.some((r) => key(r) === key(c) && r.run === run)) continue;
+		// Reserve the full 10-minute attempt ceiling before the 25-minute batch limit.
+		if (lockOwned && Date.now() - lockedAt >= 15 * 60000) await release();
 		await acquire();
 		const r = await capture(c, run); results.push(r); save();
 		if (r.status !== 'OK') { await release(); await Bun.sleep(60000); }
+	}
+	// Exactly one end-of-run retry for recorder infrastructure timeout, never a clean metric.
+	for (const failed of results.filter((r) => ['Recorder finalisation timeout', 'Outer background task ceiling interrupted recorder finalisation'].includes(r.error) && !r.infraRetry && cases.some((c) => key(c) === key(r)) && r.run >= RUN_START && r.run < RUN_START + RUNS)) {
+		if (results.some((r) => key(r) === key(failed) && r.run === failed.run && r.infraRetry)) continue;
+		if (lockOwned && Date.now() - lockedAt >= 15 * 60000) await release();
+		await acquire();
+		const retry = await capture({ ...cases.find((c) => key(c) === key(failed)), infraRetry: true }, failed.run);
+		results.push(retry); save();
+		if (retry.status !== 'OK') await release();
 	}
 } finally {
 	save(); cleanup(); await release();
