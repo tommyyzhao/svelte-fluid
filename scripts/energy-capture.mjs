@@ -158,24 +158,24 @@ const measurementLogicHash = createHash('sha256').update(measurementParts(source
 const metadata = { sha, harnessSha, engineSourceSha, engineFileHash, measurementLogicHash, root: ROOT, sourceRoot, chrome: CHROME, driver: 'direct ordinary Chrome + CDP noDefaults:true; native focus/visibility, CDP device metrics', override, protocol: 'ADR 0107 E1', requestedRuns: RUNS, runStart: RUN_START, requestedScenes: cases, refresh: 'native; 60 Hz not measurable without changing system settings' };
 function summaries(rows) {
 	const scenes = cases.map((c) => {
-		const repeats = rows.filter((r) => key(r) === key(c) && r.status === 'OK');
+		const repeats = rows.filter((r) => key(r) === key(c) && (r.status === 'OK' || r.status === 'PARTIAL'));
 		return {
 			...c, complete: Array.from({ length: RUNS }, (_, i) => RUN_START + i).every((run) => repeats.some((r) => r.run === run)),
 			runs: repeats.length, failed: rows.filter((r) => key(r) === key(c) && r.status !== 'OK').map((r) => ({ run: r.run, error: r.error })),
 			windows: Object.fromEntries(['active', 'untouched', 'offscreen', 'hidden', 'control'].map((name) => {
-				const available = repeats.filter((r) => !r.windows[name].unavailable);
+				const available = repeats.filter((r) => r.windows[name] && !r.windows[name].unavailable);
 				return [name, {
 					measuredRuns: available.length,
 					gpuBusyMsPerSecond: median(available.map((r) => r.windows[name].gpuBusyMsPerSecond)),
 					min: available.length ? Math.min(...available.map((r) => r.windows[name].gpuBusyMsPerSecond)) : null,
 					max: available.length ? Math.max(...available.map((r) => r.windows[name].gpuBusyMsPerSecond)) : null,
-					rafHz: median(available.map((r) => r.windows[name].rafHz)), engineHz: median(available.map((r) => r.windows[name].engineHz))
+					rafHz: median(available.map((r) => r.windows[name].rafHz).filter(Number.isFinite)), engineHz: median(available.map((r) => r.windows[name].engineHz).filter(Number.isFinite))
 				}];
 			})),
-			idleWithinControlNoise: Object.fromEntries(['offscreen', 'hidden'].map((name) => [name, repeats.length === 3 && repeats.every((r) => !r.windows[name].unavailable) ? Math.max(...repeats.map((r) => r.windows[name].gpuBusyMsPerSecond)) <= Math.max(...repeats.map((r) => r.windows.control.gpuBusyMsPerSecond)) : null])),
+			idleWithinControlNoise: Object.fromEntries(['offscreen', 'hidden'].map((name) => [name, repeats.length === 3 && repeats.every((r) => r.windows[name] && !r.windows[name].unavailable && r.windows.control) ? Math.max(...repeats.map((r) => r.windows[name].gpuBusyMsPerSecond)) <= Math.max(...repeats.map((r) => r.windows.control.gpuBusyMsPerSecond)) : null])),
 			noiseFloor: noise(repeats.map((r) => r.windows.active.gpuBusyMsPerSecond)),
-			settledRuns: repeats.filter((r) => r.settleTimeSeconds !== null).length,
-			settleTimeSeconds: median(repeats.map((r) => r.settleTimeSeconds).filter((v) => v !== null)),
+			settledRuns: repeats.filter((r) => Number.isFinite(r.settleTimeSeconds)).length,
+			settleTimeSeconds: median(repeats.map((r) => r.settleTimeSeconds).filter(Number.isFinite)),
 			diagnostic: repeats.find((r) => r.diagnostic)?.diagnostic ?? null
 		};
 	});
@@ -439,6 +439,16 @@ async function capture(c, run) {
 		row.status = 'FAILED';
 		row.error = String(controller.signal.reason?.message ?? error.message ?? error); row.phase = phase; row.windows = windows; row.traceDeleted = false;
 		if (recording && !stopped) { try { recording.kill('SIGINT'); await Promise.race([recording.exited, Bun.sleep(180000)]); } catch {} }
+		// Per-window control failure: preserve already-completed correctly-visible windows.
+		if (c.infraRetry && /hidden: incorrect visibility|hidden: visibility changed/.test(row.error) && windows.active && windows.untouched) {
+			try {
+				const input = `${DIR}/${name}.partial-input.json`, output = `${DIR}/${name}.partial-analysis.json`;
+				await writeFile(input, JSON.stringify({ trace, gpuPid, windows }));
+				await execAsync(process.execPath, [process.argv[1], '--analyse-worker', input, output], { timeout: 210000, maxBuffer: 1 << 20 });
+				Object.assign(row, JSON.parse(await readFile(output, 'utf8')));
+				row.status = 'PARTIAL'; row.incompleteWindows = ['hidden', 'control'];
+			} catch (partialError) { row.partialParseError = String(partialError.message); }
+		}
 		row.traceBytes = await bytes(trace);
 		await writeFile(`${DIR}/${name}.parse-failure.json`, JSON.stringify({ error: row.error, traceBytes: row.traceBytes, windows, gpuPid }, null, 2));
 		await rm(trace, { recursive: true, force: true }); row.traceDeleted = true;
@@ -474,7 +484,7 @@ try {
 		if (r.status !== 'OK') { await release(); await Bun.sleep(60000); }
 	}
 	// Exactly one end-of-run retry for recorder infrastructure timeout, never a clean metric.
-	for (const failed of results.filter((r) => (['Recorder tracing-started notification timeout', 'Recorder finalisation timeout', 'Outer background task ceiling interrupted recorder finalisation'].includes(r.error) || /missing execution coverage|GPU process exited|No space left on device|ENOSPC|Trace size watchdog/.test(r.error ?? '')) && !r.infraRetry && cases.some((c) => key(c) === key(r)) && r.run >= RUN_START && r.run < RUN_START + RUNS)) {
+	for (const failed of results.filter((r) => (['Recorder tracing-started notification timeout', 'Recorder finalisation timeout', 'Outer background task ceiling interrupted recorder finalisation'].includes(r.error) || /missing execution coverage|GPU process exited|No space left on device|ENOSPC|Trace size watchdog|incorrect visibility|visibility changed/.test(r.error ?? '')) && !r.infraRetry && cases.some((c) => key(c) === key(r)) && r.run >= RUN_START && r.run < RUN_START + RUNS)) {
 		if (results.some((r) => key(r) === key(failed) && r.run === failed.run && r.infraRetry)) continue;
 		if (lockOwned && Date.now() - lockedAt >= 15 * 60000) await release();
 		await acquire();
