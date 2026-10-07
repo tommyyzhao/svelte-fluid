@@ -1,6 +1,6 @@
 # ADR 0110: Presentation-only rate cap
 
-**Status:** Proposed — pending ADR 0107 E1/E2 and owner motion review
+**Status:** Accepted as opt-in (`maxFps` default 0); default-on not adopted — see Outcome
 **Date:** 2026-10-07
 
 ## Context
@@ -12,7 +12,7 @@ including Amendment 1, remains the keep/revert protocol.
 
 ## Decision
 
-- `FluidConfig.maxFps?: number | null`, default 60, Bucket A. `0`/`null`
+- `FluidConfig.maxFps?: number | null`, default 0 (opt-in; see Outcome), Bucket A. `0`/`null`
   presents every RAF; undefined preserves the resolved value; negative and
   nonfinite values are ignored. Fluid, config wrappers and every preset forward
   it uniformly, without preset-specific tuning or wrapper-loop changes.
@@ -90,3 +90,29 @@ reacquisition. Full installed hardware Chrome suite **344/344** (37 files),
 Read-only review found no surviving high-confidence defects.
 
 E1/E2 evals and owner motion review are intentionally not run by this lane.
+
+## Outcome (2026-10-07)
+
+Hill-climb round 2 under ADR 0107. The pre-registered keep rule was **not
+completed**:
+
+- **E1 energy (exploratory):** the training go/no-go across 5 fully active
+  scenes gave a median **44.6%** GPU-ms/s saving at 120 Hz. On held-out scenes
+  only **2 of 48** candidate slots completed: **35.0%** saving against
+  interleaved paired baselines, **30.0%** against the frozen baseline. That is
+  far short of the registered coverage. The block stopped when the owner
+  directed headless-only browsers. macOS headless Chrome runs at a fixed
+  60 Hz (`BeginFrameControl is not supported on MacOS yet`), where this cap
+  has no effect. The owner chose not to collect more headed data.
+- **E2 visual guardrail:** under ADR 0107 Amendment 2 (null-relative), the
+  train statistics fail on one run (p = 0.003) and pass borderline when pooled
+  over two replicates (p = 0.013, threshold 0.01). The excess over null is
+  small and only weakly correlated with sample timing. **No held-out E2 run
+  was made.** Temporal smoothness was never assessed (still images only).
+
+Decision: ship `maxFps` as an **opt-in** control, default `0`. Default output
+is byte-identical to before. The physics stays unchanged (proven by byte-identical
+readbacks), and the energy evidence is strong but exploratory, so users on
+high-refresh displays can choose `maxFps={60}`. Changing the default needs the
+full held-out E1 matrix at 120 Hz (headed or on a 120 Hz-capable runner), a
+held-out E2 pass, and an owner motion review.

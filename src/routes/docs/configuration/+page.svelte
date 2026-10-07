@@ -267,8 +267,8 @@
 		<tr>
 			<td><code>maxFps</code></td>
 			<td><code>number | null</code></td>
-			<td><code>60</code></td>
-			<td>Maximum presented frames per second. Simulation, input, and automatic splats still run every animation frame; only bloom, sunrays, display, glass, and presentation are capped. <code>0</code>/<code>null</code> presents every frame. Paused invalidations, resize/resume, explicit renders and the final settle frame bypass the cap. Negative/nonfinite values are ignored; <code>undefined</code> preserves the resolved hot value. Bucket A; no texture allocation or shader compilation.</td>
+			<td><code>0</code></td>
+			<td>Opt-in maximum presented frames per second (for example <code>60</code> on 120 Hz displays, roughly halving GPU work there). Simulation, input, and automatic splats still run every animation frame; only bloom, sunrays, display, glass, and presentation are capped. <code>0</code>/<code>null</code> presents every frame. Paused invalidations, resize/resume, explicit renders and the final settle frame bypass the cap. Negative/nonfinite values are ignored; <code>undefined</code> preserves the resolved hot value. Bucket A; no texture allocation or shader compilation.</td>
 		</tr>
 		<tr>
 			<td><code>paused</code></td>
