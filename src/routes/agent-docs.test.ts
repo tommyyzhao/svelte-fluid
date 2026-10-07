@@ -1,9 +1,79 @@
 import { describe, expect, it } from 'vitest';
+import ts from 'typescript';
+import { compile } from 'svelte/compiler';
 import { buildLlmsTxt, buildLlmsFullTxt, buildSkillMd, DEFAULT_SITE } from './agent-docs.js';
 import { PRESET_BY_ID, PRESETS } from '$lib/presets/registry.js';
 import presetDocs from './docs/presets/+page.svelte?raw';
 import landingPage from './+page.svelte?raw';
 import readme from '../../README.md?raw';
+
+describe('generated API reference', () => {
+	const filename = decodeURIComponent(new URL('../lib/engine/types.ts', import.meta.url).pathname);
+	const program = ts.createProgram([filename], { strict: true, skipLibCheck: true });
+	const checker = program.getTypeChecker();
+	const source = program.getSourceFile(filename)!;
+	const types = new Map(source.statements.filter(ts.isInterfaceDeclaration).map((node) => [node.name.text, checker.getTypeAtLocation(node)]));
+	const out = buildSkillMd();
+
+	it('every table prop exists in its corresponding public type, including inheritance', () => {
+		let typeName = '';
+		let count = 0;
+		for (const line of out.split('\n')) {
+			if (line.startsWith('## FluidConfig')) typeName = 'FluidConfig';
+			if (line.startsWith('### Shared fallback') || line.startsWith('### Fluid sizing')) typeName = 'FluidProps';
+			const heading = /^### (\w+)(?:\s|$)/.exec(line)?.[1];
+			if (heading && types.has(heading)) typeName = heading;
+			if (line.startsWith('FlowSourceBase fields')) typeName = 'FlowSourceBase';
+			const prop = /^\| `([^`]+)`/.exec(line)?.[1];
+			if (!prop) continue;
+			const type = types.get(typeName);
+			expect(type, typeName).toBeDefined();
+			expect(checker.getPropertyOfType(type!, prop), `${typeName}.${prop}`).toBeDefined();
+			count++;
+		}
+		expect(count).toBeGreaterThan(200);
+	});
+
+	it('shared config and fallback rows remain accepted by every fluid wrapper', () => {
+		const configProps = checker.getPropertiesOfType(types.get('FluidConfig')!).map((prop) => prop.name);
+		const fallbackProps = ['fallback', 'poster', 'posterAlt', 'fallbackText', 'onReady', 'onError'];
+		for (const component of ['Fluid', 'FluidBackground', 'FluidReveal', 'FluidDistortion', 'FluidStick', 'FluidText']) {
+			const type = types.get(`${component}Props`)!;
+			for (const prop of [...configProps, ...fallbackProps]) {
+				expect(checker.getPropertyOfType(type, prop), `${component}Props.${prop}`).toBeDefined();
+			}
+		}
+	});
+
+	it('covers every config and own component prop with its source type', () => {
+		for (const node of source.statements.filter(ts.isInterfaceDeclaration)) {
+			if (node.name.text !== 'FluidConfig' && !node.name.text.endsWith('Props')) continue;
+			// Presets are Pick type aliases; their narrow surface is described separately.
+			for (const prop of node.members.filter(ts.isPropertySignature)) {
+				const type = prop.type!.getText(source).replace(/\s+/g, ' ').replace(/\|/g, '\\|');
+				expect(out, `${node.name.text}.${prop.name.getText(source)}`).toContain(`| \`${prop.name.getText(source)}\``);
+				expect(out).toContain(`| \`${type}\` |`);
+			}
+		}
+	});
+
+	it('all full-reference Svelte snippets compile as complete components', () => {
+		const snippets = [...buildLlmsFullTxt().matchAll(/```svelte\n([\s\S]*?)\n```/g)];
+		expect(snippets.length).toBeGreaterThan(14);
+		for (const [index, match] of snippets.entries()) {
+			expect(() => compile(match[1], { filename: `agent-docs-${index}.svelte`, generate: 'server' })).not.toThrow();
+		}
+	});
+
+	it('states wrapper limits, sizing, typed handles and visible background containment', () => {
+		expect(out).toContain('do NOT accept `aria-label`');
+		expect(out).toContain('Numeric dimensions are CSS pixels');
+		expect(out).toContain('$state<{ handle: FluidHandle } | undefined>(undefined)');
+		expect(out).not.toContain('\n  let fluid;');
+		expect(out).toContain('opaque full-page children hide it');
+		expect(out).toContain('exclude` queries ONLY descendants');
+	});
+});
 
 describe('Plasma product language', () => {
 	const generated = [buildLlmsTxt(), buildLlmsFullTxt(), buildSkillMd()];

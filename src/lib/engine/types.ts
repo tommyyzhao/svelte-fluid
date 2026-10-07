@@ -330,7 +330,7 @@ export interface Obstruction {
 export interface StickyMask {
 	/** SVG path data string. */
 	d?: string;
-	/** Text to rasterize as the mask. Takes precedence over `d`. */
+	/** Text to rasterize as the mask. `d` takes precedence if both are supplied. */
 	text?: string;
 	/** CSS font string for text mode. Default `'bold 72px sans-serif'`. */
 	font?: string;
@@ -1179,7 +1179,7 @@ export interface FluidRevealProps
 	coverColor?: RGB;
 	/**
 	 * Accent color of the reveal fringe (visible at scratch edges).
-	 * RGB components in 0–1 linear range. Default blue `{ r: 0.2, g: 0.35, b: 0.7 }`.
+	 * RGB components in 0–1 linear range. Default deep navy `{ r: 0.05, g: 0.16, b: 0.32 }`.
 	 */
 	accentColor?: RGB;
 	/**
@@ -1236,8 +1236,8 @@ export interface FluidRevealProps
 	 * **Note:** The canvas sits on top of the content for alpha compositing.
 	 * Interactive elements (links, buttons) inside children will not receive
 	 * pointer events because the canvas layer intercepts them. Use FluidReveal
-	 * for visual/decorative content. For interactive content, set
-	 * `pointerInput={false}` and drive splats manually via `handle.splat()`.
+	 * for visual/decorative content. `pointerInput={false}` disables only the
+	 * inner Fluid input, not this wrapper's pointer handler or canvas interception.
 	 */
 	children?: Snippet;
 }
