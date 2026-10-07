@@ -253,6 +253,26 @@ function hostEl(w: number, h: number): HTMLElement {
 }
 
 describe('context tiers', () => {
+	it('compatible shared engines reuse program objects without compiling; own contexts compile distinct programs', () => {
+		const config = { initialSplatCount: 0, dyeResolution: 64, simResolution: 16 };
+		const a = create(config, true);
+		const compile = vi.spyOn(a.h.gl, 'compileShader');
+		const link = vi.spyOn(a.h.gl, 'linkProgram');
+		const b = create(config, true);
+		const program = (engine: FluidEngine) => (engine as unknown as { copyProgram: { program: WebGLProgram } }).copyProgram.program;
+		expect(a.h.gl).toBe(b.h.gl);
+		expect(program(a.engine)).toBe(program(b.engine));
+		expect(compile).not.toHaveBeenCalled();
+		expect(link).not.toHaveBeenCalled();
+		const c = create(config, false);
+		const d = create(config, false);
+		expect(c.h.gl).not.toBe(d.h.gl);
+		expect(program(c.engine)).not.toBe(program(d.engine));
+		expect(program(c.engine)).not.toBe(program(a.engine));
+		expect(c.h.gl.isProgram(program(c.engine))).toBe(true);
+		expect(d.h.gl.isProgram(program(d.engine))).toBe(true);
+	});
+
 	it('gives the first 8 engines their own context and the 9th the shared host; disposal frees a slot', () => {
 		expect(_ownContextEngines()).toBe(0);
 		const make = () => {

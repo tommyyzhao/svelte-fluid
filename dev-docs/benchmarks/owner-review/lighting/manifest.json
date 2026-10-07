@@ -1,0 +1,168 @@
+{
+  "chrome": "Chrome/154.0.8037.98",
+  "source": "1006e8f (unchanged library)",
+  "timing": "five seconds wall time after onReady, not fixed-step parity",
+  "rows": [
+    {
+      "id": "LavaLamp",
+      "seed": 5,
+      "css": [
+        1440,
+        900
+      ],
+      "backing": [
+        2880,
+        1800
+      ],
+      "dpr": 2,
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "elapsedSeconds": 5,
+      "failures": []
+    },
+    {
+      "id": "Plasma",
+      "seed": 5,
+      "css": [
+        1440,
+        900
+      ],
+      "backing": [
+        2880,
+        1800
+      ],
+      "dpr": 2,
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "elapsedSeconds": 5,
+      "failures": []
+    },
+    {
+      "id": "InkInWater",
+      "seed": 5,
+      "css": [
+        1440,
+        900
+      ],
+      "backing": [
+        2880,
+        1800
+      ],
+      "dpr": 2,
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "elapsedSeconds": 5,
+      "failures": []
+    },
+    {
+      "id": "FrozenSwirl",
+      "seed": 5,
+      "css": [
+        1440,
+        900
+      ],
+      "backing": [
+        2880,
+        1800
+      ],
+      "dpr": 2,
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "elapsedSeconds": 5,
+      "failures": []
+    },
+    {
+      "id": "Aurora",
+      "seed": 5,
+      "css": [
+        1440,
+        900
+      ],
+      "backing": [
+        2880,
+        1800
+      ],
+      "dpr": 2,
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "elapsedSeconds": 5,
+      "failures": []
+    },
+    {
+      "id": "CircularFluid",
+      "seed": 5,
+      "css": [
+        1440,
+        900
+      ],
+      "backing": [
+        2880,
+        1800
+      ],
+      "dpr": 2,
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "elapsedSeconds": 5,
+      "failures": []
+    },
+    {
+      "id": "FrameFluid",
+      "seed": 5,
+      "css": [
+        1440,
+        900
+      ],
+      "backing": [
+        2880,
+        1800
+      ],
+      "dpr": 2,
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "elapsedSeconds": 5,
+      "failures": []
+    },
+    {
+      "id": "AnnularFluid",
+      "seed": 5,
+      "css": [
+        1440,
+        900
+      ],
+      "backing": [
+        2880,
+        1800
+      ],
+      "dpr": 2,
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "elapsedSeconds": 5,
+      "failures": []
+    },
+    {
+      "id": "SvgPathFluid",
+      "seed": 5,
+      "css": [
+        1440,
+        900
+      ],
+      "backing": [
+        2880,
+        1800
+      ],
+      "dpr": 2,
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "elapsedSeconds": 5,
+      "failures": []
+    },
+    {
+      "id": "Toroidal",
+      "seed": 5,
+      "css": [
+        1440,
+        900
+      ],
+      "backing": [
+        2880,
+        1800
+      ],
+      "dpr": 2,
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "elapsedSeconds": 5,
+      "failures": []
+    }
+  ],
+  "errors": []
+}
