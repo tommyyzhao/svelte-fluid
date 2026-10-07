@@ -489,7 +489,7 @@ export interface FluidConfig {
 	colorUpdateSpeed?: number;
 	/**
 	 * Maximum PRESENTED frames per second; simulation still advances every animation frame.
-	 * Default 60; 0/null = present every frame. Bucket A (hot scalar).
+	 * Default 0 (present every frame; opt-in, see ADR 0110). Set 60 to halve presentation work on high-refresh displays. Bucket A (hot scalar).
 	 * Negative/nonfinite values are ignored; undefined preserves the resolved value.
 	 */
 	maxFps?: number | null;

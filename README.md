@@ -204,7 +204,7 @@ config from the upstream project.
 | `refraction` | `number` | `0` | opt-in 0–1; refracts the distortion image or glass scene; recompile only when crossing 0 |
 | `colorful` | `boolean` | `true` | hot; rotate pointer/touch splat colors over time |
 | `colorUpdateSpeed` | `number` | `10` | hot; pointer/touch color rotation rate |
-| `maxFps` | `number \| null` | `60` | hot; maximum presented frames/sec; simulation runs every RAF; `0`/`null` presents every frame |
+| `maxFps` | `number \| null` | `0` | hot, opt-in; maximum presented frames/sec (e.g. `60` on 120 Hz displays); simulation still runs every RAF; `0`/`null` presents every frame |
 | `paused` | `boolean` | `false` | hot |
 | `backColor` | `{r,g,b}` | `{0,0,0}` | 0–255 RGB; hot |
 | `transparent` | `boolean` | `false` | hot |

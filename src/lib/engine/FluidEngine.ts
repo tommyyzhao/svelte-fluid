@@ -280,7 +280,7 @@ export const DEFAULTS: ResolvedConfig = {
 	REFRACTION: 0,
 	COLORFUL: true,
 	COLOR_UPDATE_SPEED: 10,
-	MAX_FPS: 60,
+	MAX_FPS: 0,
 	PAUSED: false,
 	BACK_COLOR: { r: 0, g: 0, b: 0 },
 	TRANSPARENT: false,
