@@ -20,7 +20,7 @@ try {
 		await Bun.sleep(100);
 	}
 	if (!ready) throw new Error('Benchmark dev server unavailable');
-	browser = await chromium.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: false });
+	browser = await chromium.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true });
 	for (const dpr of [1, 2, 3]) {
 		const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: dpr });
 		const page = await context.newPage();
