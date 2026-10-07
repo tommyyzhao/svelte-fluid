@@ -1,6 +1,6 @@
 # Energy eval — ADR 0107 E1
 
-**Baseline status:** held-out complete, **48/48 clean slots**. Train R1: 21/22 clean; one logged infrastructure failure awaiting retry. Train R2/R3 pending; no train noise-floor claim yet.
+**Baseline status:** held-out complete, **48/48 clean slots**. Train R1: 21/22 clean; one logged infrastructure failure. Train R2/R3 not completed; no train noise-floor claim. **Further 120 Hz captures stopped by headless-only user directive.** Headless hardware runs at 60 Hz here; modes must not be pooled.
 
 ## Method
 
@@ -122,4 +122,27 @@ Candidate `2a57fcb4fe9612ef10fc5fd6b3f7120d8184d290`. Six train presets, 1440×9
 
 All refresh probes 120 Hz; offscreen/hidden/control 0 GPU-ms/s. Parsed ratios: `/tmp/energy-eval/round2-go-no-go/paired-ratios.json`. Large elapsed machine-time gap from frozen train R1 makes drift a concern: this is not a keep result.
 
-Decisive work pending: held-out candidate R3 plus adjacent fresh baseline R3 pairs, alternating order; report frozen-baseline comparison (pre-registered keep rule) and paired ratios with bootstrap interval separately. Flag disagreement exceeding 10 percentage points. Train scheduling deviation: separate paired-baseline train R2 plus frozen train R1, **n=2 rather than registered R=3**; candidate train R1 only. Do not replace frozen R1 or claim a registered R3 noise floor from two runs. Evidence labels remain distinct.
+Decisive paired work **stopped/incomplete**, not a keep decision. Only two FrozenSwirl DPR2 seed11/23 R1 candidate/baseline pairs completed. First seed11: candidate active/untouched **103.016/103.535**, adjacent baseline **159.540/159.558**, savings **35.43%/35.11%**; frozen-baseline savings **27.49%/30.84%**. Too few pairs for the planned bootstrap interval or held-out verdict.
+
+Candidate FrozenSwirl DPR1 seed11 failed the hidden visibility gate; seed23 timed out during mount. One bounded reproduction of seed23 against both engines mounted successfully, no browser exceptions or Vite optimisation reload: original cause unproved, not classified as a candidate defect or silently retried. Candidate AnnularFluid's first slot lost visibility during offscreen; pair driver was stopped while waiting, no active recorder, on the headless-only directive. These failed slots do not count as clean data. Evidence labels: `/tmp/energy-eval/{round2-candidate,paired-baseline}/`.
+
+Proposed train scheduling reductions (n2 baseline, then 11 large-size pairs only) were not executed. They cannot replace registered train R3 or establish its noise floor. Frozen evidence remains separate.
+
+## Headless-only feasibility — 2026-10-07
+
+User directive forbids all future headed browser launches. Harness `a6aeed1` uses installed Chrome `--headless=new`, ordinary flags, native hardware renderer; resume rejects mixing headed and headless captures. Two **diagnostic smokes only**, Plasma 1440×900 CSS DPR2 seed5:
+
+| Engine | Renderer | RAF Hz | Engine Hz | Present Hz | Active ms/s | Untouched ms/s | Offscreen / hidden / control |
+|---|---|---:|---:|---:|---:|---:|---|
+| Baseline `e4be335` | Apple M1 Max / ANGLE Metal | 60 | 60 | 60 | 109.005 | 121.680 | 0 / 0 / 0 |
+| Candidate `2a57fcb` | Apple M1 Max / ANGLE Metal | 60 | 60 | 60 | 103.752 | 113.359 | 0 / 0 / 0 |
+
+Metal attribution complete; CSS/backing/DPR correct. Offscreen remains genuinely visible but IntersectionObserver pauses engine. Native foreground-tab switch makes the original document genuinely hidden; its RAF/engine/present rates all 0. Hardware acceleration works, but **60 Hz cap has no scheduling effect at headless's 60 Hz**. Numeric smoke differences are not an energy win. Headless evidence is not comparable to the frozen 120 Hz baseline.
+
+Bounded headless 120 Hz investigation:
+
+- Installed Chrome with `--enable-begin-frame-control`, with/without `--deterministic-mode`: hardware Metal, CDP **−32601: `'HeadlessExperimental.beginFrame' wasn't found`**.
+- Bundled `chromium_headless_shell-1223`: initial WebGL unavailable; ordinary `--enable-gpu --use-gl=angle --use-angle=metal` gives hardware Apple M1 Max. Begin-frame requires `--run-all-compositor-stages-before-draw`; with that, explicit `Target.createTarget({enableBeginFrameControl:true})` rejects **−32000: `BeginFrameControl is not supported on MacOS yet`**. No valid 120 Hz pacing obtained.
+- Official [headless screen configuration](https://chromium.googlesource.com/chromium/src/+/main/components/headless/screen_info/README.md) and [parser](https://raw.githubusercontent.com/chromium/chromium/main/components/headless/screen_info/headless_screen_info.cc) expose size/DPR/origin/orientation/work area, **no refresh-rate parameter**. No supported virtual-refresh alternative found. Unpaced `--disable-frame-rate-limit` / `--disable-gpu-vsync` were not used.
+
+**Environment ceiling:** E1 can measure genuine hardware **60 Hz headless**, not native 120 Hz on this Mac. No synthetic RAF/visibility/lifecycle workaround. Captures stopped for replanning. Headless smoke evidence `/tmp/energy-eval/{headless-baseline-smoke2,headless-candidate-smoke}/`; capability probes `/tmp/e1-beginframe-probe{,2,3}.log`.
