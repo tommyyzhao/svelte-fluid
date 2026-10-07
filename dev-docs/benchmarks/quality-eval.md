@@ -100,6 +100,8 @@ An independently built candidate checkout: `--source-root /absolute/candidate/wo
 
 ### Round 1 — 60 fps frame cap (8f27341)
 
+Protocol deviation: the judge model (Opus) is the same tier as the implementer of rounds 1–2 (Opus), contrary to ADR 0107's 'model ≠ implementer'. The judge sees only blind renders (no code or authorship), so self-preference risk is low, but this is recorded rather than silently accepted.
+
 2026-10-07. Scheduling-only candidate `8f27341a86eb47238a5efd00808c3d8c99533518`, frozen baseline `1006e8fae1e670a72be67e1ff75800a43b35ff5e`; empty props override, `--spatial-safe`, ADR 0107 Amendment 1 scoped calibration. Held-out test: four presets × DPR2/DPR1 × seeds 11/23, 1024×640, 16 pairs.
 
 **ADR verdict: WORSE.** Six losses / seven non-tie pairs = **85.7143%** (limit 33.3333%); one candidate win, nine ties. Statistics fail: **45 violations across 15/16 scenes** (low 30, mid 6, chroma 9; coverage/high none). Both independent gates fail; this round does not satisfy the keep rule. Diagnostic-only null comparison: **WORSE**, candidate losses over all pairs **6/16 = 37.5%**, pooled identical-render null **2/18 = 11.1111%**. The null remains train calibration, not a held-out null estimate.
@@ -163,3 +165,91 @@ All scenes are 1024×640. Wall times in seconds; values and widened bands rounde
 | TeslaValve-dpr1-seed23 | 2 | low | 0.120402125 | [0.0812689053, 0.103066669] |
 
 Verification: harness `--self-check`, `bun run test` (52 files, 870 tests) and `bun run check` (zero errors/warnings) passed.
+
+### Round 2 — presentation-only 60 Hz cap (2a57fcb), TRAIN pre-check
+
+2026-10-07. Candidate `2a57fcb4fe9612ef10fc5fd6b3f7120d8184d290`, frozen baseline `1006e8fae1e670a72be67e1ff75800a43b35ff5e`; empty props, `--spatial-safe`, ADR 0107 Amendment 1. Solver steps every RAF; only presentation is capped. TRAIN only: 11 presets × two sizes (1440×900, 800×500), DPR2, seed 5, **22 pairs**. This is a train pre-check, not a held-out keep/revert decision. No test split run or temporal-smoothness claim.
+
+**ADR verdict: WORSE.** **6 losses / 6 non-ties = 100%**, limit 33.3333%; 0 candidate wins, 16 ties. Statistics fail: **29 violations across 14/22 scenes** (low 16, mid 7, coverage 3, chroma 2, high 1). Both gates fail. Diagnostic-only null: **WORSE**, candidate losses over all pairs **6/22 = 27.2727%**, original pooled identical-render null **2/18 = 11.1111%**. Recheck evidence below does not replace that frozen null.
+
+Result JSON: `/tmp/quality-eval/r2-2a57fcb-train/verdict.json`. Command: `bun scripts/quality-eval.mjs compare --label r2-2a57fcb-train --source-root /tmp/r2-candidate-2a57fcb --props '{}' --spatial-safe --split train`.
+
+The first attempt failed with **ENOSPC**; owned partial label outputs were deleted before retry. Disk preflight showed 14 GiB free (minimum 6 GiB). Retry captured all 22 scenes successfully using ordinary installed hardware Chrome. GPU lock acquisition observed 08:26:51, release 08:34:48 -0700 (one-second observation granularity): **approximately 7 min 57 s**, below 12 minutes. One batch, no reacquisition. Subsequent judging used cached captures, no GPU lock.
+
+Judge startup then failed: `Judge exit 143: [claude-code:unrecognized_model] {"model":"opus-class[1m]","query_source":"sdk"}` after the ten-minute timeout. Recovery used environment-only `ANTHROPIC_DEFAULT_OPUS_MODEL=opus-class`; no source/config edits. CLI JSON `modelUsage` reported **`opus-class`**, not an underlying provider model. The same frozen rubric and stored seed-5 calibration composites were rejudged twice with sides swapped: identical **6/6 tie-or-split (100%)**, half-resolution **5/6 reference-preferred (83.3333%)**, both ≥80%. One half-resolution Karman pair split to tie. Recheck JSON: `/tmp/quality-eval/r2-2a57fcb-train-calibration-recheck.json`. Five candidate pairs had been judged before the coordinator's recheck prerequisite arrived; the owned judging process was stopped, those five cached judgments discarded, and all 22 candidate pairs rejudged only after the recheck passed. This ordering deviation is disclosed, not treated as valid premature evidence.
+
+Protocol deviation: the judge model (Opus) is the same tier as the implementer of rounds 1–2 (Opus), contrary to ADR 0107's 'model ≠ implementer'. The judge sees only blind renders (no code or authorship), so self-preference risk is low, but this is recorded rather than silently accepted.
+
+Agent sanity read (not owner review): inspected three actual composites and both judge reasons for each. All three are consistent reference preferences. LavaLamp 800×500: reference retains layered red/orange filaments and readable late vortex bodies; candidate late native crops are paler/more diffuse. CircularFluid 1440×900: both coherent, reference has clearer layered ribbons and stronger mid-sequence colour; preference plausible, still affected by chaotic layout. SvgPathFluid 1440×900: reference retains connected late ribbons and distinguishable internal gradients; candidate purple late crop is diffuse/dark. Static mask crispness was not used. Owner review remains pending; stills cannot establish temporal smoothness.
+
+Cited composites retained:
+- LavaLamp: `/tmp/quality-eval/judge-inputs/52d98240-538a-4f7c-82e6-4b4ce7b992ea/pair.png`
+- CircularFluid: `/tmp/quality-eval/judge-inputs/6cb6593a-9910-48a8-aa8c-1507bf9dd421/pair.png`
+- SvgPathFluid: `/tmp/quality-eval/judge-inputs/637bee59-8c54-40fc-a502-4c7d04a70d87/pair.png`
+
+#### Actual sample-time offsets
+
+Candidate minus matching frozen baseline `actualWall`, milliseconds, from capture JSONs. Across 88 samples: **min −7.70, median +1.05, max +17.20 ms**. First drawn frame after a target can be approximately 16 ms later under the cap; RAF phase/readback variability also changes offsets, including negative values. These are recorded actual offsets, not an assumed alignment. All captures met the ±250 ms hard gate.
+
+| Scene | 2 s | 5 s | 10 s | 20 s |
+|---|---:|---:|---:|---:|
+| Aurora-1440x900-dpr2-seed5 | +3.50 | -3.00 | +3.80 | -3.20 |
+| Aurora-800x500-dpr2-seed5 | -5.80 | -4.00 | -3.60 | -3.90 |
+| CircularFluid-1440x900-dpr2-seed5 | -2.60 | -1.20 | -3.50 | +6.00 |
+| CircularFluid-800x500-dpr2-seed5 | +2.80 | +2.90 | +4.10 | +3.00 |
+| GasFlare-1440x900-dpr2-seed5 | +0.40 | -6.10 | +1.00 | -6.40 |
+| GasFlare-800x500-dpr2-seed5 | +3.70 | +1.70 | +3.60 | +4.80 |
+| InkInWater-1440x900-dpr2-seed5 | +7.80 | +12.70 | +5.00 | +14.30 |
+| InkInWater-800x500-dpr2-seed5 | +3.90 | +5.90 | +5.00 | +4.80 |
+| Karman-1440x900-dpr2-seed5 | -2.30 | -0.90 | +8.50 | +7.80 |
+| Karman-800x500-dpr2-seed5 | -2.60 | -2.60 | +5.70 | -2.70 |
+| LavaLamp-1440x900-dpr2-seed5 | +1.60 | +0.10 | +0.80 | -7.70 |
+| LavaLamp-800x500-dpr2-seed5 | +0.20 | -0.20 | +1.20 | +1.10 |
+| Plasma-1440x900-dpr2-seed5 | +1.90 | +1.20 | +3.70 | +9.60 |
+| Plasma-800x500-dpr2-seed5 | +3.40 | +2.50 | +2.10 | +4.60 |
+| SvgPathFluid-1440x900-dpr2-seed5 | +0.70 | -6.20 | -6.60 | +17.20 |
+| SvgPathFluid-800x500-dpr2-seed5 | -4.20 | +6.40 | -4.00 | +5.40 |
+| Toroidal-1440x900-dpr2-seed5 | -1.80 | -0.40 | +8.10 | +9.50 |
+| Toroidal-800x500-dpr2-seed5 | -1.20 | -1.20 | +10.30 | +1.50 |
+| Venturi-1440x900-dpr2-seed5 | -3.10 | -0.90 | -1.00 | -0.20 |
+| Venturi-800x500-dpr2-seed5 | +5.70 | +6.30 | -2.60 | +6.40 |
+| default-1440x900-dpr2-seed5 | +0.20 | +8.80 | -0.60 | -1.70 |
+| default-800x500-dpr2-seed5 | -1.90 | -4.00 | -0.40 | -0.10 |
+
+#### Out-of-band statistics
+
+Wall times seconds; values/bands rounded to nine significant digits, full precision in verdict JSON.
+
+| Scene | Wall | Metric | Value | Band [lower, upper] |
+|---|---:|---|---:|---|
+| default-1440x900-dpr2-seed5 | 5 | low | 0.0206191618 | [0.0112129264, 0.0197875885] |
+| LavaLamp-1440x900-dpr2-seed5 | 10 | low | 0.0711673777 | [0.0751075598, 0.112376961] |
+| LavaLamp-800x500-dpr2-seed5 | 5 | low | 0.119457354 | [0.153901724, 0.206577412] |
+| LavaLamp-800x500-dpr2-seed5 | 10 | low | 0.0823488396 | [0.0845599127, 0.129152053] |
+| LavaLamp-800x500-dpr2-seed5 | 10 | mid | 0.203956445 | [0.206151333, 0.295020469] |
+| Plasma-1440x900-dpr2-seed5 | 10 | chroma | 0.0247499429 | [0.0404768254, 0.0602062212] |
+| Plasma-1440x900-dpr2-seed5 | 20 | mid | 0.0659638477 | [0.0506168795, 0.064339949] |
+| Aurora-1440x900-dpr2-seed5 | 10 | low | 0.00512907038 | [0.0035602834, 0.00497850537] |
+| Aurora-800x500-dpr2-seed5 | 2 | low | 0.0496784765 | [0.0570519433, 0.0776922746] |
+| Aurora-800x500-dpr2-seed5 | 20 | low | 0.00539451727 | [0.00353099734, 0.00529911764] |
+| CircularFluid-1440x900-dpr2-seed5 | 20 | low | 0.069717966 | [0.0544339633, 0.0670998376] |
+| CircularFluid-800x500-dpr2-seed5 | 10 | chroma | 0.0426106495 | [0.0434776465, 0.056691626] |
+| CircularFluid-800x500-dpr2-seed5 | 10 | low | 0.0342870657 | [0.0436789225, 0.066412829] |
+| CircularFluid-800x500-dpr2-seed5 | 20 | low | 0.0377879428 | [0.0527252315, 0.0934891902] |
+| CircularFluid-800x500-dpr2-seed5 | 20 | mid | 0.197908112 | [0.205504336, 0.270057157] |
+| SvgPathFluid-1440x900-dpr2-seed5 | 10 | low | 0.0140088395 | [0.0295981834, 0.0560815145] |
+| SvgPathFluid-1440x900-dpr2-seed5 | 20 | low | 0.0109595022 | [0.0160216605, 0.076860791] |
+| SvgPathFluid-1440x900-dpr2-seed5 | 20 | mid | 0.0863116341 | [0.0893935609, 0.19622295] |
+| SvgPathFluid-800x500-dpr2-seed5 | 10 | coverage | 0.151856875 | [0.168534, 0.252043] |
+| SvgPathFluid-800x500-dpr2-seed5 | 20 | coverage | 0.211230625 | [0.086308875, 0.183673188] |
+| SvgPathFluid-800x500-dpr2-seed5 | 20 | low | 0.0306967692 | [0.0110963003, 0.0142898707] |
+| SvgPathFluid-800x500-dpr2-seed5 | 20 | mid | 0.161055403 | [0.0904670902, 0.137010492] |
+| Toroidal-1440x900-dpr2-seed5 | 2 | mid | 0.183709173 | [0.189808155, 0.265357834] |
+| Toroidal-800x500-dpr2-seed5 | 5 | low | 0.0932570976 | [0.0587584798, 0.0797558929] |
+| Toroidal-800x500-dpr2-seed5 | 20 | coverage | 0.24666 | [0, 0] |
+| GasFlare-1440x900-dpr2-seed5 | 10 | mid | 0.427638252 | [0.339515789, 0.427583547] |
+| GasFlare-800x500-dpr2-seed5 | 10 | low | 0.219587169 | [0.229172331, 0.353079652] |
+| GasFlare-800x500-dpr2-seed5 | 10 | high | 0.409768763 | [0.29000116, 0.40463337] |
+| GasFlare-800x500-dpr2-seed5 | 20 | low | 0.207494792 | [0.211677047, 0.326250516] |
+
+Verification: harness `--self-check`, `bun run test` (52 files, 870 tests), `bun run check` (496 files, zero errors/warnings) passed. Label PNG/curl capture directories removed after recording verdict, offsets and three cited composites; verdict JSON and those three `pair.png` files retained. Owned browser, Vite, judge and observer processes exited; no owned GPU lock remains. No package/library change, no push.
