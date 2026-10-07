@@ -310,7 +310,14 @@ across resizes.
   let inner = $state<{ handle: FluidHandle } | undefined>();
   export const handle: FluidHandle = {
     splat: (x, y, dx, dy, c) => inner?.handle.splat(x, y, dx, dy, c),
-    randomSplats: (n) => inner?.handle.randomSplats(n)
+    randomSplats: (n) => inner?.handle.randomSplats(n),
+    pause: () => inner?.handle.pause(),
+    resume: () => inner?.handle.resume(),
+    get isPaused() { return inner?.handle.isPaused ?? true; },
+    getPerformanceState: () => {
+      if (!inner) throw new Error('Preset is not mounted');
+      return inner.handle.getPerformanceState();
+    }
   };
 </script>
 
@@ -324,8 +331,9 @@ across resizes.
 ```
 
 Note: `presetSplats` is **construct-only** — like `seed`, changes after
-mount are ignored. To paint a new scene, change the `seed` (which forces
-a teardown/rebuild) or call `handle.splat()` imperatively.
+mount are ignored (Bucket D). To paint a new scene, remount the wrapper
+with a Svelte `{#key sceneId}` block and a new seed, or call
+`handle.splat()` imperatively. Changing the seed prop alone does not rebuild.
 
 Splat coordinates are normalized: `x ∈ [0,1]` left-to-right and
 `y ∈ [0,1]` **bottom-to-top**. Color components are in 0–1 range; values
@@ -472,21 +480,26 @@ screens.
 
 ## Multiple instances
 
-Each `<Fluid />` owns its own WebGL context, framebuffers, RAF loop,
-listeners, and pointer state. Browsers cap simultaneous WebGL contexts at 8–16 per tab.
+Each engine owns its fields, framebuffers, masks, uniforms, and input state.
+All live engines subscribe to one shared RAF scheduler ([ADR 0080](dev-docs/decisions/0080-shared-frame-scheduler.md)).
+WebGL2 engines use their own contexts for the first eight live own-context
+slots, then use the shared host; the tier stays with the canvas. WebGL1 and
+`requireHardwareAcceleration` engines stay own-context ([ADR 0093](dev-docs/decisions/0093-fluid-engine-on-shared-gl-host.md)).
+Browsers still cap simultaneous contexts, including third-party WebGL.
+The Svelte component owns DOM lifecycle, sizing, visibility, and accessible
+fallback; it delegates rendering to the engine rather than issuing GL commands.
 
-For pages with more than ~6 simultaneous instances, pass `lazy={true}`
-on each one. The component will then defer engine creation until the
-container enters the viewport (with a 200px lookahead) and tear it
-down when it leaves, keeping the live context count bounded:
+For dense pages, pass `lazy={true}` on each instance. The component defers
+engine creation until the container approaches the viewport (50px observer
+margin) and tears it down when it leaves that region, bounding live resources:
 
 ```svelte
 <LavaLamp lazy />
 <Plasma lazy />
 ```
 
-The ~100–500ms shader recompile happens off-screen while the user is
-still scrolling, so it lands before they get there.
+Lazy re-entry can require shader recompilation; the 50px margin is a
+lookahead, not a guarantee that startup completes before the canvas is visible.
 
 ## Programmatic engine
 
