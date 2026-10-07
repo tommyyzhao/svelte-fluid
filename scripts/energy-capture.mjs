@@ -146,10 +146,10 @@ assert.ok(cases.length);
 const DIR = `/tmp/energy-eval/${options.label}`, harnessSha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 const sourceRoot = options['source-root'] ?? ROOT;
 assert.ok(sourceRoot.startsWith('/'), '--source-root requires an absolute directory');
-const engineSourceSha = sourceRoot === ROOT ? 'e4be335997ed2cd9ee1922879efaeea8f6a4b22e' : options['engine-sha'];
+const engineSourceSha = sourceRoot === ROOT ? '37bbe851c0d52c86241f6964c3b443f17e95611b' : options['engine-sha'];
 assert.match(engineSourceSha ?? '', /^[a-f0-9]{7,40}$/, '--source-root requires supplied --engine-sha; no cross-worktree Git operations');
 const engineFileHash = createHash('sha256').update(await readFile(`${sourceRoot}/src/lib/engine/FluidEngine.ts`)).digest('hex');
-if (sourceRoot === ROOT && !options['self-check']) assert.equal(execFileSync('git', ['diff', 'e4be335', '--', 'src/lib'], { encoding: 'utf8' }), '', 'Baseline engine source changed');
+if (sourceRoot === ROOT && !options['self-check']) assert.equal(execFileSync('git', ['diff', '37bbe85', '--', 'src/lib'], { encoding: 'utf8' }), '', 'Baseline engine source changed');
 const sha = engineSourceSha;
 const source = await readFile(process.argv[1], 'utf8');
 const measurementParts = (s) => s.slice(s.indexOf('function slice('), s.indexOf("const { values: options }")) + s.slice(s.indexOf("\t\tprogress('mount');"), s.indexOf("\t\tprogress('browser cleanup');"));
@@ -157,7 +157,7 @@ const frozenSource = execFileSync('git', ['show', 'e4be335:scripts/energy-captur
 assert.equal(measurementParts(source), measurementParts(frozenSource), 'Frozen window/parser/metric logic changed');
 const measurementLogicHash = createHash('sha256').update(measurementParts(source)).update(await readFile(`${ROOT}/src/energy-capture.js`, 'utf8')).digest('hex');
 const browserMode = 'headless';
-const metadata = { sha, harnessSha, engineSourceSha, engineFileHash, measurementLogicHash, browserMode, root: ROOT, sourceRoot, chrome: CHROME, driver: 'headless installed Chrome --headless=new + CDP noDefaults:true; ordinary hardware flags, CDP device metrics', override, protocol: 'ADR 0107 E1', requestedRuns: RUNS, runStart: RUN_START, requestedScenes: cases, refresh: 'native; 60 Hz not measurable without changing system settings' };
+const metadata = { sha, harnessSha, engineSourceSha, engineFileHash, measurementLogicHash, browserMode, root: ROOT, sourceRoot, chrome: CHROME, driver: 'headless installed Chrome --headless=new + CDP noDefaults:true; ordinary hardware flags, CDP device metrics', override, protocol: 'ADR 0107 E1', requestedRuns: RUNS, runStart: RUN_START, requestedScenes: cases, refresh: 'headless 60 Hz; ADR 0107 Amendment 3; headed 120 Hz historical only' };
 function summaries(rows) {
 	const scenes = cases.map((c) => {
 		const repeats = rows.filter((r) => key(r) === key(c) && (r.status === 'OK' || r.status === 'PARTIAL'));
