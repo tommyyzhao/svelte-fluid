@@ -126,3 +126,39 @@ keep/revert decision. No per-preset change may name a test preset.
 - Rejected: Battery Status API (Chrome-only, coarse); per-frame p95 as the
   energy metric (ignores frame rate); pixel-diff quality metrics (fluid is
   chaotic); lowering default render resolution (native-resolution rule).
+
+## Amendment 1 — E2 judge scope (post-hoc, 2026-10-07)
+
+**Labelled post-hoc:** decided after calibration data was seen.
+
+Calibration (four bounded prompt attempts, the fourth authorised beyond the
+planned three; seed 5 then fresh train seeds 11/23, thresholds unchanged):
+
+| Control | Seed 5 | Fresh 11/23 | Stats |
+|---|---|---|---|
+| Identical (tie/split) | 100% | 83.3% | — |
+| 2 px blur (reference preferred) | 66.7% | **58.3%** | 0/6 out of band |
+| Half sim+dye resolution | 83.3% | 91.7% | 6/6 out of band |
+| Karman sim128/p24 | 100% | 100% | spectrum 2/2 out of band |
+| Dye desaturated 50% | 100% | 100% | chroma 6/6 out of band |
+
+Under the original rule E2 is unusable. The single failure is a
+reproducible blind spot (2 px post-process blur, ties concentrated on
+obstacle-dominated Karman scenes), and neither judge nor statistics detect it.
+
+Decision: **E2 is usable with a scoped exclusion.** It may gate a candidate
+only if the candidate does not change spatial resolution, filtering,
+interpolation or display post-processing (blur/bloom/sunrays radius,
+resolution fields, dithering, texture filtering, advection scheme). Such
+candidates need owner visual review instead; E2 cannot certify them. Every
+other calibrated degradation is detected by the judge on unseen seeds.
+
+"No worse" adds a diagnostic beside the unchanged 1/3 rule: candidate
+reference-loss rate (all pairs) versus the identical-render null
+(2/18 = 11.1%, pooled). The 1/3 rule decides; the null comparison is
+reported only.
+
+Rationale: the scheduling candidates in this sprint (frame-rate cap, idle
+settling) change temporal cadence, not spatial filtering, so the blind spot
+does not bear on them; the judge sees same-wall-time stills, and temporal
+smoothness remains an owner-review item as stated above.
