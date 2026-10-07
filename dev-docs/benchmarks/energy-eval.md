@@ -1,6 +1,6 @@
 # Energy eval — ADR 0107 E1
 
-**Baseline status:** held-out complete, **48/48 clean slots**. Train R1: 21/22 clean; one logged infrastructure failure. Train R2/R3 not completed; no train noise-floor claim. **Further 120 Hz captures stopped by headless-only user directive.** Headless hardware runs at 60 Hz here; modes must not be pooled.
+**Frozen held-out baseline complete: 48/48 clean slots.** Full train baseline **incomplete**: R1 21/22 clean; R2/R3 not completed, no train noise-floor claim. **Round 2 energy evidence EXPLORATORY: 2/48 registered held-out candidate slots**, not a pre-registered keep verdict. Owner chose no further energy captures; headed launches prohibited. Headless hardware runs at 60 Hz here; modes must not be pooled.
 
 ## Method
 
@@ -18,13 +18,13 @@ Tables show medians over clean independent runs, n explicit. Noise = (max−min)
 - Source-root/provenance commit `cd48f4c`: one file, **52 insertions / 12 deletions**, including bounded scheduling/retry helpers. Frozen window/parser/metric regions assert byte identity against `e4be335`. Separate `harnessSha`, `engineSourceSha`, source-file SHA256, measurement-logic SHA256. Resume never mixes engines/logic. Candidate source from an owned archive, never another lane's working tree.
 - Read-only presentation counter added outside frozen regions; older slots omit it. No solver cadence or GPU command modification.
 - **2026-10-07:** recorder-start notification bound **15 → 45 s** after >10% infrastructure failures. Load average recorded thereafter. Non-eval background-app load present throughout, affecting baseline/candidate alike. Wait bounds only; no metric/threshold changes.
-- Closed infrastructure classes: recorder start timeout; recorder finalisation timeout (including outer-task ceiling during finalisation); missing execution coverage; GPU-process exit; contention; ENOSPC; raw-trace oversize. Exactly one logged end-of-run retry per failed slot. Original failure JSON retained. No clean-metric retry.
+- Closed infrastructure classes: recorder start timeout; recorder finalisation timeout (including outer-task ceiling during finalisation); missing execution coverage; GPU-process exit; contention; ENOSPC; raw-trace oversize; visibility-gate not met. Exactly one logged end-of-run retry per failed slot. Original failure JSON retained. No clean-metric retry.
 - Instruments ignored `TMPDIR`, leaked raw scratch into macOS user temp. Exact before/after `instruments*.ktrace` name diff under exclusive GPU lock, same-UID check, deletion after recording/export. Smoke verified deletion of **6.12 GB**, no residual ktrace. Raw bundles deleted after parse/error JSON. **15 GiB** free-space guard; **10 GiB** raw-scratch watchdog; **110 s** recorder ceiling. Initial 3 GiB watchdog smoke aborts were calibration errors, excluded from baseline/infrastructure counts.
 - Captures serialized under `/tmp/svelte-fluid-gpu.lock`, batches ≤25 min including exports. No foreign processes killed. Evidence: `/tmp/energy-eval/baseline-native/`.
 
 ## Frozen baseline
 
-**Held-out median active: 141.703 GPU-ms/s. Untouched: 140.898 GPU-ms/s.** Blank control median/range **0 / 0–0**. All clean offscreen/hidden windows **0**, within control noise.
+**Held-out median active: 141.703 GPU-ms/s. Untouched: 140.898 GPU-ms/s.** Blank control median/range **0 / 0–0**. Offscreen and hidden each **0 in all 48 clean held-out baseline slots**, within control noise. Held-out R3 active noise-floor range **2.266%–18.401%**.
 
 Held-out scenes never settle during visible 40 s observation. Continuous train scenes stay busy untouched. Driver-free `(default)` and Toroidal stop; completed quiet-to-unsubscribe diagnostics meet ≤5 s target.
 
@@ -105,7 +105,24 @@ Non-settling diagnostics observed only through 40 s. “Not observed” is censo
 
 ## Rounds
 
-No E1 keep/revert round completed. Solve-rate cap `8f27341` received no E1 candidate captures: E2 rejected it first.
+No pre-registered E1 keep/revert verdict completed.
+
+### Round 1 — solve-rate cap, rejected by E2
+
+Candidate `8f27341`: **rejected by E2**, so no E1 candidate capture was performed. No energy result inferred. Owned rejected source archive removed.
+
+### Round 2 — EXPLORATORY held-out energy evidence
+
+Candidate `2a57fcb4fe9612ef10fc5fd6b3f7120d8184d290`, presentation-only cap. **n=2 completed candidate slots / 48 registered**, both FrozenSwirl DPR2 R1; two adjacent baseline pairs. Neither full held-out coverage nor registered train R3 exists. The owner selected existing windowed evidence only; no new captures.
+
+| FrozenSwirl seed | Candidate active / untouched | Adjacent baseline active / untouched | Frozen scene median active / untouched | Paired active ratio | Frozen matched active ratio |
+|---|---|---|---|---:|---:|
+| 11 | 103.016 / 103.535 | 159.540 / 159.558 | 142.080 / 149.703 | 0.64571 | 0.72506 |
+| 23 | 104.867 / 103.932 | 160.127 / 159.860 | 155.546 / 144.969 | 0.65490 | 0.67418 |
+
+Median paired active ratio **0.65030**, **34.970% saving**. Median frozen matched-scene active ratio **0.69962**, **30.038% saving**; difference **4.932 percentage points**, below the diagnostic 10-point flag. Pair bootstrap 95% envelope **[0.64571, 0.65490]**, IID pairs, xorshift32 seed5, 2,000 resamples. With only two pairs this is descriptive resampling of observed values, not reliable population inference.
+
+Completed-candidate medians: **103.942 active / 103.733 untouched GPU-ms/s**. Compared mechanically against the frozen all-16-scene headline **141.703 / 140.898**, savings **26.648% / 26.377%**, numerically ≥25%. **Different scene coverage (one preset versus four), n=2 versus48: this does not establish the registered ≥25% held-out goal, noise gate or keep decision.** Candidate engine ≈120 Hz, presents ≈60 Hz; adjacent baseline both ≈120 Hz. Parsed synthesis `/tmp/energy-eval/round2-exploratory-summary.json`.
 
 ### Round 2 — presentation-only cap, train scheduling heuristic
 
@@ -122,9 +139,9 @@ Candidate `2a57fcb4fe9612ef10fc5fd6b3f7120d8184d290`. Six train presets, 1440×9
 
 All refresh probes 120 Hz; offscreen/hidden/control 0 GPU-ms/s. Parsed ratios: `/tmp/energy-eval/round2-go-no-go/paired-ratios.json`. Large elapsed machine-time gap from frozen train R1 makes drift a concern: this is not a keep result.
 
-Decisive paired work **stopped/incomplete**, not a keep decision. Only two FrozenSwirl DPR2 seed11/23 R1 candidate/baseline pairs completed. First seed11: candidate active/untouched **103.016/103.535**, adjacent baseline **159.540/159.558**, savings **35.43%/35.11%**; frozen-baseline savings **27.49%/30.84%**. Too few pairs for the planned bootstrap interval or held-out verdict.
+Decisive paired work **stopped/incomplete**, not a registered keep decision. All completed pairs and the limited bootstrap envelope are reported above; no candidate slot omitted for a favorable metric.
 
-Candidate FrozenSwirl DPR1 seed11 failed the hidden visibility gate; seed23 timed out during mount. One bounded reproduction of seed23 against both engines mounted successfully, no browser exceptions or Vite optimisation reload: original cause unproved, not classified as a candidate defect or silently retried. Candidate AnnularFluid's first slot lost visibility during offscreen; pair driver was stopped while waiting, no active recorder, on the headless-only directive. These failed slots do not count as clean data. Evidence labels: `/tmp/energy-eval/{round2-candidate,paired-baseline}/`.
+Additional paired-attempt failure log: paired baseline FrozenSwirl DPR2 seed23 R1 recorder-finalisation timeout, its one infrastructure retry succeeded; candidate FrozenSwirl DPR1 seed11 failed hidden visibility-gate (retry authorized, not executed before stop); candidate AnnularFluid DPR2 seed11 R1 lost visibility during offscreen (retry authorized, not executed). These two visibility failures among five started candidate test slots exceed the 5% interference flag; foreign focus/visibility interference documented, not chased. Candidate FrozenSwirl DPR1 seed23 timed out during mount (not classified infrastructure). One bounded reproduction of seed23 against both engines mounted successfully, no browser exceptions or Vite optimisation reload: original cause unproved, not classified as a candidate defect or silently retried. Candidate AnnularFluid's first slot lost visibility during offscreen; pair driver was stopped while waiting, no active recorder, on the headless-only directive. These failed slots do not count as clean data. Evidence labels: `/tmp/energy-eval/{round2-candidate,paired-baseline}/`.
 
 Proposed train scheduling reductions (n2 baseline, then 11 large-size pairs only) were not executed. They cannot replace registered train R3 or establish its noise floor. Frozen evidence remains separate.
 
