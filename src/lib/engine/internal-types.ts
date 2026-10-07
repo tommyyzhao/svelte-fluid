@@ -39,6 +39,7 @@ export interface ResolvedConfig {
 	REFRACTION: number;
 	COLORFUL: boolean;
 	COLOR_UPDATE_SPEED: number;
+	MAX_FPS: number;
 	PAUSED: boolean;
 	BACK_COLOR: RGB;
 	TRANSPARENT: boolean;

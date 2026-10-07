@@ -31,6 +31,15 @@ describe('resolveConfig', () => {
 	});
 
 	describe('Bucket A — hot scalars', () => {
+		it('resolves presentation cap and preserves undefined/invalid hot values', () => {
+			expect(DEFAULTS.MAX_FPS).toBe(60);
+			const base = resolveConfig({ maxFps: 30 }, DEFAULTS);
+			expect(base.MAX_FPS).toBe(30);
+			for (const maxFps of [undefined, -1, NaN, Infinity]) {
+				expect(resolveConfig({ maxFps }, base).MAX_FPS).toBe(30);
+			}
+			for (const maxFps of [0, null]) expect(resolveConfig({ maxFps }, base).MAX_FPS).toBe(0);
+		});
 		it('maps physics scalars', () => {
 			const r = resolveConfig(
 				{

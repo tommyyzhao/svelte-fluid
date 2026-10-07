@@ -29,6 +29,7 @@
 		width,
 		height,
 		maxPixelRatio,
+		maxFps,
 		class: className,
 		style,
 		seed,
@@ -59,6 +60,7 @@
 	{width}
 	{height}
 	{maxPixelRatio}
+	{maxFps}
 	class={className}
 	{style}
 	{seed}

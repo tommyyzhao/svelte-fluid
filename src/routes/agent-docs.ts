@@ -343,7 +343,7 @@ export function buildSkillMd(site = DEFAULT_SITE): string {
 		'',
 		'## Presets (zero-config wrappers)',
 		'',
-		'Import and drop in — each pins a tuned `<Fluid>` config. Presets accept ONLY their narrow common props, NOT all FluidConfig, fallback or lifecycle props. Common: `width?: number`, `height?: number` (CSS pixels, braces, never CSS strings), `class?: string`, `style?: string`, `seed?: number`, `lazy?: boolean`, `maxPixelRatio?: number | null`, `splatOnHover?: boolean`, `aria-label?: string`, `backColor?: RGB`. GasFlare/Venturi/TeslaValve/Karman additionally accept `pointerInput?: boolean`; FrameFluid additionally accepts `innerCornerRadius?: number` and `outerCornerRadius?: number`. Fork a raw Fluid recipe below when you need other controls.',
+		'Import and drop in — each pins a tuned `<Fluid>` config. Presets accept ONLY their narrow common props, NOT all FluidConfig, fallback or lifecycle props. Common: `width?: number`, `height?: number` (CSS pixels, braces, never CSS strings), `class?: string`, `style?: string`, `seed?: number`, `lazy?: boolean`, `maxPixelRatio?: number | null`, `maxFps?: number | null` (presentation only; solver keeps RAF cadence), `splatOnHover?: boolean`, `aria-label?: string`, `backColor?: RGB`. GasFlare/Venturi/TeslaValve/Karman additionally accept `pointerInput?: boolean`; FrameFluid additionally accepts `innerCornerRadius?: number` and `outerCornerRadius?: number`. Fork a raw Fluid recipe below when you need other controls.',
 		'',
 		...PRESETS.map((p) => `- **${p.id}** (${p.category}) — ${p.blurb}`),
 		'',

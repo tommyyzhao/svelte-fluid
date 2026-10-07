@@ -94,7 +94,7 @@ import { fitDrawingBufferSize } from './resolution.js';
 import { flowCanDriveSolver } from './solver-activity.js';
 import { SETTLE_CHECKS, SETTLE_CHECK_INTERVAL, hasContinuousDriver, dyeVisibilityGain, heightVisibilityScale, isInertSolver, isQuiet, isQuietFlags } from './settle.js';
 import { blurMaskData } from './sticky-blur.js';
-import { subscribeFrame } from './frame-scheduler.js';
+import { createFrameGate, subscribeFrame } from './frame-scheduler.js';
 import { notifyHost } from './notify-host.js';
 import { acquireGlHost, releaseGlHost } from './gl-host.js';
 import type { GlHost, GlHostInstance } from './gl-host.js';
@@ -280,6 +280,7 @@ export const DEFAULTS: ResolvedConfig = {
 	REFRACTION: 0,
 	COLORFUL: true,
 	COLOR_UPDATE_SPEED: 10,
+	MAX_FPS: 60,
 	PAUSED: false,
 	BACK_COLOR: { r: 0, g: 0, b: 0 },
 	TRANSPARENT: false,
@@ -403,6 +404,8 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 	if (input.refraction !== undefined) out.REFRACTION = clamp01(input.refraction);
 	if (input.colorful !== undefined) out.COLORFUL = input.colorful;
 	if (input.colorUpdateSpeed !== undefined) out.COLOR_UPDATE_SPEED = input.colorUpdateSpeed;
+	if (input.maxFps === null) out.MAX_FPS = 0;
+	else if (input.maxFps !== undefined && input.maxFps >= 0) out.MAX_FPS = input.maxFps;
 	if (input.paused !== undefined) out.PAUSED = input.paused;
 	if (input.backColor !== undefined) out.BACK_COLOR = input.backColor;
 	if (input.transparent !== undefined) out.TRANSPARENT = input.transparent;
@@ -843,6 +846,7 @@ export class FluidEngine implements FluidHandle {
 	private solverMayContainContent = false;
 	/** True when the default framebuffer no longer represents engine state. */
 	private renderDirty = true;
+	private readonly presentationGate = createFrameGate();
 	private flowSourceBatchKind = new Int32Array(FLOW_SOURCE_BATCH_SIZE);
 	private flowSourceBatchProfile = new Int32Array(FLOW_SOURCE_BATCH_SIZE);
 	private flowSourceBatchFrom = new Float32Array(FLOW_SOURCE_BATCH_SIZE * 2);
@@ -895,7 +899,7 @@ export class FluidEngine implements FluidHandle {
 	private onPointerLeave = (e: PointerEvent) => this.handlePointerLeave(e);
 	private onContextLost = (e: Event) => this.handleContextLost(e);
 	private onContextRestored = () => this.handleContextRestored();
-	private tick = () => this.update();
+	private tick = (now: number) => this.update(now);
 
 	constructor(opts: FluidEngineOptions) {
 		this.canvas = opts.canvas;
@@ -1259,6 +1263,7 @@ export class FluidEngine implements FluidHandle {
 		this.cancelSettleProbe();
 		this.canvas.width = nextWidth;
 		this.canvas.height = nextHeight;
+		this.presentationGate.reset();
 		this.invalidateRender();
 		this.wake();
 		if (this.contextLost) return true;
@@ -1519,6 +1524,7 @@ export class FluidEngine implements FluidHandle {
 		});
 		if (preparedDisplayVariant === undefined) return;
 		this.config = b;
+		if (a.PAUSED && !b.PAUSED) this.presentationGate.reset();
 		this.cancelSettleProbe();
 		this.wake();
 		if (performanceResetChanged) this.resetPerformanceGovernor();
@@ -1569,6 +1575,7 @@ export class FluidEngine implements FluidHandle {
 
 	private startRaf(): void {
 		if (this.rafRunning) return;
+		this.presentationGate.reset();
 		this.rafRunning = true;
 		// The scheduler evicts a throwing tick so siblings keep rendering; mirror
 		// that here so isPaused reports the stopped loop and resume() can retry.
@@ -3396,6 +3403,11 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		if (this.failed) return;
 		if (quiet === false) this.settleQuietChecks = 0;
 		else if (quiet === true && ++this.settleQuietChecks >= SETTLE_CHECKS) {
+			// The final solve may have missed its presentation deadline. Never stop stale.
+			if (this.renderDirty) {
+				this.renderCore(null);
+				this.renderDirty = false;
+			}
 			this.settled = true;
 			this.stopRaf();
 			this.resetPerformanceGovernor();
@@ -3626,9 +3638,11 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		if (error !== this.gl.NO_ERROR) throw new Error(`svelte-fluid: GL error 0x${error.toString(16)} during settle probe`);
 	}
 
-	private update(): void {
+	private update(now?: number): void {
 		if (this.disposed || this.contextLost || this.failed || !this.rafRunning) return;
 		const dt = this.calcDeltaTime();
+		// Manual test/readback drivers have no RAF timestamp: keep their explicit renders ungated.
+		const presentDue = now === undefined || this.presentationGate.shouldSubmit(now, this.config.MAX_FPS);
 		if (this.config.PAUSED && !this.renderDirty && !this.hasPendingFrameInput()) {
 			// Keep pointer colors and the timebase current, but submit no GL work and
 			// do not manufacture profiler frames while the paused image is stable.
@@ -3641,7 +3655,8 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 				this.profiler.beginFrame();
 				try {
 					this.profileGroup('solver', () => this.simulateFrame(dt));
-					if (!this.config.PAUSED || this.renderDirty) {
+					if (!this.config.PAUSED) this.renderDirty = true;
+					if (this.renderDirty && (this.config.PAUSED || presentDue)) {
 						this.renderProfiled(null);
 						this.renderDirty = false;
 					}
@@ -3650,7 +3665,8 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 				}
 			} else {
 				this.simulateFrame(dt);
-				if (!this.config.PAUSED || this.renderDirty) {
+				if (!this.config.PAUSED) this.renderDirty = true;
+				if (this.renderDirty && (this.config.PAUSED || presentDue)) {
 					this.renderCore(null);
 					this.renderDirty = false;
 				}

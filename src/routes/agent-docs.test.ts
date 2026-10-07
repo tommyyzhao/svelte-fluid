@@ -120,6 +120,9 @@ describe('buildSkillMd', () => {
 		expect(out).toContain('containerShape');
 		expect(out).toContain('autoPerformanceTargetFrameMs');
 		expect(out).toContain('maxPixelRatio');
+		expect(out).toContain('maxFps');
+		expect(out).toContain('Maximum PRESENTED frames per second');
+		expect(out).toContain('simulation still advances every animation frame');
 		// All thirteen public components must be listed (count must match the prose).
 		for (const c of ['Fluid', 'FluidBackground', 'FluidReveal', 'FluidDistortion', 'FluidStick', 'FluidText', 'InkPaper', 'LiquidButton', 'LiquidSegmented', 'LiquidDropZone', 'LiquidCaustics', 'LiquidToggle', 'EnamelText'])
 			expect(out, c).toContain(`<${c}>`);

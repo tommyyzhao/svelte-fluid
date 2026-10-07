@@ -400,7 +400,7 @@ export interface FluidConfig {
 	 */
 	maxTimeStep?: number;
 	/**
-	 * Minimum solver substeps per rendered frame. Default 1.
+	 * Minimum solver substeps per animation frame. Default 1.
 	 * Higher values improve stability at the cost of extra GPU passes.
 	 */
 	substeps?: number;
@@ -487,6 +487,12 @@ export interface FluidConfig {
 	colorful?: boolean;
 	/** Color rotation rate (1/seconds). Default 10. */
 	colorUpdateSpeed?: number;
+	/**
+	 * Maximum PRESENTED frames per second; simulation still advances every animation frame.
+	 * Default 60; 0/null = present every frame. Bucket A (hot scalar).
+	 * Negative/nonfinite values are ignored; undefined preserves the resolved value.
+	 */
+	maxFps?: number | null;
 	/** Pause simulation stepping; RAF stays live and renders only after invalidation. Default false. */
 	paused?: boolean;
 	/**
@@ -1466,7 +1472,7 @@ export interface LiquidCausticsProps extends Omit<import('svelte/elements').HTML
 /** Props consumed by `<FrameFluid />`. */
 export type FrameFluidProps = Pick<
 	FluidProps,
-	'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+	'width' | 'height' | 'maxPixelRatio' | 'maxFps' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 > & { innerCornerRadius?: number; outerCornerRadius?: number };
 
 /** Props consumed by `<GasFlare />`. Sizing/seed/styling are forwarded; flare geometry and plume behavior are pinned. */
@@ -1475,6 +1481,7 @@ export type GasFlareProps = Pick<
 	| 'width'
 	| 'height'
 	| 'maxPixelRatio'
+	| 'maxFps'
 	| 'class'
 	| 'style'
 	| 'seed'
@@ -1488,13 +1495,13 @@ export type GasFlareProps = Pick<
 /** Props consumed by `<LavaLamp />`. Sizing/seed/styling are forwarded; all other physics props are hard-coded. */
 export type LavaLampProps = Pick<
 	FluidProps,
-	'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+	'width' | 'height' | 'maxPixelRatio' | 'maxFps' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 >;
 
 /** Props consumed by `<InkInWater />`. */
 export type InkInWaterProps = Pick<
 	FluidProps,
-	'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+	'width' | 'height' | 'maxPixelRatio' | 'maxFps' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 >;
 
 /** Props consumed by `<Venturi />`. Sizing/seed/styling are forwarded; all physics props are pinned. */
@@ -1503,6 +1510,7 @@ export type VenturiProps = Pick<
 	| 'width'
 	| 'height'
 	| 'maxPixelRatio'
+	| 'maxFps'
 	| 'class'
 	| 'style'
 	| 'seed'
@@ -1516,19 +1524,19 @@ export type VenturiProps = Pick<
 /** Props consumed by `<Toroidal />`. Sizing/seed/styling are forwarded; all other physics props are hard-coded. */
 export type ToroidalProps = Pick<
 	FluidProps,
-	'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+	'width' | 'height' | 'maxPixelRatio' | 'maxFps' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 >;
 
 /** Props consumed by `<Plasma />`. Sizing/seed/styling are forwarded, and `backColor` may be overridden so the preset adapts to its host page; all other physics props are hard-coded. */
 export type PlasmaProps = Pick<
 	FluidProps,
-	'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+	'width' | 'height' | 'maxPixelRatio' | 'maxFps' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 >;
 
 /** Props consumed by `<Aurora />`. */
 export type AuroraProps = Pick<
 	FluidProps,
-	'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+	'width' | 'height' | 'maxPixelRatio' | 'maxFps' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 >;
 
 /** Props consumed by `<TeslaValve />`. Sizing/seed/styling are forwarded; valve geometry and flow settings are pinned. */
@@ -1537,6 +1545,7 @@ export type TeslaValveProps = Pick<
 	| 'width'
 	| 'height'
 	| 'maxPixelRatio'
+	| 'maxFps'
 	| 'class'
 	| 'style'
 	| 'seed'
@@ -1550,25 +1559,25 @@ export type TeslaValveProps = Pick<
 /** Props consumed by `<CircularFluid />`. */
 export type CircularFluidProps = Pick<
 	FluidProps,
-	'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+	'width' | 'height' | 'maxPixelRatio' | 'maxFps' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 >;
 
 /** Props consumed by `<FrozenSwirl />`. */
 export type FrozenSwirlProps = Pick<
 	FluidProps,
-	'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+	'width' | 'height' | 'maxPixelRatio' | 'maxFps' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 >;
 
 /** Props consumed by `<SvgPathFluid />`. */
 export type SvgPathFluidProps = Pick<
 	FluidProps,
-	'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+	'width' | 'height' | 'maxPixelRatio' | 'maxFps' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 >;
 
 /** Props consumed by `<AnnularFluid />`. */
 export type AnnularFluidProps = Pick<
 	FluidProps,
-	'width' | 'height' | 'maxPixelRatio' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
+	'width' | 'height' | 'maxPixelRatio' | 'maxFps' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
 >;
 
 /** Props consumed by `<Karman />`. Sizing/seed/styling are forwarded; all physics is pinned. */
@@ -1577,6 +1586,7 @@ export type KarmanProps = Pick<
 	| 'width'
 	| 'height'
 	| 'maxPixelRatio'
+	| 'maxFps'
 	| 'class'
 	| 'style'
 	| 'seed'
