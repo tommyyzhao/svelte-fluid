@@ -100,6 +100,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0104](./0104-pigment-pressure-pairing.md) | Pigment warm-start fold and paired pressure iterations; budget still FAIL | Accepted |
 | [0105](./0105-stable-gpu-budget-protocol.md) | Pre-registered 600-frame / three-run native GPU budget protocol | Accepted |
 | [0106](./0106-teslavalve-quality-budget.md) | TeslaValve quality budget: sim 128 / pressure 26 / dye 512 | Accepted |
+| [0107](./0107-energy-quality-docs-eval-protocol.md) | Pre-registered energy / visual-quality / agent-docs eval protocol and hill-climb rule | Accepted |
 
 ADRs 0067-0078 exist only on the private R&D branch (`rd/webgpu-replacement`); the numbering gap here is intentional.
 
