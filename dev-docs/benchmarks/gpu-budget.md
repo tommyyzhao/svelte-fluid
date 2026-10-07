@@ -14,6 +14,56 @@ Earlier wall-throughput/UNCERTIFIED sections remain historical evidence.
 Harness: `src/lib/engine/__benches__/gpu-budget.browser.test.ts`. Measurement,
 not a performance gate. Decision records: ADRs 0089, 0093, 0099.
 
+## E1 round 3: four-iteration pressure batching rejected — 2026-10-07
+
+**Rejected at the first isolated bit-parity gate; no runtime change retained.**
+Baseline `37bbe85`; faithful trial `2feb3d2`, locally tagged
+`archive/pressure4-round3-rejected` (negative experiment, not for shipment).
+The WebGL2 candidate evaluated two existing paired-Jacobi blocks per draw,
+preserved expression order and sticky/solid substitution, and used
+`packHalf2x16` / `unpackHalf2x16` only between the blocks to reproduce the
+baseline R16F store. WebGL1, zero iterations, paired/single remainders and
+large-grid fallback remained on the existing paths; dispatch used capability
+and grid size, never preset names.
+
+Headless installed Chrome reported
+`ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)`.
+The GPU lock was held for each run, then released. First own-tier case:
+800×500 canvas, odd 53×33 solver grid, cold pressure, nonzero seeded velocity
+including boundary cells; pressure warm-start coefficient 0.8.
+
+| Case | Max absolute error | Max fp16 ULP distance | Changed texels |
+|---|---:|---:|---:|
+| Own odd cold, 0 iterations | 0 | 0 | 0 |
+| Own odd cold, 1 iteration | 0 | 0 | 0 |
+| Own odd cold, 2 iterations | 0 | 0 | 0 |
+| Own odd cold, 3 iterations | 0 | 0 | 0 |
+| Own odd cold, 4 iterations, initial attempt | 0.0078125 | 44 | 505 |
+| Own odd cold, 4 iterations, faithful audit | 0.0078125 | 44 | 505 |
+
+The audit corrected a possible coordinate mismatch: the second block's
+mediump nearest-fetch position must select the first block's stored texel,
+whose pair was rendered at a highp pixel-center `vUv`. It also kept the second
+block's multiply by a uniform set to 1.0, rather than a compile-time constant.
+Neither rescued parity. Intermediate half conversion and clamped
+boundary/solid handling were checked; the remaining cause is **not proven**.
+No inner-single-iteration rounding or tolerance expansion was introduced.
+
+Stopped with `--bail 1`: later warm-start, masks/solids/sticky, own/shared,
+resize/loss/dispose and 200-step Plasma/Karman cases were authored in the
+archived harness but **not executed**. No Node draw-count test, Proposed ADR,
+full hardware suite, energy capture or E2 evaluation followed the rejection.
+Pressure draw arithmetic forecast was Plasma 10→5, Karman 17→9 (whole-frame
+forecast 36→31 / 39→31); these are **unmeasured**, not retained reductions.
+The tentative 10–12% E1 forecast was below the 25% goal; no E1 gain is claimed.
+
+Trial and restored-baseline Node suites: 880/880; `bun run check`: zero
+errors/warnings; `bun run prepack`: pass (existing bench `import.meta.env`
+warning).
+Hardware strict parity: one failing test, unchanged after the audit.
+Production `FluidEngine.ts`, `shaders.ts` and solver optimisation browser test
+were restored to `37bbe85`; trial remains only in the local archive tag.
+
 ## Run
 
 ```sh
