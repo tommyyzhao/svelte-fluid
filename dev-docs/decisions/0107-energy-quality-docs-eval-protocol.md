@@ -241,3 +241,46 @@ failures stay missing with their reason. Existing 15 GiB free-space guard,
 10 GiB scratch watchdog, exclusive owned GPU lock and ≤25-minute batches
 remain mandatory. Rank stages on TRAIN only using existing measurement
 facilities; unavailable stage attribution must be reported, not fabricated.
+
+## Amendment 5: 120 Hz headed paired condition for presentation-cadence candidates (owner-approved 2026-10-08)
+
+**Pre-registered before capture:** the owner approved headed browser runs for
+this 120 Hz measurement on 2026-10-08 and said "go". This exception applies
+only to lane `E1-120hz`; Amendment 3's headless condition remains separate.
+Amendment 4 is registered independently by the spatial-candidate lane.
+
+Use installed hardware Chrome, ordinary flags, direct launch and CDP
+`noDefaults:true`, genuine hidden tabs, ANGLE Metal Apple M1 Max. Native
+ProMotion RAF must be approximately 120 Hz in every slot: the independent RAF
+probe in active, untouched, offscreen and blank-control windows must be
+114–126 Hz (±5%); hidden RAF remains 0. A failed refresh check is an
+infrastructure failure under the existing visibility/refresh gate, not a
+candidate loss. Preserve the original; allow exactly one end-of-run retry.
+
+Engine source is local main `9984ca1`; public prop overrides compare
+`{"maxFps":0}` with `{"maxFps":60}`. For each frozen scene and independent
+browser run, measure the two arms back to back: baseline then candidate on
+R1/R3, candidate then baseline on R2. R=3 per arm. Train precedes held out.
+Fresh pairs eliminate days of drift; the historical headed baseline is not
+reused for this decision. All frozen splits, sizes, DPRs, seeds, windows,
+blank controls, parser/metric, closed retry list, 0-GPU rules and keep rule
+remain unchanged: saving must exceed twice that scene's baseline-arm R3
+active noise and be at least 5%. Report each window's paired saving as the
+median of its three matched-run relative savings; report arm median GPU-ms/s
+and split headlines separately. Missing pairs cannot establish a keep.
+
+E2 stills are no-worse by construction: `maxFps` gates presentation only,
+not solver updates, forcing, RNG, filtering or spatial resolution. ADR 0110
+Verification records byte-identical velocity/dye readbacks after 120 equal
+synthetic 120 Hz updates on own/shared, normal/profiled paths (9/9 hardware
+checks), with 120 solver updates and 60/120 render submissions. Still-frame
+statistics/judging need not re-test identical solver fields. Temporal
+smoothness remains the owner's motion review at `/examples/bench/max-fps`;
+this evaluation does not authorize changing default `maxFps=0`.
+
+Exclusive atomic-mkdir GPU lock: owner lane `E1-120hz`, purpose, start,
+worktree and PID, plus acquired-at. Hold ≤25 minutes per batch. Yield after
+release until the other lane has acquired and released or five continuously
+free minutes; never SOLO with both lanes. No tests/builds during captures.
+Retain free-space guard, raw watchdog and ktrace diff cleanup; delete raw
+traces after parse. Never touch foreign locks or Chrome processes.
