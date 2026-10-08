@@ -347,7 +347,7 @@
 		);
 
 		// Adaptive resolution: cap texture sizes to actual canvas pixels.
-		cfg.dyeResolution = Math.min(cfg.dyeResolution ?? 1024, maxPx);
+		cfg.dyeResolution = Math.min(cfg.dyeResolution ?? 512, maxPx);
 		cfg.bloomResolution = Math.min(cfg.bloomResolution ?? 256, maxPx);
 		cfg.sunraysResolution = Math.min(cfg.sunraysResolution ?? 196, maxPx);
 

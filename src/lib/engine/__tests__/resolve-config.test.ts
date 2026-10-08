@@ -457,7 +457,8 @@ describe('resolveConfig', () => {
 describe('DEFAULTS', () => {
 	it('has expected physics defaults', () => {
 		expect(DEFAULTS.SIM_RESOLUTION).toBe(128);
-		expect(DEFAULTS.DYE_RESOLUTION).toBe(1024);
+		expect(DEFAULTS.DYE_RESOLUTION).toBe(512);
+		expect(resolveConfig({ dyeResolution: 1024 }, DEFAULTS).DYE_RESOLUTION).toBe(1024);
 		expect(DEFAULTS.DENSITY_DISSIPATION).toBe(1);
 		expect(DEFAULTS.VELOCITY_DISSIPATION).toBe(0.2);
 		expect(DEFAULTS.ADVECTION_SCHEME).toBe('semilagrangian');
