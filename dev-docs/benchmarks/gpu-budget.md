@@ -60,6 +60,80 @@ owner JSON + acquired-at, ≤12 min per batch. Installed headless Chrome only;
 require ANGLE Metal Apple M1 Max. No held-out presets, 1024×640, xctrace,
 build during measurement, unsafe flags, push/merge, memory or Beads changes.
 
+### Results: exact parity, cost rejected
+
+Installed headless Chrome 154, renderer
+`ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)`.
+Four parity cases passed. Each baseline GLSL reconstructed by the test-only
+`shaderSource` intercept matches `3f73af4` after whitespace normalization
+(asserted independently before archive). The intercept covers constructor
+compilation of every selected display/mask/radial shader, restores the WebGL2
+prototype in `finally`, never changes simulation sources. No fallback needed.
+
+| TRAIN preset | Max channel Δ LSB | Changed pixels / 5,184,000 | Changed fraction | Velocity/dye/pressure/divergence/curl changed readback bytes |
+|---|---:|---:|---:|---|
+| Plasma | 0 | 0 | 0% | 0 / 0 / 0 / 0 / 0 |
+| LavaLamp | 0 | 0 | 0% | 0 / 0 / 0 / 0 / 0 |
+| InkInWater | 0 | 0 | 0% | 0 / 0 / 0 / 0 / 0 |
+| Aurora | 0 | 0 | 0% | 0 / 0 / 0 / 0 / 0 |
+
+Fields also remain byte-identical before/after repeated renders. Individual
+same-instance display/mask/radial substitutions each produce zero changed
+canvas pixels. Final canvas readback includes glass on LavaLamp, all four
+RGBA channels; no GL errors, nonzero output. Scope ceiling: this is one fixed
+120-step seeded snapshot per TRAIN preset, **not all content/hardware proof**.
+The preserved highp radial variables cover essentially every real operation;
+changing its default alone offers no meaningful fp16 ALU reduction. Bloom and
+sunrays blur were already mediump. No claim that Apple/ANGLE actually lowered
+new display locals to fp16: shader declaration changes are not a native ALU
+inspection, and exact output plus cost-neutral timing cannot establish that.
+
+Eight independent ordinary invocations, fixed order A/B/A/B/A/B/A/B, R=4:
+
+| TRAIN preset | A median ms/frame | B median ms/frame | Saving | A range ms | B range ms | ≥10% and >2×A range |
+|---|---:|---:|---:|---:|---:|---|
+| Plasma | 1.5200 | 1.5250 | −0.33% | 0.0200 | 0.0200 | Fail |
+| LavaLamp | 0.8200 | 0.8300 | −1.22% | 0.0200 | 0.0200 | Fail |
+| InkInWater | 1.3550 | 1.3700 | −1.11% | 0.0500 | 0.0350 | Fail |
+| Aurora | 1.5150 | 1.5200 | −0.33% | 0.0200 | 0.0250 | Fail |
+
+Invocation medians, ms/frame (existing upper-middle per-invocation reducer):
+
+| Preset | A1 | B1 | A2 | B2 | A3 | B3 | A4 | B4 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Plasma | 1.525 | 1.535 | 1.530 | 1.530 | 1.510 | 1.520 | 1.515 | 1.515 |
+| LavaLamp | 0.835 | 0.835 | 0.815 | 0.830 | 0.825 | 0.815 | 0.815 | 0.830 |
+| InkInWater | 1.365 | 1.385 | 1.385 | 1.380 | 1.335 | 1.350 | 1.345 | 1.360 |
+| Aurora | 1.520 | 1.540 | 1.525 | 1.525 | 1.510 | 1.515 | 1.505 | 1.515 |
+
+`uptime` before/after each invocation, load averages 1/5/15 min:
+
+| Run | Before | After |
+|---|---|---|
+| A1 | 4.09 / 4.64 / 5.15 | 4.32 / 4.68 / 5.16 |
+| B1 | 4.32 / 4.68 / 5.16 | 5.07 / 4.82 / 5.21 |
+| A2 | 5.07 / 4.82 / 5.21 | 4.98 / 4.81 / 5.20 |
+| B2 | 4.98 / 4.81 / 5.20 | 4.82 / 4.78 / 5.19 |
+| A3 | 4.82 / 4.78 / 5.19 | 7.81 / 5.44 / 5.42 |
+| B3 | 7.81 / 5.44 / 5.42 | 7.59 / 5.43 / 5.42 |
+| A4 | 7.59 / 5.43 / 5.42 | 7.27 / 5.43 / 5.42 |
+| B4 | 7.27 / 5.43 / 5.42 | 6.93 / 5.39 / 5.40 |
+
+**Rejected: 0/4 pass, requires ≥3/4.** No production precision change,
+Proposed ADR or E1 train/held-out capture. Archived prototype+parity+bench
+locally as `archive/e1-precision-probe` (`6219425`); `src/lib` and
+`vitest.config.ts` restored exactly to `3f73af4` in the negative-note commit.
+Evidence: `/tmp/e1-precision/parity-first.json`, `/tmp/e1-precision/cost/`
+(eight JSON/logs, uptime receipts, cleanup). GPU lock held for parity
+13:51:20–13:51:28 UTC (~8 s), cost 13:53:20–13:54:17 UTC (**56.6 s**),
+released between batches; absent after both. Exact owned Vitest/Chrome/Vite
+processes exited; no protected/user Chrome touched. No raw traces produced.
+Prototype and restored-baseline checks: Node **882/882**, Svelte check
+**0 errors/0 warnings**, prepack **pass**, existing `import.meta.env` package
+warning. Browser logs retain existing SplashCursor dependency-scan warning;
+selected four parity + eight cost cases pass. No new dependency, public API,
+simulation, held-out, 1024×640, xctrace, memory, Beads, push or merge change.
+
 ## E1 per-encoder attribution (train only)
 
 **2026-10-08; measurement only, engine `29065ca`, no `src/lib` changes.**
