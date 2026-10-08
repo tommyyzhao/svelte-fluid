@@ -1,5 +1,36 @@
 # GPU budget (per-instance frame time)
 
+## E1 Round 6 — generic half dye default, not kept (2026-10-08)
+
+Owner visual approval2026-10-08, Amendment4 `e2021e9` before candidate
+`1a60913` and captures. Headless60Hz frozen-baseline comparison stopped by
+lead judgement after41/66 clean slots:13 completeR3 scenes, SvgPath smalln2,
+eight scenes not started. **A6 primary INCOMPLETE; secondary per-scene FAIL**
+(4/13 pass). Held-out not run. Not kept: unproven gain; generic default1024
+restored, source archived at `archive/e1-r6-dye-default`.
+
+Matched13-scene headline84.431→64.670 activeGPU-ms/s (**23.405%** saving),
+90.491→69.094 untouched (**23.646%**), descriptive only. FullTRAIN median
+registered noise17.59%, 2×bar35.18%. Lead's initial arithmetic (12/13 savings
+belowbar guarantees12/22 belowbar) bounds median scene saving, **not** saving
+of headline medians. DeterministicFAIL claim withdrawn; stop is judgement.
+
+[Full22-row table, missing scenes, retries and cleanup](energy-eval.md#round-6--owner-approved-half-dye-default-not-kept).
+SvgPath smallR3 not run; Toroidal/GasFlare/Venturi/Karman bothsizes not run.
+
+| Complete TRAIN scene | Active saving large / small | 2× registered noise large / small |
+|---|---:|---:|
+| (default) | 17.92% / 27.79% | 68.42% / 25.12% |
+| LavaLamp | 0.46% / −6.45% | 59.90% / 68.28% |
+| Plasma | 9.68% / 35.78% | 53.46% / 15.84% |
+| InkInWater | 17.63% / 7.38% | 16.60% / 34.78% |
+| Aurora | 12.49% / 27.52% | 2.94% / 35.18% |
+| CircularFluid | 14.11% / 12.89% | 34.24% / 45.84% |
+| SvgPathFluid | −9.32% / R3 not run | 14.62% / 15.02% |
+
+Large1440×900/small800×500CSS, DPR2seed5. Resolution ladder/per-encoder
+budgets motivated the trial, but do not establish its registered energy win.
+
 Evidence for the 1.0 bar: p95 GPU execution per instance per frame <2 ms at native DPR.
 **Owner changed the target on 2026-10-06 after seeing the native Metal results**
 ([ADR 0101](../decisions/0101-p95-gpu-budget.md)); it was not pre-registered.

@@ -15,13 +15,6 @@ describe('generated API reference', () => {
 	const types = new Map(source.statements.filter(ts.isInterfaceDeclaration).map((node) => [node.name.text, checker.getTypeAtLocation(node)]));
 	const out = buildSkillMd();
 
-	it('documents the generic dye default and explicit legacy override', () => {
-		for (const doc of [out, buildLlmsFullTxt()]) {
-			expect(doc).toContain('Dye grid resolution. Default 512; set 1024 to restore');
-		}
-		expect(readme).toContain('| `dyeResolution` | `number` | `512` |');
-	});
-
 	it('every table prop exists in its corresponding public type, including inheritance', () => {
 		let typeName = '';
 		let count = 0;
