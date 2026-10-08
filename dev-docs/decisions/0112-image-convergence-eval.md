@@ -68,6 +68,10 @@ Frozen before first V0 observations: V0 dye uses RGBA32F when OES_texture_float_
 
 Train-only diagnostic probe (Kiss, seed5) finalized SSIM .999686 / mean DeltaE76 .422221, not byte-exact. This is harness bring-up, not frozen V0 R3 baseline. Shared V0/V1/V2 target upload now decodes/resamples through explicit sRGB OffscreenCanvas ImageData matching the reference; final display uses physical pixel-centre coordinates. This removes browser image-upload colour conversion / varying-coordinate sampling ambiguity without changing any metric/gate. Verify on train before freezing baseline; do not tune from held-out. Work proxy still excludes bytes. Source-download scratch deleted after frozen small assets verified.
 
+## Amendment 1 (lead, after V0 baseline observations, before any candidate data)
+
+V0 remains the comparator for the primary judge metric even where it fails its own fidelity/rest/re-form gates. Time/work comparisons on timed-out V0 slots use the 30-second timeout as a right-censored observation; report the censoring, do not impute successful convergence or extrapolated work. Candidates must pass every gate on their own. V0 is not tuned after seeing these failures. This amendment was directed by the lead after observing text/Wave V0 timeouts; it is not an original pre-registration claim.
+
 ## Results
 
 Pending. This pre-registration is committed before implementation or candidate data.
