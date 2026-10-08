@@ -149,10 +149,10 @@ const DIR = `/tmp/energy-eval/${options.label}`, harnessSha = execFileSync('git'
 const sourceRoot = options['source-root'] ?? ROOT;
 assert.ok(sourceRoot.startsWith('/'), '--source-root requires an absolute directory');
 const baselineSha = options['per-encoder-export'] ? '29065ca' : '37bbe851c0d52c86241f6964c3b443f17e95611b';
-const engineSourceSha = sourceRoot === ROOT ? baselineSha : options['engine-sha'];
+const engineSourceSha = options['engine-sha'] ?? (sourceRoot === ROOT ? baselineSha : undefined);
 assert.match(engineSourceSha ?? '', /^[a-f0-9]{7,40}$/, '--source-root requires supplied --engine-sha; no cross-worktree Git operations');
 const engineFileHash = createHash('sha256').update(await readFile(`${sourceRoot}/src/lib/engine/FluidEngine.ts`)).digest('hex');
-if (sourceRoot === ROOT && !options['self-check']) assert.equal(execFileSync('git', ['diff', baselineSha, '--', 'src/lib'], { encoding: 'utf8' }), '', 'Baseline engine source changed');
+if (sourceRoot === ROOT && !options['self-check']) assert.equal(execFileSync('git', ['diff', engineSourceSha, '--', 'src/lib'], { encoding: 'utf8' }), '', 'Committed engine source changed');
 const sha = engineSourceSha;
 const source = await readFile(process.argv[1], 'utf8');
 // Amendment 3 changes only the separate post-trace diagnostic; energy windows/parser stay frozen.
@@ -239,7 +239,8 @@ const save = () => writeFileSync(`${DIR}/summary.json`, JSON.stringify(summaries
 if (options['summary-only']) { save(); console.log(JSON.stringify(summaries(results).headline)); process.exit(0); }
 const census = () => execFileSync('ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' }).split('\n').map((l) => { const m = l.match(/^\s*(\d+)\s+(\d+)\s+(.*)$/); return m && { pid: +m[1], ppid: +m[2], command: m[3] }; }).filter(Boolean);
 const owned = new Map(); let browser, chrome, profile, server, recording, notifier, lockOwned = false, lastReleasedAt = 0, lockedAt = 0;
-const ownerText = JSON.stringify({ lane: options['per-encoder-export'] ? 'E1-attrib' : 'E1', purpose: `headless energy ${options.label} ${options.split}`, start: new Date().toISOString(), worktree: ROOT, sha, pid: process.pid });
+const lane = process.env.ENERGY_CAPTURE_LANE ?? (options['per-encoder-export'] ? 'E1-attrib' : 'E1');
+const ownerText = JSON.stringify({ lane, purpose: `headless energy ${options.label} ${options.split}`, start: new Date().toISOString(), worktree: ROOT, sha, pid: process.pid });
 function remember() {
 	const rows = census(), ids = new Set([process.pid]);
 	for (let changed = true; changed;) { changed = false; for (const r of rows) if (ids.has(r.ppid) && !ids.has(r.pid)) { ids.add(r.pid); changed = true; } }
@@ -265,7 +266,7 @@ async function acquire() {
 		while (true) {
 			let owner;
 			try { owner = JSON.parse(await readFile(`${LOCK}/owner`, 'utf8')); } catch (e) { if (e.code !== 'ENOENT') throw e; }
-			if (owner) { freeSince = Date.now(); if (owner.lane !== 'E1') sawNext = true; }
+			if (owner) { freeSince = Date.now(); if (owner.lane !== lane) sawNext = true; }
 			else if (sawNext || Date.now() - freeSince >= 300000) break;
 			console.log(JSON.stringify({ phase: 'waiting for next GPU lane turn', owner: owner?.lane })); await Bun.sleep(30000);
 		}

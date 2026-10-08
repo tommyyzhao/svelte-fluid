@@ -36,8 +36,8 @@
 		<tr>
 			<td><code>dyeResolution</code></td>
 			<td><code>number</code></td>
-			<td><code>1024</code></td>
-			<td>Dye grid resolution. Clamped to 512 if linear filtering is unsupported.</td>
+			<td><code>512</code></td>
+			<td>Dye grid resolution. Set <code>dyeResolution=&#123;1024&#125;</code> to restore the previous default. Clamped to 512 if linear filtering is unsupported.</td>
 		</tr>
 		<tr>
 			<td><code>densityDissipation</code></td>

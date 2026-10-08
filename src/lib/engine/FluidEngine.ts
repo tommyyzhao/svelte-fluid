@@ -253,7 +253,7 @@ export interface ReadFieldResult {
 /** @internal Exported for tests — not part of the public API. */
 export const DEFAULTS: ResolvedConfig = {
 	SIM_RESOLUTION: 128,
-	DYE_RESOLUTION: 1024,
+	DYE_RESOLUTION: 512,
 	DENSITY_DISSIPATION: 1,
 	INITIAL_DENSITY_DISSIPATION: 1,
 	INITIAL_DENSITY_DISSIPATION_DURATION: 0,
