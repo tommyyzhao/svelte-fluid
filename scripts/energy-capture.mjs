@@ -14,7 +14,7 @@ import { runInNewContext } from 'node:vm';
 import { loadavg, tmpdir } from 'node:os';
 import { hasContinuousDriver } from '../src/lib/engine/settle.js';
 const execAsync = promisify(execFile);
-const ROOT = process.cwd(), PORT = 5201, URL = `http://127.0.0.1:${PORT}`;
+const ROOT = process.cwd(), PORT = process.argv.includes('--headed') ? 5202 : 5201, URL = `http://127.0.0.1:${PORT}`;
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const XCODE = { ...process.env, DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer' };
 const EXPORT_LIMIT_MS = 90000, LOCK = '/tmp/svelte-fluid-gpu.lock';
