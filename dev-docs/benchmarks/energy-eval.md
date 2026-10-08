@@ -353,7 +353,12 @@ Two further train-only probes after attribution also failed:
 
 That brings the total to **seven rejected lever classes**.
 
-Every remaining lever large enough for the keep rule is therefore owner-gated (Bead `svelte-fluid-a9t`). No further autonomous E1 round is justified under this protocol.
+Owner approved the dye packet2026-10-08. Round6 trialled generic512;
+lead stopped after13/22 complete TRAIN scenes. Amendment6 primary verdict
+INCOMPLETE, secondary per-scene FAIL; partial matched headline saving23.405%
+active/23.646% untouched is descriptive. Held-out not run; gain unproven,
+default restored1024. This is not a proven full-split energy rejection.
+See [Round6](#round-6--owner-approved-half-dye-default-not-kept).
 
 Idle and background contracts **are met**:
 
@@ -368,6 +373,75 @@ Idle and background contracts **are met**:
 ## Rounds
 
 No pre-registered E1 keep/revert verdict completed.
+
+### Round 6 — owner-approved half dye default, not kept
+
+Amendment 4 `e2021e9` committed **before** candidate `1a60913` and every
+Round 6 capture. Owner appearance approval 2026-10-08 replaces E2 for this
+spatial change; generic default only, explicit preset/prop resolutions intact.
+Frozen headless60Hz Amendment 3 baseline, hardware installed Chrome renderer
+`ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)`.
+
+**Lead futility stop**, a lead judgement, not a proven primary failure.
+**Amendment 6 primary: INCOMPLETE**; **secondary strict per-scene: FAIL**
+(4/13 complete scenes pass >2× their own noise and ≥5%). **Not kept / REVERT**:
+unproven gain; default restored to1024. Held-out **not run**.
+
+41/66 clean TRAIN slots:13/22 completeR3 scenes, SvgPath small n2, eight
+scene-sizes not started. Missing nine complete scene-sizes prevent a registered
+headline. Frozen table medians/noise are rounded committed values; no fresh
+baseline or missing noise was invented.
+
+| Descriptive matched13-scene headline | Frozen | Candidate | Saving |
+|---|---:|---:|---:|
+| Active GPU-ms/s | 84.431 | 64.670 | 23.405% |
+| Untouched GPU-ms/s | 90.491 | 69.094 | 23.646% |
+
+Amendment 6 registered TRAIN median noise17.59%, bar>35.18% and ≥5%.
+These partial headlines do **not** decide that gate. Lead initially reasoned
+12/13 completed scene savings below35.18%, hence at least12/22 below it even
+if all nine remaining exceed it. That proves a bound on **median scene saving**,
+not on `1−median(candidate)/median(baseline)`; lead withdrew the deterministic
+FAIL claim. No false futility theorem or full-split verdict follows.
+
+| TRAIN preset | CSS | n | Frozen active | Candidate active | Candidate untouched | Saving | 2× registered noise | Secondary |
+|---|---|---:|---:|---:|---:|---:|---:|---|
+| (default) | 1440×900 | 3 | 47.673 | 39.130 | 0.000 | 17.92% | 68.42% | FAIL |
+| (default) | 800×500 | 3 | 42.319 | 30.558 | 0.000 | 27.79% | 25.12% | PASS |
+| LavaLamp | 1440×900 | 3 | 100.513 | 100.051 | 99.399 | 0.46% | 59.90% | FAIL |
+| LavaLamp | 800×500 | 3 | 56.558 | 60.206 | 59.730 | −6.45% | 68.28% | FAIL |
+| Plasma | 1440×900 | 3 | 99.800 | 90.140 | 90.500 | 9.68% | 53.46% | FAIL |
+| Plasma | 800×500 | 3 | 100.699 | 64.670 | 69.094 | 35.78% | 15.84% | PASS |
+| InkInWater | 1440×900 | 3 | 93.782 | 77.247 | 78.265 | 17.63% | 16.60% | PASS |
+| InkInWater | 800×500 | 3 | 64.983 | 60.189 | 59.698 | 7.38% | 34.78% | FAIL |
+| Aurora | 1440×900 | 3 | 100.486 | 87.934 | 78.856 | 12.49% | 2.94% | PASS |
+| Aurora | 800×500 | 3 | 81.071 | 58.759 | 62.997 | 27.52% | 35.18% | FAIL |
+| CircularFluid | 1440×900 | 3 | 94.579 | 81.232 | 74.894 | 14.11% | 34.24% | FAIL |
+| CircularFluid | 800×500 | 3 | 65.999 | 57.489 | 65.479 | 12.89% | 45.84% | FAIL |
+| SvgPathFluid | 1440×900 | 3 | 84.431 | 92.301 | 90.204 | −9.32% | 14.62% | FAIL |
+| SvgPathFluid | 800×500 | 2 | 75.129 | — | — | — | 15.02% | R3 not run |
+| Toroidal | 1440×900 | 0 | 113.055 | — | — | — | 54.92% | Not run |
+| Toroidal | 800×500 | 0 | 102.143 | — | — | — | 5.34% | Not run |
+| GasFlare | 1440×900 | 0 | 147.393 | — | — | — | Missing registered R3 | Not run |
+| GasFlare | 800×500 | 0 | 107.721 | — | — | — | 24.78% | Not run |
+| Venturi | 1440×900 | 0 | 94.184 | — | — | — | 44.48% | Not run |
+| Venturi | 800×500 | 0 | 63.322 | — | — | — | 36.56% | Not run |
+| Karman | 1440×900 | 0 | 139.778 | — | — | — | 45.38% | Not run |
+| Karman | 800×500 | 0 | 153.022 | — | — | — | 51.30% | Not run |
+
+SvgPath small R1/R2 active68.781/58.181, untouched63.917/62.919 GPU-ms/s;
+not an R3 median. Two recorder-finalisation failures (default largeR1,
+Aurora smallR1) each received exactly one successful closed-list retry;
+originals retained. All clean slots offscreen/hidden/control0. Clean library
+source hash/SHA remained candidate1a60913; no metrics retried.
+
+Atomic owned GPU lock, ≤25min batches, no SOLO; two-lane alternation then
+three-lane E1-r6→e5-spike→E1-120hz. Exact owned release watchers stopped
+re-acquisition only after saved slot JSON; no active trace interrupted.
+Final release observed epoch1791493030998, ownedPID25429. No owned processes,
+raw traces or ktrace remain. Candidate archived at `archive/e1-r6-dye-default`;
+parsed compact evidence retained in `energy-r6-summary.json`, temporary
+`/tmp/energy-eval/e1-r6-dye-default` deleted after results commit.
 
 ### Round 5 rejected by E2 train
 

@@ -1,0 +1,2038 @@
+{
+  "candidateSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+  "amendment4Sha": "e2021e9",
+  "verdict": "not kept; A6 primary incomplete, secondary per-scene fail",
+  "stop": "lead judgement; not proven deterministic futility",
+  "heldOut": "not run",
+  "rows": [
+    {
+      "preset": "Plasma",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "seed": 5,
+      "run": 3,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T17:23:52.583Z",
+      "endedAt": "2026-10-08T17:29:03.203Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 90.1400642,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 90.4995193,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instruments0TkJ4z.ktrace",
+          "bytes": 7618759448
+        }
+      ]
+    },
+    {
+      "preset": "CircularFluid",
+      "w": 800,
+      "h": 500,
+      "dpr": 2,
+      "seed": 5,
+      "run": 1,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T19:46:06.935Z",
+      "endedAt": "2026-10-08T19:49:42.089Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 57.488664299999996,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 67.9547534,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentslHdJqG.ktrace",
+          "bytes": 2944367160
+        }
+      ]
+    },
+    {
+      "preset": "(default)",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "seed": 5,
+      "run": 1,
+      "infraRetry": false,
+      "status": "FAILED",
+      "error": "Recorder finalisation timeout",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T15:24:18.272Z",
+      "endedAt": "2026-10-08T15:31:57.809Z",
+      "windows": null,
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsM68PVC.ktrace",
+          "bytes": 3499991360
+        }
+      ]
+    },
+    {
+      "preset": "(default)",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "seed": 5,
+      "run": 1,
+      "infraRetry": true,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T16:03:35.530Z",
+      "endedAt": "2026-10-08T16:06:06.092Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 39.449146,
+          "rafHz": 60,
+          "engineHz": 24.8
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentszgRsRm.ktrace",
+          "bytes": 1109424736
+        }
+      ]
+    },
+    {
+      "preset": "CircularFluid",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "seed": 5,
+      "run": 1,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T19:40:20.509Z",
+      "endedAt": "2026-10-08T19:46:06.898Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 81.23194910000001,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 73.12463766875001,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsrTatHR.ktrace",
+          "bytes": 3218182072
+        }
+      ]
+    },
+    {
+      "preset": "InkInWater",
+      "w": 800,
+      "h": 500,
+      "dpr": 2,
+      "seed": 5,
+      "run": 3,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T18:14:57.923Z",
+      "endedAt": "2026-10-08T18:19:15.109Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 60.1167654,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 59.6983496,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instruments6uShv5.ktrace",
+          "bytes": 4330231808
+        }
+      ]
+    },
+    {
+      "preset": "LavaLamp",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "seed": 5,
+      "run": 1,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T16:23:44.650Z",
+      "endedAt": "2026-10-08T16:27:33.006Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 99.85578670000001,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 99.1666888,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instruments5QiG6a.ktrace",
+          "bytes": 2353373800
+        }
+      ]
+    },
+    {
+      "preset": "SvgPathFluid",
+      "w": 800,
+      "h": 500,
+      "dpr": 2,
+      "seed": 5,
+      "run": 2,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T20:50:32.417Z",
+      "endedAt": "2026-10-08T20:53:45.938Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 58.180556100000004,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 62.91852370000001,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instruments8I5xXU.ktrace",
+          "bytes": 2887574872
+        }
+      ]
+    },
+    {
+      "preset": "InkInWater",
+      "w": 800,
+      "h": 500,
+      "dpr": 2,
+      "seed": 5,
+      "run": 2,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T17:49:26.196Z",
+      "endedAt": "2026-10-08T17:54:27.927Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 60.860397400000004,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 60.0315908,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsyaNZbx.ktrace",
+          "bytes": 5318556296
+        }
+      ]
+    },
+    {
+      "preset": "InkInWater",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "seed": 5,
+      "run": 1,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T17:39:09.845Z",
+      "endedAt": "2026-10-08T17:42:18.639Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 77.24722270000001,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 65.7825383,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instruments4cNoCY.ktrace",
+          "bytes": 3050077120
+        }
+      ]
+    },
+    {
+      "preset": "Plasma",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "seed": 5,
+      "run": 2,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T16:56:44.203Z",
+      "endedAt": "2026-10-08T17:00:59.395Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 90.7220058,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 91.9293397,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsidlUyj.ktrace",
+          "bytes": 4085710136
+        }
+      ]
+    },
+    {
+      "preset": "Plasma",
+      "w": 800,
+      "h": 500,
+      "dpr": 2,
+      "seed": 5,
+      "run": 3,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T17:29:03.225Z",
+      "endedAt": "2026-10-08T17:32:19.053Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 68.95781889999999,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 69.5718111,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsGHyRK1.ktrace",
+          "bytes": 3206765720
+        }
+      ]
+    },
+    {
+      "preset": "(default)",
+      "w": 800,
+      "h": 500,
+      "dpr": 2,
+      "seed": 5,
+      "run": 3,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T15:52:23.827Z",
+      "endedAt": "2026-10-08T15:55:35.480Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 30.55825066875,
+          "rafHz": 60,
+          "engineHz": 24.7
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsInvqPm.ktrace",
+          "bytes": 2483924280
+        }
+      ]
+    },
+    {
+      "preset": "Aurora",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "seed": 5,
+      "run": 1,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T18:31:31.942Z",
+      "endedAt": "2026-10-08T18:35:44.606Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 92.1568903,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 89.5750111,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsinmCDF.ktrace",
+          "bytes": 3421231576
+        }
+      ]
+    },
+    {
+      "preset": "Aurora",
+      "w": 800,
+      "h": 500,
+      "dpr": 2,
+      "seed": 5,
+      "run": 1,
+      "infraRetry": false,
+      "status": "FAILED",
+      "error": "Recorder finalisation timeout",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T18:35:44.661Z",
+      "endedAt": "2026-10-08T18:43:16.177Z",
+      "windows": null,
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsBNnjoV.ktrace",
+          "bytes": 4490673136
+        }
+      ]
+    },
+    {
+      "preset": "SvgPathFluid",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "seed": 5,
+      "run": 1,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T20:40:10.711Z",
+      "endedAt": "2026-10-08T20:43:08.734Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 94.9933286,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 90.2038792,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsAktiRH.ktrace",
+          "bytes": 2764349376
+        }
+      ]
+    },
+    {
+      "preset": "LavaLamp",
+      "w": 800,
+      "h": 500,
+      "dpr": 2,
+      "seed": 5,
+      "run": 1,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T16:27:33.026Z",
+      "endedAt": "2026-10-08T16:31:26.148Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 60.2143909,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 59.729902100000004,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsRbfkXL.ktrace",
+          "bytes": 2062378480
+        }
+      ]
+    },
+    {
+      "preset": "(default)",
+      "w": 800,
+      "h": 500,
+      "dpr": 2,
+      "seed": 5,
+      "run": 2,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T15:45:51.457Z",
+      "endedAt": "2026-10-08T15:49:36.552Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 29.7619191,
+          "rafHz": 60,
+          "engineHz": 24.7
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsEZKAA4.ktrace",
+          "bytes": 2563278016
+        }
+      ]
+    },
+    {
+      "preset": "Plasma",
+      "w": 800,
+      "h": 500,
+      "dpr": 2,
+      "seed": 5,
+      "run": 2,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T17:00:59.415Z",
+      "endedAt": "2026-10-08T17:06:22.442Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 64.66989419999999,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 56.6350651,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsPDgYQf.ktrace",
+          "bytes": 6347655848
+        }
+      ]
+    },
+    {
+      "preset": "LavaLamp",
+      "w": 800,
+      "h": 500,
+      "dpr": 2,
+      "seed": 5,
+      "run": 2,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T16:35:00.630Z",
+      "endedAt": "2026-10-08T16:38:01.382Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 60.205523448437496,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 60.5889161484375,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsgj1IXk.ktrace",
+          "bytes": 2221639560
+        }
+      ]
+    },
+    {
+      "preset": "(default)",
+      "w": 800,
+      "h": 500,
+      "dpr": 2,
+      "seed": 5,
+      "run": 1,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T15:39:57.860Z",
+      "endedAt": "2026-10-08T15:43:21.723Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 31.682128499999997,
+          "rafHz": 60,
+          "engineHz": 24.7
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60.1,
+          "engineHz": 0
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsvrGze9.ktrace",
+          "bytes": 2812134520
+        }
+      ]
+    },
+    {
+      "preset": "Plasma",
+      "w": 800,
+      "h": 500,
+      "dpr": 2,
+      "seed": 5,
+      "run": 1,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T16:53:25.352Z",
+      "endedAt": "2026-10-08T16:56:44.183Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 63.429144699999995,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 69.0937231,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsjwzmKm.ktrace",
+          "bytes": 3081971504
+        }
+      ]
+    },
+    {
+      "preset": "Aurora",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "seed": 5,
+      "run": 2,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T19:00:46.322Z",
+      "endedAt": "2026-10-08T19:04:58.326Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 75.74767849999999,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 75.0544068,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsqhpWpZ.ktrace",
+          "bytes": 3708994712
+        }
+      ]
+    },
+    {
+      "preset": "Aurora",
+      "w": 800,
+      "h": 500,
+      "dpr": 2,
+      "seed": 5,
+      "run": 2,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T19:04:58.356Z",
+      "endedAt": "2026-10-08T19:08:05.487Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 56.9762787,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 62.997484500000006,
+          "rafHz": 60.1,
+          "engineHz": 60.1
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsYYhohD.ktrace",
+          "bytes": 2860641864
+        }
+      ]
+    },
+    {
+      "preset": "SvgPathFluid",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "seed": 5,
+      "run": 2,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T20:46:02.397Z",
+      "endedAt": "2026-10-08T20:50:32.376Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 76.35844279999999,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 73.4030101,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentso61Kdm.ktrace",
+          "bytes": 3064646064
+        }
+      ]
+    },
+    {
+      "preset": "SvgPathFluid",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "seed": 5,
+      "run": 3,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T20:53:45.974Z",
+      "endedAt": "2026-10-08T20:57:09.985Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 92.3014988,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 92.1322517,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsggZYvX.ktrace",
+          "bytes": 2930490072
+        }
+      ]
+    },
+    {
+      "preset": "Aurora",
+      "w": 800,
+      "h": 500,
+      "dpr": 2,
+      "seed": 5,
+      "run": 3,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T19:11:45.129Z",
+      "endedAt": "2026-10-08T19:15:13.202Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 66.5675552,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 68.11694059999999,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instruments5gJDVf.ktrace",
+          "bytes": 3716723304
+        }
+      ]
+    },
+    {
+      "preset": "Aurora",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "seed": 5,
+      "run": 3,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T19:08:05.522Z",
+      "endedAt": "2026-10-08T19:11:45.102Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 87.93418960000001,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 78.85550380000001,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instruments3KsYhO.ktrace",
+          "bytes": 4280097064
+        }
+      ]
+    },
+    {
+      "preset": "LavaLamp",
+      "w": 800,
+      "h": 500,
+      "dpr": 2,
+      "seed": 5,
+      "run": 3,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T16:46:07.841Z",
+      "endedAt": "2026-10-08T16:48:41.415Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 30.4233241,
+          "rafHz": 30,
+          "engineHz": 30
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 29.918613699999998,
+          "rafHz": 30,
+          "engineHz": 30
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 30,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 30,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instruments8a6bIm.ktrace",
+          "bytes": 1380112288
+        }
+      ]
+    },
+    {
+      "preset": "CircularFluid",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "seed": 5,
+      "run": 3,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T20:09:51.267Z",
+      "endedAt": "2026-10-08T20:12:59.961Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 80.3569683171875,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 74.8936212,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsnfzi2F.ktrace",
+          "bytes": 2713166488
+        }
+      ]
+    },
+    {
+      "preset": "InkInWater",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "seed": 5,
+      "run": 2,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T17:45:34.438Z",
+      "endedAt": "2026-10-08T17:49:26.167Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 80.9180725,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 79.0869744,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsaDPncF.ktrace",
+          "bytes": 4500891424
+        }
+      ]
+    },
+    {
+      "preset": "(default)",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "seed": 5,
+      "run": 3,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T15:49:36.570Z",
+      "endedAt": "2026-10-08T15:52:23.811Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 39.129832099999994,
+          "rafHz": 60,
+          "engineHz": 24.7
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instruments7z1C0A.ktrace",
+          "bytes": 1947319648
+        }
+      ]
+    },
+    {
+      "preset": "CircularFluid",
+      "w": 800,
+      "h": 500,
+      "dpr": 2,
+      "seed": 5,
+      "run": 3,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T20:13:00.010Z",
+      "endedAt": "2026-10-08T20:17:01.865Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 61.0961474,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 58.9970414,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentszty5JU.ktrace",
+          "bytes": 3067164000
+        }
+      ]
+    },
+    {
+      "preset": "Plasma",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "seed": 5,
+      "run": 1,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T16:49:25.127Z",
+      "endedAt": "2026-10-08T16:53:25.330Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 81.5974372,
+          "rafHz": 52.9,
+          "engineHz": 52.9
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 85.7954627,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsGXaVZj.ktrace",
+          "bytes": 3634331048
+        }
+      ]
+    },
+    {
+      "preset": "LavaLamp",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "seed": 5,
+      "run": 2,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T16:31:26.170Z",
+      "endedAt": "2026-10-08T16:35:00.608Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 100.7953637,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 99.3989024,
+          "rafHz": 60.1,
+          "engineHz": 60.1
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instruments4MWCzc.ktrace",
+          "bytes": 2465623824
+        }
+      ]
+    },
+    {
+      "preset": "SvgPathFluid",
+      "w": 800,
+      "h": 500,
+      "dpr": 2,
+      "seed": 5,
+      "run": 1,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T20:43:08.779Z",
+      "endedAt": "2026-10-08T20:46:02.353Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 68.7810192828125,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 63.9166614,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsr0qbbS.ktrace",
+          "bytes": 2668107832
+        }
+      ]
+    },
+    {
+      "preset": "InkInWater",
+      "w": 800,
+      "h": 500,
+      "dpr": 2,
+      "seed": 5,
+      "run": 1,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T17:42:18.660Z",
+      "endedAt": "2026-10-08T17:45:34.401Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 60.1887956,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 50.019668599999996,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instruments2vwmJg.ktrace",
+          "bytes": 3253748784
+        }
+      ]
+    },
+    {
+      "preset": "LavaLamp",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "seed": 5,
+      "run": 3,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T16:38:01.415Z",
+      "endedAt": "2026-10-08T16:41:37.803Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 100.0506287,
+          "rafHz": 60.1,
+          "engineHz": 60.1
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 99.8444682828125,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsa1Xfex.ktrace",
+          "bytes": 3293476056
+        }
+      ]
+    },
+    {
+      "preset": "Aurora",
+      "w": 800,
+      "h": 500,
+      "dpr": 2,
+      "seed": 5,
+      "run": 1,
+      "infraRetry": true,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T19:15:13.233Z",
+      "endedAt": "2026-10-08T19:19:01.244Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 58.759407100000004,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 59.141205600000006,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsNDuR0H.ktrace",
+          "bytes": 2942361832
+        }
+      ]
+    },
+    {
+      "preset": "CircularFluid",
+      "w": 800,
+      "h": 500,
+      "dpr": 2,
+      "seed": 5,
+      "run": 2,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T19:53:14.904Z",
+      "endedAt": "2026-10-08T19:56:22.479Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 56.27979896875,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 65.4786431,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsVt0EL6.ktrace",
+          "bytes": 2788874320
+        }
+      ]
+    },
+    {
+      "preset": "(default)",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "seed": 5,
+      "run": 2,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T15:43:21.740Z",
+      "endedAt": "2026-10-08T15:45:51.441Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 38.7510681,
+          "rafHz": 60,
+          "engineHz": 24.7
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsz6nXGS.ktrace",
+          "bytes": 1521602776
+        }
+      ]
+    },
+    {
+      "preset": "InkInWater",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "seed": 5,
+      "run": 3,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T18:11:58.059Z",
+      "endedAt": "2026-10-08T18:14:57.898Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 72.0673067,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 78.26456800000001,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsRfhply.ktrace",
+          "bytes": 2858360848
+        }
+      ]
+    },
+    {
+      "preset": "CircularFluid",
+      "w": 1440,
+      "h": 900,
+      "dpr": 2,
+      "seed": 5,
+      "run": 2,
+      "infraRetry": false,
+      "status": "OK",
+      "engineSourceSha": "1a609137452d3b4986aa2a7d1e5078b8545535c2",
+      "adapter": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+      "startedAt": "2026-10-08T19:49:42.126Z",
+      "endedAt": "2026-10-08T19:53:14.868Z",
+      "windows": {
+        "active": {
+          "gpuBusyMsPerSecond": 100.1873514,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "untouched": {
+          "gpuBusyMsPerSecond": 102.1039935,
+          "rafHz": 60,
+          "engineHz": 60
+        },
+        "offscreen": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        },
+        "hidden": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 0,
+          "engineHz": 0
+        },
+        "control": {
+          "gpuBusyMsPerSecond": 0,
+          "rafHz": 60,
+          "engineHz": 0
+        }
+      },
+      "traceDeleted": true,
+      "scratchDeleted": [
+        {
+          "name": "instrumentsoBfHeG.ktrace",
+          "bytes": 3025341312
+        }
+      ]
+    }
+  ],
+  "baseline": "energy-eval.md committed Amendment 3 rounded tables; missing raw baseline slots",
+  "partialHeadline": {
+    "completeScenes": 13,
+    "active": {
+      "baseline": 84.431,
+      "candidate": 64.6698942,
+      "savingPercent": 23.4050358281
+    },
+    "untouched": {
+      "baseline": 90.491,
+      "candidate": 69.0937231,
+      "savingPercent": 23.6457514007
+    }
+  },
+  "finalReleaseObservedEpoch": 1791493030998
+}

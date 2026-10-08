@@ -1,7 +1,8 @@
 # Half dye resolution — owner review packet
 
-Owner appearance approval **pending**. Evidence only; no library/default change,
-no automatic E2 verdict. ADR 0107 Amendment 1 documents the judge's blur blind
+Owner appearance approval **granted 2026-10-08**: half dye resolution as the
+generic library default, no presets named; explicit values remain unchanged.
+Packet itself is evidence only; no automatic E2 verdict. ADR 0107 Amendment 1 documents the judge's blur blind
 spot: it cannot certify resolution/filtering/post-processing changes.
 
 **Is half dye resolution acceptable as a default, per preset?**
