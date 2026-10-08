@@ -1,0 +1,122 @@
+[
+  {
+    "image": "water-lilies.jpg",
+    "seed": 5,
+    "scorer": "fallback",
+    "baselineTransport": 0.10911335904283757,
+    "candidateTransport": 1.4041502880492702,
+    "baselineTemporalChange": 0.14869844876659727,
+    "candidateTemporalChange": 0.03491087524585786,
+    "flatPairTie": false
+  },
+  {
+    "image": "water-lilies.jpg",
+    "seed": 11,
+    "scorer": "fallback",
+    "baselineTransport": 0.11456939545314826,
+    "candidateTransport": 1.4556124234421173,
+    "baselineTemporalChange": 0.14645527346281237,
+    "candidateTemporalChange": 0.03327184057497907,
+    "flatPairTie": false
+  },
+  {
+    "image": "water-lilies.jpg",
+    "seed": 23,
+    "scorer": "fallback",
+    "baselineTransport": 0.10434370395796642,
+    "candidateTransport": 1.3842675975410172,
+    "baselineTemporalChange": 0.14937917968910727,
+    "candidateTemporalChange": 0.03794227725793518,
+    "flatPairTie": false
+  },
+  {
+    "image": "mona-lisa.jpg",
+    "seed": 5,
+    "scorer": "fallback",
+    "baselineTransport": 0.17530456207589798,
+    "candidateTransport": 0.9079489742968992,
+    "baselineTemporalChange": 0.08394627164125577,
+    "candidateTemporalChange": 0.03687138605154815,
+    "flatPairTie": false
+  },
+  {
+    "image": "mona-lisa.jpg",
+    "seed": 11,
+    "scorer": "fallback",
+    "baselineTransport": 0.15411230395156614,
+    "candidateTransport": 0.9797650458119574,
+    "baselineTemporalChange": 0.09004313419127219,
+    "candidateTemporalChange": 0.030191806430262678,
+    "flatPairTie": false
+  },
+  {
+    "image": "mona-lisa.jpg",
+    "seed": 23,
+    "scorer": "fallback",
+    "baselineTransport": 0.15734229043044565,
+    "candidateTransport": 0.9204054780541756,
+    "baselineTemporalChange": 0.08079096040786996,
+    "candidateTemporalChange": 0.03392607695914268,
+    "flatPairTie": false
+  },
+  {
+    "image": "flat.png",
+    "seed": 5,
+    "scorer": "fallback",
+    "baselineTransport": 0.06502652162949617,
+    "candidateTransport": 0,
+    "baselineTemporalChange": 0.13873844660807985,
+    "candidateTemporalChange": 0,
+    "flatPairTie": false
+  },
+  {
+    "image": "flat.png",
+    "seed": 11,
+    "scorer": "fallback",
+    "baselineTransport": 0.06041521923656948,
+    "candidateTransport": 0,
+    "baselineTemporalChange": 0.13671962148928882,
+    "candidateTemporalChange": 0,
+    "flatPairTie": false
+  },
+  {
+    "image": "flat.png",
+    "seed": 23,
+    "scorer": "fallback",
+    "baselineTransport": 0.04688056869813883,
+    "candidateTransport": 0,
+    "baselineTemporalChange": 0.13871962307198593,
+    "candidateTemporalChange": 0,
+    "flatPairTie": false
+  },
+  {
+    "image": "birth-of-venus.png",
+    "seed": 5,
+    "scorer": "fallback",
+    "baselineTransport": 0.0507015837751027,
+    "candidateTransport": 0.20612299921616464,
+    "baselineTemporalChange": 0.23126518718461941,
+    "candidateTemporalChange": 0.008746412478048202,
+    "flatPairTie": false
+  },
+  {
+    "image": "birth-of-venus.png",
+    "seed": 11,
+    "scorer": "fallback",
+    "baselineTransport": 0.04489226343632099,
+    "candidateTransport": 0.18860683068345072,
+    "baselineTemporalChange": 0.22490061901790648,
+    "candidateTemporalChange": 0.0053218263781647625,
+    "flatPairTie": false
+  },
+  {
+    "image": "birth-of-venus.png",
+    "seed": 23,
+    "scorer": "fallback",
+    "baselineTransport": 0.03444696627032799,
+    "candidateTransport": 0.1989386152246393,
+    "baselineTemporalChange": 0.2306399774502188,
+    "candidateTemporalChange": 0.006133646382330338,
+    "flatPairTie": false
+  }
+]

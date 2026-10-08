@@ -1,0 +1,863 @@
+{
+  "images": [
+    {
+      "image": "water-lilies.jpg",
+      "initialPass": 3,
+      "reformPass": 3,
+      "score": {
+        "baselineMedian": 0.10911335904283757,
+        "candidateMedian": 1.4041502880492702,
+        "pairedGain": 11.868729368857622,
+        "baselineNoise": 0.09371621939681336,
+        "candidateNoise": 0.050809964224140525,
+        "flatTies": 0
+      },
+      "work": [
+        {
+          "phase": "initial",
+          "metric": "wallMs",
+          "comparable": true,
+          "baselineValues": [
+            9397.5,
+            16404.399999976158,
+            9399.5
+          ],
+          "candidateValues": [
+            4975,
+            4903.299999982119,
+            4892.9000000059605
+          ],
+          "baselineMedian": 9399.5,
+          "candidateMedian": 4903.299999982119,
+          "baselineNoise": 0.745454545452009,
+          "candidateNoise": 0.01674382558569513,
+          "regression": -0.4783445927993916,
+          "limit": 1.490909090904018,
+          "pass": true
+        },
+        {
+          "phase": "initial",
+          "metric": "seconds",
+          "comparable": true,
+          "baselineValues": [
+            9.331833333154549,
+            16.31806666676219,
+            9.180766666601123
+          ],
+          "candidateValues": [
+            4.757566666851436,
+            4.764299999862904,
+            4.739799999862901
+          ],
+          "baselineMedian": 9.331833333154549,
+          "candidateMedian": 4.757566666851436,
+          "baselineNoise": 0.764833634008802,
+          "candidateNoise": 0.005149691368637705,
+          "regression": -0.4901787787027289,
+          "limit": 1.529667268017604,
+          "pass": true
+        },
+        {
+          "phase": "initial",
+          "metric": "frameCount",
+          "comparable": true,
+          "baselineValues": [
+            565,
+            985,
+            565
+          ],
+          "candidateValues": [
+            295,
+            295,
+            295
+          ],
+          "baselineMedian": 565,
+          "candidateMedian": 295,
+          "baselineNoise": 0.7433628318584071,
+          "candidateNoise": 0,
+          "regression": -0.4778761061946903,
+          "limit": 1.4867256637168142,
+          "pass": true
+        },
+        {
+          "phase": "initial",
+          "metric": "draws",
+          "comparable": true,
+          "baselineValues": [
+            10273,
+            17931,
+            10273
+          ],
+          "candidateValues": [
+            5644,
+            5644,
+            5644
+          ],
+          "baselineMedian": 10273,
+          "candidateMedian": 5644,
+          "baselineNoise": 0.7454492358609949,
+          "candidateNoise": 0,
+          "regression": -0.4505986566728317,
+          "limit": 1.4908984717219897,
+          "pass": true
+        },
+        {
+          "phase": "initial",
+          "metric": "pixels",
+          "comparable": true,
+          "baselineValues": [
+            596354370,
+            1038917918,
+            596354370
+          ],
+          "candidateValues": [
+            241837296,
+            241837296,
+            241837296
+          ],
+          "baselineMedian": 596354370,
+          "candidateMedian": 241837296,
+          "baselineNoise": 0.7421150414308191,
+          "candidateNoise": 0,
+          "regression": -0.5944738427924994,
+          "limit": 1.4842300828616382,
+          "pass": true
+        },
+        {
+          "phase": "reform",
+          "metric": "seconds",
+          "comparable": true,
+          "baselineValues": [
+            7.340399999558926,
+            9.82739999982719,
+            8.70140000000597
+          ],
+          "candidateValues": [
+            5.240166666666658,
+            5.23166666666666,
+            5.22656666667262
+          ],
+          "baselineMedian": 8.70140000000597,
+          "candidateMedian": 5.23166666666666,
+          "baselineNoise": 0.2858160756046794,
+          "candidateNoise": 0.002599553996948956,
+          "regression": -0.3987557557791768,
+          "limit": 0.5716321512093588,
+          "pass": true
+        },
+        {
+          "phase": "reform",
+          "metric": "frameCount",
+          "comparable": true,
+          "baselineValues": [
+            443,
+            593,
+            534
+          ],
+          "candidateValues": [
+            323,
+            323,
+            323
+          ],
+          "baselineMedian": 534,
+          "candidateMedian": 323,
+          "baselineNoise": 0.2808988764044944,
+          "candidateNoise": 0,
+          "regression": -0.3951310861423221,
+          "limit": 0.5617977528089888,
+          "pass": true
+        },
+        {
+          "phase": "reform",
+          "metric": "draws",
+          "comparable": true,
+          "baselineValues": [
+            8074,
+            10809,
+            9733
+          ],
+          "candidateValues": [
+            6201,
+            6201,
+            6201
+          ],
+          "baselineMedian": 9733,
+          "candidateMedian": 6201,
+          "baselineNoise": 0.28100277406760504,
+          "candidateNoise": 0,
+          "regression": -0.36288914003904243,
+          "limit": 0.5620055481352101,
+          "pass": true
+        },
+        {
+          "phase": "reform",
+          "metric": "pixels",
+          "comparable": true,
+          "baselineValues": [
+            469764410,
+            627822820,
+            565653024
+          ],
+          "candidateValues": [
+            266241054,
+            266241054,
+            266241054
+          ],
+          "baselineMedian": 565653024,
+          "candidateMedian": 266241054,
+          "baselineNoise": 0.2794264386359932,
+          "candidateNoise": 0,
+          "regression": -0.5293209039752257,
+          "limit": 0.5588528772719864,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "image": "mona-lisa.jpg",
+      "initialPass": 3,
+      "reformPass": 3,
+      "score": {
+        "baselineMedian": 0.15734229043044565,
+        "candidateMedian": 0.9204054780541756,
+        "pairedGain": 4.8497017905116095,
+        "baselineNoise": 0.1346888879420504,
+        "candidateNoise": 0.07802655810663381,
+        "flatTies": 0
+      },
+      "work": [
+        {
+          "phase": "initial",
+          "metric": "wallMs",
+          "comparable": true,
+          "baselineValues": [
+            7902.800000011921,
+            10396.300000011921,
+            7894.5
+          ],
+          "candidateValues": [
+            4900.199999988079,
+            4885.300000011921,
+            5393.5
+          ],
+          "baselineMedian": 7902.800000011921,
+          "candidateMedian": 4900.199999988079,
+          "baselineNoise": 0.3165713418039362,
+          "candidateNoise": 0.10371005264873176,
+          "regression": -0.3799412866350297,
+          "limit": 0.6331426836078724,
+          "pass": true
+        },
+        {
+          "phase": "initial",
+          "metric": "seconds",
+          "comparable": true,
+          "baselineValues": [
+            7.698566666970641,
+            10.3175666667919,
+            7.836433333834006
+          ],
+          "candidateValues": [
+            4.7481333333750495,
+            4.725033333261801,
+            5.230433333237957
+          ],
+          "baselineMedian": 7.836433333834006,
+          "candidateMedian": 4.7481333333750495,
+          "baselineNoise": 0.33420816438438355,
+          "candidateNoise": 0.10644182976574278,
+          "regression": -0.39409510282249716,
+          "limit": 0.6684163287687671,
+          "pass": true
+        },
+        {
+          "phase": "initial",
+          "metric": "frameCount",
+          "comparable": true,
+          "baselineValues": [
+            475,
+            625,
+            475
+          ],
+          "candidateValues": [
+            295,
+            294,
+            325
+          ],
+          "baselineMedian": 475,
+          "candidateMedian": 295,
+          "baselineNoise": 0.3157894736842105,
+          "candidateNoise": 0.10508474576271186,
+          "regression": -0.37894736842105264,
+          "limit": 0.631578947368421,
+          "pass": true
+        },
+        {
+          "phase": "initial",
+          "metric": "draws",
+          "comparable": true,
+          "baselineValues": [
+            8632,
+            11367,
+            8632
+          ],
+          "candidateValues": [
+            5644,
+            5625,
+            6220
+          ],
+          "baselineMedian": 8632,
+          "candidateMedian": 5644,
+          "baselineNoise": 0.31684430027803523,
+          "candidateNoise": 0.10542168674698796,
+          "regression": -0.34615384615384615,
+          "limit": 0.6336886005560705,
+          "pass": true
+        },
+        {
+          "phase": "initial",
+          "metric": "pixels",
+          "comparable": true,
+          "baselineValues": [
+            638135224,
+            839192844,
+            638135224
+          ],
+          "candidateValues": [
+            295181456,
+            294188944,
+            324957634
+          ],
+          "baselineMedian": 638135224,
+          "candidateMedian": 295181456,
+          "baselineNoise": 0.31507055626818053,
+          "candidateNoise": 0.10423652764962309,
+          "regression": -0.5374311824542066,
+          "limit": 0.6301411125363611,
+          "pass": true
+        },
+        {
+          "phase": "reform",
+          "metric": "seconds",
+          "comparable": true,
+          "baselineValues": [
+            8.293300000429152,
+            7.829599999547003,
+            6.347033333589623
+          ],
+          "candidateValues": [
+            5.2467666668395125,
+            5.225800000131119,
+            5.235733333339285
+          ],
+          "baselineMedian": 7.829599999547003,
+          "candidateMedian": 5.235733333339285,
+          "baselineNoise": 0.2485780457433501,
+          "candidateNoise": 0.004004532961005787,
+          "regression": -0.3312898061660611,
+          "limit": 0.4971560914867002,
+          "pass": true
+        },
+        {
+          "phase": "reform",
+          "metric": "frameCount",
+          "comparable": true,
+          "baselineValues": [
+            504,
+            473,
+            384
+          ],
+          "candidateValues": [
+            323,
+            323,
+            323
+          ],
+          "baselineMedian": 473,
+          "candidateMedian": 323,
+          "baselineNoise": 0.2536997885835095,
+          "candidateNoise": 0,
+          "regression": -0.3171247357293869,
+          "limit": 0.507399577167019,
+          "pass": true
+        },
+        {
+          "phase": "reform",
+          "metric": "draws",
+          "comparable": true,
+          "baselineValues": [
+            9186,
+            8621,
+            6998
+          ],
+          "candidateValues": [
+            6201,
+            6201,
+            6201
+          ],
+          "baselineMedian": 8621,
+          "candidateMedian": 6201,
+          "baselineNoise": 0.2537988632409233,
+          "candidateNoise": 0,
+          "regression": -0.2807098944438,
+          "limit": 0.5075977264818466,
+          "pass": true
+        },
+        {
+          "phase": "reform",
+          "metric": "pixels",
+          "comparable": true,
+          "baselineValues": [
+            679862268,
+            638310584,
+            519016172
+          ],
+          "candidateValues": [
+            325306818,
+            325306818,
+            325306818
+          ],
+          "baselineMedian": 638310584,
+          "candidateMedian": 325306818,
+          "baselineNoise": 0.25198719875840253,
+          "candidateNoise": 0,
+          "regression": -0.49036280119083847,
+          "limit": 0.5039743975168051,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "image": "flat.png",
+      "initialPass": 3,
+      "reformPass": 0,
+      "score": {
+        "baselineMedian": 0.06041521923656948,
+        "candidateMedian": 0,
+        "pairedGain": -1,
+        "baselineNoise": 0.3003540028598216,
+        "candidateNoise": 0,
+        "flatTies": 0
+      },
+      "work": [
+        {
+          "phase": "initial",
+          "metric": "wallMs",
+          "comparable": true,
+          "baselineValues": [
+            7902.800000011921,
+            7893,
+            7392.0999999940395
+          ],
+          "candidateValues": [
+            5391.200000017881,
+            4888.800000011921,
+            4889.9000000059605
+          ],
+          "baselineMedian": 7893,
+          "candidateMedian": 4889.9000000059605,
+          "baselineNoise": 0.06470290130721923,
+          "candidateNoise": 0.10274238737097856,
+          "regression": -0.3804763714676346,
+          "limit": 0.20548477474195712,
+          "pass": true
+        },
+        {
+          "phase": "initial",
+          "metric": "seconds",
+          "comparable": true,
+          "baselineValues": [
+            7.848133332779011,
+            7.842699999511244,
+            7.339133333047231
+          ],
+          "candidateValues": [
+            5.236600000113241,
+            4.739933333357169,
+            4.752800000131128
+          ],
+          "baselineMedian": 7.842699999511244,
+          "candidateMedian": 4.752800000131128,
+          "baselineNoise": 0.06490111820718643,
+          "candidateNoise": 0.10449980364045808,
+          "regression": -0.39398421456547855,
+          "limit": 0.20899960728091616,
+          "pass": true
+        },
+        {
+          "phase": "initial",
+          "metric": "frameCount",
+          "comparable": true,
+          "baselineValues": [
+            475,
+            475,
+            445
+          ],
+          "candidateValues": [
+            325,
+            295,
+            295
+          ],
+          "baselineMedian": 475,
+          "candidateMedian": 295,
+          "baselineNoise": 0.06315789473684211,
+          "candidateNoise": 0.1016949152542373,
+          "regression": -0.37894736842105264,
+          "limit": 0.2033898305084746,
+          "pass": true
+        },
+        {
+          "phase": "initial",
+          "metric": "draws",
+          "comparable": true,
+          "baselineValues": [
+            8632,
+            8632,
+            8085
+          ],
+          "candidateValues": [
+            6220,
+            5644,
+            5644
+          ],
+          "baselineMedian": 8632,
+          "candidateMedian": 5644,
+          "baselineNoise": 0.06336886005560705,
+          "candidateNoise": 0.10205527994330262,
+          "regression": -0.34615384615384615,
+          "limit": 0.20411055988660523,
+          "pass": true
+        },
+        {
+          "phase": "initial",
+          "metric": "pixels",
+          "comparable": true,
+          "baselineValues": [
+            664790936,
+            664790936,
+            622900932
+          ],
+          "candidateValues": [
+            337028706,
+            306150416,
+            306150416
+          ],
+          "baselineMedian": 664790936,
+          "candidateMedian": 306150416,
+          "baselineNoise": 0.06301229714720419,
+          "candidateNoise": 0.10085986621687296,
+          "regression": -0.5394786549857533,
+          "limit": 0.2017197324337459,
+          "pass": true
+        },
+        {
+          "phase": "reform",
+          "metric": "seconds",
+          "comparable": true,
+          "baselineValues": [
+            7.845266667375954,
+            8.34023333360752,
+            7.844233333935333
+          ],
+          "candidateValues": [
+            5.243433333386972,
+            5.239100000113241,
+            5.235099999994031
+          ],
+          "baselineMedian": 7.845266667375954,
+          "candidateMedian": 5.239100000113241,
+          "baselineNoise": 0.06322283495279667,
+          "candidateNoise": 0.0015906039954879765,
+          "regression": -0.3321960588159856,
+          "limit": 0.12644566990559333,
+          "pass": true
+        },
+        {
+          "phase": "reform",
+          "metric": "frameCount",
+          "comparable": true,
+          "baselineValues": [
+            474,
+            503,
+            474
+          ],
+          "candidateValues": [
+            324,
+            323,
+            323
+          ],
+          "baselineMedian": 474,
+          "candidateMedian": 323,
+          "baselineNoise": 0.06118143459915612,
+          "candidateNoise": 0.0030959752321981426,
+          "regression": -0.31856540084388185,
+          "limit": 0.12236286919831224,
+          "pass": true
+        },
+        {
+          "phase": "reform",
+          "metric": "draws",
+          "comparable": true,
+          "baselineValues": [
+            8639,
+            9168,
+            8639
+          ],
+          "candidateValues": [
+            6220,
+            6201,
+            6201
+          ],
+          "baselineMedian": 8639,
+          "candidateMedian": 6201,
+          "baselineNoise": 0.0612339391133233,
+          "candidateNoise": 0.00306402193194646,
+          "regression": -0.2822085889570552,
+          "limit": 0.1224678782266466,
+          "pass": true
+        },
+        {
+          "phase": "reform",
+          "metric": "pixels",
+          "comparable": true,
+          "baselineValues": [
+            666409368,
+            706903276,
+            666409368
+          ],
+          "candidateValues": [
+            338463458,
+            337434210,
+            337434210
+          ],
+          "baselineMedian": 666409368,
+          "candidateMedian": 337434210,
+          "baselineNoise": 0.060764313865407725,
+          "candidateNoise": 0.0030502182929229376,
+          "regression": -0.49365326148896516,
+          "limit": 0.12152862773081545,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "image": "birth-of-venus.png",
+      "initialPass": 3,
+      "reformPass": 3,
+      "score": {
+        "baselineMedian": 0.04489226343632099,
+        "candidateMedian": 0.1989386152246393,
+        "pairedGain": 3.2013214805038004,
+        "baselineNoise": 0.36208059608826904,
+        "candidateNoise": 0.08804810726632867,
+        "flatTies": 0
+      },
+      "work": [
+        {
+          "phase": "initial",
+          "metric": "wallMs",
+          "comparable": true,
+          "baselineValues": [
+            9898,
+            9908.800000011921,
+            7904.399999976158
+          ],
+          "candidateValues": [
+            5397.200000017881,
+            4887,
+            4903.899999976158
+          ],
+          "baselineMedian": 9898,
+          "candidateMedian": 4903.899999976158,
+          "baselineNoise": 0.20250555668172993,
+          "candidateNoise": 0.10403964192180956,
+          "regression": -0.5045564760581775,
+          "limit": 0.40501111336345985,
+          "pass": true
+        },
+        {
+          "phase": "initial",
+          "metric": "seconds",
+          "comparable": true,
+          "baselineValues": [
+            9.83836666692302,
+            9.66263333328568,
+            7.846900000333775
+          ],
+          "candidateValues": [
+            5.256033333261802,
+            4.7433000000417165,
+            4.748433333297564
+          ],
+          "baselineMedian": 9.66263333328568,
+          "candidateMedian": 4.748433333297564,
+          "baselineNoise": 0.20609978645563148,
+          "candidateNoise": 0.10797947390871675,
+          "regression": -0.5085777169107474,
+          "limit": 0.41219957291126297,
+          "pass": true
+        },
+        {
+          "phase": "initial",
+          "metric": "frameCount",
+          "comparable": true,
+          "baselineValues": [
+            595,
+            596,
+            475
+          ],
+          "candidateValues": [
+            325,
+            294,
+            295
+          ],
+          "baselineMedian": 595,
+          "candidateMedian": 295,
+          "baselineNoise": 0.20336134453781513,
+          "candidateNoise": 0.10508474576271186,
+          "regression": -0.5042016806722689,
+          "limit": 0.40672268907563025,
+          "pass": true
+        },
+        {
+          "phase": "initial",
+          "metric": "draws",
+          "comparable": true,
+          "baselineValues": [
+            10820,
+            10838,
+            8632
+          ],
+          "candidateValues": [
+            6220,
+            5625,
+            5644
+          ],
+          "baselineMedian": 10820,
+          "candidateMedian": 5644,
+          "baselineNoise": 0.20388170055452864,
+          "candidateNoise": 0.10542168674698796,
+          "regression": -0.478373382624769,
+          "limit": 0.4077634011090573,
+          "pass": true
+        },
+        {
+          "phase": "initial",
+          "metric": "pixels",
+          "comparable": true,
+          "baselineValues": [
+            832350952,
+            833747048,
+            664790936
+          ],
+          "candidateValues": [
+            337028706,
+            305121168,
+            306150416
+          ],
+          "baselineMedian": 832350952,
+          "candidateMedian": 306150416,
+          "baselineNoise": 0.20298662672761622,
+          "candidateNoise": 0.10422176921033482,
+          "regression": -0.6321859003532443,
+          "limit": 0.40597325345523244,
+          "pass": true
+        },
+        {
+          "phase": "reform",
+          "metric": "seconds",
+          "comparable": true,
+          "baselineValues": [
+            17.314200000465082,
+            8.184866666833551,
+            8.336466666261364
+          ],
+          "candidateValues": [
+            5.250666666726264,
+            5.235766666601093,
+            5.234900000214568
+          ],
+          "baselineMedian": 8.336466666261364,
+          "candidateMedian": 5.235766666601093,
+          "baselineNoise": 1.0951082393910347,
+          "candidateNoise": 0.0030113386473602974,
+          "regression": -0.371944148977307,
+          "limit": 2.1902164787820695,
+          "pass": true
+        },
+        {
+          "phase": "reform",
+          "metric": "frameCount",
+          "comparable": true,
+          "baselineValues": [
+            1043,
+            504,
+            503
+          ],
+          "candidateValues": [
+            322,
+            323,
+            323
+          ],
+          "baselineMedian": 504,
+          "candidateMedian": 323,
+          "baselineNoise": 1.0714285714285714,
+          "candidateNoise": 0.0030959752321981426,
+          "regression": -0.35912698412698413,
+          "limit": 2.142857142857143,
+          "pass": true
+        },
+        {
+          "phase": "reform",
+          "metric": "draws",
+          "comparable": true,
+          "baselineValues": [
+            19014,
+            9186,
+            9168
+          ],
+          "candidateValues": [
+            6182,
+            6201,
+            6201
+          ],
+          "baselineMedian": 9186,
+          "candidateMedian": 6201,
+          "baselineNoise": 1.0718484650555193,
+          "candidateNoise": 0.00306402193194646,
+          "regression": -0.3249510124101894,
+          "limit": 2.1436969301110387,
+          "pass": true
+        },
+        {
+          "phase": "reform",
+          "metric": "pixels",
+          "comparable": true,
+          "baselineValues": [
+            1460923348,
+            708299372,
+            706903276
+          ],
+          "candidateValues": [
+            336404962,
+            337434210,
+            337434210
+          ],
+          "baselineMedian": 708299372,
+          "candidateMedian": 337434210,
+          "baselineNoise": 1.064549965462909,
+          "candidateNoise": 0.0030502182929229376,
+          "regression": -0.5235994505441973,
+          "limit": 2.129099930925818,
+          "pass": true
+        }
+      ]
+    }
+  ],
+  "slots": 12,
+  "splitGain": 4.025511635507705,
+  "splitNoise": 0.217521445400936,
+  "primaryPass": true,
+  "gatesPass": false,
+  "workPass": true,
+  "heldOutPass": false
+}
