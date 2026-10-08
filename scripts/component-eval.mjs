@@ -27,6 +27,75 @@ import {
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'evals/components');
+const RUN = process.argv[2] === 'round-1' ? 'round-1' : 'baseline-a1';
+const RESULT = join(OUT, `${RUN}.json`);
+const ARTIFACTS = join(OUT, RUN);
+const DECORATIVE = new Set(['Fluid', 'splash-cursor']);
+// ADR 0111 Amendment 1: native contracts, not a universal Enter requirement.
+const KEY_CONTRACTS = {
+	Fluid: { role: 'decorative', keys: [] },
+	FluidBackground: { role: 'button', keys: ['Enter', 'Space'] },
+	FluidReveal: { role: 'button', keys: ['Enter', 'Space'] },
+	FluidDistortion: { role: 'image', keys: [] },
+	FluidStick: { role: 'image', keys: [] },
+	FluidText: { role: 'image', keys: [] },
+	EnamelText: { role: 'heading', keys: [] },
+	InkPaper: { role: 'button', keys: ['Enter', 'Space'] },
+	LiquidButton: { role: 'button', keys: ['Enter', 'Space'] },
+	LiquidCaustics: { role: 'button', keys: ['Enter', 'Space'] },
+	LiquidDropZone: { role: 'file input', keys: ['Enter', 'Space'] },
+	LiquidSegmented: {
+		role: 'radio group',
+		keys: ['ArrowRight', 'ArrowLeft', 'Space']
+	},
+	LiquidToggle: { role: 'switch', keys: ['Space'] },
+	'splash-cursor': { role: 'decorative', keys: [] }
+};
+export function majority(observations) {
+	assert.equal(observations.length, 3, 'Keyboard requires three observations');
+	return observations.filter(Boolean).length >= 2;
+}
+export function focusDiff(unfocused, noise, focused, box, clip) {
+	const images = [unfocused, noise, focused].map((p) => PNG.sync.read(p));
+	assert(
+		images.every(
+			(p) => p.width === images[0].width && p.height === images[0].height
+		)
+	);
+	let changed = 0,
+		pixels = 0,
+		noisy = 0;
+	const distance = (a, b, i) =>
+		Math.abs(a[i] - b[i]) +
+		Math.abs(a[i + 1] - b[i + 1]) +
+		Math.abs(a[i + 2] - b[i + 2]);
+	for (let y = 0; y < images[0].height; y++)
+		for (let x = 0; x < images[0].width; x++) {
+			const px = x + clip.x,
+				py = y + clip.y;
+			if (
+				px >= box.x + 4 &&
+				px < box.x + box.width - 4 &&
+				py >= box.y + 4 &&
+				py < box.y + box.height - 4
+			)
+				continue;
+			pixels++;
+			const i = (y * images[0].width + x) * 4;
+			if (distance(images[0].data, images[1].data, i) > 30) {
+				noisy++;
+				continue;
+			}
+			if (distance(images[1].data, images[2].data, i) > 30) changed++;
+		}
+	return {
+		changed,
+		pixels,
+		noisy,
+		fraction: changed / pixels,
+		pass: changed >= 12 && changed / pixels >= 0.0025
+	};
+}
 const LOCK = '/tmp/svelte-fluid-gpu.lock';
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const NAMES = [
@@ -250,7 +319,7 @@ async function acquire() {
 		join(LOCK, 'owner'),
 		JSON.stringify({
 			lane: 'E4',
-			purpose: 'component baseline R=2 hardware/AX/fallback/static screenshots',
+			purpose: `${RUN} Amendment 1 R=2 cells / keyboard R=3`,
 			start,
 			worktree: ROOT,
 			pid: process.pid
@@ -478,7 +547,7 @@ async function cpu() {
 			check: checked.output,
 			build: built.output
 		};
-		await save(join(OUT, `${name}-cpu.json`), logs);
+		await save(join(ARTIFACTS, `${name}-cpu.json`), logs);
 		const entry = join(dir, 'entry.js');
 		await writeFile(
 			entry,
@@ -565,9 +634,16 @@ async function cpu() {
 		);
 	}
 	const result = {
-		protocol: 'ADR 0111 E4',
-		librarySha: '2a9216564d1e7d7653991c7ff794dd5c428f7b16',
+		protocol: 'ADR 0111 E4 Amendment 1 (post-hoc)',
+		run: RUN,
+		librarySha: '88c8a78',
+		libraryTree: execFileSync('git', ['rev-parse', 'HEAD:src/lib'], {
+			cwd: ROOT,
+			encoding: 'utf8'
+		}).trim(),
+		keyboardContracts: KEY_CONTRACTS,
 		harnessSha: sha(),
+		harnessSourceSha: hash(await readFile(fileURLToPath(import.meta.url))),
 		createdAt: new Date().toISOString(),
 		repeats: 2,
 		splitSalt: SALT,
@@ -579,8 +655,18 @@ async function cpu() {
 		],
 		rows
 	};
-	await save(join(OUT, 'baseline.json'), result);
-	await save(join(OUT, 'local-state.json'), { temp, pid: process.pid });
+	await save(RESULT, result);
+	let releasedAt = 0;
+	try {
+		releasedAt = (await json(join(OUT, 'local-state.json'))).releasedAt ?? 0;
+	} catch {}
+	await save(join(OUT, 'local-state.json'), {
+		temp,
+		pid: process.pid,
+		run: RUN,
+		worktree: ROOT,
+		releasedAt
+	});
 	await pageReport(result);
 	console.log(`CPU fixtures preserved for hardware resume: ${temp}`);
 }
@@ -642,6 +728,156 @@ async function ring(page) {
 		return false;
 	});
 }
+const CONTROL_SELECTOR = '#specimen button,#specimen input,#specimen a[href]';
+async function activeControl(page) {
+	return page.evaluate(
+		(selector) =>
+			[...document.querySelectorAll(selector)].indexOf(document.activeElement),
+		CONTROL_SELECTOR
+	);
+}
+async function resetFocus(page) {
+	await page.evaluate(() => {
+		document.activeElement?.blur();
+		document.body.tabIndex = -1;
+		document.body.focus();
+	});
+}
+async function focusPixels(page, idx, prefix) {
+	const control = page.locator(CONTROL_SELECTOR).nth(idx);
+	const visual = await control.evaluate((e) => {
+		const target =
+			e.type === 'radio'
+				? e.closest('.track')
+				: e.type === 'file' || e.type === 'checkbox'
+				? e.closest('label')
+				: e;
+		const r = target.getBoundingClientRect();
+		return { x: r.x, y: r.y, width: r.width, height: r.height };
+	});
+	const clip = {
+		x: Math.max(0, Math.floor(visual.x - 12)),
+		y: Math.max(0, Math.floor(visual.y - 12))
+	};
+	clip.width = Math.min(800, Math.ceil(visual.x + visual.width + 12)) - clip.x;
+	clip.height =
+		Math.min(600, Math.ceil(visual.y + visual.height + 12)) - clip.y;
+	await resetFocus(page);
+	await page.waitForTimeout(150);
+	const unfocused = await page.screenshot({ clip });
+	await page.waitForTimeout(150);
+	const noise = await page.screenshot({ clip });
+	for (let n = 0; n < 8; n++) {
+		await page.keyboard.press('Tab');
+		if ((await activeControl(page)) === idx) break;
+	}
+	assert.equal(await activeControl(page), idx, 'Tab could not restore focus');
+	await page.waitForTimeout(150);
+	const focused = await page.screenshot({ clip });
+	const computedProxy = await ring(page);
+	const files = [];
+	for (const [state, image] of [
+		['unfocused', unfocused],
+		['noise', noise],
+		['focused', focused]
+	]) {
+		const file = `${prefix}-control-${idx}-${state}.png`;
+		await mkdir(ARTIFACTS, { recursive: true });
+		await writeFile(join(ARTIFACTS, file), image);
+		files.push({ file: `${RUN}/${file}`, sha256: hash(image) });
+	}
+	return {
+		control: idx,
+		...focusDiff(unfocused, noise, focused, visual, clip),
+		box: visual,
+		clip,
+		computedProxy,
+		files
+	};
+}
+async function keyboardAttempt(page, name, prefix) {
+	await page.evaluate((selector) => {
+		for (const e of document.querySelectorAll(selector)) {
+			e.dataset.e4Clicks = '0';
+			e.dataset.e4Shadow = getComputedStyle(e).boxShadow;
+			e.addEventListener(
+				'click',
+				() => (e.dataset.e4Clicks = String(Number(e.dataset.e4Clicks) + 1))
+			);
+		}
+	}, CONTROL_SELECTOR);
+	await resetFocus(page);
+	const count = await page.locator(CONTROL_SELECTOR).count(),
+		reached = new Set(),
+		keyboard = [],
+		focus = [];
+	for (let n = 0; n < count + 4; n++) {
+		await page.keyboard.press('Tab');
+		const idx = await activeControl(page);
+		if (idx < 0 || reached.has(idx)) continue;
+		reached.add(idx);
+		if (prefix) focus.push(await focusPixels(page, idx, prefix));
+		if (name === 'LiquidSegmented') {
+			for (const key of ['ArrowRight', 'ArrowLeft']) {
+				let activated = true;
+				for (let j = 0; j < count; j++) {
+					const before = await activeControl(page);
+					await page.keyboard.press(key);
+					const after = await activeControl(page);
+					const expected =
+						(before + (key === 'ArrowRight' ? 1 : count - 1)) % count;
+					activated &&=
+						after === expected &&
+						(await page.locator(CONTROL_SELECTOR).nth(after).isChecked());
+					reached.add(after);
+				}
+				keyboard.push({ control: idx, key, activated });
+			}
+			const unselectedIndex = await page
+				.locator('#specimen input')
+				.evaluateAll((inputs) => inputs.findIndex((input) => !input.checked));
+			const unselected = page.locator('#specimen input').nth(unselectedIndex);
+			await unselected.focus();
+			assert.equal(await unselected.isChecked(), false);
+			await page.keyboard.press('Space');
+			keyboard.push({
+				control: idx,
+				key: 'Space',
+				activated: await unselected.isChecked(),
+				focusedUnselected: true
+			});
+			continue;
+		}
+		for (const key of KEY_CONTRACTS[name].keys) {
+			const before = await page.evaluate(() => ({
+				clicks: document.activeElement.dataset.e4Clicks,
+				checked: document.activeElement.checked
+			}));
+			const file =
+				(await page.locator(CONTROL_SELECTOR).nth(idx).getAttribute('type')) ===
+				'file';
+			let activated;
+			if (file) {
+				const chooser = page
+					.waitForEvent('filechooser', { timeout: 800 })
+					.then(() => true)
+					.catch(() => false);
+				await page.keyboard.press(key);
+				activated = await chooser;
+			} else {
+				await page.keyboard.press(key);
+				const after = await page.evaluate(() => ({
+					clicks: document.activeElement.dataset.e4Clicks,
+					checked: document.activeElement.checked
+				}));
+				activated =
+					after.clicks !== before.clicks || after.checked !== before.checked;
+			}
+			keyboard.push({ control: idx, key, activated });
+		}
+	}
+	return { keyboard, focus, reached: reached.size };
+}
 async function accessibility(page, name) {
 	const snapshot = await page.locator('#specimen').ariaSnapshot(),
 		tree = await ax(page),
@@ -686,91 +922,59 @@ async function accessibility(page, name) {
 		errors.push('Named heading semantics missing');
 	if (tree.some((n) => n.role === 'Canvas'))
 		errors.push('Decorative canvas exposed to accessibility tree');
-	await page.evaluate(() => {
-		document.activeElement?.blur();
-		document.body.tabIndex = -1;
-		document.body.focus();
-		for (const e of document.querySelectorAll('#specimen *')) {
-			e.dataset.e4Clicks = '0';
-			e.dataset.e4Shadow = getComputedStyle(e).boxShadow;
-			e.addEventListener(
-				'click',
-				() => (e.dataset.e4Clicks = String(Number(e.dataset.e4Clicks) + 1))
-			);
-		}
-	});
-	const reached = new Set(),
-		keyboard = [];
-	for (let i = 0; i < controls + 4; i++) {
-		await page.keyboard.press('Tab');
-		const target = await page.evaluate(() => {
-			const e = document.activeElement;
-			if (!e?.closest('#specimen') || !e.matches('button,input,a[href]'))
-				return null;
-			return {
-				tag: e.tagName,
-				type: e.type ?? '',
-				text: e.textContent,
-				value: e.value,
-				idx: [
-					...document.querySelectorAll(
-						'#specimen button,#specimen input,#specimen a[href]'
-					)
-				].indexOf(e)
-			};
+	const attempts = [];
+	for (let repeat = 1; repeat <= 3; repeat++) {
+		const context = await browser.newContext({
+			viewport: { width: 800, height: 600 },
+			deviceScaleFactor: 1,
+			reducedMotion: 'reduce'
 		});
-		if (!target || reached.has(target.idx)) continue;
-		reached.add(target.idx);
-		const focus = await ring(page);
-		if (!focus) errors.push(`Focus indicator invisible: control ${target.idx}`);
-		if (name === 'LiquidSegmented') {
-			for (let j = 0; j < 3; j++) {
-				const idx = await page.evaluate(() =>
-					[...document.querySelectorAll('#specimen input')].indexOf(
-						document.activeElement
-					)
-				);
-				reached.add(idx);
-				await page.keyboard.press('ArrowRight');
-			}
-		}
-		for (const key of ['Enter', 'Space']) {
-			const before = await page.evaluate(() => ({
-				clicks: document.activeElement?.dataset.e4Clicks,
-				checked: document.activeElement?.checked
-			}));
-			let activated = false;
-			if (target.type === 'file') {
-				const chooser = page
-					.waitForEvent('filechooser', { timeout: 800 })
-					.then(() => true)
-					.catch(() => false);
-				await page.keyboard.press(key);
-				activated = await chooser;
-			} else {
-				await page.keyboard.press(key);
-				const after = await page.evaluate(() => ({
-					clicks: document.activeElement?.dataset.e4Clicks,
-					checked: document.activeElement?.checked
-				}));
-				activated =
-					after.clicks !== before.clicks || after.checked !== before.checked;
-			}
-			keyboard.push({ control: target.idx, key, activated, focus });
-			if (!activated)
-				errors.push(
-					`${key} does not activate ${target.type || target.tag.toLowerCase()}`
-				);
+		try {
+			const probe = await context.newPage();
+			await probe.goto(page.url());
+			await probe.waitForTimeout(800);
+			attempts.push(
+				await keyboardAttempt(
+					probe,
+					name,
+					repeat === 1 ? `${name}-${page.__e4Repeat}` : null
+				)
+			);
+		} finally {
+			await context.close();
 		}
 	}
-	if (reached.size < controls)
-		errors.push(`Keyboard reaches ${reached.size}/${controls} controls`);
+	const keyboard = attempts[0].keyboard.map((probe, i) => {
+		const observations = attempts.map((a) => a.keyboard[i]);
+		assert(
+			observations.every(
+				(o) => o?.key === probe.key && o.control === probe.control
+			),
+			'Keyboard probe mismatch'
+		);
+		return {
+			...probe,
+			observations,
+			activated: majority(observations.map((o) => o.activated))
+		};
+	});
+	for (const probe of keyboard)
+		if (!probe.activated)
+			errors.push(
+				`${probe.key} does not activate ${KEY_CONTRACTS[name].role} (R=3 majority)`
+			);
+	for (const focus of attempts[0].focus)
+		if (!focus.pass)
+			errors.push(`Focus indicator invisible: control ${focus.control}`);
+	if (attempts.some((a) => a.reached < controls))
+		errors.push('Keyboard does not reach every control');
 	return check(!errors.length, errors.join('; '), {
 		snapshot,
 		tree,
 		keyboard,
+		focus: attempts[0].focus,
 		controls,
-		reached: reached.size
+		attempts
 	});
 }
 async function themed(page, name) {
@@ -877,7 +1081,55 @@ async function motion(context, url) {
 		await page.close();
 	}
 }
-async function fallback(context, url, ssr) {
+async function decorativeLayout(url, name, ssr) {
+	const selector =
+		name === 'Fluid'
+			? '#specimen .svelte-fluid-container'
+			: '#specimen .splash-cursor';
+	const boxes = [];
+	let shifts = [];
+	for (const javaScriptEnabled of [false, true]) {
+		const context = await browser.newContext({
+			javaScriptEnabled,
+			viewport: { width: 800, height: 600 },
+			deviceScaleFactor: 1
+		});
+		try {
+			const page = await context.newPage();
+			if (javaScriptEnabled)
+				await page.addInitScript(() => {
+					window.__e4Shifts = [];
+					new PerformanceObserver((list) => {
+						for (const e of list.getEntries())
+							if (e.sources.some((s) => s.node?.closest?.('#specimen')))
+								window.__e4Shifts.push(e.value);
+					}).observe({ type: 'layout-shift', buffered: true });
+				});
+			await page.goto(url);
+			await page.waitForTimeout(500);
+			const el = page.locator(selector);
+			boxes.push((await el.count()) ? await el.boundingBox() : null);
+			if (javaScriptEnabled)
+				shifts = await page.evaluate(() => window.__e4Shifts);
+		} finally {
+			await context.close();
+		}
+	}
+	const emitted = /<(?:div|canvas|section|span)\b/.test(ssr.html ?? '');
+	const stable =
+		!!boxes[0] &&
+		!!boxes[1] &&
+		['x', 'y', 'width', 'height'].every(
+			(key) => Math.abs(boxes[0][key] - boxes[1][key]) <= 1
+		);
+	return {
+		emitted,
+		boxes,
+		shifts,
+		pass: emitted && stable && !shifts.some((s) => s > 0)
+	};
+}
+async function fallback(context, url, ssr, name) {
 	const page = await context.newPage(),
 		errors = [];
 	page.on('pageerror', (e) => errors.push(e.message));
@@ -897,6 +1149,29 @@ async function fallback(context, url, ssr) {
 			(n) =>
 				n.name?.trim() && !['RootWebArea', 'generic', 'none'].includes(n.role)
 		);
+		if (DECORATIVE.has(name)) {
+			const layout = await decorativeLayout(url, name, ssr);
+			const correct =
+				name === 'Fluid'
+					? accessible &&
+					  tree.some((n) => n.name?.includes('This animation requires WebGL'))
+					: (await page
+							.locator('#specimen .splash-cursor')
+							.getAttribute('aria-hidden')) === 'true' && !accessible;
+			return check(
+				layout.pass && correct && !errors.length,
+				[
+					!layout.pass
+						? 'Decorative SSR missing own layout element or shifts on hydration'
+						: null,
+					!correct ? 'Decorative no-GPU semantics incorrect' : null,
+					...errors
+				]
+					.filter(Boolean)
+					.join('; '),
+				{ ssr, layout, snapshot, tree, correct, errors }
+			);
+		}
 		return check(
 			ssr.meaningful && accessible && !errors.length,
 			[
@@ -951,7 +1226,7 @@ async function install(page, url, row) {
 	);
 }
 async function ssrOnly() {
-	const result = await json(join(OUT, 'baseline.json'));
+	const result = await json(RESULT);
 	temp = (await json(join(OUT, 'local-state.json'))).temp;
 	for (const row of result.rows) {
 		try {
@@ -967,13 +1242,21 @@ async function ssrOnly() {
 		}
 		console.log(`SSR ${row.name}: ${row.ssr.meaningful}`);
 	}
-	await save(join(OUT, 'baseline.json'), result);
+	await save(RESULT, result);
 }
 async function hardware() {
-	const result = await json(join(OUT, 'baseline.json')),
+	const result = await json(RESULT),
 		state = await json(join(OUT, 'local-state.json'));
 	temp = state.temp;
+	assert(
+		state.run === RUN && state.worktree === ROOT,
+		'Fixture/run ownership mismatch'
+	);
+	result.harnessSourceSha = hash(
+		await readFile(fileURLToPath(import.meta.url))
+	);
 	await acquire();
+	const acquiredAt = new Date().toISOString();
 	const deadline = Date.now() + 650000;
 	const hardStop = setTimeout(async () => {
 		console.error('E4 12-minute lock ceiling reached');
@@ -1004,6 +1287,7 @@ async function hardware() {
 		result.renderer = renderer;
 		for (const row of result.rows) {
 			if (
+				row.installR3 &&
 				row.trials.every(
 					(t) => !Object.values(t.checks).some((c) => c.status === 'missing')
 				)
@@ -1017,6 +1301,8 @@ async function hardware() {
 				html.match(/<article id="specimen">([\s\S]*?)<\/article>/)?.[1] ?? '';
 			const ssr = { meaningful: meaningful(specimenHtml), html: specimenHtml };
 			for (const trial of row.trials) {
+				if (!Object.values(trial.checks).some((c) => c.status === 'missing'))
+					continue;
 				const context = await browser.newContext({
 					viewport: { width: 800, height: 600 },
 					deviceScaleFactor: 1
@@ -1027,14 +1313,14 @@ async function hardware() {
 					const page = await context.newPage();
 					await page.goto(url);
 					await page.waitForTimeout(800);
-					await mkdir(join(OUT, 'baseline'), { recursive: true });
+					page.__e4Repeat = `r${trial.repeat}`;
+					await mkdir(ARTIFACTS, { recursive: true });
 					const screenshot = join(
-						OUT,
-						'baseline',
+						ARTIFACTS,
 						`${row.name}-r${trial.repeat}.png`
 					);
 					await page.screenshot({ path: screenshot });
-					trial.screenshot = `baseline/${row.name}-r${trial.repeat}.png`;
+					trial.screenshot = `${RUN}/${row.name}-r${trial.repeat}.png`;
 					trial.screenshotSha = hash(await readFile(screenshot));
 					for (const [key, fn] of [
 						['a11y', () => accessibility(page, row.name)],
@@ -1048,7 +1334,7 @@ async function hardware() {
 						],
 						['install', () => install(page, 'http://127.0.0.1:5237/', row)],
 						['reducedMotion', () => motion(context, url)],
-						['ssrFallback', () => fallback(context, url, ssr)]
+						['ssrFallback', () => fallback(context, url, ssr, row.name)]
 					]) {
 						try {
 							trial.checks[key] = await fn();
@@ -1066,7 +1352,26 @@ async function hardware() {
 						.map(([k, v]) => `${k}=${v.status}`)
 						.join(' ')}`
 				);
-				await save(join(OUT, 'baseline.json'), result);
+				await save(RESULT, result);
+			}
+			if (!row.installR3) {
+				const context = await browser.newContext({
+					viewport: { width: 800, height: 600 },
+					deviceScaleFactor: 1
+				});
+				try {
+					row.installR3 = await install(
+						await context.newPage(),
+						'http://127.0.0.1:5237/',
+						row
+					);
+				} finally {
+					await context.close();
+				}
+				console.log(
+					`Supplemental ${row.name} install R3=${row.installR3.status}`
+				);
+				await save(RESULT, result);
 			}
 			const p = server;
 			server = undefined;
@@ -1079,6 +1384,12 @@ async function hardware() {
 		await cleanup();
 		clearTimeout(hardStop);
 		state.releasedAt = Date.now();
+		result.gpuBatches ??= [];
+		result.gpuBatches.push({
+			acquiredAt,
+			releasedAt: new Date(state.releasedAt).toISOString(),
+			durationMs: state.releasedAt - Date.parse(acquiredAt)
+		});
 		await save(join(OUT, 'local-state.json'), state);
 		result.summary = summary(result.rows);
 		result.complete = result.rows.every((r) =>
@@ -1086,79 +1397,63 @@ async function hardware() {
 				Object.values(t.checks).every((c) => c.status !== 'missing')
 			)
 		);
-		await save(join(OUT, 'baseline.json'), result);
+		if (RUN === 'round-1' && result.complete)
+			result.verdict = candidateVerdict(
+				await json(join(OUT, 'baseline-a1.json')),
+				result
+			);
+		await save(RESULT, result);
 		await pageReport(result);
 	}
 }
 async function pageReport(result) {
-	const pct = (x) => (x === null ? 'missing' : `${(x * 100).toFixed(1)}%`);
-	const stats = summary(result.rows);
-	for (const row of result.rows) {
-		const cells = row.trials
-			.flatMap((t) => Object.values(t.checks))
-			.filter((c) => ['pass', 'fail'].includes(c.status));
-		row.score = {
-			passed: cells.filter((c) => c.status === 'pass').length,
-			total: cells.length,
-			rate: cells.length
-				? cells.filter((c) => c.status === 'pass').length / cells.length
-				: null
-		};
+	result.summary = summary(result.rows);
+	await save(RESULT, result);
+	const path = join(ROOT, 'dev-docs/benchmarks/component-eval.md');
+	const original = (await readFile(path, 'utf8')).split(
+		'\n## Amendment 1 runs'
+	)[0];
+	let text =
+		original +
+		'\n## Amendment 1 runs (post-hoc)\n\nOriginal baseline above remains historical. ADR 0111 Amendment 1 was committed before these observations. R=2 scored cells; keyboard/filechooser R=3 majority per cell. Focus pixels, native role contracts, decorative layout checks apply to both splits. No held-out gain claim.\n';
+	for (const run of ['baseline-a1', 'round-1']) {
+		let r;
+		try {
+			r = await json(join(OUT, `${run}.json`));
+		} catch {
+			continue;
+		}
+		text += `\n### ${run}\n\nRenderer: ${r.renderer ?? 'pending'}. Complete: ${
+			r.complete ?? false
+		}.\n\n| Split | Passed / observed | Pass rate | Wilson 95% | Missing | N/A | All-pass components |\n|---|---|---|---|---|---|---|\n`;
+		for (const [split, v] of Object.entries(summary(r.rows))) {
+			const pct = (x) => (x === null ? 'missing' : `${(100 * x).toFixed(2)}%`);
+			text += `| ${split} | ${v.passed}/${v.total} | ${pct(v.rate)} | ${pct(
+				v.lower
+			)}–${pct(v.upper)} | ${v.missing} | ${v.na} | ${
+				v.allPassComponents.passed
+			}/${v.allPassComponents.total} |\n`;
+		}
+		text += '\nFailures (ranked by cells):\n\n';
+		const causes = new Map();
+		for (const row of r.rows)
+			for (const trial of row.trials)
+				for (const [key, c] of Object.entries(trial.checks))
+					if (['fail', 'missing'].includes(c.status)) {
+						const cause = `${key}: ${c.cause}`,
+							cells = causes.get(cause) ?? [];
+						cells.push(`${row.name} R${trial.repeat} (${row.split})`);
+						causes.set(cause, cells);
+					}
+		for (const [cause, cells] of [...causes].sort(
+			(a, b) => b[1].length - a[1].length
+		))
+			text += `- **${cells.length} cells — ${cause}**: ${cells.join(', ')}.\n`;
+		if (!causes.size) text += 'None.\n';
+		if (r.verdict)
+			text += `\nRound verdict: **${r.verdict.decision}**. ${r.verdict.reason}\n`;
 	}
-	await save(join(OUT, 'baseline.json'), result);
-	let text = `# E4 — Component excellence\n\nProtocol: [ADR 0111](../decisions/0111-component-excellence-eval.md). Frozen library: \`2a92165\`. Measurement only; no component fixes.\n\nRun: \`bun scripts/component-eval.mjs --self-check\`, then \`baseline --cpu-only\`, then \`baseline --hardware\`. CPU fixtures remain machine-local until hardware completes; \`--cleanup\` removes only this lane's recorded fixture.\n\nRenderer: ${
-		result.renderer ?? 'hardware stage pending'
-	}. R=2 fresh browser contexts, 800×600, DPR 1.\n\n## Scores\n\nWilson 95% intervals are descriptive: repeated component checks are correlated. N/A excluded; missing reported, never passed.\n\n| Split | Passed / observed | Pass rate | Wilson 95% | Missing | N/A | All-pass components |\n|---|---|---|---|---|---|---|\n`;
-	for (const [split, s] of Object.entries(stats))
-		text += `| ${split} | ${s.passed}/${s.total} | ${pct(s.rate)} | ${pct(
-			s.lower
-		)}–${pct(s.upper)} | ${s.missing} | ${s.na} | ${
-			s.allPassComponents.passed
-		}/${s.allPassComponents.total} |\n`;
-	text +=
-		'\n## Component results and bundle cost\n\nCells show R1/R2. a=accessibility, b=reduced motion, c=SSR+fallback, d=theming, e=install. Gzip level 9; complete one-component JS+CSS graph including Svelte runtime.\n\n| Component | Split | a | b | c | d | e | gzip bytes |\n|---|---|---|---|---|---|---|---|\n';
-	for (const row of result.rows)
-		text += `| ${row.name} | ${row.split} | ${[
-			'a11y',
-			'reducedMotion',
-			'ssrFallback',
-			'theming',
-			'install'
-		]
-			.map((k) => row.trials.map((t) => t.checks[k].status).join('/'))
-			.join(' | ')} | ${row.bundle.gzipBytes ?? 'missing'} |\n`;
-	text += '\n## Candidate work queue (causes, not fixes)\n\n';
-	const causes = new Map();
-	for (const row of result.rows)
-		for (const t of row.trials)
-			for (const [key, c] of Object.entries(t.checks))
-				if (['fail', 'missing'].includes(c.status)) {
-					const id = `${key}: ${c.cause}`;
-					const entries = causes.get(id) ?? [];
-					entries.push(`${row.name} R${t.repeat} (${row.split})`);
-					causes.set(id, entries);
-				}
-	for (const [cause, entries] of [...causes].sort(
-		(a, b) => b[1].length - a[1].length
-	))
-		text += `- **${entries.length} cells — ${cause.replaceAll(
-			'|',
-			'\\|'
-		)}**: ${entries.join(', ')}.\n`;
-	if (!causes.size) text += 'No observed failing cells.\n';
-	text +=
-		'\n## Failure interpretation before candidate design\n\n- **Harness-first: LiquidButton focus.** The pre-registered computed outline/shadow proxy fails because live mode removes the CSS outline and paints its ring in WebGL (`LiquidButton.svelte`, live focus style). This is not evidence that the actual ring is absent. Static focus screenshot verification is a known measurement gap; do not fix the button from this proxy alone.\n- **Harness-first: native keyboard contract.** LiquidToggle implements native Space, not Enter. LiquidSegmented implements native arrows; the Space probe targets an already selected radio after the arrow sweep, which need not fire another click. Strict pre-registered failures remain scored, but are not accessibility defects by themselves.\n- **Docs integration: FluidDistortion.** The canonical snippet supplies no width/height; its percentage-height wrapper collapses inside the fixture parent with only min-height. The explicitly sized specimen renders successfully. This is a copy-paste layout gap, not a GPU/image-loading failure.\n- **Decorative SSR contract.** Fluid emits an empty decorative canvas on the server, then supplies its accessible no-GPU message after mount. splash-cursor emits nothing during SSR and hides its entire decorative subtree from AX. Strict meaningful-content requirement fails both; adding meaningless labels solely to improve the score would be wrong.\n- **Hardware noise: LiquidDropZone.** Enter filechooser observation failed R1, passed R2; 800 ms event timeout. Reproduce before changing the control.\n\n## Noise and known gaps\n\n';
-	for (const row of result.rows) {
-		const disagreement = Object.keys(row.trials[0].checks).filter(
-			(k) => row.trials[0].checks[k].status !== row.trials[1].checks[k].status
-		);
-		if (disagreement.length)
-			text += `- ${row.name}: R1/R2 disagree on ${disagreement.join(', ')}.\n`;
-	}
-	for (const gap of result.knownGaps) text += `- ${gap}.\n`;
-	text +=
-		'- Visual is candidate-only. Baseline static PNGs and SHA-256 are frozen under `evals/components/baseline/`; no visual score claimed. Reuse E2 side randomisation, swapped trials, tie collapse and calibrated no-worse logic; calibrate static UI before use.\n- Strict Enter+Space rule can fail native switches/radios that intentionally implement Space/arrow semantics. This was pre-registered, not changed after observation.\n- No contrast, screen-reader user testing, touch, mobile GPU, or temporal smoothness claim.\n';
-	await writeFile(join(ROOT, 'dev-docs/benchmarks/component-eval.md'), text);
+	await writeFile(path, text);
 }
 // Candidate-only adapter: caller owns model invocation and static-UI calibration.
 // ponytail: baseline freezes stills only; add candidate CLI when a calibrated round exists.
@@ -1211,7 +1506,97 @@ export async function staticJudgePair(
 		calibration
 	};
 }
+export function candidateVerdict(baseline, candidate) {
+	const before = summary(baseline.rows),
+		after = summary(candidate.rows);
+	const lostHeldOut = [];
+	for (const row of baseline.rows.filter((r) => r.split === 'test')) {
+		const match = candidate.rows.find((r) => r.name === row.name);
+		for (const trial of row.trials)
+			for (const [key, cell] of Object.entries(trial.checks))
+				if (
+					cell.status === 'pass' &&
+					match?.trials.find((t) => t.repeat === trial.repeat)?.checks[key]
+						?.status !== 'pass'
+				)
+					lostHeldOut.push(`${row.name}/${key}/R${trial.repeat}`);
+	}
+	const trainGain = after.train.lower > before.train.rate;
+	const complete =
+		candidate.complete && !after.train.missing && !after.test.missing;
+	const libraryUnchanged = baseline.libraryTree === candidate.libraryTree;
+	const keep = trainGain && !lostHeldOut.length && complete && libraryUnchanged;
+	return {
+		decision: keep ? 'keep' : 'revert',
+		trainGain,
+		lostHeldOut,
+		complete,
+		libraryUnchanged,
+		heldOutOutcome: lostHeldOut.length ? 'regression' : 'documented as no gain',
+		before,
+		after,
+		reason: `Train lower Wilson ${(100 * after.train.lower).toFixed(2)}% ${
+			trainGain ? 'exceeds' : 'does not exceed'
+		} baseline point ${(100 * before.train.rate).toFixed(
+			2
+		)}%; held-out lost passing cells=${
+			lostHeldOut.length
+		}. Held-out documented as no gain. Docs-only library tree ${
+			libraryUnchanged ? 'unchanged' : 'changed'
+		}; no judged visual win claimed.`
+	};
+}
 function selfCheck() {
+	assert.equal(majority([true, false, true]), true);
+	assert.equal(majority([false, true, false]), false);
+	assert.throws(() => majority([true, true]));
+	assert(wilson(50, 50).lower < 0.96);
+	assert.deepEqual(Object.keys(KEY_CONTRACTS).sort(), [...NAMES].sort());
+	assert.deepEqual(KEY_CONTRACTS.LiquidToggle.keys, ['Space']);
+	const focusPng = new PNG({ width: 40, height: 40 });
+	focusPng.data.fill(255);
+	const plain = PNG.sync.write(focusPng);
+	for (let x = 0; x < 40; x++) focusPng.data[x * 4] = 0;
+	const changed = PNG.sync.write(focusPng),
+		box = { x: 12, y: 12, width: 16, height: 16 },
+		clip = { x: 0, y: 0 };
+	assert.equal(focusDiff(plain, plain, changed, box, clip).pass, true);
+	assert.equal(focusDiff(plain, changed, changed, box, clip).pass, false);
+	assert.equal(focusDiff(plain, plain, plain, box, clip).pass, false);
+	const fixtureResult = (status) => ({
+		complete: true,
+		libraryTree: 'same',
+		rows: [
+			{
+				name: 'train',
+				split: 'train',
+				trials: [{ repeat: 1, checks: { a: { status } } }]
+			},
+			{
+				name: 'test',
+				split: 'test',
+				trials: [{ repeat: 1, checks: { a: { status: 'pass' } } }]
+			}
+		]
+	});
+	assert.equal(
+		candidateVerdict(fixtureResult('fail'), fixtureResult('pass')).decision,
+		'keep'
+	);
+	assert.equal(
+		candidateVerdict(fixtureResult('pass'), fixtureResult('pass')).decision,
+		'revert'
+	);
+	const regression = fixtureResult('pass');
+	regression.rows[1].trials[0].checks.a.status = 'fail';
+	assert.equal(
+		candidateVerdict(fixtureResult('fail'), regression).lostHeldOut.length,
+		1
+	);
+	assert.equal(
+		candidateVerdict(fixtureResult('fail'), regression).decision,
+		'revert'
+	);
 	assert.equal(held.size, 5);
 	assert.deepEqual(
 		[...held],
@@ -1273,21 +1658,37 @@ if (import.meta.main) {
 	else if (args.includes('--cleanup')) {
 		const state = await json(join(OUT, 'local-state.json'));
 		temp = state.temp;
-		assert(temp.startsWith('/tmp/svelte-fluid-e4-'));
+		assert(
+			temp.startsWith('/tmp/svelte-fluid-e4-') && state.worktree === ROOT,
+			'Fixture ownership mismatch'
+		);
 		await cleanup(true);
-		await rm(join(OUT, 'local-state.json'));
+		await save(join(OUT, 'local-state.json'), {
+			worktree: ROOT,
+			releasedAt: state.releasedAt,
+			temp: null
+		});
 		console.log(
 			`Removed owned fixture ${temp}; no owned GPU lock or browser/server`
 		);
-	} else if (args[0] === 'baseline' && args.includes('--cpu-only')) await cpu();
-	else if (args[0] === 'baseline' && args.includes('--ssr-only'))
+	} else if (
+		['baseline-a1', 'round-1'].includes(args[0]) &&
+		args.includes('--cpu-only')
+	)
+		await cpu();
+	else if (
+		['baseline-a1', 'round-1'].includes(args[0]) &&
+		args.includes('--ssr-only')
+	)
 		await ssrOnly();
-	else if (args[0] === 'baseline' && args.includes('--hardware'))
+	else if (
+		['baseline-a1', 'round-1'].includes(args[0]) &&
+		args.includes('--hardware')
+	)
 		await hardware();
-	else if (args.includes('--report'))
-		await pageReport(await json(join(OUT, 'baseline.json')));
+	else if (args.includes('--report')) await pageReport(await json(RESULT));
 	else
 		console.log(
-			'bun scripts/component-eval.mjs --self-check | baseline --cpu-only | baseline --hardware | --report | --cleanup'
+			'bun scripts/component-eval.mjs --self-check | baseline-a1 --cpu-only | baseline-a1 --hardware | round-1 --cpu-only | round-1 --hardware | --report | --cleanup'
 		);
 }
