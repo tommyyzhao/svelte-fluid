@@ -87,10 +87,24 @@ Failures (ranked by cells):
 Baseline-a1 observations:
 
 - LiquidButton focus: 1219/5376 perimeter pixels changed (22.67%), zero noise pixels, both repetitions; computed CSS proxy false. Hardware ring is visible.
-- LiquidSegmented arrows/Space pass R=3. Initial supplemental harness run used a dynamic `input:not(:checked)` locator whose post-selection assertion resolved a different input. Superseded evidence retained; stable-index rerun passes. No component change.
+- LiquidSegmented arrows/Space pass R=3. A dynamic `input:not(:checked)` locator initially re-resolved after selection; superseded evidence retained, stable-index rerun passes. No component change.
 - LiquidToggle native Space passes; Enter not required.
-- LiquidDropZone Enter R1 attempts false/true/true, R2 true/true/true; Space all pass. Majority passes; hardware noise remains, no fix.
-- Fluid decorative SSR reserves 320×180, identical hydration box, no layout-shift entries; no-GPU accessible message correct.
-- splash-cursor emits no own SSR element; fixed overlay adds no normal-flow shift, correctly aria-hidden after mount, but fails the amended SSR-element requirement. No meaningless label added.
-- Supplemental install R3 for all 14 components agrees with R1/R2 (FluidDistortion fail/fail/fail; all others pass/pass/pass). Supplemental R3 is not pooled into the frozen R=2 denominator.
-- Historical JSON/PNGs unchanged. Baseline-a1 fixtures removed, installed Chrome closed, GPU lock released before commit. Tests: 882/882; svelte-check zero errors/warnings; prepack/publint pass.
+- LiquidDropZone Enter R1 false/true/true, R2 true/true/true; Space all pass. Majority passes, no component fix.
+- Fluid decorative SSR reserves 320×180, identical hydration box, no layout shift; no-GPU message correct.
+- splash-cursor emits no own SSR element; fixed overlay does not shift normal flow, correctly aria-hidden after mount, but fails amended SSR-element rule. No meaningless label added.
+- Supplemental install R3 agrees with R1/R2 for all 14 components. R3 excluded from frozen scored denominator.
+
+### round-1
+
+Renderer: ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version). Complete: true.
+
+| Split | Passed / observed | Pass rate | Wilson 95% | Missing | N/A | All-pass components |
+|---|---|---|---|---|---|---|
+| train | 86/88 | 97.73% | 92.09%–99.37% | 0 | 2 | 8/9 |
+| test | 50/50 | 100.00% | 92.87%–100.00% | 0 | 0 | 5/5 |
+
+Failures (ranked by cells):
+
+- **2 cells — ssrFallback: Decorative SSR missing own layout element or shifts on hydration**: splash-cursor R1 (train), splash-cursor R2 (train).
+
+Round verdict: **revert**. Train lower Wilson 92.09% does not exceed baseline point 95.45%; held-out lost passing cells=0. Held-out documented as no gain. Docs-only library tree unchanged; no judged visual win claimed.

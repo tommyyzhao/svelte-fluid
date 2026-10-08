@@ -4,6 +4,7 @@ import { compile } from 'svelte/compiler';
 import { buildLlmsTxt, buildLlmsFullTxt, buildSkillMd, DEFAULT_SITE } from './agent-docs.js';
 import { PRESET_BY_ID, PRESETS } from '$lib/presets/registry.js';
 import presetDocs from './docs/presets/+page.svelte?raw';
+import componentDocs from './docs/components/+page.svelte?raw';
 import landingPage from './+page.svelte?raw';
 import readme from '../../README.md?raw';
 
@@ -63,6 +64,14 @@ describe('generated API reference', () => {
 		for (const [index, match] of snippets.entries()) {
 			expect(() => compile(match[1], { filename: `agent-docs-${index}.svelte`, generate: 'server' })).not.toThrow();
 		}
+	});
+
+	it('keeps the FluidDistortion copy-paste size consistent across public references', () => {
+		const snippet = '<FluidDistortion src="/hero.jpg" width={640} height={360} strength={0.4} intensity={24} />';
+		for (const generated of [buildSkillMd(), buildLlmsFullTxt()]) expect(generated).toContain(snippet);
+		const canonical = componentDocs.split('<h2 id="fluiddistortion">')[1].split('</code></pre>')[0]
+			.replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll("{'{'}", '{').replaceAll("{'}'}", '}');
+		expect(canonical).toContain(snippet);
 	});
 
 	it('states wrapper limits, sizing, typed handles and visible background containment', () => {
