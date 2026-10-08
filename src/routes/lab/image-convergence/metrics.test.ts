@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { fidelity, lab, median, noise } from "./metrics.js";
 import {
   relaxationKeep,
+  referenceDisplacement,
   targetRelaxation,
 } from "$lib/engine/image-convergence.js";
 describe("E5 frozen math", () => {
@@ -26,6 +27,12 @@ describe("E5 frozen math", () => {
     );
     expect(() => relaxationKeep(NaN, 1)).toThrow(RangeError);
     expect(() => relaxationKeep(1, -1)).toThrow(RangeError);
+  });
+  it('displacement encoding preserves the reference-map equation and exact identity', () => {
+    const x = .4, departure = .35, d = .1, keep = relaxationKeep(2, .1);
+    expect(x + referenceDisplacement(d, departure - x, 2, .1)).toBeCloseTo(x + keep * (departure + d - x), 14);
+    expect(referenceDisplacement(0, 0, 3, .1)).toBe(0);
+    expect(referenceDisplacement(.2, -.1, 0, .1)).toBeCloseTo(.1, 14);
   });
   it("median and pre-registered relative noise", () => {
     expect(median([3, 1, 2])).toBe(2);

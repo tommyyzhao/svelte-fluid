@@ -152,6 +152,31 @@ try {
       assert.equal(code, 0, `${script} failed`);
     }
   }
+  if (process.env.E5_COMMIT_VARIANT) {
+    for (const argv of [
+      [
+        "git",
+        "add",
+        "src/lib/engine/FluidEngine.ts",
+        "src/lib/engine/shaders.ts",
+        "src/lib/engine/image-convergence.ts",
+        "src/lib/engine/image-convergence.browser.test.ts",
+        "src/routes/lab/image-convergence/+page.svelte",
+        "scripts/image-convergence-eval.mjs",
+      ],
+      [
+        "git",
+        "commit",
+        "-m",
+        process.env.E5_COMMIT_VARIANT,
+        "-m",
+        "Co-Authored-By: Claude Code <noreply@anthropic.com>",
+      ],
+    ]) {
+      const p = spawn(argv[0], argv.slice(1), { cwd: ROOT, stdio: "inherit" });
+      assert.equal(await new Promise((r) => p.once("close", r)), 0);
+    }
+  }
   server = spawn(
     "bun",
     ["run", "dev", "--host", "127.0.0.1", "--port", "5210", "--strictPort"],

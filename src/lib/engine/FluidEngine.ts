@@ -685,6 +685,8 @@ export class FluidEngine implements FluidHandle {
 	private canvas: HTMLCanvasElement;
 	private imageExperiment: ReturnType<typeof imageConvergenceFor>;
 	private targetNudgeProgram: ProgramWrap | null = null;
+	private targetMapProgram: ProgramWrap | null = null;
+	private targetMap: DoubleFBO | null = null;
 	private targetSeconds = 0;
 	private targetFinal = false;
 	private targetRestore = false;
@@ -1013,6 +1015,11 @@ export class FluidEngine implements FluidHandle {
 		this.initGlassFramebuffer();
 		if (this.imageExperiment) {
 			this.targetNudgeProgram = this.host ? this.host.program('fluid:targetNudge', S.baseVertexShader, S.targetNudgeShader) : this.makeTargetProgram(S.targetNudgeShader);
+			if (this.imageExperiment.variant > 0) {
+				this.targetMapProgram = this.host ? this.host.program('fluid:targetMap', S.baseVertexShader, S.targetMapShader) : this.makeTargetProgram(S.targetMapShader);
+				const rg = this.ext.formatRG;
+				this.targetMap = createDoubleFBO(this.gl, this.velocity.width, this.velocity.height, rg.internalFormat, rg.format, this.ext.halfFloatTexType, this.gl.LINEAR);
+			}
 		}
 	}
 
@@ -1035,8 +1042,31 @@ export class FluidEngine implements FluidHandle {
 		this.dye.swap();
 	}
 
+	private resizeTargetMap(): void {
+		const gl = this.gl, rg = this.ext.formatRG;
+		this.targetMap = resizeDoubleFBO(gl, this.targetMap!, this.velocity.width, this.velocity.height, rg.internalFormat, rg.format, this.ext.halfFloatTexType, gl.LINEAR, this.copyProgram, this.blit);
+	}
+
+	private advectTargetMap(dt: number): void {
+		const gl = this.gl, p = this.targetMapProgram!, map = this.targetMap!;
+		p.bind();
+		gl.uniform1i(p.uniforms.uSource, map.read.attach(0));
+		gl.uniform1i(p.uniforms.uVelocity, this.velocity.read.attach(1));
+		gl.uniform2f(p.uniforms.uVelocityTexel, this.velocity.texelSizeX, this.velocity.texelSizeY);
+		gl.uniform2f(p.uniforms.uMapTexel, map.texelSizeX, map.texelSizeY);
+		gl.uniform1f(p.uniforms.dt, dt);
+		gl.uniform1f(p.uniforms.uKeep, relaxationKeep(targetRelaxation(this.targetSeconds), dt));
+		this.blit(map.write); map.swap();
+	}
+
 	private finalizeTarget(): void {
 		this.withGl(() => {
+			if (this.targetMap) {
+				this.clearProgram.bind();
+				this.gl.uniform1i(this.clearProgram.uniforms.uTexture, this.targetMap.read.attach(0));
+				this.gl.uniform1f(this.clearProgram.uniforms.value, 0);
+				this.blit(this.targetMap.write); this.targetMap.swap();
+			}
 			this.nudgeTarget(0);
 			this.clearProgram.bind();
 			this.gl.uniform1i(this.clearProgram.uniforms.uTexture, this.velocity.read.attach(0));
@@ -1210,6 +1240,7 @@ export class FluidEngine implements FluidHandle {
 		this.solverMayContainContent = true;
 		this.withGl(() => {
 			this.splatTo(this.velocity, x, y, { r: dx, g: dy, b: 0 }, radius, 0);
+			if (this.targetMap && this.targetSeconds === 0) this.splatTo(this.targetMap, x, y, { r: dx * 0.0004, g: dy * 0.0004, b: 0 }, radius, 0);
 			this.dyeMayContainContent = true;
 			this.splatTo(this.dye, x, y, color, radius, this.config.STICKY ? this.config.STICKY_AMPLIFY : 0, S.DYE_SPLAT_DOSE);
 		});
@@ -1323,6 +1354,7 @@ export class FluidEngine implements FluidHandle {
 				// persistent fields while rebuilding transient and derived resources.
 				this.initDyeFramebuffers('preserve');
 				this.initSimulationFramebuffers('preserve');
+				if (this.targetMap) this.resizeTargetMap();
 				this.initPostprocessFramebuffers('preserve');
 				this.initMaskTexture();
 				this.initObstructionMaskTexture();
@@ -1583,7 +1615,7 @@ export class FluidEngine implements FluidHandle {
 		const applyResourceChanges = () => {
 			if (dyeChanged) this.initDyeFramebuffers('preserve');
 			else if (scalarNeedChanged) this.syncScalarFramebuffer('preserve');
-			if (simChanged) this.initSimulationFramebuffers('preserve');
+			if (simChanged) { this.initSimulationFramebuffers('preserve'); if (this.targetMap) this.resizeTargetMap(); }
 			if (bloomResourceChanged) this.initBloomFramebuffers('preserve');
 			if (sunraysResourceChanged) this.initSunraysFramebuffers('preserve');
 			if (shapeChanged) this.initMaskTexture();
@@ -1705,7 +1737,7 @@ export class FluidEngine implements FluidHandle {
 		this.blurVertexShader = undefined!;
 		// Absent when the engine was built against an already-lost shared context.
 		this.ditheringTexture?.dispose();
-		this.targetNudgeProgram = null;
+		this.targetNudgeProgram = null; this.targetMapProgram = null; this.targetMap = null;
 		this.distortionTexture = null;
 		this.distortionLoadedUrl = null;
 		this.distortionTextureW = 0;
@@ -1784,6 +1816,8 @@ export class FluidEngine implements FluidHandle {
 		const gl = this.gl;
 
 		// FBOs
+		if (this.targetMap) disposeDoubleFBO(gl, this.targetMap);
+		this.targetMap = null;
 		disposeDoubleFBO(gl, this.dye);
 		disposeDoubleFBO(gl, this.velocity);
 		disposeFBO(gl, this.velocitySource);
@@ -1913,7 +1947,7 @@ export class FluidEngine implements FluidHandle {
 			this.prescribedFieldProgram,
 			this.applyMaskProgram,
 			this.glassProgram,
-			this.targetNudgeProgram
+			this.targetNudgeProgram, this.targetMapProgram
 		].filter((program): program is ProgramWrap => program != null);
 		this.displayMaterial?.dispose();
 		if (this.host) {
@@ -3534,9 +3568,9 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			// Shared siblings' errors must not be attributed to this probe.
 			for (let i = 0; i < 16 && gl.getError() !== gl.NO_ERROR; i++);
 			this.prepareSettleChain(this.velocity.read, this.settleVelocityChain, bytes);
-			this.prepareSettleChain(this.dye.read, this.settleDyeChain, bytes);
+			this.prepareSettleChain(this.targetMap?.read ?? this.dye.read, this.settleDyeChain, bytes);
 			this.settleReducePass(this.velocity.read, this.settleVelocityChain[0], 1, 1, 0, bytes ? 1 : 0);
-			this.settleReducePass(this.dye.read, this.settleDyeChain[0], 1, 1, 1, bytes ? 2 : 0, inert ? 0 : heightVisibilityScale(this.config), inert ? 1 : dyeVisibilityGain(this.config), inert);
+			this.settleReducePass(this.targetMap?.read ?? this.dye.read, this.settleDyeChain[0], 1, 1, this.targetMap ? 0 : 1, bytes ? 2 : 0, this.imageExperiment ? 0 : inert ? 0 : heightVisibilityScale(this.config), this.imageExperiment ? 1 : inert ? 1 : dyeVisibilityGain(this.config), inert);
 			this.checkSettleGl();
 			this.settleProbe = { sync: null, epoch: this.settleEpoch, velocityLevel: 1, dyeLevel: 1, bytes, inert };
 		}); } catch (error) {
@@ -4829,7 +4863,8 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		}
 		this.advectScalar(dt);
 		this.applyFlowOutlets(simulateDye ? ['dye', 'scalar'] : ['scalar']);
-		if (this.imageExperiment) this.nudgeTarget(relaxationKeep(targetRelaxation(this.targetSeconds), dt));
+		if (this.targetMap) this.advectTargetMap(dt);
+		else if (this.imageExperiment) this.nudgeTarget(relaxationKeep(targetRelaxation(this.targetSeconds), dt));
 	}
 
 	private renderProfiled(target: FBO | null): void {
@@ -4958,6 +4993,8 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			gl.bindTexture(gl.TEXTURE_2D, this.distortionTexture);
 			gl.uniform1i(this.displayMaterial.uniforms.uTargetImage, 1);
 			gl.uniform1i(this.displayMaterial.uniforms.uTargetFinal, this.targetFinal ? 1 : 0);
+			gl.uniform1i(this.displayMaterial.uniforms.uTargetVariant, this.imageExperiment.variant);
+			gl.uniform1i(this.displayMaterial.uniforms.uReferenceMap, (this.targetMap?.read ?? this.dye.read).attach(2));
 			this.blit(target);
 			return;
 		}

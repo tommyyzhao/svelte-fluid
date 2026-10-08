@@ -395,6 +395,8 @@ export const displayShaderSource = `
 #ifdef TARGET_IMAGE
     uniform sampler2D uTargetImage;
     uniform int uTargetFinal;
+    uniform int uTargetVariant;
+    uniform sampler2D uReferenceMap;
 #endif
 
 #ifdef DISTORTION
@@ -496,6 +498,10 @@ ${DYE_GEOMETRY_GLSL}
     #ifdef TARGET_IMAGE
         // Final source sampling bypasses dye quantization and every artistic display transform.
         gl_FragColor = uTargetFinal == 1 ? vec4(texture2D(uTargetImage, vec2(gl_FragCoord.x * texelSize.x, 1.0 - gl_FragCoord.y * texelSize.y)).rgb, 1.0) : vec4(clamp(texture2D(uTexture, vUv).rgb, 0.0, 1.0), 1.0);
+        if (uTargetVariant > 0 && uTargetFinal == 0) {
+            vec2 xi = vUv + texture2D(uReferenceMap, vUv).xy;
+            gl_FragColor = vec4(texture2D(uTargetImage, vec2(xi.x, 1.0 - xi.y)).rgb, 1.0);
+        }
         return;
     #endif
         vec4 dye = texture2D(uTexture, vUv);
@@ -2277,5 +2283,22 @@ export const jumpFloodDistanceShader = `
         // No seed anywhere (empty or full mask): clamp to a large finite value.
         float d = abs(s.x) > 5000.0 ? 1.0e4 : length(s);
         gl_FragColor = vec4(texture2D(uSource, vUv).r >= 0.5 ? -d : d, 0.0, 0.0, 1.0);
+    }
+`;
+
+export const targetMapShader = `
+    precision highp float;
+    precision highp sampler2D;
+    varying vec2 vUv;
+    uniform sampler2D uSource;
+    uniform sampler2D uVelocity;
+    uniform vec2 uVelocityTexel;
+    uniform vec2 uMapTexel;
+    uniform float dt;
+    uniform float uKeep;
+    void main () {
+        vec2 departure = clamp(vUv - dt * texture2D(uVelocity, vUv).xy * uVelocityTexel, 0.5 * uMapTexel, vec2(1.0) - 0.5 * uMapTexel);
+        vec2 displacement = texture2D(uSource, departure).xy + departure - vUv;
+        gl_FragColor = vec4(displacement * uKeep, 0.0, 1.0);
     }
 `;
