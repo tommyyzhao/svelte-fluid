@@ -102,6 +102,7 @@ while (!owned) {
     if (
       (!lastRelease && !process.env.E5_WAIT_FOR_LANE) ||
       observedOther ||
+      process.env.E5_GRANTED_TURN === "1" ||
       (!process.env.E5_WAIT_FOR_LANE && Date.now() - freeSince >= 1800000)
     ) {
       try {
