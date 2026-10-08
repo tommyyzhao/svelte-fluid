@@ -1,0 +1,1656 @@
+[
+  {
+    "image": "the-kiss.jpg",
+    "seed": 5,
+    "variant": 0,
+    "split": "train",
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+    "errors": [],
+    "timedOut": false,
+    "rest": {
+      "a": {
+        "settled": true,
+        "paused": true,
+        "seconds": 8.807266666392513,
+        "draws": 9726,
+        "pixels": 554839072,
+        "frameCount": 535
+      },
+      "b": {
+        "settled": true,
+        "paused": true,
+        "seconds": 8.807266666392513,
+        "draws": 9726,
+        "pixels": 554839072,
+        "frameCount": 535
+      },
+      "pass": true
+    },
+    "initial": {
+      "ssim": 1,
+      "deltaE76": 0,
+      "exact": true,
+      "seconds": 8.807266666392513,
+      "wallMs": 8899,
+      "draws": 9726,
+      "pixels": 554839072,
+      "dyeFormat": "RGBA32F",
+      "frameCount": 535,
+      "frames": [
+        {
+          "seconds": 0.5131000000834466,
+          "wallMs": 549.7999999821186
+        },
+        {
+          "seconds": 1.0123000001907356,
+          "wallMs": 1049.7999999821186
+        },
+        {
+          "seconds": 2.010300000280141,
+          "wallMs": 2049.699999988079
+        },
+        {
+          "seconds": 4.00566666684547,
+          "wallMs": 4049.699999988079
+        }
+      ],
+      "width": 510,
+      "height": 512
+    },
+    "reform": {
+      "wake": {
+        "settled": false,
+        "paused": false,
+        "seconds": 0.3759000000059605,
+        "draws": 456,
+        "pixels": 28199424,
+        "frameCount": 24
+      },
+      "visiblyDisturbed": true,
+      "result": {
+        "ssim": 1,
+        "deltaE76": 0,
+        "exact": true,
+        "seconds": 6.218866666714343,
+        "wallMs": 6402.100000023842,
+        "draws": 7016,
+        "pixels": 401438838,
+        "dyeFormat": "RGBA32F",
+        "frameCount": 385,
+        "frames": [
+          {
+            "seconds": 0.5071666666666668,
+            "wallMs": 534.8000000119209
+          },
+          {
+            "seconds": 1.0082333333094922,
+            "wallMs": 1052.2000000178814
+          },
+          {
+            "seconds": 2.0135666666428236,
+            "wallMs": 2083.9000000059605
+          },
+          {
+            "seconds": 4.010299999982114,
+            "wallMs": 4134.600000023842
+          }
+        ],
+        "width": 510,
+        "height": 512
+      }
+    }
+  },
+  {
+    "image": "the-kiss.jpg",
+    "seed": 11,
+    "variant": 0,
+    "split": "train",
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+    "errors": [],
+    "timedOut": false,
+    "rest": {
+      "a": {
+        "settled": true,
+        "paused": true,
+        "seconds": 10.177266666690555,
+        "draws": 11385,
+        "pixels": 649049990,
+        "frameCount": 626
+      },
+      "b": {
+        "settled": true,
+        "paused": true,
+        "seconds": 10.177266666690555,
+        "draws": 11385,
+        "pixels": 649049990,
+        "frameCount": 626
+      },
+      "pass": true
+    },
+    "initial": {
+      "ssim": 1,
+      "deltaE76": 0,
+      "exact": true,
+      "seconds": 10.177266666690555,
+      "wallMs": 10407.5,
+      "draws": 11385,
+      "pixels": 649049990,
+      "dyeFormat": "RGBA32F",
+      "frameCount": 626,
+      "frames": [
+        {
+          "seconds": 0.5119666666487853,
+          "wallMs": 556.9000000059605
+        },
+        {
+          "seconds": 1.006433333357176,
+          "wallMs": 1057
+        },
+        {
+          "seconds": 2.005233333369095,
+          "wallMs": 2073
+        },
+        {
+          "seconds": 4.004800000011915,
+          "wallMs": 4106.5999999940395
+        }
+      ],
+      "width": 510,
+      "height": 512
+    },
+    "reform": {
+      "wake": {
+        "settled": false,
+        "paused": false,
+        "seconds": 0.3937999999821186,
+        "draws": 474,
+        "pixels": 29234560,
+        "frameCount": 25
+      },
+      "visiblyDisturbed": true,
+      "result": {
+        "ssim": 1,
+        "deltaE76": 0,
+        "exact": true,
+        "seconds": 7.750033333321404,
+        "wallMs": 17.900000005960464,
+        "draws": 8639,
+        "pixels": 493579484,
+        "dyeFormat": "RGBA32F",
+        "frameCount": 474,
+        "frames": [
+          {
+            "seconds": 0.5090333333512148,
+            "wallMs": 536.3000000119209
+          },
+          {
+            "seconds": 1.0165666666726278,
+            "wallMs": 1053
+          },
+          {
+            "seconds": 2.0163333333333324,
+            "wallMs": 2069.600000023842
+          },
+          {
+            "seconds": 4.00386666653553,
+            "wallMs": 4086.100000023842
+          }
+        ],
+        "width": 510,
+        "height": 512
+      }
+    }
+  },
+  {
+    "image": "the-kiss.jpg",
+    "seed": 23,
+    "variant": 0,
+    "split": "train",
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+    "errors": [],
+    "timedOut": false,
+    "rest": {
+      "a": {
+        "settled": true,
+        "paused": true,
+        "seconds": 7.244666666607053,
+        "draws": 8103,
+        "pixels": 462698426,
+        "frameCount": 446
+      },
+      "b": {
+        "settled": true,
+        "paused": true,
+        "seconds": 7.244666666607053,
+        "draws": 8103,
+        "pixels": 462698426,
+        "frameCount": 446
+      },
+      "pass": true
+    },
+    "initial": {
+      "ssim": 1,
+      "deltaE76": 0,
+      "exact": true,
+      "seconds": 7.244666666607053,
+      "wallMs": 7417.0999999940395,
+      "draws": 8103,
+      "pixels": 462698426,
+      "dyeFormat": "RGBA32F",
+      "frameCount": 446,
+      "frames": [
+        {
+          "seconds": 0.5042666666309039,
+          "wallMs": 550.4000000059605
+        },
+        {
+          "seconds": 1.0100999999344356,
+          "wallMs": 1066.9000000059605
+        },
+        {
+          "seconds": 2.0107333332200845,
+          "wallMs": 2083.5
+        },
+        {
+          "seconds": 4.001533333261802,
+          "wallMs": 4116.700000017881
+        }
+      ],
+      "width": 510,
+      "height": 512
+    },
+    "reform": {
+      "wake": {
+        "settled": false,
+        "paused": false,
+        "seconds": 0.37596666667858764,
+        "draws": 456,
+        "pixels": 28199424,
+        "frameCount": 24
+      },
+      "visiblyDisturbed": true,
+      "result": {
+        "ssim": 1,
+        "deltaE76": 0,
+        "exact": true,
+        "seconds": 5.792266666660703,
+        "wallMs": 5902.699999988079,
+        "draws": 6469,
+        "pixels": 370380244,
+        "dyeFormat": "RGBA32F",
+        "frameCount": 355,
+        "frames": [
+          {
+            "seconds": 0.5053666666547458,
+            "wallMs": 533.5999999940395
+          },
+          {
+            "seconds": 1.0059000000655658,
+            "wallMs": 1052.199999988079
+          },
+          {
+            "seconds": 2.008633333285649,
+            "wallMs": 2068.199999988079
+          },
+          {
+            "seconds": 4.012233333309485,
+            "wallMs": 4102.0999999940395
+          }
+        ],
+        "width": 510,
+        "height": 512
+      }
+    }
+  },
+  {
+    "image": "earth.jpg",
+    "seed": 5,
+    "variant": 0,
+    "split": "train",
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+    "errors": [],
+    "timedOut": false,
+    "rest": {
+      "a": {
+        "settled": true,
+        "paused": true,
+        "seconds": 6.82749999961257,
+        "draws": 7538,
+        "pixels": 429595328,
+        "frameCount": 415
+      },
+      "b": {
+        "settled": true,
+        "paused": true,
+        "seconds": 6.82749999961257,
+        "draws": 7538,
+        "pixels": 429595328,
+        "frameCount": 415
+      },
+      "pass": true
+    },
+    "initial": {
+      "ssim": 1,
+      "deltaE76": 0,
+      "exact": true,
+      "seconds": 6.82749999961257,
+      "wallMs": 6898.700000017881,
+      "draws": 7538,
+      "pixels": 429595328,
+      "dyeFormat": "RGBA32F",
+      "frameCount": 415,
+      "frames": [
+        {
+          "seconds": 0.5085666666726272,
+          "wallMs": 548.2000000178814
+        },
+        {
+          "seconds": 1.0033666666845487,
+          "wallMs": 1048.1000000238419
+        },
+        {
+          "seconds": 2.0150999999642365,
+          "wallMs": 2064.7000000178814
+        },
+        {
+          "seconds": 4.005766666422278,
+          "wallMs": 4064.7000000178814
+        }
+      ],
+      "width": 511,
+      "height": 512
+    },
+    "reform": {
+      "wake": {
+        "settled": false,
+        "paused": false,
+        "seconds": 0.38703333335121476,
+        "draws": 456,
+        "pixels": 28133376,
+        "frameCount": 24
+      },
+      "visiblyDisturbed": true,
+      "result": {
+        "ssim": 1,
+        "deltaE76": 0,
+        "exact": true,
+        "seconds": 8.338866667459412,
+        "wallMs": 8388.09999999404,
+        "draws": 9186,
+        "pixels": 523406704,
+        "dyeFormat": "RGBA32F",
+        "frameCount": 504,
+        "frames": [
+          {
+            "seconds": 0.5018666666845482,
+            "wallMs": 520.6999999880791
+          },
+          {
+            "seconds": 1.0155666666726277,
+            "wallMs": 1037.4000000059605
+          },
+          {
+            "seconds": 2.0112333334585015,
+            "wallMs": 2037.4000000059605
+          },
+          {
+            "seconds": 4.003133333583662,
+            "wallMs": 4037.4000000059605
+          }
+        ],
+        "width": 511,
+        "height": 512
+      }
+    }
+  },
+  {
+    "image": "earth.jpg",
+    "seed": 11,
+    "variant": 0,
+    "split": "train",
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+    "errors": [],
+    "timedOut": false,
+    "rest": {
+      "a": {
+        "settled": true,
+        "paused": true,
+        "seconds": 6.833633333464461,
+        "draws": 7538,
+        "pixels": 429595328,
+        "frameCount": 415
+      },
+      "b": {
+        "settled": true,
+        "paused": true,
+        "seconds": 6.833633333464461,
+        "draws": 7538,
+        "pixels": 429595328,
+        "frameCount": 415
+      },
+      "pass": true
+    },
+    "initial": {
+      "ssim": 1,
+      "deltaE76": 0,
+      "exact": true,
+      "seconds": 6.833633333464461,
+      "wallMs": 6889.5999999940395,
+      "draws": 7538,
+      "pixels": 429595328,
+      "dyeFormat": "RGBA32F",
+      "frameCount": 415,
+      "frames": [
+        {
+          "seconds": 0.5052333333988985,
+          "wallMs": 539
+        },
+        {
+          "seconds": 1.0040000000894078,
+          "wallMs": 1038.9000000059605
+        },
+        {
+          "seconds": 2.0014333336253944,
+          "wallMs": 2038.9000000059605
+        },
+        {
+          "seconds": 4.010766667048125,
+          "wallMs": 4055.5999999940395
+        }
+      ],
+      "width": 511,
+      "height": 512
+    },
+    "reform": {
+      "wake": {
+        "settled": false,
+        "paused": false,
+        "seconds": 0.3898999999761582,
+        "draws": 456,
+        "pixels": 28133376,
+        "frameCount": 24
+      },
+      "visiblyDisturbed": true,
+      "result": {
+        "ssim": 1,
+        "deltaE76": 0,
+        "exact": true,
+        "seconds": 6.831866667250785,
+        "wallMs": 6872.5999999940395,
+        "draws": 7527,
+        "pixels": 429417152,
+        "dyeFormat": "RGBA32F",
+        "frameCount": 413,
+        "frames": [
+          {
+            "seconds": 0.5061666666368644,
+            "wallMs": 521.7999999821186
+          },
+          {
+            "seconds": 1.005399999976159,
+            "wallMs": 1021.7999999821186
+          },
+          {
+            "seconds": 2.0018333334823435,
+            "wallMs": 2021.7999999821186
+          },
+          {
+            "seconds": 4.009900000333777,
+            "wallMs": 4038.5
+          }
+        ],
+        "width": 511,
+        "height": 512
+      }
+    }
+  },
+  {
+    "image": "earth.jpg",
+    "seed": 23,
+    "variant": 0,
+    "split": "train",
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+    "errors": [],
+    "timedOut": false,
+    "rest": {
+      "a": {
+        "settled": true,
+        "paused": true,
+        "seconds": 6.783133333226028,
+        "draws": 7538,
+        "pixels": 429595328,
+        "frameCount": 415
+      },
+      "b": {
+        "settled": true,
+        "paused": true,
+        "seconds": 6.783133333226028,
+        "draws": 7538,
+        "pixels": 429595328,
+        "frameCount": 415
+      },
+      "pass": true
+    },
+    "initial": {
+      "ssim": 1,
+      "deltaE76": 0,
+      "exact": true,
+      "seconds": 6.783133333226028,
+      "wallMs": 6899.299999982119,
+      "draws": 7538,
+      "pixels": 429595328,
+      "dyeFormat": "RGBA32F",
+      "frameCount": 415,
+      "frames": [
+        {
+          "seconds": 0.5145666666130225,
+          "wallMs": 548.6999999880791
+        },
+        {
+          "seconds": 1.0137333332498875,
+          "wallMs": 1048.699999988079
+        },
+        {
+          "seconds": 2.0122333332200837,
+          "wallMs": 2048.5999999940395
+        },
+        {
+          "seconds": 4.003599999815216,
+          "wallMs": 4064.7999999821186
+        }
+      ],
+      "width": 511,
+      "height": 512
+    },
+    "reform": {
+      "wake": {
+        "settled": false,
+        "paused": false,
+        "seconds": 0.39026666663090387,
+        "draws": 456,
+        "pixels": 28133376,
+        "frameCount": 24
+      },
+      "visiblyDisturbed": true,
+      "result": {
+        "ssim": 1,
+        "deltaE76": 0,
+        "exact": true,
+        "seconds": 17.065933333059306,
+        "wallMs": 17399.69999998808,
+        "draws": 19032,
+        "pixels": 1081147792,
+        "dyeFormat": "RGBA32F",
+        "frameCount": 1044,
+        "frames": [
+          {
+            "seconds": 0.5025666666428248,
+            "wallMs": 531
+          },
+          {
+            "seconds": 1.0094333332975711,
+            "wallMs": 1049.5
+          },
+          {
+            "seconds": 2.0019666666785865,
+            "wallMs": 2066.0999999940395
+          },
+          {
+            "seconds": 4.013699999958272,
+            "wallMs": 4116
+          }
+        ],
+        "width": 511,
+        "height": 512
+      }
+    }
+  },
+  {
+    "image": "fluid-text.png",
+    "seed": 5,
+    "variant": 0,
+    "split": "train",
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+    "errors": [],
+    "timedOut": true,
+    "rest": {
+      "a": {
+        "settled": true,
+        "paused": true,
+        "seconds": 8.669633333375065,
+        "draws": 9744,
+        "pixels": 749967040,
+        "frameCount": 536
+      },
+      "b": {
+        "settled": true,
+        "paused": true,
+        "seconds": 8.669633333375065,
+        "draws": 9744,
+        "pixels": 749967040,
+        "frameCount": 536
+      },
+      "pass": true
+    },
+    "initial": {
+      "ssim": 1,
+      "deltaE76": 0,
+      "exact": true,
+      "seconds": 8.669633333375065,
+      "wallMs": 8933.09999999404,
+      "draws": 9744,
+      "pixels": 749967040,
+      "dyeFormat": "RGBA32F",
+      "frameCount": 536,
+      "frames": [
+        {
+          "seconds": 0.5088666666845482,
+          "wallMs": 583.1999999880791
+        },
+        {
+          "seconds": 1.0132000000476842,
+          "wallMs": 1098.5
+        },
+        {
+          "seconds": 2.00566666672627,
+          "wallMs": 2116.4000000059605
+        },
+        {
+          "seconds": 4.006733333458499,
+          "wallMs": 4164.5999999940395
+        }
+      ],
+      "width": 512,
+      "height": 320
+    },
+    "reform": {
+      "wake": {
+        "settled": false,
+        "paused": false,
+        "seconds": 0.3845,
+        "draws": 456,
+        "pixels": 38853120,
+        "frameCount": 24
+      },
+      "visiblyDisturbed": true,
+      "result": {
+        "ssim": 0.9989726327684277,
+        "deltaE76": 0.29891853938438334,
+        "exact": false,
+        "seconds": 30.452733332951528,
+        "wallMs": 31088.79999998212,
+        "draws": 33924,
+        "pixels": 2602512816,
+        "dyeFormat": "RGBA32F",
+        "frameCount": 1860,
+        "frames": [
+          {
+            "seconds": 0.514,
+            "wallMs": 538.6999999880791
+          },
+          {
+            "seconds": 1.0029666667083905,
+            "wallMs": 1040.199999988079
+          },
+          {
+            "seconds": 2.010266666660705,
+            "wallMs": 2072
+          },
+          {
+            "seconds": 4.002066666583213,
+            "wallMs": 4105.799999982119
+          }
+        ],
+        "width": 512,
+        "height": 320
+      }
+    }
+  },
+  {
+    "image": "fluid-text.png",
+    "seed": 11,
+    "variant": 0,
+    "split": "train",
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+    "errors": [],
+    "timedOut": true,
+    "rest": {
+      "a": {
+        "settled": false,
+        "paused": false,
+        "seconds": 29.748699999808924,
+        "draws": 32895,
+        "pixels": 2522698760,
+        "frameCount": 1805
+      },
+      "b": {
+        "settled": false,
+        "paused": false,
+        "seconds": 30.240799999862553,
+        "draws": 33442,
+        "pixels": 2564588764,
+        "frameCount": 1835
+      },
+      "pass": false
+    },
+    "initial": {
+      "ssim": 0.9989130092633239,
+      "deltaE76": 0.32415024011107174,
+      "exact": false,
+      "seconds": 29.73193333314822,
+      "wallMs": 30118.899999976158,
+      "draws": 32859,
+      "pixels": 2519906568,
+      "dyeFormat": "RGBA32F",
+      "frameCount": 1803,
+      "frames": [
+        {
+          "seconds": 0.5099666666487853,
+          "wallMs": 552.1999999880791
+        },
+        {
+          "seconds": 1.000799999982119,
+          "wallMs": 1052.0999999940395
+        },
+        {
+          "seconds": 2.013933333327371,
+          "wallMs": 2085.2999999821186
+        },
+        {
+          "seconds": 4.012366666714342,
+          "wallMs": 4118.199999988079
+        }
+      ],
+      "width": 512,
+      "height": 320
+    },
+    "reform": null
+  },
+  {
+    "image": "fluid-text.png",
+    "seed": 23,
+    "variant": 0,
+    "split": "train",
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+    "errors": [],
+    "timedOut": false,
+    "rest": {
+      "a": {
+        "settled": true,
+        "paused": true,
+        "seconds": 7.25790000012516,
+        "draws": 8103,
+        "pixels": 624297028,
+        "frameCount": 446
+      },
+      "b": {
+        "settled": true,
+        "paused": true,
+        "seconds": 7.25790000012516,
+        "draws": 8103,
+        "pixels": 624297028,
+        "frameCount": 446
+      },
+      "pass": true
+    },
+    "initial": {
+      "ssim": 1,
+      "deltaE76": 0,
+      "exact": true,
+      "seconds": 7.25790000012516,
+      "wallMs": 7412.0999999940395,
+      "draws": 8103,
+      "pixels": 624297028,
+      "dyeFormat": "RGBA32F",
+      "frameCount": 446,
+      "frames": [
+        {
+          "seconds": 0.5020000000000001,
+          "wallMs": 544.2999999821186
+        },
+        {
+          "seconds": 1.0055333332618084,
+          "wallMs": 1060.5999999940395
+        },
+        {
+          "seconds": 2.0120999999940374,
+          "wallMs": 2094.2999999821186
+        },
+        {
+          "seconds": 4.006200000017873,
+          "wallMs": 4111.399999976158
+        }
+      ],
+      "width": 512,
+      "height": 320
+    },
+    "reform": {
+      "wake": {
+        "settled": false,
+        "paused": false,
+        "seconds": 0.42666666657725977,
+        "draws": 510,
+        "pixels": 43041408,
+        "frameCount": 27
+      },
+      "visiblyDisturbed": true,
+      "result": {
+        "ssim": 1,
+        "deltaE76": 0,
+        "exact": true,
+        "seconds": 7.750466666499766,
+        "wallMs": 7885.0999999940395,
+        "draws": 8639,
+        "pixels": 666409368,
+        "dyeFormat": "RGBA32F",
+        "frameCount": 474,
+        "frames": [
+          {
+            "seconds": 0.5094666665593784,
+            "wallMs": 534.4000000059605
+          },
+          {
+            "seconds": 1.0021999998688704,
+            "wallMs": 1034.4000000059605
+          },
+          {
+            "seconds": 2.0023666665355355,
+            "wallMs": 2050.699999988079
+          },
+          {
+            "seconds": 4.00243333323796,
+            "wallMs": 4082.9000000059605
+          }
+        ],
+        "width": 512,
+        "height": 320
+      }
+    }
+  },
+  {
+    "image": "great-wave.jpg",
+    "seed": 5,
+    "variant": 0,
+    "split": "train",
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+    "errors": [],
+    "timedOut": true,
+    "rest": {
+      "a": {
+        "settled": false,
+        "paused": false,
+        "seconds": 29.749933333148217,
+        "draws": 32913,
+        "pixels": 2359730820,
+        "frameCount": 1806
+      },
+      "b": {
+        "settled": false,
+        "paused": false,
+        "seconds": 30.24479999986255,
+        "draws": 33460,
+        "pixels": 2398893806,
+        "frameCount": 1836
+      },
+      "pass": false
+    },
+    "initial": {
+      "ssim": 0.9753282009336616,
+      "deltaE76": 1.4981090023586703,
+      "exact": false,
+      "seconds": 29.723166666457708,
+      "wallMs": 30126.09999999404,
+      "draws": 32859,
+      "pixels": 2355815172,
+      "dyeFormat": "RGBA32F",
+      "frameCount": 1803,
+      "frames": [
+        {
+          "seconds": 0.508566666642825,
+          "wallMs": 551.7999999821186
+        },
+        {
+          "seconds": 1.0032999999821193,
+          "wallMs": 1053.0999999940395
+        },
+        {
+          "seconds": 2.0039999998807896,
+          "wallMs": 2068.5
+        },
+        {
+          "seconds": 4.011133333315446,
+          "wallMs": 4101.699999988079
+        }
+      ],
+      "width": 512,
+      "height": 350
+    },
+    "reform": null
+  },
+  {
+    "image": "great-wave.jpg",
+    "seed": 11,
+    "variant": 0,
+    "split": "train",
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+    "errors": [],
+    "timedOut": true,
+    "rest": {
+      "a": {
+        "settled": false,
+        "paused": false,
+        "seconds": 29.752433333476084,
+        "draws": 32913,
+        "pixels": 2359730820,
+        "frameCount": 1806
+      },
+      "b": {
+        "settled": false,
+        "paused": false,
+        "seconds": 30.24640000018445,
+        "draws": 33460,
+        "pixels": 2398893806,
+        "frameCount": 1836
+      },
+      "pass": false
+    },
+    "initial": {
+      "ssim": 0.9753393021106024,
+      "deltaE76": 1.4976752563083977,
+      "exact": false,
+      "seconds": 29.71916666681538,
+      "wallMs": 30123.30000001192,
+      "draws": 32859,
+      "pixels": 2355815172,
+      "dyeFormat": "RGBA32F",
+      "frameCount": 1803,
+      "frames": [
+        {
+          "seconds": 0.5000000000298024,
+          "wallMs": 538.6999999880791
+        },
+        {
+          "seconds": 1.0158000000119216,
+          "wallMs": 1055.199999988079
+        },
+        {
+          "seconds": 2.0118333334823433,
+          "wallMs": 2055.199999988079
+        },
+        {
+          "seconds": 4.001866666863352,
+          "wallMs": 4055.199999988079
+        }
+      ],
+      "width": 512,
+      "height": 350
+    },
+    "reform": null
+  },
+  {
+    "image": "great-wave.jpg",
+    "seed": 23,
+    "variant": 0,
+    "split": "train",
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+    "errors": [],
+    "timedOut": true,
+    "rest": {
+      "a": {
+        "settled": false,
+        "paused": false,
+        "seconds": 29.76726666674982,
+        "draws": 32913,
+        "pixels": 2359730820,
+        "frameCount": 1806
+      },
+      "b": {
+        "settled": false,
+        "paused": false,
+        "seconds": 30.265000000029488,
+        "draws": 33460,
+        "pixels": 2398893806,
+        "frameCount": 1836
+      },
+      "pass": false
+    },
+    "initial": {
+      "ssim": 0.9753399681609332,
+      "deltaE76": 1.4954000172849304,
+      "exact": false,
+      "seconds": 29.748600000083155,
+      "wallMs": 30120.5,
+      "draws": 32859,
+      "pixels": 2355815172,
+      "dyeFormat": "RGBA32F",
+      "frameCount": 1803,
+      "frames": [
+        {
+          "seconds": 0.5002999999821187,
+          "wallMs": 538.8000000119209
+        },
+        {
+          "seconds": 1.0118333333333338,
+          "wallMs": 1055.199999988079
+        },
+        {
+          "seconds": 2.003100000053643,
+          "wallMs": 2055.300000011921
+        },
+        {
+          "seconds": 4.014100000053638,
+          "wallMs": 4088
+        }
+      ],
+      "width": 512,
+      "height": 350
+    },
+    "reform": null
+  },
+  {
+    "image": "pearl-earring.jpg",
+    "seed": 5,
+    "variant": 0,
+    "split": "train",
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+    "errors": [],
+    "timedOut": false,
+    "rest": {
+      "a": {
+        "settled": true,
+        "paused": true,
+        "seconds": 9.272766666630917,
+        "draws": 10273,
+        "pixels": 640324138,
+        "frameCount": 565
+      },
+      "b": {
+        "settled": true,
+        "paused": true,
+        "seconds": 9.272766666630917,
+        "draws": 10273,
+        "pixels": 640324138,
+        "frameCount": 565
+      },
+      "pass": true
+    },
+    "initial": {
+      "ssim": 1,
+      "deltaE76": 0,
+      "exact": true,
+      "seconds": 9.272766666630917,
+      "wallMs": 9399.199999988079,
+      "draws": 10273,
+      "pixels": 640324138,
+      "dyeFormat": "RGBA32F",
+      "frameCount": 565,
+      "frames": [
+        {
+          "seconds": 0.5098333333631357,
+          "wallMs": 549.5
+        },
+        {
+          "seconds": 1.0050666666726278,
+          "wallMs": 1048.5999999940395
+        },
+        {
+          "seconds": 2.013966666678586,
+          "wallMs": 2065.199999988079
+        },
+        {
+          "seconds": 4.011333333512138,
+          "wallMs": 4082.5999999940395
+        }
+      ],
+      "width": 433,
+      "height": 512
+    },
+    "reform": {
+      "wake": {
+        "settled": false,
+        "paused": false,
+        "seconds": 0.3961333333452543,
+        "draws": 474,
+        "pixels": 32227456,
+        "frameCount": 25
+      },
+      "visiblyDisturbed": true,
+      "result": {
+        "ssim": 1,
+        "deltaE76": 0,
+        "exact": true,
+        "seconds": 6.297666666785866,
+        "wallMs": 15.5,
+        "draws": 6998,
+        "pixels": 437782766,
+        "dyeFormat": "RGBA32F",
+        "frameCount": 384,
+        "frames": [
+          {
+            "seconds": 0.5121666666666668,
+            "wallMs": 532.5999999940395
+          },
+          {
+            "seconds": 1.006900000065566,
+            "wallMs": 1032.5
+          },
+          {
+            "seconds": 2.0134666667381915,
+            "wallMs": 2049.199999988079
+          },
+          {
+            "seconds": 4.008366666714346,
+            "wallMs": 4066.4000000059605
+          }
+        ],
+        "width": 433,
+        "height": 512
+      }
+    }
+  },
+  {
+    "image": "pearl-earring.jpg",
+    "seed": 11,
+    "variant": 0,
+    "split": "train",
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+    "errors": [],
+    "timedOut": false,
+    "rest": {
+      "a": {
+        "settled": true,
+        "paused": true,
+        "seconds": 6.79583333339293,
+        "draws": 7556,
+        "pixels": 471758584,
+        "frameCount": 416
+      },
+      "b": {
+        "settled": true,
+        "paused": true,
+        "seconds": 6.79583333339293,
+        "draws": 7556,
+        "pixels": 471758584,
+        "frameCount": 416
+      },
+      "pass": true
+    },
+    "initial": {
+      "ssim": 1,
+      "deltaE76": 0,
+      "exact": true,
+      "seconds": 6.79583333339293,
+      "wallMs": 6906.700000017881,
+      "draws": 7556,
+      "pixels": 471758584,
+      "dyeFormat": "RGBA32F",
+      "frameCount": 416,
+      "frames": [
+        {
+          "seconds": 0.5158666666249436,
+          "wallMs": 556.8000000119209
+        },
+        {
+          "seconds": 1.0112333333392947,
+          "wallMs": 1056.5999999940395
+        },
+        {
+          "seconds": 2.015733333458502,
+          "wallMs": 2073.4000000059605
+        },
+        {
+          "seconds": 4.011233333458497,
+          "wallMs": 4089.7000000178814
+        }
+      ],
+      "width": 433,
+      "height": 512
+    },
+    "reform": {
+      "wake": {
+        "settled": false,
+        "paused": false,
+        "seconds": 0.39479999995231635,
+        "draws": 474,
+        "pixels": 32227456,
+        "frameCount": 25
+      },
+      "visiblyDisturbed": true,
+      "result": {
+        "ssim": 1,
+        "deltaE76": 0,
+        "exact": true,
+        "seconds": 7.768766666630892,
+        "wallMs": 14.599999994039536,
+        "draws": 8639,
+        "pixels": 539600780,
+        "dyeFormat": "RGBA32F",
+        "frameCount": 474,
+        "frames": [
+          {
+            "seconds": 0.5085666666130226,
+            "wallMs": 532.2000000178814
+          },
+          {
+            "seconds": 1.0027333333094923,
+            "wallMs": 1031.4000000059605
+          },
+          {
+            "seconds": 2.0050999999046306,
+            "wallMs": 2048.7000000178814
+          },
+          {
+            "seconds": 4.0138666667143434,
+            "wallMs": 4082
+          }
+        ],
+        "width": 433,
+        "height": 512
+      }
+    }
+  },
+  {
+    "image": "pearl-earring.jpg",
+    "seed": 23,
+    "variant": 0,
+    "split": "train",
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+    "errors": [],
+    "timedOut": false,
+    "rest": {
+      "a": {
+        "settled": true,
+        "paused": true,
+        "seconds": 7.772699999868861,
+        "draws": 8632,
+        "pixels": 538506124,
+        "frameCount": 475
+      },
+      "b": {
+        "settled": true,
+        "paused": true,
+        "seconds": 7.772699999868861,
+        "draws": 8632,
+        "pixels": 538506124,
+        "frameCount": 475
+      },
+      "pass": true
+    },
+    "initial": {
+      "ssim": 1,
+      "deltaE76": 0,
+      "exact": true,
+      "seconds": 7.772699999868861,
+      "wallMs": 7894.9000000059605,
+      "draws": 8632,
+      "pixels": 538506124,
+      "dyeFormat": "RGBA32F",
+      "frameCount": 475,
+      "frames": [
+        {
+          "seconds": 0.5045666666726272,
+          "wallMs": 544
+        },
+        {
+          "seconds": 1.0164333333273734,
+          "wallMs": 1060.0999999940395
+        },
+        {
+          "seconds": 2.006466666559377,
+          "wallMs": 2060.800000011921
+        },
+        {
+          "seconds": 4.000199999809257,
+          "wallMs": 4076.699999988079
+        }
+      ],
+      "width": 433,
+      "height": 512
+    },
+    "reform": {
+      "wake": {
+        "settled": false,
+        "paused": false,
+        "seconds": 0.3852666666905086,
+        "draws": 456,
+        "pixels": 31096320,
+        "frameCount": 24
+      },
+      "visiblyDisturbed": true,
+      "result": {
+        "ssim": 1,
+        "deltaE76": 0,
+        "exact": true,
+        "seconds": 9.784433333536025,
+        "wallMs": 9889.199999988079,
+        "draws": 10827,
+        "pixels": 675358132,
+        "dyeFormat": "RGBA32F",
+        "frameCount": 594,
+        "frames": [
+          {
+            "seconds": 0.500933333327373,
+            "wallMs": 521.8000000119209
+          },
+          {
+            "seconds": 1.011766666660707,
+            "wallMs": 1039
+          },
+          {
+            "seconds": 2.002233333369094,
+            "wallMs": 2038.5
+          },
+          {
+            "seconds": 4.014833333541943,
+            "wallMs": 4071.800000011921
+          }
+        ],
+        "width": 433,
+        "height": 512
+      }
+    }
+  },
+  {
+    "image": "starry-night.jpg",
+    "seed": 5,
+    "variant": 0,
+    "split": "train",
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+    "errors": [],
+    "timedOut": false,
+    "rest": {
+      "a": {
+        "settled": true,
+        "paused": true,
+        "seconds": 6.2973333333035235,
+        "draws": 7009,
+        "pixels": 457120870,
+        "frameCount": 386
+      },
+      "b": {
+        "settled": true,
+        "paused": true,
+        "seconds": 6.2973333333035235,
+        "draws": 7009,
+        "pixels": 457120870,
+        "frameCount": 386
+      },
+      "pass": true
+    },
+    "initial": {
+      "ssim": 1,
+      "deltaE76": 0,
+      "exact": true,
+      "seconds": 6.2973333333035235,
+      "wallMs": 6403.5999999940395,
+      "draws": 7009,
+      "pixels": 457120870,
+      "dyeFormat": "RGBA32F",
+      "frameCount": 386,
+      "frames": [
+        {
+          "seconds": 0.5090999999940397,
+          "wallMs": 552.5999999940395
+        },
+        {
+          "seconds": 1.0042666666011024,
+          "wallMs": 1053.0999999940395
+        },
+        {
+          "seconds": 2.0111666665474566,
+          "wallMs": 2069.5999999940395
+        },
+        {
+          "seconds": 4.0034333333571706,
+          "wallMs": 4086.0999999940395
+        }
+      ],
+      "width": 512,
+      "height": 405
+    },
+    "reform": {
+      "wake": {
+        "settled": false,
+        "paused": false,
+        "seconds": 0.38716666672627137,
+        "draws": 456,
+        "pixels": 32566272,
+        "frameCount": 24
+      },
+      "visiblyDisturbed": true,
+      "result": {
+        "ssim": 1,
+        "deltaE76": 0,
+        "exact": true,
+        "seconds": 10.27486666683361,
+        "wallMs": 10393,
+        "draws": 11374,
+        "pixels": 740608246,
+        "dyeFormat": "RGBA32F",
+        "frameCount": 624,
+        "frames": [
+          {
+            "seconds": 0.5013333333929381,
+            "wallMs": 525.2000000178814
+          },
+          {
+            "seconds": 1.0124333333869782,
+            "wallMs": 1042.7000000178814
+          },
+          {
+            "seconds": 2.0025666666726267,
+            "wallMs": 2042.6000000238419
+          },
+          {
+            "seconds": 4.001100000083441,
+            "wallMs": 4058.9000000059605
+          }
+        ],
+        "width": 512,
+        "height": 405
+      }
+    }
+  },
+  {
+    "image": "starry-night.jpg",
+    "seed": 11,
+    "variant": 0,
+    "split": "train",
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+    "errors": [],
+    "timedOut": false,
+    "rest": {
+      "a": {
+        "settled": true,
+        "paused": true,
+        "seconds": 8.261266666481886,
+        "draws": 9179,
+        "pixels": 597673774,
+        "frameCount": 505
+      },
+      "b": {
+        "settled": true,
+        "paused": true,
+        "seconds": 8.261266666481886,
+        "draws": 9179,
+        "pixels": 597673774,
+        "frameCount": 505
+      },
+      "pass": true
+    },
+    "initial": {
+      "ssim": 1,
+      "deltaE76": 0,
+      "exact": true,
+      "seconds": 8.261266666481886,
+      "wallMs": 8398.800000011921,
+      "draws": 9179,
+      "pixels": 597673774,
+      "dyeFormat": "RGBA32F",
+      "frameCount": 505,
+      "frames": [
+        {
+          "seconds": 0.5088666666547458,
+          "wallMs": 549.3000000119209
+        },
+        {
+          "seconds": 1.0009333333273733,
+          "wallMs": 1048.7000000178814
+        },
+        {
+          "seconds": 2.002699999988078,
+          "wallMs": 2065.800000011921
+        },
+        {
+          "seconds": 4.011866666565331,
+          "wallMs": 4098.9000000059605
+        }
+      ],
+      "width": 512,
+      "height": 405
+    },
+    "reform": {
+      "wake": {
+        "settled": false,
+        "paused": false,
+        "seconds": 0.4142999999523163,
+        "draws": 492,
+        "pixels": 34928128,
+        "frameCount": 26
+      },
+      "visiblyDisturbed": true,
+      "result": {
+        "ssim": 1,
+        "deltaE76": 0,
+        "exact": true,
+        "seconds": 8.261633333285642,
+        "wallMs": 8388.399999976158,
+        "draws": 9186,
+        "pixels": 598874414,
+        "dyeFormat": "RGBA32F",
+        "frameCount": 504,
+        "frames": [
+          {
+            "seconds": 0.5126999999284745,
+            "wallMs": 537
+          },
+          {
+            "seconds": 1.007066666583221,
+            "wallMs": 1037.8999999761581
+          },
+          {
+            "seconds": 2.006833333214122,
+            "wallMs": 2053.5999999940395
+          },
+          {
+            "seconds": 4.014966666499768,
+            "wallMs": 4087.199999988079
+          }
+        ],
+        "width": 512,
+        "height": 405
+      }
+    }
+  },
+  {
+    "image": "starry-night.jpg",
+    "seed": 23,
+    "variant": 0,
+    "split": "train",
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+    "errors": [],
+    "timedOut": false,
+    "rest": {
+      "a": {
+        "settled": true,
+        "paused": true,
+        "seconds": 7.812099999904629,
+        "draws": 8632,
+        "pixels": 562240316,
+        "frameCount": 475
+      },
+      "b": {
+        "settled": true,
+        "paused": true,
+        "seconds": 7.812099999904629,
+        "draws": 8632,
+        "pixels": 562240316,
+        "frameCount": 475
+      },
+      "pass": true
+    },
+    "initial": {
+      "ssim": 1,
+      "deltaE76": 0,
+      "exact": true,
+      "seconds": 7.812099999904629,
+      "wallMs": 7901.4000000059605,
+      "draws": 8632,
+      "pixels": 562240316,
+      "dyeFormat": "RGBA32F",
+      "frameCount": 475,
+      "frames": [
+        {
+          "seconds": 0.5106000000536443,
+          "wallMs": 550.7000000178814
+        },
+        {
+          "seconds": 1.007166666756074,
+          "wallMs": 1051.0999999940395
+        },
+        {
+          "seconds": 2.0011666668454793,
+          "wallMs": 2050.5
+        },
+        {
+          "seconds": 4.005633333375047,
+          "wallMs": 4067.0999999940395
+        }
+      ],
+      "width": 512,
+      "height": 405
+    },
+    "reform": {
+      "wake": {
+        "settled": false,
+        "paused": false,
+        "seconds": 0.3939333333273729,
+        "draws": 456,
+        "pixels": 32566272,
+        "frameCount": 24
+      },
+      "visiblyDisturbed": true,
+      "result": {
+        "ssim": 1,
+        "deltaE76": 0,
+        "exact": true,
+        "seconds": 7.301200000077472,
+        "wallMs": 7382.5,
+        "draws": 8074,
+        "pixels": 526826570,
+        "dyeFormat": "RGBA32F",
+        "frameCount": 443,
+        "frames": [
+          {
+            "seconds": 0.5097999999821187,
+            "wallMs": 532
+          },
+          {
+            "seconds": 1.0059333332677691,
+            "wallMs": 1031.8999999761581
+          },
+          {
+            "seconds": 2.012166666547456,
+            "wallMs": 2048.2999999821186
+          },
+          {
+            "seconds": 4.012466666648779,
+            "wallMs": 4065.2999999821186
+          }
+        ],
+        "width": 512,
+        "height": 405
+      }
+    }
+  }
+]
