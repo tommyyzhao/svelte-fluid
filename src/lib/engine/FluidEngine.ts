@@ -4911,7 +4911,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		this.withGl(() => {
 			this.renderCoreInner(target);
 			if (target === null) {
-				this.imageExperiment?.onFrame?.({ seconds: this.targetSeconds, final: this.targetFinal, draws: this.targetDraws, pixels: this.targetPixels, dyeFormat: this.targetDyeFormat });
+				this.imageExperiment?.onFrame?.({ seconds: this.targetSeconds, final: this.targetFinal, draws: this.targetDraws, pixels: this.targetPixels, dyeFormat: this.targetDyeFormat, velocityMax: this.settlePixels[0], targetErrorMax: this.settlePixels[4] });
 				this.present();
 			}
 		});

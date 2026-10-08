@@ -14,7 +14,7 @@
 	let frames: { seconds: number; wallMs: number; png: string }[] = [];
 	let draws = 0, pixels = 0, frameCount = 0, seconds = 0, start = 0, settledAt = 0;
 	let alive = true, generation = 0;
-	let drawOffset = 0, pixelOffset = 0, dyeFormat = 'unknown';
+	let drawOffset = 0, pixelOffset = 0, dyeFormat = 'unknown', velocityMax = 0, targetErrorMax = 0;
 	function beginDisturbance() {
 		drawOffset += draws; pixelOffset += pixels;
 		draws = 0; pixels = 0; frameCount = 0; frames = []; settledAt = 0; start = performance.now();
@@ -37,7 +37,7 @@
 		frames = []; draws = 0; pixels = 0; frameCount = 0; seconds = 0; settledAt = 0; drawOffset = 0; pixelOffset = 0; start = performance.now();
 		const params = new URLSearchParams(location.search);
 		release = registerImageConvergence(canvas, { variant: params.get('variant') === '1' ? 1 : 0, onFrame: (state) => {
-			draws = state.draws - drawOffset; pixels = state.pixels - pixelOffset; dyeFormat = state.dyeFormat; seconds = state.seconds; frameCount++;
+			draws = state.draws - drawOffset; pixels = state.pixels - pixelOffset; dyeFormat = state.dyeFormat; seconds = state.seconds; velocityMax = state.velocityMax; targetErrorMax = state.targetErrorMax; frameCount++;
 			if (state.final && !settledAt) settledAt = performance.now() - start;
 			const capture = state.final || [0.5, 1, 2, 4][frames.length] <= seconds;
 			if (capture) {
@@ -52,7 +52,7 @@
 				ready: true,
 				beginDisturbance,
 				intermediate: () => retained.toDataURL(),
-				state: () => ({ settled: engine?.isSettled, paused: engine?.isPaused, seconds, draws, pixels, frameCount }),
+				state: () => ({ settled: engine?.isSettled, paused: engine?.isPaused, seconds, draws, pixels, frameCount, velocityMax, targetErrorMax }),
 				result: () => ({ ...fidelity(retained.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height).data, targetPixels, canvas.width, canvas.height), seconds, wallMs: settledAt || performance.now() - start, draws, pixels, dyeFormat, frameCount, frames, width: canvas.width, height: canvas.height, final: retained.toDataURL() }),
 				dispose: () => { engine?.dispose(); release?.(); }
 			} });

@@ -7,6 +7,8 @@ export interface ImageConvergenceExperiment {
     draws: number;
     pixels: number;
     dyeFormat: "RGBA32F" | "RGBA16F";
+    velocityMax: number;
+    targetErrorMax: number;
   }) => void;
 }
 const experiments = new WeakMap<

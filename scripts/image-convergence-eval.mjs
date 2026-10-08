@@ -29,7 +29,7 @@ const variant = Number(process.argv[2] ?? 0),
   split = process.argv[3] ?? "train";
 assert(
   [0, 1, 2].includes(variant) &&
-    ["train", "held-out", "probe", "probe-fix"].includes(split)
+    ["train", "held-out", "probe", "probe-fix", "diagnostic"].includes(split)
 );
 const path = join(SCRATCH, `v${variant}-${split}.json`);
 let rows = [];
@@ -197,25 +197,28 @@ try {
     args: ["--disable-software-rasterizer"],
   });
   const combined = process.env.E5_BASELINE_BATCH === "1";
-  const slots = combined
-    ? [
-        { image: IMAGES[0], seed: 5, phase: "probe-fix" },
-        ...IMAGES.slice(0, 6).flatMap((image) =>
-          [5, 11, 23].map((seed) => ({ image, seed, phase: "train" }))
-        ),
-      ]
-    : (split.startsWith("probe")
-        ? IMAGES.slice(0, 1)
-        : split === "train"
-        ? IMAGES.slice(0, 6)
-        : IMAGES.slice(6)
-      ).flatMap((image) =>
-        (split.startsWith("probe") ? [5] : [5, 11, 23]).map((seed) => ({
-          image,
-          seed,
-          phase: split,
-        }))
-      );
+  const slots =
+    split === "diagnostic"
+      ? [{ image: "pearl-earring.jpg", seed: 23, phase: "diagnostic" }]
+      : combined
+      ? [
+          { image: IMAGES[0], seed: 5, phase: "probe-fix" },
+          ...IMAGES.slice(0, 6).flatMap((image) =>
+            [5, 11, 23].map((seed) => ({ image, seed, phase: "train" }))
+          ),
+        ]
+      : (split.startsWith("probe")
+          ? IMAGES.slice(0, 1)
+          : split === "train"
+          ? IMAGES.slice(0, 6)
+          : IMAGES.slice(6)
+        ).flatMap((image) =>
+          (split.startsWith("probe") ? [5] : [5, 11, 23]).map((seed) => ({
+            image,
+            seed,
+            phase: split,
+          }))
+        );
   let committed = !combined;
   for (const { image, seed, phase } of slots) {
     if (Date.now() - acquiredAt > 660000) break;
