@@ -191,3 +191,53 @@ Decision:
    verdicts) under a one-sided binomial test with p < 0.05.
 4. "No worse" requires both gates to pass. Calibration controls, bands,
    seeds and the Amendment 1 scope are unchanged.
+
+## Amendment 3 — E1 headless 60 Hz baseline (post-hoc, 2026-10-07)
+
+**Post-hoc:** the owner prohibited agent-headed browsers after the historical
+baseline and Rounds 1–2 were observed. Existing headless feasibility smokes
+are exploratory, not registered baseline slots. This amendment is committed
+**before any new headless E1 baseline data**. Rounds 1–2 produced no registered
+keep; hill-climb rule 3 requires an eval repair before another library change.
+
+From Round 3 onward the measurement condition is installed hardware Chrome
+`/Applications/Google Chrome.app/Contents/MacOS/Google Chrome --headless=new`,
+**60 Hz** on this Mac, verified by the independent RAF probe. Renderer must
+be ANGLE Metal Apple M1 Max; no SwiftShader or unsafe GPU flags. macOS lacks
+BeginFrameControl. The headed native-120-Hz baseline remains historical;
+never pool it with, or compare candidate savings against, headless data.
+
+New frozen baseline engine is local main
+`37bbe851c0d52c86241f6964c3b443f17e95611b`: `maxFps` defaults to 0,
+behaviour-equivalent to `e4be335` at present-every-frame. The harness asserts
+`src/lib` unchanged from `37bbe85`; `--self-check` retains its non-capture
+escape. No library changes in this repair. All splits, CSS sizes, DPRs,
+seeds, windows, blank controls, independent-browser **R=3**, active-window
+noise formula, headline, keep rule, E2 guardrail and 0-GPU rule are unchanged.
+Train captures precede held-out captures; held-out scenes are baseline only.
+
+Additional **measurement-only** motion telemetry: separate diagnostic mounts
+for driver-free baseline scenes on R1 (one diagnostic per matrix scene),
+same config/size/DPR/seed, no input. In the
+untouched t=30–40 s interval, sample consecutive engine-frame pairs at the
+first frames at/after t=30/32/34/36/38 s (five pairs). `readField('velocity')`
+reports max Euclidean speed in simulation texels/s; `readField('dye')` reports
+max absolute RGB-channel change between each pair, also the window maximum.
+Record actual pair times/frame intervals, independent RAF/engine cadence,
+production settle-probe maxima/verdicts and quiet-to-unsubscribe latency.
+Settled scenes are recorded as settled, not assumed to have sampled movement.
+These readbacks occur **after the energy trace**, never inside energy windows;
+telemetry cannot alter the E1 metric. Nonzero dye change proves evolution,
+not perceptual visibility by itself; compare its magnitude to 1/255 only as
+an explicitly diagnostic scale, not a new settle/keep threshold. Preserve
+missing/failed probes; never infer rest from an invalid zero-filled readback.
+
+Closed infrastructure-retry list stays: recorder-start timeout; recorder
+finalisation timeout (including outer-task ceiling during finalisation);
+missing execution coverage; GPU-process exit; contention; ENOSPC; raw-trace
+oversize; visibility gate not met. Exactly one logged end-of-run retry per
+failed slot; retain originals, never retry a clean metric. Unclassified
+failures stay missing with their reason. Existing 15 GiB free-space guard,
+10 GiB scratch watchdog, exclusive owned GPU lock and ≤25-minute batches
+remain mandatory. Rank stages on TRAIN only using existing measurement
+facilities; unavailable stage attribution must be reported, not fabricated.
