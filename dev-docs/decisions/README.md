@@ -104,6 +104,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0108](./0108-dv2-engine-contract-closure.md) | dv2 bounded idle/cache/geometry contract closure | Accepted (scope/contract); owner appearance pending |
 | [0109](./0109-frame-rate-cap.md) | Per-instance 60 fps frame cap: rejected by E2 visual guardrail (step-count-dependent physics) | Rejected |
 | [0110](./0110-presentation-rate-cap.md) | Presentation-only rate cap; preserve every solver frame | Accepted as opt-in (default 0); default-on not adopted |
+| [0111](./0111-component-excellence-eval.md) | Pre-registered E4 component excellence, installability, accessibility and bundle cost | Accepted |
 
 ADRs 0067-0078 exist only on the private R&D branch (`rd/webgpu-replacement`); the numbering gap here is intentional.
 
