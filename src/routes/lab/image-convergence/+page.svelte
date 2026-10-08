@@ -35,7 +35,7 @@
 		const targetPixels = target.getContext('2d')!.getImageData(0, 0, target.width, target.height).data;
 		frames = []; draws = 0; pixels = 0; frameCount = 0; seconds = 0; settledAt = 0; drawOffset = 0; pixelOffset = 0; start = performance.now();
 		const params = new URLSearchParams(location.search);
-		release = registerImageConvergence(canvas, { variant: params.get('variant') === '2' ? 2 : params.get('variant') === '1' ? 1 : 0, onFrame: (state) => {
+		release = registerImageConvergence(canvas, { variant: params.get('variant') === '2s' ? '2s' : params.get('variant') === '2' ? 2 : params.get('variant') === '1' ? 1 : 0, onFrame: (state) => {
 			draws = state.draws - drawOffset; pixels = state.pixels - pixelOffset; dyeFormat = state.dyeFormat; seconds = state.seconds; velocityMax = state.velocityMax; targetErrorMax = state.targetErrorMax; frameCount++;
 			settledAt = settledTimestamp(settledAt, state.final, performance.now() - start);
 			const capture = state.final || [0.5, 1, 2, 4][frames.length] <= seconds;
@@ -46,7 +46,7 @@
 		}});
 		try {
 			engine = new FluidEngine({ canvas, config: { seed: Number(params.get('seed') ?? 5), simResolution: 128, dyeResolution: 512, pressureIterations: 20, curl: 10, densityDissipation: 0, velocityDissipation: 4, initialSplatCount: 8, shading: false, bloom: false, sunrays: false, distortionImageUrl: url }, onFrameError: (error) => { status = String(error); } });
-			status = `Drag to disturb. Experimental ${params.get('variant') === '1' ? 'V1 reference map' : 'V0 dye nudging'}.`;
+			status = `Drag to disturb. Experimental ${params.get('variant') === '2s' ? 'V2s curl-tapered controller' : params.get('variant') === '2' ? 'V2 reference-map controller' : params.get('variant') === '1' ? 'V1 reference map' : 'V0 dye nudging'}.`;
 			Object.assign(window, { __e5: {
 				ready: true,
 				beginDisturbance,

@@ -3,7 +3,7 @@ import { FluidEngine, _setContextTier } from "./FluidEngine.js";
 import { registerImageConvergence } from "./image-convergence.js";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 it("E5 arms settle exact target, stop draws, wake and dispose on both tiers", async () => {
-  for (const variant of [0, 1, 2] as const)
+  for (const variant of [0, 1, 2, "2s"] as const)
     for (const tier of ["own", "shared"] as const) {
       _setContextTier(tier);
       const canvas = document.createElement("canvas");

@@ -92,7 +92,7 @@ import {
 import { type Rng, generateColor, mulberry32, normalizeColor, randomSeed } from './rng.js';
 import { fitDrawingBufferSize } from './resolution.js';
 import { flowCanDriveSolver } from './solver-activity.js';
-import { imageConvergenceFor, targetRelaxation, relaxationKeep } from './image-convergence.js';
+import { imageConvergenceFor, targetRelaxation, relaxationKeep, targetCurlKeep } from './image-convergence.js';
 import { SETTLE_CHECKS, SETTLE_CHECK_INTERVAL, hasContinuousDriver, dyeVisibilityGain, heightVisibilityScale, isInertSolver, isQuiet, isQuietFlags } from './settle.js';
 import { blurMaskData } from './sticky-blur.js';
 import { createFrameGate, subscribeFrame } from './frame-scheduler.js';
@@ -1016,9 +1016,9 @@ export class FluidEngine implements FluidHandle {
 		this.initGlassFramebuffer();
 		if (this.imageExperiment) {
 			this.targetNudgeProgram = this.host ? this.host.program('fluid:targetNudge', S.baseVertexShader, S.targetNudgeShader) : this.makeTargetProgram(S.targetNudgeShader);
-			if (this.imageExperiment.variant > 0) {
+			if (this.imageExperiment.variant !== 0) {
 				this.targetMapProgram = this.host ? this.host.program('fluid:targetMap', S.baseVertexShader, S.targetMapShader) : this.makeTargetProgram(S.targetMapShader);
-				if (this.imageExperiment.variant === 2) this.targetForceProgram = this.host ? this.host.program('fluid:targetForce', S.baseVertexShader, S.targetForceShader) : this.makeTargetProgram(S.targetForceShader);
+				if (this.imageExperiment.variant === 2 || this.imageExperiment.variant === '2s') this.targetForceProgram = this.host ? this.host.program('fluid:targetForce', S.baseVertexShader, S.targetForceShader) : this.makeTargetProgram(S.targetForceShader);
 				const rg = this.ext.formatRG;
 				this.targetMap = createDoubleFBO(this.gl, this.velocity.width, this.velocity.height, rg.internalFormat, rg.format, this.ext.halfFloatTexType, this.gl.LINEAR);
 			}
@@ -4850,7 +4850,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			gl.uniform1i(this.vorticityProgram.uniforms.uCurl, this.curlFBO.attach(1));
 			gl.uniform1f(
 				this.vorticityProgram.uniforms.curl,
-				curlScale(this.config.CURL, this.velocity.width, this.velocity.height)
+				curlScale(this.config.CURL * (this.imageExperiment?.variant === '2s' ? targetCurlKeep(this.targetSeconds) : 1), this.velocity.width, this.velocity.height)
 			);
 			gl.uniform1f(this.vorticityProgram.uniforms.dt, dt);
 			gl.uniform1f(this.vorticityProgram.uniforms.uAdaptiveMix, this.config.VORTICITY_ADAPTIVE);
@@ -5007,7 +5007,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			gl.bindTexture(gl.TEXTURE_2D, this.distortionTexture);
 			gl.uniform1i(this.displayMaterial.uniforms.uTargetImage, 1);
 			gl.uniform1i(this.displayMaterial.uniforms.uTargetFinal, this.targetFinal ? 1 : 0);
-			gl.uniform1i(this.displayMaterial.uniforms.uTargetVariant, this.imageExperiment.variant);
+			gl.uniform1i(this.displayMaterial.uniforms.uTargetVariant, this.imageExperiment.variant === '2s' ? 2 : this.imageExperiment.variant);
 			gl.uniform1i(this.displayMaterial.uniforms.uReferenceMap, (this.targetMap?.read ?? this.dye.read).attach(2));
 			this.blit(target);
 			return;

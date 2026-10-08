@@ -8,15 +8,25 @@ import {
   pairVerdict,
   parseJudge,
 } from "./quality-eval.mjs";
-import { existsSync } from "node:fs";
-assert(
-  !existsSync("/tmp/svelte-fluid-gpu.lock"),
-  "Do not load judge while another lane captures"
-);
+async function waitForCapture() {
+  while (true) {
+    try {
+      const owner = JSON.parse(
+        await readFile("/tmp/svelte-fluid-gpu.lock/owner", "utf8")
+      );
+      if (owner.lane === "e5-spike") return;
+    } catch (e) {
+      if (e.code === "ENOENT") return;
+      throw e;
+    }
+    await new Promise((r) => setTimeout(r, 60000));
+  }
+}
 const ROOT = "/tmp/e5-spike";
 const RUBRIC =
   'Read only pair.png. Each row is a sequence at simulation times 0.5, 1, 2, 4 seconds. Which sequence emerges like transported fluid rather than a crossfade/morph? Describe both; coherent advection, persistent swirls and colour carried by flow count; mere sharpness or layout do not. Tie if indistinguishable. Do not infer variant labels. Return ONLY JSON {"verdict":"left"|"right"|"tie","reason":"evidence"}. Left means top row, right means bottom row.';
 async function judge(dir, prompt = RUBRIC, tools = "Read") {
+  await waitForCapture();
   const env = { ...process.env };
   delete env.CLAUDECODE;
   const p = spawn(
@@ -152,8 +162,16 @@ async function calibrate() {
       };
     });
   const controls = [];
+  try {
+    controls.push(
+      ...JSON.parse(await readFile(`${ROOT}/calibration.json`, "utf8")).controls
+    );
+  } catch (e) {
+    if (e.code !== "ENOENT") throw e;
+  }
   for (const kind of ["identical", "crossfade"])
     for (let seed = 0; seed < 5; seed++) {
+      if (controls.some((r) => r.kind === kind && r.seed === seed)) continue;
       const a = sequences(true, seed),
         b = kind === "identical" ? a : sequences(false, seed),
         trials = [];
@@ -190,7 +208,34 @@ async function calibrate() {
   );
   console.log({ passed });
 }
-if (import.meta.main && process.argv[2] === "calibrate") await calibrate();
+if (import.meta.main && process.argv[2] === "fallback") {
+  await waitForCapture();
+  const variant = process.argv[3] === "2s" ? "2s" : Number(process.argv[3]),
+    split = process.argv[4] ?? "train";
+  const baseline = JSON.parse(
+    await readFile(`${ROOT}/v0-${split}.json`, "utf8")
+  );
+  const candidate = JSON.parse(
+    await readFile(`${ROOT}/v${variant}-${split}.json`, "utf8")
+  );
+  const rows = candidate.map((c) => {
+    const b = baseline.find((r) => r.image === c.image && r.seed === c.seed);
+    assert(b);
+    return {
+      image: c.image,
+      seed: c.seed,
+      scorer: "fallback",
+      baselineTransport: transportScore(b.initial.frames),
+      candidateTransport: transportScore(c.initial.frames),
+    };
+  });
+  await writeFile(
+    `${ROOT}/fallback-v${variant}-${split}.json`,
+    JSON.stringify(rows, null, 2)
+  );
+  console.log(rows);
+} else if (import.meta.main && process.argv[2] === "calibrate")
+  await calibrate();
 else if (import.meta.main) {
   const calibration = JSON.parse(
     await readFile(`${ROOT}/calibration.json`, "utf8")

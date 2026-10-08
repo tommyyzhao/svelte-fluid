@@ -1,6 +1,6 @@
 // ADR 0112: canvas-scoped lab opt-in; absent from the public entry point.
 export interface ImageConvergenceExperiment {
-  variant: 0 | 1 | 2;
+  variant: 0 | 1 | 2 | "2s";
   onFrame?: (state: {
     seconds: number;
     final: boolean;
@@ -19,7 +19,7 @@ export function registerImageConvergence(
   canvas: HTMLCanvasElement,
   experiment: ImageConvergenceExperiment
 ): () => void {
-  if (![0, 1, 2].includes(experiment.variant))
+  if (experiment.variant !== "2s" && ![0, 1, 2].includes(experiment.variant))
     throw new RangeError("Unknown image convergence variant");
   experiments.set(canvas, experiment);
   return () => {
@@ -30,6 +30,9 @@ export function imageConvergenceFor(
   canvas: HTMLCanvasElement
 ): ImageConvergenceExperiment | undefined {
   return experiments.get(canvas);
+}
+export function targetCurlKeep(seconds: number): number {
+  return Math.min(1, Math.max(0, 1 - (seconds - 0.75) / 3));
 }
 export function targetRelaxation(seconds: number): number {
   return seconds < 0.75

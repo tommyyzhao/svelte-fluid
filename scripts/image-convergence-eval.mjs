@@ -25,10 +25,10 @@ let owned = false,
   browser,
   server,
   preflight;
-const variant = Number(process.argv[2] ?? 0),
+const variant = process.argv[2] === "2s" ? "2s" : Number(process.argv[2] ?? 0),
   split = process.argv[3] ?? "train";
 assert(
-  [0, 1, 2].includes(variant) &&
+  [0, 1, 2, "2s"].includes(variant) &&
     ["train", "held-out", "probe", "probe-fix", "diagnostic"].includes(split)
 );
 const path = join(SCRATCH, `v${variant}-${split}.json`);
@@ -162,7 +162,10 @@ try {
         "src/lib/engine/image-convergence.ts",
         "src/lib/engine/image-convergence.browser.test.ts",
         "src/routes/lab/image-convergence/+page.svelte",
+        "src/routes/lab/image-convergence/metrics.ts",
+        "src/routes/lab/image-convergence/metrics.test.ts",
         "scripts/image-convergence-eval.mjs",
+        "scripts/image-convergence-judge.mjs",
       ],
       [
         "git",

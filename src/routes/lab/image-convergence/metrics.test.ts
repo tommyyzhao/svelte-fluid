@@ -4,8 +4,16 @@ import {
   relaxationKeep,
   referenceDisplacement,
   targetRelaxation,
+  targetCurlKeep,
 } from "$lib/engine/image-convergence.js";
 describe("E5 frozen math", () => {
+  it("V2s preserves scramble curl then tapers it to zero without restarting", () => {
+    expect(targetCurlKeep(0)).toBe(1);
+    expect(targetCurlKeep(0.75)).toBe(1);
+    expect(targetCurlKeep(2.25)).toBe(0.5);
+    expect(targetCurlKeep(3.75)).toBe(0);
+    expect(targetCurlKeep(30)).toBe(0);
+  });
   it("forgets pre-splat final timestamps on the first disturbed frame", () => {
     let timestamp = settledTimestamp(0, true, 25);
     expect(timestamp).toBe(25);
@@ -59,9 +67,13 @@ describe("E5 frozen math", () => {
 });
 
 // Identity map: (grad xi)^T displacement is exactly the displacement.
-it('V2 identity-map controller direction decreases reference energy', () => {
- const d = [.1, -.2], k = 8, dt = .01;
- const force = d.map(v => k * v);
- const next = d.map((v, i) => v - dt * force[i]);
- expect(next.reduce((e, v) => e + v * v, 0)).toBeLessThan(d.reduce((e, v) => e + v * v, 0));
+it("V2 identity-map controller direction decreases reference energy", () => {
+  const d = [0.1, -0.2],
+    k = 8,
+    dt = 0.01;
+  const force = d.map((v) => k * v);
+  const next = d.map((v, i) => v - dt * force[i]);
+  expect(next.reduce((e, v) => e + v * v, 0)).toBeLessThan(
+    d.reduce((e, v) => e + v * v, 0)
+  );
 });
