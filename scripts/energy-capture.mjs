@@ -492,6 +492,7 @@ async function capture(c, run) {
 		if (profile) { await rm(profile, { recursive: true }); profile = null; }
 		if (notifier) { notifier.kill(); notifier = null; }
 	}
+	row.endedAt = new Date().toISOString(); row.loadAverageEnd = loadavg();
 	await writeFile(`${DIR}/${name}.json`, JSON.stringify(row, null, 2));
 	console.log(JSON.stringify({ name, status: row.status, error: row.error, active: row.windows?.active?.gpuBusyMsPerSecond, untouched: row.windows?.untouched?.gpuBusyMsPerSecond, traceBytes: row.traceBytes, traceDeleted: row.traceDeleted }));
 	return row;
