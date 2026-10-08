@@ -330,6 +330,24 @@ saved about 0.6 ms/frame of 1.8–2.4 ms. E2 cannot certify spatial changes
 only saves energy above 60 Hz; owner packet `owner-review/max-fps/`, Bead
 `svelte-fluid-v73`.
 
+**Per-encoder attribution (`gpu-budget.md`, `795fc30`) confirms the ceiling.**
+
+- **Where the time goes:**
+  - Pressure: 37 GPU-ms/s mean allocated budget across Plasma/Karman.
+  - Dye source/outlet: 21.
+  - Display: 18.
+  - Bloom: 9.
+  - Radial sunrays: 9.
+  - Browser canvas write outside the engine: about 5.
+- **Pressure:** the only large non-spatial group, and its equal-quality levers are already rejected (fusion parity, zero redundant iterations).
+- **Fewer pressure iterations, accepted on E2 dynamics rather than parity:**
+  - Plausibly 6–10% saving.
+  - Held-out per-scene noise is 3.6–19.5%, so this cannot clear the 2× noise keep bar.
+- **Bloom:** small levels are fixed-cost (about 20 µs per pass). Capping them changes post-processing, which E2 cannot certify (Amendment 1).
+- **Display, sunrays and dye levers:** all spatial or post-processing.
+
+Every remaining lever large enough for the keep rule is therefore owner-gated (Bead `svelte-fluid-a9t`). No further autonomous E1 round is justified under this protocol.
+
 Idle and background contracts **are met**:
 
 - Offscreen, hidden and blank control use exactly 0 GPU-ms/s in all 107
