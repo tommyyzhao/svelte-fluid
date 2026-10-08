@@ -1,4 +1,4 @@
-// ADR 0107 E1. Real <Fluid>, normal RAF; headless hardware Chrome per user directive.
+// ADR 0107 E1. Real <Fluid>, normal RAF; headed requires explicit lane approval.
 // Historical headed120Hz results stay separate; headless60Hz is not comparable.
 // bun scripts/energy-capture.mjs --label baseline [--split train|test|all] [--subset Preset,...]
 // --cases 'Preset@1440x900:2:5,...' selects only members of the frozen matrix.
@@ -24,8 +24,8 @@ const matrix = [
 	...TRAIN.flatMap((preset) => [[1440, 900], [800, 500]].map(([w, h]) => ({ split: 'train', preset, w, h, dpr: 2, seed: 5 }))),
 	...TEST.flatMap((preset) => [2, 1].flatMap((dpr) => [11, 23].map((seed) => ({ split: 'test', preset, w: 1024, h: 640, dpr, seed }))))
 ];
-const key = (c) => `${c.preset}@${c.w}x${c.h}:${c.dpr}:${c.seed}`;
-const fileKey = (c) => `${c.preset.replace(/\W/g, '') || 'default'}-${c.w}x${c.h}-dpr${c.dpr}-seed${c.seed}`;
+const key = (c) => `${c.preset}@${c.w}x${c.h}:${c.dpr}:${c.seed}${c.arm ? `:${c.arm}` : ''}`;
+const fileKey = (c) => `${c.preset.replace(/\W/g, '') || 'default'}-${c.w}x${c.h}-dpr${c.dpr}-seed${c.seed}${c.arm ? `-${c.arm}` : ''}`;
 const median = (values) => {
 	const v = [...values].sort((a, b) => a - b), i = Math.floor(v.length / 2);
 	return v.length ? v.length % 2 ? v[i] : (v[i - 1] + v[i]) / 2 : null;
@@ -127,7 +127,7 @@ if (process.argv[2] === '--analyse-worker') {
 const { values: options } = parseArgs({ options: {
 	label: { type: 'string', default: 'baseline' }, split: { type: 'string', default: 'all' }, subset: { type: 'string' }, cases: { type: 'string' }, 'source-root': { type: 'string' }, 'engine-sha': { type: 'string' },
 	runs: { type: 'string', default: '3' }, 'run-start': { type: 'string', default: '1' }, override: { type: 'string' },
-	'self-check': { type: 'boolean' }, 'per-encoder-export': { type: 'boolean' }, 'summary-only': { type: 'boolean' }, resume: { type: 'boolean' }, help: { type: 'boolean' }
+	'paired-max-fps': { type: 'boolean' }, headed: { type: 'boolean' }, 'self-check': { type: 'boolean' }, 'per-encoder-export': { type: 'boolean' }, 'summary-only': { type: 'boolean' }, resume: { type: 'boolean' }, help: { type: 'boolean' }
 } });
 if (options.help) { console.log('bun scripts/energy-capture.mjs --label NAME [--split train|test|all] [--subset ID,...] [--cases ID@WxH:DPR:seed,...] [--runs 3] [--run-start 1] [--override JSON] [--per-encoder-export] [--resume] | --self-check | --summary-only'); process.exit(0); }
 assert.match(options.label, /^[A-Za-z0-9_-]+$/, 'Invalid label');
@@ -137,18 +137,22 @@ const RUNS = positive(options.runs), RUN_START = positive(options['run-start']);
 assert.ok(Number.isSafeInteger(RUN_START + RUNS), 'Run range exceeds safe integers');
 const parsedOverride = JSON.parse(options.override ?? process.env.ENERGY_CAPTURE_OVERRIDE ?? '{}');
 assert.ok(parsedOverride && typeof parsedOverride === 'object' && !Array.isArray(parsedOverride), 'Override requires a JSON object');
-const override = Object.fromEntries(Object.entries(parsedOverride).sort(([a], [b]) => a.localeCompare(b)));
+let override = Object.fromEntries(Object.entries(parsedOverride).sort(([a], [b]) => a.localeCompare(b)));
+assert.ok(!options['paired-max-fps'] || (options.headed && Object.keys(override).length === 0), 'Paired maxFps requires headed and no other overrides');
+const armOverride = (arm) => ({ maxFps: arm === 'candidate' ? 60 : 0 });
 for (const reserved of ['width', 'height', 'seed', 'onReady', 'onError']) assert.ok(!(reserved in override), `Frozen field ${reserved} cannot be overridden`);
 const subset = options.subset?.split(','), requested = options.cases?.split(',');
 if (subset) for (const p of subset) assert.ok([...TRAIN, ...TEST].includes(p), `Unknown preset ${p}`);
 if (requested) for (const k of requested) assert.ok(matrix.some((c) => key(c) === k), `Scene outside frozen matrix ${k}`);
-const cases = matrix.filter((c) => (options.split === 'all' || c.split === options.split) && (!subset || subset.includes(c.preset)) && (!requested || requested.includes(key(c))));
+const selectedCases = matrix.filter((c) => (options.split === 'all' || c.split === options.split) && (!subset || subset.includes(c.preset)) && (!requested || requested.includes(key(c))));
+const cases = options['paired-max-fps'] ? selectedCases.flatMap((c) => ['baseline', 'candidate'].map((arm) => ({ ...c, arm }))) : selectedCases;
 assert.ok(cases.length);
+const orderedCases = (run) => options['paired-max-fps'] && run % 2 === 0 ? selectedCases.flatMap((c) => ['candidate', 'baseline'].map((arm) => ({ ...c, arm }))) : cases;
 if (options['per-encoder-export']) assert.ok(cases.length === 1 && ['Plasma', 'Karman'].includes(cases[0].preset) && key(cases[0]) === `${cases[0].preset}@1440x900:2:5`, 'Encoder attribution is one TRAIN preset at 1440x900 DPR2 seed5');
 const DIR = `/tmp/energy-eval/${options.label}`, harnessSha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 const sourceRoot = options['source-root'] ?? ROOT;
 assert.ok(sourceRoot.startsWith('/'), '--source-root requires an absolute directory');
-const baselineSha = options['per-encoder-export'] ? '29065ca' : '37bbe851c0d52c86241f6964c3b443f17e95611b';
+const baselineSha = options['engine-sha'] ?? (options.headed ? '9984ca1' : options['per-encoder-export'] ? '29065ca' : '37bbe851c0d52c86241f6964c3b443f17e95611b');
 const engineSourceSha = sourceRoot === ROOT ? baselineSha : options['engine-sha'];
 assert.match(engineSourceSha ?? '', /^[a-f0-9]{7,40}$/, '--source-root requires supplied --engine-sha; no cross-worktree Git operations');
 const engineFileHash = createHash('sha256').update(await readFile(`${sourceRoot}/src/lib/engine/FluidEngine.ts`)).digest('hex');
@@ -160,8 +164,9 @@ const measurementParts = (s) => s.slice(s.indexOf('function slice('), s.indexOf(
 const frozenSource = execFileSync('git', ['show', 'e4be335:scripts/energy-capture.mjs'], { cwd: ROOT, encoding: 'utf8' });
 assert.equal(measurementParts(source), measurementParts(frozenSource), 'Frozen window/parser/metric logic changed');
 const measurementLogicHash = createHash('sha256').update(measurementParts(source)).update(await readFile(`${ROOT}/src/energy-capture.js`, 'utf8')).digest('hex');
-const browserMode = 'headless';
-const metadata = { sha, harnessSha, engineSourceSha, engineFileHash, measurementLogicHash, browserMode, root: ROOT, sourceRoot, chrome: CHROME, driver: 'headless installed Chrome --headless=new + CDP noDefaults:true; ordinary hardware flags, CDP device metrics', override, protocol: 'ADR 0107 E1', requestedRuns: RUNS, runStart: RUN_START, requestedScenes: cases, refresh: 'headless 60 Hz; ADR 0107 Amendment 3; headed 120 Hz historical only' };
+const browserMode = options.headed ? 'headed' : 'headless';
+const lane = options.headed ? 'E1-120hz' : process.env.ENERGY_CAPTURE_LANE ?? (options['per-encoder-export'] ? 'E1-attrib' : 'E1');
+const metadata = { sha, harnessSha, engineSourceSha, engineFileHash, measurementLogicHash, browserMode, root: ROOT, sourceRoot, chrome: CHROME, driver: `${browserMode} installed Chrome + CDP noDefaults:true; ordinary hardware flags, CDP device metrics`, override, protocol: 'ADR 0107 E1', requestedRuns: RUNS, runStart: RUN_START, requestedScenes: cases, refresh: options.headed ? 'native 120 Hz; ADR 0107 Amendment 5' : 'headless 60 Hz; ADR 0107 Amendment 3' };
 function summaries(rows) {
 	const scenes = cases.map((c) => {
 		const repeats = rows.filter((r) => key(r) === key(c) && (r.status === 'OK' || r.status === 'PARTIAL'));
@@ -204,6 +209,13 @@ if (options['self-check']) {
 	assert.equal(noise([100, 110, 120]), 20 / 110);
 	assert.equal(noise([0, 0, 0]), 0); assert.equal(noise([1, 2]), null);
 	assert.equal(median([1, 2, 4, 5]), 3); assert.equal(matrix.length, 38);
+	if (options['paired-max-fps']) {
+		assert.deepEqual(orderedCases(1).slice(0, 2).map((c) => c.arm), ['baseline', 'candidate']);
+		assert.deepEqual(orderedCases(2).slice(0, 2).map((c) => c.arm), ['candidate', 'baseline']);
+		assert.deepEqual(orderedCases(3).slice(0, 2).map((c) => c.arm), ['baseline', 'candidate']);
+		assert.deepEqual(armOverride('candidate'), { maxFps: 60 });
+		assert.notEqual(key(cases[0]), key(cases[1]));
+	}
 	assert.equal(matrix.filter((c) => c.split === 'train').length, 22);
 	assert.equal(matrix.filter((c) => c.split === 'test').length, 16);
 	assert.throws(() => slice([], 10, 10));
@@ -229,7 +241,7 @@ if (options.resume || options['summary-only']) for (const f of await readdir(DIR
 	assert.equal(row.engineSourceSha ?? row.sha, engineSourceSha, 'Cannot mix captures from different engine commits');
 	if (row.measurementLogicHash) assert.equal(row.measurementLogicHash, measurementLogicHash, 'Cannot mix measurement logic');
 	if (row.engineFileHash) assert.equal(row.engineFileHash, engineFileHash, 'Engine source-file hash changed');
-	assert.deepEqual(row.override, override, 'Cannot mix candidate overrides');
+	assert.deepEqual(row.override, options['paired-max-fps'] ? armOverride(row.arm) : override, 'Cannot mix candidate overrides');
 	results.push(row);
 }
 if (!options.resume && !options['summary-only']) for (let run = RUN_START; run < RUN_START + RUNS; run++) for (const c of cases) {
@@ -239,7 +251,7 @@ const save = () => writeFileSync(`${DIR}/summary.json`, JSON.stringify(summaries
 if (options['summary-only']) { save(); console.log(JSON.stringify(summaries(results).headline)); process.exit(0); }
 const census = () => execFileSync('ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' }).split('\n').map((l) => { const m = l.match(/^\s*(\d+)\s+(\d+)\s+(.*)$/); return m && { pid: +m[1], ppid: +m[2], command: m[3] }; }).filter(Boolean);
 const owned = new Map(); let browser, chrome, profile, server, recording, notifier, lockOwned = false, lastReleasedAt = 0, lockedAt = 0;
-const ownerText = JSON.stringify({ lane: options['per-encoder-export'] ? 'E1-attrib' : 'E1', purpose: `headless energy ${options.label} ${options.split}`, start: new Date().toISOString(), worktree: ROOT, sha, pid: process.pid });
+const ownerText = JSON.stringify({ lane, purpose: `${browserMode} energy ${options.label} ${options.split}`, start: new Date().toISOString(), worktree: ROOT, sha, pid: process.pid });
 function remember() {
 	const rows = census(), ids = new Set([process.pid]);
 	for (let changed = true; changed;) { changed = false; for (const r of rows) if (ids.has(r.ppid) && !ids.has(r.pid)) { ids.add(r.pid); changed = true; } }
@@ -265,7 +277,7 @@ async function acquire() {
 		while (true) {
 			let owner;
 			try { owner = JSON.parse(await readFile(`${LOCK}/owner`, 'utf8')); } catch (e) { if (e.code !== 'ENOENT') throw e; }
-			if (owner) { freeSince = Date.now(); if (owner.lane !== 'E1') sawNext = true; }
+			if (owner) { freeSince = Date.now(); if (owner.lane !== lane) sawNext = true; }
 			else if (sawNext || Date.now() - freeSince >= 300000) break;
 			console.log(JSON.stringify({ phase: 'waiting for next GPU lane turn', owner: owner?.lane })); await Bun.sleep(30000);
 		}
@@ -344,6 +356,7 @@ async function bytes(path) {
 	catch (e) { if (e.code === 'ENOENT') return 0; throw e; }
 }
 async function capture(c, run) {
+	if (options['paired-max-fps']) override = armOverride(c.arm);
 	const name = `${fileKey(c)}-r${run}${c.infraRetry ? '-infra-retry' : ''}`, trace = `${DIR}/${name}.trace`, windows = {}, states = {};
 	const disk = execFileSync('df', ['-k', DIR], { encoding: 'utf8' }).trim().split('\n').at(-1).trim().split(/\s+/);
 	assert.ok(Number(disk[3]) * 1024 >= 15 * 1024 ** 3, 'Disk free below 15 GiB; stop captures');
@@ -359,7 +372,7 @@ async function capture(c, run) {
 	try {
 		await startServer(); signal.throwIfAborted();
 		profile = await mkdtemp('/tmp/svelte-fluid-energy-chrome-');
-		chrome = Bun.spawn([CHROME, '--headless=new', `--user-data-dir=${profile}`, '--remote-debugging-port=0', '--no-first-run', '--no-default-browser-check', 'about:blank'], { stdout: 'ignore', stderr: 'ignore' }); remember();
+		chrome = Bun.spawn([CHROME, ...(options.headed ? [] : ['--headless=new']), `--user-data-dir=${profile}`, '--remote-debugging-port=0', '--no-first-run', '--no-default-browser-check', 'about:blank'], { stdout: 'ignore', stderr: 'ignore' }); remember();
 		let endpoint;
 		for (let i = 0; i < 100; i++) {
 			signal.throwIfAborted();
@@ -468,6 +481,10 @@ async function capture(c, run) {
 		await writeFile(input, JSON.stringify({ trace, gpuPid, windows }));
 		await execAsync(process.execPath, [process.argv[1], '--analyse-worker', input, output], { timeout: 210000, signal, maxBuffer: 1 << 20 });
 		Object.assign(row, JSON.parse(await readFile(output, 'utf8')));
+		if (options.headed) {
+			assert.match(row.adapter, /ANGLE Metal Renderer: Apple M1 Max/, 'Expected Apple M1 Max Metal renderer');
+			for (const name of ['active', 'untouched', 'offscreen', 'control']) assert.ok(row.windows[name].rafHz >= 114 && row.windows[name].rafHz <= 126, `${name}: incorrect visibility/refresh; RAF ${row.windows[name].rafHz} Hz, expected approximately 120 Hz`);
+		}
 		// Additional read-only presentation counter; frozen metric/windows/parser remain identical.
 		const presentations = row.snapshot.presentations ?? [];
 		for (const w of Object.values(row.windows)) w.presentHz = presentations.filter((t) => t >= w.start && t < w.end).length / w.seconds;
@@ -524,7 +541,7 @@ async function capture(c, run) {
 	return row;
 }
 try {
-	for (let run = RUN_START; run < RUN_START + RUNS; run++) for (const c of cases) {
+	for (let run = RUN_START; run < RUN_START + RUNS; run++) for (const c of orderedCases(run)) {
 		if (options.resume && results.some((r) => key(r) === key(c) && r.run === run)) continue;
 		// Reserve the full 10-minute attempt ceiling before the 25-minute batch limit.
 		if (lockOwned && Date.now() - lockedAt >= 15 * 60000) await release();
