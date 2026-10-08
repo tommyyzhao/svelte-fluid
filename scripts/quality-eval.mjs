@@ -99,12 +99,42 @@ export function band(values) { return { min: Math.min(...values), max: Math.max(
 export function unblind(verdict, referenceLeft) { return verdict === 'tie' ? 'tie' : ((verdict === 'left') === referenceLeft ? 'reference' : 'candidate'); }
 export function randomSides(random = randomInt) { const first = random(2) === 1; return [first, !first]; }
 export function pairVerdict(trials) { return trials[0] === trials[1] ? trials[0] : 'tie'; }
-export function noWorse(pairs, violations, calibrated, nullPairs = []) {
+// No committed null-control JSON exists. Frozen counts: quality-eval.md, "Checks, replicates
+// and Amendment 2": three stats runs; identical calibration plus one judged null per split.
+const NULL_CONTROL = {
+	train: { violations: 50, checks: 1320, losses: 6, pairs: 40 },
+	test: { violations: 47, checks: 960, losses: 6, pairs: 34 }
+};
+export function binomialTail(k, n, p) {
+	assert.ok(Number.isSafeInteger(n) && n >= 0 && Number.isSafeInteger(k) && k >= 0 && k <= n);
+	assert.ok(Number.isFinite(p) && p >= 0 && p <= 1);
+	if (!k || p === 1) return 1;
+	if (p === 0) return 0;
+	// Start at P[X=k], then log-sum-exp the exact upper tail, avoiding factorial overflow.
+	let term = k * Math.log(p) + (n - k) * Math.log1p(-p);
+	for (let i = 1; i <= k; i++) term += Math.log(n - i + 1) - Math.log(i);
+	let sum = term;
+	for (let i = k; i < n; i++) {
+		term += Math.log(n - i) - Math.log(i + 1) + Math.log(p) - Math.log1p(-p);
+		const maximum = Math.max(sum, term);
+		sum = maximum + Math.log1p(Math.exp(Math.min(sum, term) - maximum));
+	}
+	return Math.min(1, Math.exp(sum));
+}
+export function noWorse(pairs, violations, calibrated, { split, checks }) {
+	const control = NULL_CONTROL[split];
+	assert.ok(control, 'E2 requires a train or test null');
+	assert.ok(Number.isSafeInteger(checks) && checks > 0 && violations.length <= checks);
+	assert.ok(pairs.every((p) => ['reference', 'candidate', 'tie'].includes(p.verdict)));
 	const nonTies = pairs.filter((p) => p.verdict !== 'tie'), losses = nonTies.filter((p) => p.verdict === 'reference').length;
-	const nullLosses = nullPairs.filter((p) => p.verdict === 'reference').length;
-	const candidateLossRate = pairs.length ? losses / pairs.length : 0, nullLossRate = nullPairs.length ? nullLosses / nullPairs.length : null;
-	return { verdict: !calibrated ? 'UNUSABLE' : violations.length || losses > nonTies.length / 3 ? 'WORSE' : 'NO_WORSE', calibrated, losses, nonTiePairs: nonTies.length, lossFraction: nonTies.length ? losses / nonTies.length : 0, statisticsInBand: !violations.length, violations,
-		nullComparison: { diagnosticOnly: true, denominator: 'all pairs (ties included)', candidateLossRate, nullLossRate, nullPairs: nullPairs.length, nullLosses, verdict: !calibrated || nullLossRate === null ? 'UNUSABLE' : violations.length || candidateLossRate > nullLossRate ? 'WORSE' : 'NO_WORSE' } };
+	const candidateLossRate = pairs.length ? losses / pairs.length : 0, nullLossRate = control.losses / control.pairs;
+	const statisticsP = binomialTail(violations.length, checks, control.violations / control.checks);
+	const judgeP = binomialTail(losses, pairs.length, nullLossRate);
+	const statisticsWorse = violations.length / checks > control.violations / control.checks && statisticsP < 0.01;
+	const judgeWorse = losses > nonTies.length / 3 && candidateLossRate > nullLossRate && judgeP < 0.05;
+	return { verdict: !calibrated || !pairs.length ? 'UNUSABLE' : statisticsWorse || judgeWorse ? 'WORSE' : 'NO_WORSE', calibrated, losses, nonTiePairs: nonTies.length, lossFraction: nonTies.length ? losses / nonTies.length : 0, statisticsInBand: !violations.length, violations,
+		statisticsGate: { checks, nullViolations: control.violations, nullChecks: control.checks, p0: control.violations / control.checks, pValue: statisticsP, verdict: statisticsWorse ? 'WORSE' : 'NO_WORSE' },
+		nullComparison: { diagnosticOnly: false, denominator: 'all pairs (ties included)', candidateLossRate, nullLossRate, nullPairs: control.pairs, nullLosses: control.losses, pValue: judgeP, verdict: !calibrated || !pairs.length ? 'UNUSABLE' : judgeWorse ? 'WORSE' : 'NO_WORSE' } };
 }
 function props(value) {
 	const v = JSON.parse(value ?? '{}');
@@ -405,8 +435,8 @@ async function compare(label, override, sourceRoot, split, spatialSafe) {
 	await withCapture(scenes, label, override, '', sourceRoot);
 	const violations = [], pairs = [];
 	for (const scene of scenes) { violations.push(...statViolations(await json(join(location(label, scene), 'capture.json')), bands)); pairs.push(await judgePair('baseline', label, scene)); }
-	const nullPairs = [...calibration.results, ...fresh.results].filter((r) => r.candidate === 'identical');
-	const result = { ...noWorse(pairs, violations, true, nullPairs), label, sourceSha: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: sourceRoot, encoding: 'utf8' }).trim(), baselineSha: bands.baselineSha, split, override, pairs };
+	const checks = scenes.reduce((sum, scene) => sum + bands.scenes[sceneKey(scene)].frames.reduce((n, frame) => n + Object.keys(frame.bands).length, 0), 0);
+	const result = { ...noWorse(pairs, violations, true, { split, checks }), label, sourceSha: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: sourceRoot, encoding: 'utf8' }).trim(), baselineSha: bands.baselineSha, split, override, pairs };
 	await save(join(DIR, label, 'verdict.json'), result); console.log(JSON.stringify(result, null, 2));
 }
 async function documentation() {
@@ -438,15 +468,31 @@ export function selfCheck() {
 	assert.deepEqual(randomSides(() => 0), [false, true]); assert.deepEqual(randomSides(() => 1), [true, false]);
 	for (const left of [true, false]) { assert.equal(unblind(left ? 'left' : 'right', left), 'reference'); assert.equal(unblind(left ? 'right' : 'left', left), 'candidate'); }
 	assert.equal(pairVerdict(['reference', 'candidate']), 'tie'); assert.equal(pairVerdict(['reference', 'reference']), 'reference');
-	assert.equal(noWorse([{ verdict: 'reference' }, { verdict: 'candidate' }, { verdict: 'candidate' }], [], true).verdict, 'NO_WORSE');
-	assert.equal(noWorse([{ verdict: 'reference' }, { verdict: 'candidate' }], [], true).verdict, 'WORSE');
-	assert.equal(noWorse([], [{}], true).verdict, 'WORSE'); assert.equal(noWorse([], [], false).verdict, 'UNUSABLE');
-	assert.equal(noWorse([{ verdict: 'reference' }], [], true, [{ verdict: 'reference' }]).nullComparison.verdict, 'NO_WORSE');
-	assert.equal(noWorse([{ verdict: 'reference' }], [], true, [{ verdict: 'tie' }]).nullComparison.verdict, 'WORSE');
-	assert.equal(noWorse([], [], true).nullComparison.verdict, 'UNUSABLE');
+	const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-11, `${actual} != ${expected}`);
+	near(binomialTail(2, 3, 0.5), 0.5); near(binomialTail(3, 3, 0.5), 0.125);
+	near(binomialTail(1, 2, 0.25), 7 / 16); near(binomialTail(1001, 2001, 0.5), 0.5);
+	assert.equal(binomialTail(0, 0, 0), 1); assert.equal(binomialTail(1, 2, 0), 0); assert.equal(binomialTail(2, 2, 1), 1);
+	const pairs = (losses, wins, ties) => [...Array(losses).fill({ verdict: 'reference' }), ...Array(wins).fill({ verdict: 'candidate' }), ...Array(ties).fill({ verdict: 'tie' })];
+	const evaluate = (split, checks, violations, losses, wins, ties, calibrated = true) => noWorse(pairs(losses, wins, ties), Array(violations).fill({}), calibrated, { split, checks });
+	// Recorded unchanged-engine re-renders must pass despite their >1/3 non-tie losses.
+	for (const result of [evaluate('train', 440, 15, 4, 0, 18), evaluate('test', 320, 17, 4, 1, 11)]) {
+		assert.equal(result.verdict, 'NO_WORSE'); assert.equal(result.statisticsGate.verdict, 'NO_WORSE'); assert.equal(result.nullComparison.verdict, 'NO_WORSE');
+	}
+	assert.equal(evaluate('test', 320, 100, 16, 0, 0).verdict, 'WORSE');
+	assert.equal(evaluate('test', 320, 100, 0, 0, 16).verdict, 'WORSE');
+	assert.equal(evaluate('test', 320, 0, 16, 0, 0).verdict, 'WORSE');
+	const oneThird = evaluate('test', 320, 0, 10, 20, 0);
+	assert.ok(oneThird.nullComparison.pValue < 0.05); assert.equal(oneThird.verdict, 'NO_WORSE');
+	assert.equal(evaluate('test', 320, 0, 1, 0, 0).verdict, 'NO_WORSE');
+	assert.equal(evaluate('test', 320, 0, 0, 0, 16, false).verdict, 'UNUSABLE');
+	assert.equal(evaluate('test', 320, 0, 0, 0, 0).verdict, 'UNUSABLE');
+	// Hand-computed Amendment 2 round verdicts, including pooled statistics replicates.
+	const round1 = evaluate('test', 320, 45, 6, 1, 9), round2 = evaluate('train', 440, 29, 6, 0, 16), pooled = evaluate('train', 880, 47, 6, 0, 16);
+	assert.equal(round1.verdict, 'WORSE'); assert.equal(round2.verdict, 'WORSE'); assert.equal(pooled.verdict, 'NO_WORSE');
+	for (const [actual, recorded] of [[round1.statisticsGate.pValue, 2.80615056e-10], [round1.nullComparison.pValue, 0.0484557179], [round2.statisticsGate.pValue, 0.0031970982], [round2.nullComparison.pValue, 0.0999452491], [pooled.statisticsGate.pValue, 0.0130842313]]) assert.ok(Math.abs(actual - recorded) < 5e-11);
 	assert.deepEqual(parseJudge('```json\n{"verdict":"tie","reason":"same"}\n```'), { verdict: 'tie', reason: 'same' }); assert.throws(() => parseJudge('{"verdict":"A"}')); assert.equal(parseJudge('{"verdict":"left","reason":"detail {not metadata}"}').verdict, 'left');
 	assert.ok(CAL.every((s) => TRAIN.includes(s.preset) && !TEST.includes(s.preset)));
-	console.log('Quality eval self-check passed: coverage, OKLCH, FFT sine bands, side swap/unblinding, no-worse threshold, judge JSON, train-only calibration');
+	console.log('Quality eval self-check passed: coverage, OKLCH, FFT sine bands, side swap/unblinding, exact binomial tails, Amendment 2 null/round/synthetic gates, judge JSON, train-only calibration');
 }
 if (import.meta.main) {
 	const { values, positionals } = parseArgs({ allowPositionals: true, options: { 'self-check': { type: 'boolean' }, label: { type: 'string' }, props: { type: 'string' }, 'source-root': { type: 'string' }, attempt: { type: 'string' }, split: { type: 'string' }, 'judge-only': { type: 'boolean' }, fresh: { type: 'boolean' }, 'spatial-safe': { type: 'boolean' } } });
