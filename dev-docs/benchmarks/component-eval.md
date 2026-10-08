@@ -108,3 +108,60 @@ Failures (ranked by cells):
 - **2 cells — ssrFallback: Decorative SSR missing own layout element or shifts on hydration**: splash-cursor R1 (train), splash-cursor R2 (train).
 
 Round verdict: **revert**. Train lower Wilson 92.09% does not exceed baseline point 95.45%; held-out lost passing cells=0. Held-out documented as no gain. Docs-only library tree unchanged; no judged visual win claimed.
+
+## Outcome
+
+**E4 documented as no gain.** Held-out is already 50/50 (100%) under
+Amendment 1, so no candidate can improve its pass rate at this population size.
+The historical held-out Wilson gain gate was already unreachable at 48/50.
+No new gain rule was adopted. A proposed paired-rule Amendment 2 was withdrawn
+before candidate observations; no Amendment 2 commit exists.
+
+Round 1 was evidence-only, one train-designed root cause: explicit
+`width={640} height={360}` in the FluidDistortion canonical snippet, matching
+guidance in the shared `/SKILL.md` and `/llms-full.txt` generator, plus one
+snippet-drift test. No component default, engine, registry or specimen changed.
+Fresh copy-paste sync/check/build passed. FluidDistortion install was
+**fail/fail/fail** at baseline, **pass/pass/pass** with sizing; screenshot
+nonblank fractions were 99.60%, 99.96%, 99.18%. The supplemental third install
+observation agreed with the first two for every component in both runs.
+There were **zero pass→fail cells on train or held-out**, including install R3.
+Library source tree stayed `0d1ed492720eedb57492bd2456d966fa0533ab3a`.
+This establishes a deterministic train-cell repair, not a held-out/goal gain.
+
+Candidate archived at commit `ce78244`, local tag
+`archive/e4-round1-distortion-docs`; then all three public docs/test files
+restored to `67dd70c`. Round evidence retained. Revert required both by the
+train CI rule (92.09% < 95.45%) and the no-held-out-gain goal outcome.
+No push, merge, engine change or Beads write from this lane.
+
+### Owner-facing remaining queue (ranked)
+
+1. **FluidDistortion docs sizing — 2 scored train cells, R3 agrees.** Known
+   copy-paste defect remains after protocol-mandated revert. Archived docs-only
+   repair available for an independent owner decision; no component-size change
+   necessary. Generated agent references and drift test travel with the archive.
+2. **splash-cursor SSR — 2 scored train cells.** Empty SSR lacks its own
+   layout-reserving element under A1. Fixed overlay does not cause normal-flow
+   shift and remains aria-hidden after mount. Resolve SSR contract/implementation
+   separately; never add meaningless accessible labels.
+3. **LiquidDropZone Enter observation noise.** A1 majority passes both runs;
+   baseline first attempt failed, next two passed; remaining attempts pass.
+   No majority failure, no component fix. Diagnose only if future R=3 majority
+   fails, preserving the 800 ms event timeout and native file-input contract.
+
+### Verification and cleanup
+
+- Candidate: `bun run test` 883/883; `bun run check` zero errors/warnings;
+  `bun run prepack`/publint pass; full `bun run build` pass. Generated
+  `build/SKILL.md` and `build/llms-full.txt` both contained the sized recipe.
+- Reverted branch: original docs-generator tests restored; full test/check/prepack
+  rerun before restore commit. Harness `--self-check` passes.
+- Renderer both runs: ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max,
+  Unspecified Version). Installed headless Chrome, no software renderer/unsafe
+  flags, no xctrace. Round GPU hold 440994 ms (7m21s), released
+  2026-10-08T07:58:13.155Z; strict alternation with observed E1 acquisition/release.
+- Owned baseline and round `/tmp/svelte-fluid-e4-*` fixtures deleted using their
+  recorded ownership; owned Chrome/context/preview processes closed; E4 lock
+  released. Other lanes' processes/locks untouched. Worktree retained locally
+  because commits are not pushed; no forced cleanup.
