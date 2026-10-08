@@ -1,6 +1,8 @@
 # ADR 0112 — E5 image convergence spike
 
-Date: 2026-10-08. Status: pre-registered, lab only. Baseline source: `4cc3185`.
+Date: 2026-10-08. **Status:** Accepted (pre-registered, lab only). Baseline source: `4cc3185`.
+
+**Status:** Accepted
 
 ## Decision and scope
 
@@ -57,6 +59,10 @@ Keep only if train **and** held-out primary pass beyond 2x noise, all fidelity/r
 ## Resource protocol
 
 Installed headless hardware Chrome only; reject SwiftShader/software renderer. Atomic mkdir `/tmp/svelte-fluid-gpu.lock`, owner JSON lane `e5-spike` + exact PID/worktree, acquired-at epoch seconds; <=12min owned batches. Wait >=60s between busy-lock polls; strict alternation, no SOLO/bypass/unowned removal. Dev port5210 (strictPort, not5201/5202). No installs. Reuse approved read-only dependency symlink. Scratch `/tmp/e5-spike`, resume saved slots; remove owned processes/contexts/lock/scratch after durable results. Preserve unowned resources.
+
+## Pre-data implementation note
+
+Frozen before first V0 observations: V0 dye uses RGBA32F when OES_texture_float_linear is available, otherwise RGBA16F with a known rounding floor which may fail the unchanged epsilon (no forced successful settle). Record actual dye format per run. V1 stores displacement `d=xi-x` in RG16F, reconstructing `xi` analytically: advection gives `d_a = d(x-dt*u) - dt*u`, then `d'=exp(-lambda*dt)*d_a`. This is the same reference-map equation without half-float identity cancellation. Final identity is exactly `d=0`. Work proxies count draws/pixels, not bytes; RGBA32F bandwidth is not captured, so no bandwidth savings claim follows.
 
 ## Results
 
