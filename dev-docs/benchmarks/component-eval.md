@@ -65,3 +65,32 @@ Cells show R1/R2. a=accessibility, b=reduced motion, c=SSR+fallback, d=theming, 
 - Visual is candidate-only. Baseline static PNGs and SHA-256 are frozen under `evals/components/baseline/`; no visual score claimed. Reuse E2 side randomisation, swapped trials, tie collapse and calibrated no-worse logic; calibrate static UI before use.
 - Strict Enter+Space rule can fail native switches/radios that intentionally implement Space/arrow semantics. This was pre-registered, not changed after observation.
 - No contrast, screen-reader user testing, touch, mobile GPU, or temporal smoothness claim.
+
+## Amendment 1 runs (post-hoc)
+
+Original baseline above remains historical. ADR 0111 Amendment 1 was committed before these observations. R=2 scored cells; keyboard/filechooser R=3 majority per cell. Focus pixels, native role contracts, decorative layout checks apply to both splits. No held-out gain claim.
+
+### baseline-a1
+
+Renderer: ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version). Complete: true.
+
+| Split | Passed / observed | Pass rate | Wilson 95% | Missing | N/A | All-pass components |
+|---|---|---|---|---|---|---|
+| train | 84/88 | 95.45% | 88.89%–98.22% | 0 | 2 | 7/9 |
+| test | 50/50 | 100.00% | 92.87%–100.00% | 0 | 0 | 5/5 |
+
+Failures (ranked by cells):
+
+- **2 cells — install: Docs/registry route blank after pointer stroke**: FluidDistortion R1 (train), FluidDistortion R2 (train).
+- **2 cells — ssrFallback: Decorative SSR missing own layout element or shifts on hydration**: splash-cursor R1 (train), splash-cursor R2 (train).
+
+Baseline-a1 observations:
+
+- LiquidButton focus: 1219/5376 perimeter pixels changed (22.67%), zero noise pixels, both repetitions; computed CSS proxy false. Hardware ring is visible.
+- LiquidSegmented arrows/Space pass R=3. Initial supplemental harness run used a dynamic `input:not(:checked)` locator whose post-selection assertion resolved a different input. Superseded evidence retained; stable-index rerun passes. No component change.
+- LiquidToggle native Space passes; Enter not required.
+- LiquidDropZone Enter R1 attempts false/true/true, R2 true/true/true; Space all pass. Majority passes; hardware noise remains, no fix.
+- Fluid decorative SSR reserves 320×180, identical hydration box, no layout-shift entries; no-GPU accessible message correct.
+- splash-cursor emits no own SSR element; fixed overlay adds no normal-flow shift, correctly aria-hidden after mount, but fails the amended SSR-element requirement. No meaningless label added.
+- Supplemental install R3 for all 14 components agrees with R1/R2 (FluidDistortion fail/fail/fail; all others pass/pass/pass). Supplemental R3 is not pooled into the frozen R=2 denominator.
+- Historical JSON/PNGs unchanged. Baseline-a1 fixtures removed, installed Chrome closed, GPU lock released before commit. Tests: 882/882; svelte-check zero errors/warnings; prepack/publint pass.
