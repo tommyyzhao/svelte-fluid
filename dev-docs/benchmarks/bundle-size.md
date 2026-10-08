@@ -37,6 +37,7 @@ changes; package metadata and README changes can alter the tarball.
 | Date | Source SHA | Packed tarball bytes | Unpacked `dist/` bytes | JS files | All-JS gzip bytes | `index.js` gzip bytes |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
 | 2026-10-07 | `0f89f75713701ab1c028fba4fd11d90bb0a5f6fb` | 290,839 | 2,053,130 | 145 | 413,735 | 737 |
+| 2026-10-08 | `c1e686b` | 290,839 | 2,071,192 | 146 | 418,281 | 737 |
 
 Measured after `bun run build` completed prepack, publint and strict public-declaration checks.
 The subsequent hardware-test harness fix does not change shipped package files.
