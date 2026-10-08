@@ -16,13 +16,21 @@ it("E5 arms settle exact target, stop draws, wake and dispose on both tiers", as
       const ctx = source.getContext("2d")!;
       ctx.fillStyle = "#46809e";
       ctx.fillRect(0, 0, 64, 64);
+      const snapshot = document.createElement("canvas");
+      snapshot.width = 64; snapshot.height = 64;
       let draws = 0,
-        final = false;
+        final = false,
+        finalPixel: number[] = [];
       const unregister = registerImageConvergence(canvas, {
         variant,
         onFrame: (s) => {
           draws = s.draws;
           final = s.final;
+          if (s.final) {
+            const capture = snapshot.getContext("2d")!;
+            capture.drawImage(canvas, 0, 0);
+            finalPixel = [...capture.getImageData(32, 32, 1, 1).data];
+          }
         },
       });
       const engine = new FluidEngine({
@@ -44,9 +52,10 @@ it("E5 arms settle exact target, stop draws, wake and dispose on both tiers", as
       try {
         const wait = async () => {
           const start = performance.now();
-          while (!engine.isSettled && performance.now() - start < 20000)
+          while ((!engine.isSettled || !final) && performance.now() - start < 20000)
             await sleep(50);
           expect(engine.isSettled).toBe(true);
+          expect(finalPixel).toEqual([70, 128, 158, 255]);
         };
         await wait();
         expect(engine.isPaused).toBe(true);

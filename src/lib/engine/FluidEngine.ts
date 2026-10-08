@@ -4925,8 +4925,16 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		this.withGl(() => {
 			this.renderCoreInner(target);
 			if (target === null) {
-				this.imageExperiment?.onFrame?.({ seconds: this.targetSeconds, final: this.targetFinal, draws: this.targetDraws, pixels: this.targetPixels, dyeFormat: this.targetDyeFormat, velocityMax: this.settlePixels[0], targetErrorMax: this.settlePixels[4] });
 				this.present();
+				if (this.imageExperiment?.onFrame) {
+					const state = { seconds: this.targetSeconds, final: this.targetFinal, draws: this.targetDraws, pixels: this.targetPixels, dyeFormat: this.targetDyeFormat, velocityMax: this.settlePixels[0], targetErrorMax: this.settlePixels[4] };
+					const notify = () => { if (!this.disposed && !this.contextLost && !this.failed) this.imageExperiment?.onFrame?.(state); };
+					// Shared presentation is asynchronous; never pair new metrics with an old canvas.
+					if (this.host) {
+						const presented = this.lastPresent;
+						void presented.then(() => { if (this.lastPresent === presented) notify(); }).catch((error) => this.failTransition(error));
+					} else notify();
+				}
 			}
 		});
 	}
