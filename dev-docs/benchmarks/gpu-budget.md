@@ -155,6 +155,139 @@ prepack passed; existing import.meta.env packaging warning and unrelated
 SplashCursor Vite dependency-scan warning retained. No library/default/ADR,
 xctrace, held-out capture, 1024×640, memory, Beads, push or merge changes.
 
+## E1 TRAIN framebuffer-invalidation probe — 2026-10-08
+
+Baseline: local main `0433c88`. TRAIN only: Plasma, Karman, InkInWater,
+Aurora; 1440×900 CSS, DPR2. No energy capture, held-out presets or 1024×640.
+**Pre-registered cheap gate (before measurement):** median saving ≥15% on
+at least three of four presets, also strictly greater than twice the A-vs-A
+spread. R=4 invocations per arm, order A/B/A/B/A/B/A/B. Each invocation's
+ordinary median uses the existing 12×20-frame synced wall-throughput bench
+(after 200 warm-up frames). A-vs-A spread is the range of the four A medians;
+B spread is likewise the range. Saving is median(A)−median(B), both absolute
+ms/frame and percentage of median(A). Even-sized medians average the middle
+two values. The gate compares absolute saving against twice the absolute A
+range. Load is logged before/after every invocation. This is a cheap cost
+screen, not GPU execution/energy certification.
+
+### Draw inventory (audited before prototype)
+
+Static inventory: 34 `FluidEngine` draw sites, 32 eligible, two excluded
+(splat and additive bloom upsample). Dynamic per-frame counts include loop
+expansion; startup splats and occasional input/auto-splats are excluded from
+the representative no-input `advance(1)` + render frame count.
+
+Every `FluidEngine` draw uses the full-target `createBlit` quad; no scissor,
+color mask or viewport subset exists in its step/render paths. The shaders
+have no `discard`. Listed eligible draws overwrite all texels, have blending
+disabled by step/render/settle entry, use a full-target viewport, sample only
+other textures. Ping-pong `.read` and `.write` are distinct allocations.
+
+| Pass / call sites in `FluidEngine.ts` at baseline | Target | Full / blend off / full viewport / no self-read | Eligible |
+|---|---|---|---|
+| `splatTo` 1147 | velocity/dye/scalar `.write` | full / caller-dependent / full / yes | **No: splats explicitly excluded** |
+| `applyMask` 3251,3262,3296 | input `.write` | yes / yes / yes / yes (`.read` sampled) | Yes |
+| `settleReducePass` 3632 | reduction-chain target | yes / yes / yes / yes | Yes (ordinary probe excludes this stage) |
+| `applyFlowSourceBatch` 4037 | velocity/dye/scalar `.write` | yes / yes / yes / yes | Yes |
+| `applyFlowForce` 4092 | velocity `.write` | yes / yes / yes / yes | Yes |
+| `applyFlowOutletBatch` 4151 | velocity/dye/scalar `.write` | yes / yes / yes / yes | Yes |
+| `applyPrescribedGridField` 4194 | velocity/dye/scalar `.write` | yes / yes / yes / yes | Yes |
+| `advectVelocity` 4252 | velocity `.write` | yes / yes / yes / yes | Yes |
+| MacCormack forward/correct 4294,4326 | velocitySource / velocity `.write` | yes / yes / yes / yes | Yes |
+| `advectDye`, `advectScalar` 4352,4383 | dye/scalar `.write` | yes / yes / yes / yes | Yes |
+| viscosity source/iterations 4551,4571 | velocitySource / velocity `.write` | yes / yes / yes / yes | Yes |
+| wall friction 4585 | velocity `.write` | yes / yes / yes / yes | Yes |
+| divergence 4597 | divergence | yes / yes / yes / yes | Yes |
+| zero-iteration decay, paired/single Jacobi 4606,4637,4655 | pressure `.write` | yes / yes / yes / yes | Yes |
+| gradient subtraction 4665 | velocity `.write` | yes / yes / yes / yes | Yes |
+| curl / vorticity 4706,4722 | curlFBO / velocity `.write` | yes / yes / yes / yes | Yes |
+| display 4981 | canvas or supplied target or sceneFBO | yes / yes / yes / yes | Yes |
+| glass 5070 | canvas or supplied target (sceneFBO sampled) | yes / yes / yes / yes | Yes |
+| bloom prefilter/downsample 5088,5096 | bloom / chain child | yes / yes / yes / yes | Yes |
+| bloom additive upsample 5109 | chain parent | yes / **no** / yes / yes | **No: blending reads target** |
+| bloom final 5118 | bloom | yes / yes / yes / yes | Yes |
+| sunrays mask/radial 5126,5131 | dye `.write` / sunrays | yes / yes / yes / yes | Yes |
+| blur horizontal/vertical 5140,5144 | temp / target | yes / yes / yes / yes | Yes |
+| `gl-utils.resizeFBO` 463 (`resizeDoubleFBO` delegates) | newly allocated target | yes / engine resize disables blend / yes / yes | Yes (not per-frame) |
+
+`gl-utils.createBlit` 551 is the only actual draw helper; callers explicitly
+mark audited overwrites. Allocation `createFBO` clears, format probing only
+attaches/checks, neither draws. `clearRenderTarget` clears, does not draw.
+WebGL1 skips the hint. User FBOs use `COLOR_ATTACHMENT0`; default framebuffer
+uses WebGL2's required `COLOR` enum (attachment0 is invalid there). Shared-host
+blit/profiler wrappers forward the explicit flag; no mutable GL state is added
+outside `gl-host.ts`. Non-opted model-engine draws remain unchanged.
+
+### Corrected results: negative; no production change retained
+
+Eight browser cases passed: four TRAIN presets × own/shared tier, seed5,
+120 real 1/60 s `advance()` steps. Velocity/dye/pressure Float32 readback bytes
+and final visible-canvas RGBA bytes were **bit-identical**, zero changed bytes.
+GL errors absent; canvas readback nonzero; blending/scissor asserted disabled
+at each eligible draw. Representative step+render counts: Plasma **30/36**,
+Karman **39/39**, InkInWater **26/32**, Aurora **30/36**, same on both tiers.
+Six noneligible Plasma/Ink/Aurora draws are additive bloom upsample; no
+synthetic input splats in the counted frame.
+
+A first invocation set is **VOID: harness error**. Both arms accidentally
+used constructor invalidation before the A per-instance wrapper was installed.
+Do not use those numbers. Corrected A suppresses constructor hints, restores
+the WebGL2 prototype in `finally`, then omits hints on every blit. Both cost
+arms use seed5. Only the corrected complete parity+R4 rerun below informs the
+verdict; gate definition unchanged.
+
+Installed headless Chrome, renderer
+`ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)`.
+Corrected lock window **09:04:21–09:05:50 UTC (89 s)**. Strict alternation:
+first release 08:53:10, other E1 lane acquired 08:58:31 then released before
+this acquisition. Both owned locks released, all browser/test processes exited;
+no other lock or protected Chrome process touched.
+
+| TRAIN preset | A median ms/frame | B median ms/frame | Saving | A range ms | B range ms | ≥15% and >2×A range |
+|---|---:|---:|---:|---:|---:|---|
+| Plasma | 1.5275 | 1.5175 | +0.65% | 0.0350 | 0.0250 | Fail |
+| Karman | 1.6675 | 1.6850 | −1.05% | 0.0300 | 0.0250 | Fail |
+| InkInWater | 1.3625 | 1.3450 | +1.28% | 0.0100 | 0.0500 | Fail |
+| Aurora | 1.5275 | 1.5225 | +0.33% | 0.0350 | 0.0350 | Fail |
+
+Invocation medians in acquisition order, ms/frame:
+
+| Preset | A1 | B1 | A2 | B2 | A3 | B3 | A4 | B4 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Plasma | 1.515 | 1.515 | 1.540 | 1.505 | 1.505 | 1.530 | 1.540 | 1.520 |
+| Karman | 1.675 | 1.690 | 1.645 | 1.665 | 1.670 | 1.680 | 1.665 | 1.690 |
+| InkInWater | 1.360 | 1.355 | 1.355 | 1.335 | 1.365 | 1.325 | 1.365 | 1.375 |
+| Aurora | 1.505 | 1.530 | 1.540 | 1.495 | 1.520 | 1.520 | 1.535 | 1.525 |
+
+`uptime` load averages (1/5/15 min), before/after **each** corrected bench:
+
+| Invocation | Before | After |
+|---|---|---|
+| A1 | 26.04 / 19.76 / 17.72 | 26.29 / 20.01 / 17.83 |
+| B1 | 26.29 / 20.01 / 17.83 | 24.95 / 19.93 / 17.83 |
+| A2 | 24.95 / 19.93 / 17.83 | 24.66 / 20.02 / 17.88 |
+| B2 | 24.66 / 20.02 / 17.88 | 24.37 / 20.11 / 17.94 |
+| A3 | 24.37 / 20.11 / 17.94 | 23.18 / 19.99 / 17.92 |
+| B3 | 23.18 / 19.99 / 17.92 | 21.38 / 19.71 / 17.85 |
+| A4 | 21.38 / 19.71 / 17.85 | 21.27 / 19.72 / 17.86 |
+| B4 | 21.27 / 19.72 / 17.86 | 21.31 / 19.80 / 17.92 |
+
+**Rejected: 0/4 pass, requires ≥3/4.** No energy capture or Proposed ADR;
+no E1 GPU-busy ms/s reduction claimed. The hints were exact but cost-neutral
+within the observed spread. This does not establish ANGLE's actual Metal load
+action (not inspected), only that this lever failed the fixed cheap screen.
+Prototype/parity/bench wrapper archived locally under
+`archive/e1-invalidate-probe` (`898d58a`); `src/lib` and `vitest.config.ts` restored to
+`0433c88`. Machine-local raw evidence: `/tmp/e1-invalidate-probe-valid/`
+(JSON batches, renderer, logs, load), `/tmp/e1-invalidate-parity.json`.
+VOID set preserved separately at `/tmp/e1-invalidate-probe/`.
+
+Prototype and restored baseline checks: `bun run test` **882/882**;
+`bun run check` **0 errors/0 warnings**; `bun run prepack` **pass** (existing
+bench `import.meta.env` package warning). Browser dependency scan reports the
+pre-existing absent splash-cursor route import; selected tests still execute
+and pass. No new runtime dependency or public API change.
+
 ## E1 round 3: four-iteration pressure batching rejected — 2026-10-07
 
 **Rejected at the first isolated bit-parity gate; no runtime change retained.**
