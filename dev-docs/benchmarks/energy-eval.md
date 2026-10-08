@@ -362,7 +362,31 @@ Idle and background contracts **are met**:
 
 No pre-registered E1 keep/revert verdict completed.
 
-### Round 5 — lower generic pressure default: train-only design rule
+### Round 5 rejected by E2 train
+
+Candidate14 `e5a0b0b81dbb3193da67108fa746405e05137972`: **statistics
+WORSE**,131/440 violations, one-sided binomial p **4.055201756578699e-77**
+against frozen TRAIN null50/1320; threshold0.01 unchanged. All22 TRAIN
+captures completed with installed headless Chrome, renderer
+`ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)`.
+Explicit counts confirmed24/26/34; source-root empty props preserved them.
+
+Judge **unavailable**, not a tie or quality pass: first Opus CLI call reached
+its600s ceiling, exit143, `[claude-code:unrecognized_model]` for command-local
+`opus-class` (historical workaround no longer sufficient). Judge p unavailable.
+Sonnet implementer/Opus requested judge remain distinct tiers; invocation
+retains `--dangerously-skip-permissions`. Statistics independently reject14.
+**Stopped at first failure:**10/8 not captured; no chosen value, E1 energy or
+held-out run. This is not evidence that10/8 individually fail E2.
+
+Local tag `archive/e1-r5-pressure-default` preserves candidate source;
+`src/lib` restored to `28219ef`. Capture evidence retained at
+`/tmp/quality-eval/r5-pressure-14/`, log `/tmp/e1-r5-pressure-14.log`.
+Harness released its lock/browser/Vite; no owned processes remain. No
+xctrace/ktrace/raw traces created in this E2-only round. No public default,
+ADR or changeset retained.
+
+#### Train-only design rule (fixed before captures)
 
 Fixed before any Round 5 capture, 2026-10-08; base local main `28219ef`.
 Default-using TRAIN presets: `(default)`, LavaLamp, Plasma, InkInWater,
