@@ -2302,3 +2302,22 @@ export const targetMapShader = `
         gl_FragColor = vec4(displacement * uKeep, 0.0, 1.0);
     }
 `;
+
+export const targetForceShader = `
+    precision highp float;
+    precision highp sampler2D;
+    varying vec2 vUv;
+    uniform sampler2D uVelocity;
+    uniform sampler2D uMap;
+    uniform vec2 uMapTexel;
+    uniform float uStrength;
+    uniform float dt;
+    void main () {
+        vec2 d = texture2D(uMap, vUv).xy;
+        vec2 gx = (texture2D(uMap, vUv + vec2(uMapTexel.x, 0.0)).xy - texture2D(uMap, vUv - vec2(uMapTexel.x, 0.0)).xy) / (2.0 * uMapTexel.x) + vec2(1.0, 0.0);
+        vec2 gy = (texture2D(uMap, vUv + vec2(0.0, uMapTexel.y)).xy - texture2D(uMap, vUv - vec2(0.0, uMapTexel.y)).xy) / (2.0 * uMapTexel.y) + vec2(0.0, 1.0);
+        // Domain velocity becomes solver-cell velocity; existing pressure projection follows.
+        vec2 force = vec2(dot(gx, d), dot(gy, d)) / uMapTexel;
+        gl_FragColor = vec4(clamp(texture2D(uVelocity, vUv).xy + dt * uStrength * force, -1000.0, 1000.0), 0.0, 1.0);
+    }
+`;

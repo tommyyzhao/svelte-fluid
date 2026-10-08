@@ -686,6 +686,7 @@ export class FluidEngine implements FluidHandle {
 	private imageExperiment: ReturnType<typeof imageConvergenceFor>;
 	private targetNudgeProgram: ProgramWrap | null = null;
 	private targetMapProgram: ProgramWrap | null = null;
+	private targetForceProgram: ProgramWrap | null = null;
 	private targetMap: DoubleFBO | null = null;
 	private targetSeconds = 0;
 	private targetFinal = false;
@@ -1017,6 +1018,7 @@ export class FluidEngine implements FluidHandle {
 			this.targetNudgeProgram = this.host ? this.host.program('fluid:targetNudge', S.baseVertexShader, S.targetNudgeShader) : this.makeTargetProgram(S.targetNudgeShader);
 			if (this.imageExperiment.variant > 0) {
 				this.targetMapProgram = this.host ? this.host.program('fluid:targetMap', S.baseVertexShader, S.targetMapShader) : this.makeTargetProgram(S.targetMapShader);
+				if (this.imageExperiment.variant === 2) this.targetForceProgram = this.host ? this.host.program('fluid:targetForce', S.baseVertexShader, S.targetForceShader) : this.makeTargetProgram(S.targetForceShader);
 				const rg = this.ext.formatRG;
 				this.targetMap = createDoubleFBO(this.gl, this.velocity.width, this.velocity.height, rg.internalFormat, rg.format, this.ext.halfFloatTexType, this.gl.LINEAR);
 			}
@@ -1045,6 +1047,17 @@ export class FluidEngine implements FluidHandle {
 	private resizeTargetMap(): void {
 		const gl = this.gl, rg = this.ext.formatRG;
 		this.targetMap = resizeDoubleFBO(gl, this.targetMap!, this.velocity.width, this.velocity.height, rg.internalFormat, rg.format, this.ext.halfFloatTexType, gl.LINEAR, this.copyProgram, this.blit);
+	}
+
+	private forceTargetMap(dt: number): void {
+		const gl = this.gl, p = this.targetForceProgram!, map = this.targetMap!;
+		p.bind();
+		gl.uniform1i(p.uniforms.uVelocity, this.velocity.read.attach(0));
+		gl.uniform1i(p.uniforms.uMap, map.read.attach(1));
+		gl.uniform2f(p.uniforms.uMapTexel, map.texelSizeX, map.texelSizeY);
+		gl.uniform1f(p.uniforms.uStrength, this.targetSeconds < 0.75 ? 0 : 8 * Math.max(0, 1 - (this.targetSeconds - 0.75) / 3));
+		gl.uniform1f(p.uniforms.dt, dt);
+		this.blit(this.velocity.write); this.velocity.swap();
 	}
 
 	private advectTargetMap(dt: number): void {
@@ -1737,7 +1750,7 @@ export class FluidEngine implements FluidHandle {
 		this.blurVertexShader = undefined!;
 		// Absent when the engine was built against an already-lost shared context.
 		this.ditheringTexture?.dispose();
-		this.targetNudgeProgram = null; this.targetMapProgram = null; this.targetMap = null;
+		this.targetNudgeProgram = null; this.targetMapProgram = null; this.targetForceProgram = null; this.targetMap = null;
 		this.distortionTexture = null;
 		this.distortionLoadedUrl = null;
 		this.distortionTextureW = 0;
@@ -1947,7 +1960,7 @@ export class FluidEngine implements FluidHandle {
 			this.prescribedFieldProgram,
 			this.applyMaskProgram,
 			this.glassProgram,
-			this.targetNudgeProgram, this.targetMapProgram
+			this.targetNudgeProgram, this.targetMapProgram, this.targetForceProgram
 		].filter((program): program is ProgramWrap => program != null);
 		this.displayMaterial?.dispose();
 		if (this.host) {
@@ -4811,6 +4824,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 
 		this.applyFlowSources(dt, !prescribedOnly);
 		if (!prescribedOnly) this.applyFlowForces(dt);
+		if (this.targetForceProgram) this.forceTargetMap(dt);
 		if (!prescribedOnly) this.applyFlowOutlets(['velocity']);
 
 		if (prescribedOnly) {

@@ -6,7 +6,7 @@ import {
   targetRelaxation,
 } from "$lib/engine/image-convergence.js";
 describe("E5 frozen math", () => {
-  it('forgets pre-splat final timestamps on the first disturbed frame', () => {
+  it("forgets pre-splat final timestamps on the first disturbed frame", () => {
     let timestamp = settledTimestamp(0, true, 25);
     expect(timestamp).toBe(25);
     timestamp = settledTimestamp(timestamp, false, 50);
@@ -56,4 +56,12 @@ describe("E5 frozen math", () => {
     expect(noise([0, 0, 0])).toBe(0);
     expect(noise([0.5, 1, 1], 0.5)).toBe(0.5);
   });
+});
+
+// Identity map: (grad xi)^T displacement is exactly the displacement.
+it('V2 identity-map controller direction decreases reference energy', () => {
+ const d = [.1, -.2], k = 8, dt = .01;
+ const force = d.map(v => k * v);
+ const next = d.map((v, i) => v - dt * force[i]);
+ expect(next.reduce((e, v) => e + v * v, 0)).toBeLessThan(d.reduce((e, v) => e + v * v, 0));
 });
