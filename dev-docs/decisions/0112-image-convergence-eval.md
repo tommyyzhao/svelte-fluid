@@ -108,4 +108,6 @@ Sole held-out V0+V2s R3 complete: V2s **NOT KEPT**, archived `archive/e5-v2s` at
 
 Every E5 slot own-context by construction: fresh browser context/page per slot, one lab canvas/FluidEngine, no parent/sibling engines, auto tier starts0 <OWN_CONTEXT_LIMIT8, no forced tier. Raw renderer-probe GL does not increment engine count. Saved state did not record tier directly. Shared callback-before-present lag affects only unmeasured shared-tier lab captures; mechanical fix waits the current presentation promise, drops stale/disposed callbacks, browser assertion snapshots final source colour on both tiers. No primary exclusions.
 
+Final validation: hardware Chrome browser suite37existing files/344tests pass, new E5test fails initial V0own20s settle atsim32/dye64. Shared-tier callback assertion never reached: `afa9c74` unverified in browser. Lead directs explicit `it.skip`, no more GPU holds. Stale SplashCursor dependency-scan warning fixed on main `34f5979`, not ported. Node891/check0errors0warnings/prepack/publint/public-neutral pass; pre-existing `import.meta.env` packaging warning remains. Temporary auto-commit/preflight/scratchpatch orchestration removed, lab modules formatted tabs. Archive-only.
+
 **Owner caveat:** fallback measures spatial-gradient change, not fluid-likeness; owner visual review decides. Lab only, no public adoption.
