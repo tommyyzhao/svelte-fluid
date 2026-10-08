@@ -88,6 +88,14 @@ V2 Kiss23 at30s: mapMax.000290632 <1/512, uMax.116272 >.05;500ms later u.116394,
 
 **V2s = V2 + curl tapered linearly to0 over .75–3.75s, the only change.** Same images/seeds/gates/scorer. R3train, then held-out once (V0 and V2s four images × three seeds) only if all train gates and primary2xnoise pass. If train fails, stop, no further variants. A fallback-kept result awaits owner visual review; prepare review packet only if held-out passes, never adopt public API.
 
+## Amendment 4 (lead, after V2s batch A capture, before its fallback scores)
+
+Harness conformance fix (no rule change): every re-form now receives the same 500ms settled/paused, unchanged engine draws/frames proof as initial rest; fallback flat pairs with both mean temporal luminance changes strictly below1/255 receive0.5/tie. Historical V0/V1/V2 train re-form results lacked the500ms rest proof. Their disturbance/settle/fidelity observations remain, but do not prove post-re-form zero submissions. V0 comparator need not pass gates (Amendment1); no baseline rerun.
+
+True chronology: V2s implementation `c57dac6` captured train **batch A** on the old harness while the lead's stop/fix message was pending. The conformance fix is **not** before all V2s data. Preserve A, not a pilot, never delete/replace it; no fallback score calculated before this disposition. Commit/test the repaired harness, then run full same-image/same-seed V2s train **batch B**. Keep only if A and B both pass every gate each could measure (A lacks re-form-rest proof), and fallback primary independently exceeds2×noise in both. Either failure rejects V2s; no cherry-picked rerun. Held-out once on repaired harness only after this conservative train pass.
+
+V2 Kiss23 diagnostic `7665ba5` did not reproduce the original timeout:10.3941wall s/10.19607simulation s, uMax.00184059/mapMax.0000147223, exact final/rest. Timed-out-only5s sampler remained empty. Original V2 failure stands; no residual-plateau conclusion.
+
 ## Results
 
 V0 R3 train complete at `57108d4`: 14/18 initial exact/rest, 13/18 visibly disturbed successful re-form. Great Wave all3 initial timeouts; FLUID text one initial and one re-form timeout. No post-hoc V0 tuning. V1 `db59bf9`: **non-kept round1**, 17/18 exact/rest/re-form; Pearl seed23 initial30s timeout. All-slot gate fails; held-out not run. Archived `archive/e5-v1`; V2 builds on V1 plus controller only. Full tables and exact compact rows: `dev-docs/benchmarks/image-convergence.md`, `evals/image-convergence/v{0,1}-train.json`.

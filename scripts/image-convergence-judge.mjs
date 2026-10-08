@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { PNG } from "pngjs";
+import { flatTransportPair } from "../src/routes/lab/image-convergence/metrics.ts";
 import {
   randomSides,
   unblind,
@@ -97,11 +98,17 @@ function composite(a, b, swap) {
         }
   return PNG.sync.write(p);
 }
-export function transportScore(frames) {
+export function transportMetrics(frames) {
   const a = frames.map((f) =>
     PNG.sync.read(Buffer.from(f.png.split(",")[1], "base64"))
   );
-  let score = 0;
+  assert(a.length === 4, "Four frozen capture times required");
+  assert(
+    a.every((p) => p.width === a[0].width && p.height === a[0].height),
+    "Frame dimensions differ"
+  );
+  let score = 0,
+    temporalChange = 0;
   for (let t = 1; t < a.length; t++) {
     let change = 0,
       gradient = 0,
@@ -124,8 +131,15 @@ export function transportScore(frames) {
         n++;
       }
     score += gradient / n / (change / n + 1 / 255);
+    temporalChange += change / n;
   }
-  return score / (a.length - 1);
+  return {
+    score: score / (a.length - 1),
+    temporalChange: temporalChange / (a.length - 1),
+  };
+}
+export function transportScore(frames) {
+  return transportMetrics(frames).score;
 }
 async function calibrate() {
   assert(
@@ -212,25 +226,38 @@ if (import.meta.main && process.argv[2] === "fallback") {
   await waitForCapture();
   const variant = process.argv[3] === "2s" ? "2s" : Number(process.argv[3]),
     split = process.argv[4] ?? "train";
+  const batch = process.argv[5] ?? "";
+  assert(["", "A", "B"].includes(batch), "Unknown batch");
+  const suffix = batch ? `-${batch}` : "";
   const baseline = JSON.parse(
     await readFile(`${ROOT}/v0-${split}.json`, "utf8")
   );
   const candidate = JSON.parse(
-    await readFile(`${ROOT}/v${variant}-${split}.json`, "utf8")
+    await readFile(`${ROOT}/v${variant}-${split}${suffix}.json`, "utf8")
   );
   const rows = candidate.map((c) => {
     const b = baseline.find((r) => r.image === c.image && r.seed === c.seed);
     assert(b);
+    const baselineMetrics = transportMetrics(b.initial.frames);
+    const candidateMetrics = transportMetrics(c.initial.frames);
+    const tie = flatTransportPair(
+      baselineMetrics.temporalChange,
+      candidateMetrics.temporalChange
+    );
     return {
       image: c.image,
       seed: c.seed,
       scorer: "fallback",
-      baselineTransport: transportScore(b.initial.frames),
-      candidateTransport: transportScore(c.initial.frames),
+      baselineTransport: tie ? 0.5 : baselineMetrics.score,
+      candidateTransport: tie ? 0.5 : candidateMetrics.score,
+      baselineTemporalChange: baselineMetrics.temporalChange,
+      candidateTemporalChange: candidateMetrics.temporalChange,
+      flatPairTie: tie,
+      ...(tie ? { score: 0.5, verdict: "tie" } : {}),
     };
   });
   await writeFile(
-    `${ROOT}/fallback-v${variant}-${split}.json`,
+    `${ROOT}/fallback-v${variant}-${split}${suffix}.json`,
     JSON.stringify(rows, null, 2)
   );
   console.log(rows);

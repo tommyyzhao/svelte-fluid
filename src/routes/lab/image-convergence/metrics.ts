@@ -11,6 +11,25 @@ export const images = [
   "birth-of-venus.png",
 ];
 export const seeds = [5, 11, 23];
+export function restProof(
+  a: { settled: boolean; paused: boolean; draws: number; frameCount: number },
+  b: { settled: boolean; paused: boolean; draws: number; frameCount: number }
+): boolean {
+  return (
+    a.settled &&
+    a.paused &&
+    b.settled &&
+    b.paused &&
+    a.draws === b.draws &&
+    a.frameCount === b.frameCount
+  );
+}
+export function flatTransportPair(
+  baselineChange: number,
+  candidateChange: number
+): boolean {
+  return baselineChange < 1 / 255 && candidateChange < 1 / 255;
+}
 export function settledTimestamp(
   previous: number,
   final: boolean,

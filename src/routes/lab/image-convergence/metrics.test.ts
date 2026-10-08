@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { fidelity, lab, median, noise, settledTimestamp } from "./metrics.js";
+import {
+  fidelity,
+  lab,
+  median,
+  noise,
+  settledTimestamp,
+  restProof,
+  flatTransportPair,
+} from "./metrics.js";
 import {
   relaxationKeep,
   referenceDisplacement,
@@ -7,6 +15,22 @@ import {
   targetCurlKeep,
 } from "$lib/engine/image-convergence.js";
 describe("E5 frozen math", () => {
+  it("rest proof rejects wakeups and any engine submission", () => {
+    const a = { settled: true, paused: true, draws: 10, frameCount: 2 };
+    expect(restProof(a, { ...a })).toBe(true);
+    expect(restProof(a, { ...a, settled: false })).toBe(false);
+    expect(restProof(a, { ...a, paused: false })).toBe(false);
+    expect(restProof(a, { ...a, draws: 11 })).toBe(false);
+    expect(restProof(a, { ...a, frameCount: 3 })).toBe(false);
+    expect(restProof({ ...a, paused: false }, a)).toBe(false);
+  });
+  it("flat fallback ties require both changes strictly below the frozen threshold", () => {
+    expect(flatTransportPair(0, 0)).toBe(true);
+    expect(flatTransportPair(0.5 / 255, 0.99 / 255)).toBe(true);
+    expect(flatTransportPair(1 / 255, 0)).toBe(false);
+    expect(flatTransportPair(0, 1 / 255)).toBe(false);
+    expect(flatTransportPair(0, 2 / 255)).toBe(false);
+  });
   it("V2s preserves scramble curl then tapers it to zero without restarting", () => {
     expect(targetCurlKeep(0)).toBe(1);
     expect(targetCurlKeep(0.75)).toBe(1);

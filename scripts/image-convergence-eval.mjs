@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { resolve, join } from "node:path";
 import { chromium } from "playwright";
+import { restProof } from "../src/routes/lab/image-convergence/metrics.ts";
 const ROOT = resolve(import.meta.dirname, ".."),
   SCRATCH = "/tmp/e5-spike",
   LOCK = "/tmp/svelte-fluid-gpu.lock";
@@ -31,7 +32,12 @@ assert(
   [0, 1, 2, "2s"].includes(variant) &&
     ["train", "held-out", "probe", "probe-fix", "diagnostic"].includes(split)
 );
-const path = join(SCRATCH, `v${variant}-${split}.json`);
+const batch = process.argv[4] ?? "";
+assert(["", "A", "B"].includes(batch), "Unknown batch");
+const path = join(
+  SCRATCH,
+  `v${variant}-${split}${batch ? `-${batch}` : ""}.json`
+);
 let rows = [];
 try {
   rows = JSON.parse(await readFile(path, "utf8"));
@@ -166,6 +172,7 @@ try {
         "src/routes/lab/image-convergence/metrics.test.ts",
         "scripts/image-convergence-eval.mjs",
         "scripts/image-convergence-judge.mjs",
+        "dev-docs/decisions/0112-image-convergence-eval.md",
       ],
       [
         "git",
@@ -381,10 +388,15 @@ try {
       } catch {
         timedOut = true;
       }
+      const result = await page.evaluate(() => window.__e5.result());
+      const reformA = await page.evaluate(() => window.__e5.state());
+      await sleep(500);
+      const reformB = await page.evaluate(() => window.__e5.state());
       reform = {
         wake,
         visiblyDisturbed: disturbed !== initial.final,
-        result: await page.evaluate(() => window.__e5.result()),
+        result,
+        rest: { a: reformA, b: reformB, pass: restProof(reformA, reformB) },
       };
     }
     const postVerdictDiagnostic = [];
@@ -410,11 +422,7 @@ try {
       rest: {
         a,
         b,
-        pass:
-          a.settled &&
-          a.paused &&
-          a.draws === b.draws &&
-          a.frameCount === b.frameCount,
+        pass: restProof(a, b),
       },
       reform,
     });
