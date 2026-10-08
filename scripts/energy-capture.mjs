@@ -127,9 +127,9 @@ if (process.argv[2] === '--analyse-worker') {
 const { values: options } = parseArgs({ options: {
 	label: { type: 'string', default: 'baseline' }, split: { type: 'string', default: 'all' }, subset: { type: 'string' }, cases: { type: 'string' }, 'source-root': { type: 'string' }, 'engine-sha': { type: 'string' },
 	runs: { type: 'string', default: '3' }, 'run-start': { type: 'string', default: '1' }, override: { type: 'string' },
-	'self-check': { type: 'boolean' }, 'summary-only': { type: 'boolean' }, resume: { type: 'boolean' }, help: { type: 'boolean' }
+	'self-check': { type: 'boolean' }, 'per-encoder-export': { type: 'boolean' }, 'summary-only': { type: 'boolean' }, resume: { type: 'boolean' }, help: { type: 'boolean' }
 } });
-if (options.help) { console.log('bun scripts/energy-capture.mjs --label NAME [--split train|test|all] [--subset ID,...] [--cases ID@WxH:DPR:seed,...] [--runs 3] [--run-start 1] [--override JSON] [--resume] | --self-check | --summary-only'); process.exit(0); }
+if (options.help) { console.log('bun scripts/energy-capture.mjs --label NAME [--split train|test|all] [--subset ID,...] [--cases ID@WxH:DPR:seed,...] [--runs 3] [--run-start 1] [--override JSON] [--per-encoder-export] [--resume] | --self-check | --summary-only'); process.exit(0); }
 assert.match(options.label, /^[A-Za-z0-9_-]+$/, 'Invalid label');
 assert.ok(['all', 'train', 'test'].includes(options.split), 'Invalid split');
 const positive = (s) => { assert.match(s, /^\d+$/); const n = Number(s); assert.ok(Number.isSafeInteger(n) && n > 0); return n; };
@@ -144,13 +144,15 @@ if (subset) for (const p of subset) assert.ok([...TRAIN, ...TEST].includes(p), `
 if (requested) for (const k of requested) assert.ok(matrix.some((c) => key(c) === k), `Scene outside frozen matrix ${k}`);
 const cases = matrix.filter((c) => (options.split === 'all' || c.split === options.split) && (!subset || subset.includes(c.preset)) && (!requested || requested.includes(key(c))));
 assert.ok(cases.length);
+if (options['per-encoder-export']) assert.ok(cases.length === 1 && ['Plasma', 'Karman'].includes(cases[0].preset) && key(cases[0]) === `${cases[0].preset}@1440x900:2:5`, 'Encoder attribution is one TRAIN preset at 1440x900 DPR2 seed5');
 const DIR = `/tmp/energy-eval/${options.label}`, harnessSha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 const sourceRoot = options['source-root'] ?? ROOT;
 assert.ok(sourceRoot.startsWith('/'), '--source-root requires an absolute directory');
-const engineSourceSha = sourceRoot === ROOT ? '37bbe851c0d52c86241f6964c3b443f17e95611b' : options['engine-sha'];
+const baselineSha = options['per-encoder-export'] ? '29065ca' : '37bbe851c0d52c86241f6964c3b443f17e95611b';
+const engineSourceSha = sourceRoot === ROOT ? baselineSha : options['engine-sha'];
 assert.match(engineSourceSha ?? '', /^[a-f0-9]{7,40}$/, '--source-root requires supplied --engine-sha; no cross-worktree Git operations');
 const engineFileHash = createHash('sha256').update(await readFile(`${sourceRoot}/src/lib/engine/FluidEngine.ts`)).digest('hex');
-if (sourceRoot === ROOT && !options['self-check']) assert.equal(execFileSync('git', ['diff', '37bbe85', '--', 'src/lib'], { encoding: 'utf8' }), '', 'Baseline engine source changed');
+if (sourceRoot === ROOT && !options['self-check']) assert.equal(execFileSync('git', ['diff', baselineSha, '--', 'src/lib'], { encoding: 'utf8' }), '', 'Baseline engine source changed');
 const sha = engineSourceSha;
 const source = await readFile(process.argv[1], 'utf8');
 // Amendment 3 changes only the separate post-trace diagnostic; energy windows/parser stay frozen.
@@ -237,7 +239,7 @@ const save = () => writeFileSync(`${DIR}/summary.json`, JSON.stringify(summaries
 if (options['summary-only']) { save(); console.log(JSON.stringify(summaries(results).headline)); process.exit(0); }
 const census = () => execFileSync('ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' }).split('\n').map((l) => { const m = l.match(/^\s*(\d+)\s+(\d+)\s+(.*)$/); return m && { pid: +m[1], ppid: +m[2], command: m[3] }; }).filter(Boolean);
 const owned = new Map(); let browser, chrome, profile, server, recording, notifier, lockOwned = false, lastReleasedAt = 0, lockedAt = 0;
-const ownerText = JSON.stringify({ lane: 'E1', purpose: `headless energy ${options.label} ${options.split}`, start: new Date().toISOString(), worktree: ROOT, sha, pid: process.pid });
+const ownerText = JSON.stringify({ lane: options['per-encoder-export'] ? 'E1-attrib' : 'E1', purpose: `headless energy ${options.label} ${options.split}`, start: new Date().toISOString(), worktree: ROOT, sha, pid: process.pid });
 function remember() {
 	const rows = census(), ids = new Set([process.pid]);
 	for (let changed = true; changed;) { changed = false; for (const r of rows) if (ids.has(r.ppid) && !ids.has(r.pid)) { ids.add(r.pid); changed = true; } }
@@ -317,6 +319,24 @@ async function pageFor(context, dpr) {
 		window.__energy.snapshot = () => ({ ...snapshot(), presentations: window.__energyPresentations });
 		FluidEngine.prototype.renderCore = function (...args) { window.__energyPresentations.push(performance.timeOrigin + performance.now()); return original.apply(this, args); };
 	});
+	if (options['per-encoder-export']) await page.evaluate(async () => {
+		const snapshot = window.__energy.snapshot.bind(window.__energy);
+		window.__energy.snapshot = () => ({ ...snapshot(), drawInventory: window.__encoderDraws });
+		await import('/src/lib/engine/FluidEngine.ts').then(({ FluidEngine }) => {
+			const update = FluidEngine.prototype.update;
+			FluidEngine.prototype.update = function (...args) {
+				if (window.__encoderDraws || !this.dye || performance.timeOrigin + performance.now() < snapshot().mountedAt + 3000) return update.apply(this, args);
+				let label = 'unknown'; const restores = [], draws = [];
+				for (const [name, value] of Object.entries(this)) if (value && typeof value.bind === 'function' && /Program|Material/.test(name)) {
+					const bind = value.bind; value.bind = function (...args) { label = name; return bind.apply(this, args); }; restores.push(() => { value.bind = bind; });
+				}
+				const blit = this.blit;
+				this.blit = (target, ...rest) => { draws.push({ program: label, width: target?.width ?? this.canvas.width, height: target?.height ?? this.canvas.height }); return blit(target, ...rest); };
+				try { return update.apply(this, args); }
+				finally { this.blit = blit; for (const restore of restores) restore(); window.__encoderDraws = draws; }
+			};
+		});
+	});
 	return page;
 }
 async function bytes(path) {
@@ -327,7 +347,7 @@ async function capture(c, run) {
 	const name = `${fileKey(c)}-r${run}${c.infraRetry ? '-infra-retry' : ''}`, trace = `${DIR}/${name}.trace`, windows = {}, states = {};
 	const disk = execFileSync('df', ['-k', DIR], { encoding: 'utf8' }).trim().split('\n').at(-1).trim().split(/\s+/);
 	assert.ok(Number(disk[3]) * 1024 >= 15 * 1024 ** 3, 'Disk free below 15 GiB; stop captures');
-	const row = { ...c, run, sha, harnessSha, engineSourceSha, engineFileHash, measurementLogicHash, browserMode, override, trace, loadAverage: loadavg(), recorderStartTimeoutSeconds: 45, startedAt: new Date().toISOString(), status: 'FAILED' };
+	const row = { ...c, run, sha, harnessSha, engineSourceSha, engineFileHash, measurementLogicHash, browserMode, override, trace, loadAverage: loadavg(), uptime: execFileSync('uptime', { encoding: 'utf8' }).trim(), recorderStartTimeoutSeconds: 45, startedAt: new Date().toISOString(), status: 'FAILED' };
 	let gpuPid, phase = 'browser launch', stopped = false, sizeWatch, scratchBefore, page;
 	const scratchNames = async () => (await readdir(tmpdir())).filter((name) => /^instruments.*\.ktrace$/.test(name));
 	const scratchNew = async () => scratchBefore ? (await scratchNames()).filter((name) => !scratchBefore.has(name)) : [];
@@ -451,6 +471,12 @@ async function capture(c, run) {
 		// Additional read-only presentation counter; frozen metric/windows/parser remain identical.
 		const presentations = row.snapshot.presentations ?? [];
 		for (const w of Object.values(row.windows)) w.presentHz = presentations.filter((t) => t >= w.start && t < w.end).length / w.seconds;
+		if (options['per-encoder-export']) {
+			assert.match(row.adapter, /ANGLE Metal Renderer: Apple M1 Max/, 'Expected Apple M1 Max Metal renderer');
+			progress('per-encoder export');
+			const { exportEncoders } = await import('./encoder-attribution.mjs');
+			row.encoders = await exportEncoders({ trace, gpuPid, windows }, `${DIR}/${name}.encoders.json`, signal);
+		}
 		row.traceBytes = await bytes(trace);
 		row.status = 'OK';
 		await writeFile(`${DIR}/${name}.json`, JSON.stringify(row, null, 2));
