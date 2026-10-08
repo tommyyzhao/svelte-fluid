@@ -72,6 +72,12 @@ Train-only diagnostic probe (Kiss, seed5) finalized SSIM .999686 / mean DeltaE76
 
 V0 remains the comparator for the primary judge metric even where it fails its own fidelity/rest/re-form gates. Time/work comparisons on timed-out V0 slots use the 30-second timeout as a right-censored observation; report the censoring, do not impute successful convergence or extrapolated work. Candidates must pass every gate on their own. V0 is not tuned after seeing these failures. This amendment was directed by the lead after observing text/Wave V0 timeouts; it is not an original pre-registration claim.
 
+## Amendment 2 (lead, after V1 observations, before V2 data)
+
+Re-form wall-clock values for V0/V1 are **INVALID**: pointerdown wakes and may render the still-final target before the first movement splat; its 25ms timestamp was retained. Reset the timestamp on every nonfinal frame identically for all arms, covered by a pure unit test. Do not reconstruct old times from filmstrips. Re-form time/regression comparisons use valid simulation seconds and frame counts; initial wall times remain valid. Re-form PASS/FAIL did **not** depend on settledAt: the harness sent the complete stroke, read an intermediate PNG (nonidentical required), then waited for `engine.isSettled` after the splat and tested final fidelity; timeout state was separate. All previously reported gate outcomes remain valid, no25ms shortcut passed a slot.
+
+Pearl seed23 V1 diagnostic rerun did not reproduce the30s timeout:6.905wall s, last issue-time max velocity .0315552, map displacement .0000910759, exact settle/re-form. Original V1 remains non-kept; timing-sensitive flakiness is a robustness finding, not permission to replace its failed slot. Existing max-reduction values now reported for all subsequent arms (no extra passes/readback). V2 uses pre-registered controller k=8, zero before .75s, taper to0 by3.75s; gates unchanged.
+
 ## Results
 
 V0 R3 train complete at `57108d4`: 14/18 initial exact/rest, 13/18 visibly disturbed successful re-form. Great Wave all3 initial timeouts; FLUID text one initial and one re-form timeout. No post-hoc V0 tuning. V1 `db59bf9`: **non-kept round1**, 17/18 exact/rest/re-form; Pearl seed23 initial30s timeout. All-slot gate fails; held-out not run. Archived `archive/e5-v1`; V2 builds on V1 plus controller only. Full tables and exact compact rows: `dev-docs/benchmarks/image-convergence.md`, `evals/image-convergence/v{0,1}-train.json`.

@@ -72,7 +72,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 6.278433332969738,
-        "wallMs": 6389.0999999940395,
         "draws": 6971,
         "pixels": 305135482,
         "dyeFormat": "RGBA32F",
@@ -96,7 +95,9 @@
           }
         ],
         "width": 510,
-        "height": 512
+        "height": 512,
+        "invalidWallMs": 6389.0999999940395,
+        "wallMsValid": false
       }
     }
   },
@@ -173,7 +174,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 8.240933333565788,
-        "wallMs": 8383.199999988079,
         "draws": 9155,
         "pixels": 399755314,
         "dyeFormat": "RGBA32F",
@@ -197,7 +197,9 @@
           }
         ],
         "width": 510,
-        "height": 512
+        "height": 512,
+        "invalidWallMs": 8383.199999988079,
+        "wallMsValid": false
       }
     }
   },
@@ -274,7 +276,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 7.770200000047671,
-        "wallMs": 7875,
         "draws": 8609,
         "pixels": 376100356,
         "dyeFormat": "RGBA32F",
@@ -298,7 +299,9 @@
           }
         ],
         "width": 510,
-        "height": 512
+        "height": 512,
+        "invalidWallMs": 7875,
+        "wallMsValid": false
       }
     }
   },
@@ -375,7 +378,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 7.251366666654738,
-        "wallMs": 7371.700000017881,
         "draws": 8045,
         "pixels": 350745218,
         "dyeFormat": "RGBA32F",
@@ -399,7 +401,9 @@
           }
         ],
         "width": 511,
-        "height": 512
+        "height": 512,
+        "invalidWallMs": 7371.700000017881,
+        "wallMsValid": false
       }
     }
   },
@@ -476,7 +480,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 7.263833333154508,
-        "wallMs": 7370.5999999940395,
         "draws": 8063,
         "pixels": 351531650,
         "dyeFormat": "RGBA32F",
@@ -500,7 +503,9 @@
           }
         ],
         "width": 511,
-        "height": 512
+        "height": 512,
+        "invalidWallMs": 7370.5999999940395,
+        "wallMsValid": false
       }
     }
   },
@@ -577,7 +582,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 5.283999999999993,
-        "wallMs": 5364.5,
         "draws": 5861,
         "pixels": 256371290,
         "dyeFormat": "RGBA32F",
@@ -601,7 +605,9 @@
           }
         ],
         "width": 511,
-        "height": 512
+        "height": 512,
+        "invalidWallMs": 5364.5,
+        "wallMsValid": false
       }
     }
   },
@@ -678,7 +684,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 6.287633333464458,
-        "wallMs": 6375.700000017881,
         "draws": 6971,
         "pixels": 389167110,
         "dyeFormat": "RGBA32F",
@@ -702,7 +707,9 @@
           }
         ],
         "width": 512,
-        "height": 320
+        "height": 320,
+        "invalidWallMs": 6375.700000017881,
+        "wallMsValid": false
       }
     }
   },
@@ -779,7 +786,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 12.216699999541143,
-        "wallMs": 12386.5,
         "draws": 13523,
         "pixels": 750260190,
         "dyeFormat": "RGBA32F",
@@ -803,7 +809,9 @@
           }
         ],
         "width": 512,
-        "height": 320
+        "height": 320,
+        "invalidWallMs": 12386.5,
+        "wallMsValid": false
       }
     }
   },
@@ -880,7 +888,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 7.259600000023829,
-        "wallMs": 7358.800000011921,
         "draws": 8045,
         "pixels": 448346282,
         "dyeFormat": "RGBA32F",
@@ -904,7 +911,9 @@
           }
         ],
         "width": 512,
-        "height": 320
+        "height": 320,
+        "invalidWallMs": 7358.800000011921,
+        "wallMsValid": false
       }
     }
   },
@@ -981,7 +990,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 7.761966666857385,
-        "wallMs": 7866.800000011921,
         "draws": 8591,
         "pixels": 450942276,
         "dyeFormat": "RGBA32F",
@@ -1005,7 +1013,9 @@
           }
         ],
         "width": 512,
-        "height": 350
+        "height": 350,
+        "invalidWallMs": 7866.800000011921,
+        "wallMsValid": false
       }
     }
   },
@@ -1082,7 +1092,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 6.289966667006408,
-        "wallMs": 6397.5,
         "draws": 6971,
         "pixels": 366775834,
         "dyeFormat": "RGBA32F",
@@ -1106,7 +1115,9 @@
           }
         ],
         "width": 512,
-        "height": 350
+        "height": 350,
+        "invalidWallMs": 6397.5,
+        "wallMsValid": false
       }
     }
   },
@@ -1183,7 +1194,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 7.254033333500222,
-        "wallMs": 7372.200000017881,
         "draws": 8045,
         "pixels": 422571574,
         "dyeFormat": "RGBA32F",
@@ -1207,7 +1217,9 @@
           }
         ],
         "width": 512,
-        "height": 350
+        "height": 350,
+        "invalidWallMs": 7372.200000017881,
+        "wallMsValid": false
       }
     }
   },
@@ -1284,7 +1296,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 6.735133333226038,
-        "wallMs": 6863.199999988079,
         "draws": 7499,
         "pixels": 350075304,
         "dyeFormat": "RGBA32F",
@@ -1308,7 +1319,9 @@
           }
         ],
         "width": 433,
-        "height": 512
+        "height": 512,
+        "invalidWallMs": 6863.199999988079,
+        "wallMsValid": false
       }
     }
   },
@@ -1385,7 +1398,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 7.195700000137081,
-        "wallMs": 22.099999994039536,
         "draws": 8063,
         "pixels": 376137750,
         "dyeFormat": "RGBA32F",
@@ -1409,7 +1421,9 @@
           }
         ],
         "width": 433,
-        "height": 512
+        "height": 512,
+        "invalidWallMs": 22.099999994039536,
+        "wallMsValid": false
       }
     }
   },
@@ -1546,7 +1560,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 5.716599999904626,
-        "wallMs": 5862.800000011921,
         "draws": 6407,
         "pixels": 310342092,
         "dyeFormat": "RGBA32F",
@@ -1570,7 +1583,9 @@
           }
         ],
         "width": 512,
-        "height": 405
+        "height": 405,
+        "invalidWallMs": 5862.800000011921,
+        "wallMsValid": false
       }
     }
   },
@@ -1647,7 +1662,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 8.186133333345246,
-        "wallMs": 8368.300000011921,
         "draws": 9155,
         "pixels": 441775922,
         "dyeFormat": "RGBA32F",
@@ -1671,7 +1685,9 @@
           }
         ],
         "width": 512,
-        "height": 405
+        "height": 405,
+        "invalidWallMs": 8368.300000011921,
+        "wallMsValid": false
       }
     }
   },
@@ -1748,7 +1764,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 8.165866666773939,
-        "wallMs": 8370.5,
         "draws": 9155,
         "pixels": 441775922,
         "dyeFormat": "RGBA32F",
@@ -1772,7 +1787,9 @@
           }
         ],
         "width": 512,
-        "height": 405
+        "height": 405,
+        "invalidWallMs": 8370.5,
+        "wallMsValid": false
       }
     }
   }

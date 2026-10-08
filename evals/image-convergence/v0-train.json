@@ -72,7 +72,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 6.218866666714343,
-        "wallMs": 6402.100000023842,
         "draws": 7016,
         "pixels": 401438838,
         "dyeFormat": "RGBA32F",
@@ -96,7 +95,9 @@
           }
         ],
         "width": 510,
-        "height": 512
+        "height": 512,
+        "invalidWallMs": 6402.100000023842,
+        "wallMsValid": false
       }
     }
   },
@@ -173,7 +174,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 7.750033333321404,
-        "wallMs": 17.900000005960464,
         "draws": 8639,
         "pixels": 493579484,
         "dyeFormat": "RGBA32F",
@@ -197,7 +197,9 @@
           }
         ],
         "width": 510,
-        "height": 512
+        "height": 512,
+        "invalidWallMs": 17.900000005960464,
+        "wallMsValid": false
       }
     }
   },
@@ -274,7 +276,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 5.792266666660703,
-        "wallMs": 5902.699999988079,
         "draws": 6469,
         "pixels": 370380244,
         "dyeFormat": "RGBA32F",
@@ -298,7 +299,9 @@
           }
         ],
         "width": 510,
-        "height": 512
+        "height": 512,
+        "invalidWallMs": 5902.699999988079,
+        "wallMsValid": false
       }
     }
   },
@@ -375,7 +378,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 8.338866667459412,
-        "wallMs": 8388.09999999404,
         "draws": 9186,
         "pixels": 523406704,
         "dyeFormat": "RGBA32F",
@@ -399,7 +401,9 @@
           }
         ],
         "width": 511,
-        "height": 512
+        "height": 512,
+        "invalidWallMs": 8388.09999999404,
+        "wallMsValid": false
       }
     }
   },
@@ -476,7 +480,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 6.831866667250785,
-        "wallMs": 6872.5999999940395,
         "draws": 7527,
         "pixels": 429417152,
         "dyeFormat": "RGBA32F",
@@ -500,7 +503,9 @@
           }
         ],
         "width": 511,
-        "height": 512
+        "height": 512,
+        "invalidWallMs": 6872.5999999940395,
+        "wallMsValid": false
       }
     }
   },
@@ -577,7 +582,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 17.065933333059306,
-        "wallMs": 17399.69999998808,
         "draws": 19032,
         "pixels": 1081147792,
         "dyeFormat": "RGBA32F",
@@ -601,7 +605,9 @@
           }
         ],
         "width": 511,
-        "height": 512
+        "height": 512,
+        "invalidWallMs": 17399.69999998808,
+        "wallMsValid": false
       }
     }
   },
@@ -678,7 +684,6 @@
         "deltaE76": 0.29891853938438334,
         "exact": false,
         "seconds": 30.452733332951528,
-        "wallMs": 31088.79999998212,
         "draws": 33924,
         "pixels": 2602512816,
         "dyeFormat": "RGBA32F",
@@ -702,7 +707,9 @@
           }
         ],
         "width": 512,
-        "height": 320
+        "height": 320,
+        "invalidWallMs": 31088.79999998212,
+        "wallMsValid": false
       }
     }
   },
@@ -839,7 +846,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 7.750466666499766,
-        "wallMs": 7885.0999999940395,
         "draws": 8639,
         "pixels": 666409368,
         "dyeFormat": "RGBA32F",
@@ -863,7 +869,9 @@
           }
         ],
         "width": 512,
-        "height": 320
+        "height": 320,
+        "invalidWallMs": 7885.0999999940395,
+        "wallMsValid": false
       }
     }
   },
@@ -1120,7 +1128,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 6.297666666785866,
-        "wallMs": 15.5,
         "draws": 6998,
         "pixels": 437782766,
         "dyeFormat": "RGBA32F",
@@ -1144,7 +1151,9 @@
           }
         ],
         "width": 433,
-        "height": 512
+        "height": 512,
+        "invalidWallMs": 15.5,
+        "wallMsValid": false
       }
     }
   },
@@ -1221,7 +1230,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 7.768766666630892,
-        "wallMs": 14.599999994039536,
         "draws": 8639,
         "pixels": 539600780,
         "dyeFormat": "RGBA32F",
@@ -1245,7 +1253,9 @@
           }
         ],
         "width": 433,
-        "height": 512
+        "height": 512,
+        "invalidWallMs": 14.599999994039536,
+        "wallMsValid": false
       }
     }
   },
@@ -1322,7 +1332,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 9.784433333536025,
-        "wallMs": 9889.199999988079,
         "draws": 10827,
         "pixels": 675358132,
         "dyeFormat": "RGBA32F",
@@ -1346,7 +1355,9 @@
           }
         ],
         "width": 433,
-        "height": 512
+        "height": 512,
+        "invalidWallMs": 9889.199999988079,
+        "wallMsValid": false
       }
     }
   },
@@ -1423,7 +1434,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 10.27486666683361,
-        "wallMs": 10393,
         "draws": 11374,
         "pixels": 740608246,
         "dyeFormat": "RGBA32F",
@@ -1447,7 +1457,9 @@
           }
         ],
         "width": 512,
-        "height": 405
+        "height": 405,
+        "invalidWallMs": 10393,
+        "wallMsValid": false
       }
     }
   },
@@ -1524,7 +1536,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 8.261633333285642,
-        "wallMs": 8388.399999976158,
         "draws": 9186,
         "pixels": 598874414,
         "dyeFormat": "RGBA32F",
@@ -1548,7 +1559,9 @@
           }
         ],
         "width": 512,
-        "height": 405
+        "height": 405,
+        "invalidWallMs": 8388.399999976158,
+        "wallMsValid": false
       }
     }
   },
@@ -1625,7 +1638,6 @@
         "deltaE76": 0,
         "exact": true,
         "seconds": 7.301200000077472,
-        "wallMs": 7382.5,
         "draws": 8074,
         "pixels": 526826570,
         "dyeFormat": "RGBA32F",
@@ -1649,7 +1661,9 @@
           }
         ],
         "width": 512,
-        "height": 405
+        "height": 405,
+        "invalidWallMs": 7382.5,
+        "wallMsValid": false
       }
     }
   }
