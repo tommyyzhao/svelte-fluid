@@ -1,0 +1,4575 @@
+{
+	"protocol": "ADR 0111 E4",
+	"librarySha": "2a9216564d1e7d7653991c7ff794dd5c428f7b16",
+	"harnessSha": "f46008b339ae7ae15d0bc67b309bad5f5ee0a456",
+	"createdAt": "2026-10-08T06:50:55.681Z",
+	"repeats": 2,
+	"splitSalt": "svelte-fluid-e4-split-v1:",
+	"splitOrder": [
+		"FluidStick",
+		"FluidReveal",
+		"Fluid",
+		"FluidBackground",
+		"LiquidCaustics",
+		"InkPaper",
+		"splash-cursor",
+		"LiquidSegmented",
+		"LiquidToggle",
+		"EnamelText",
+		"FluidText",
+		"FluidDistortion",
+		"LiquidButton",
+		"LiquidDropZone"
+	],
+	"knownGaps": [
+		"axe pending owner approval",
+		"Static UI judge calibration pending; no baseline visual verdict",
+		"Wilson intervals pool correlated repeated checks; descriptive only",
+		"Computed focus proxy does not detect the WebGL-painted LiquidButton ring; native Enter/selected-radio probes are strict protocol limitations, not established component defects",
+		"Frozen keep rule has a ceiling: at held-out n=50 even 50/50 Wilson lower=92.87% cannot exceed baseline point=96%; no same-size candidate can be kept without an explicitly new pre-registered protocol"
+	],
+	"rows": [
+		{
+			"name": "Fluid",
+			"split": "test",
+			"hash": "41cc17ddb153b0f17e3dc6902911ad989717b86e63ac904885b7a0e81f7dcc77",
+			"snippet": "<script lang=\"ts\">\n  import { Fluid } from 'svelte-fluid';\n  import type { FluidHandle } from 'svelte-fluid';\n\n  let fluidRef = $state<{ handle: FluidHandle } | undefined>();\n</script>\n\n<button onclick={() => fluidRef?.handle.randomSplats(8)}>Splat</button>\n\n<div style=\"height: 400px\">\n  <Fluid bind:this={fluidRef} curl={30} bloom shading colorful />\n</div>",
+			"snippetSha": "dda68190293e66ecd6b82948d2f981c9497fc3454630527ef8586df91ff52930",
+			"cpu": {
+				"sync": true,
+				"check": true,
+				"build": true
+			},
+			"bundle": {
+				"gzipBytes": 98412,
+				"assets": [
+					{
+						"file": "component.js",
+						"gzipBytes": 98103
+					},
+					{
+						"file": "component.css",
+						"gzipBytes": 309
+					}
+				]
+			},
+			"trials": [
+				{
+					"repeat": 1,
+					"checks": {
+						"a11y": {
+							"status": "pass",
+							"cause": null,
+							"snapshot": "- article",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								}
+							],
+							"keyboard": [],
+							"controls": 0,
+							"reached": 0
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "fail",
+							"cause": "SSR specimen contains only blank/decorative canvas",
+							"ssr": {
+								"meaningful": false,
+								"html": "<div class=\"svelte-fluid-container svelte-3g892c\" style=\"width: 320px; height: 180px;\"><canvas aria-hidden=\"true\" class=\"svelte-3g892c\"></canvas> <!--[-1--><!--]--></div><!---->"
+							},
+							"snapshot": "- article: This animation requires WebGL, which isn't available in your browser.",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "StaticText",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 320,
+								"height": 180,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"after": {
+								"width": 400,
+								"height": 220,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"selector": ".svelte-fluid-container"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 303096,
+								"pixels": 303120,
+								"fraction": 0.9999208234362629
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/Fluid-r1.png",
+					"screenshotSha": "1b90e10af547e27e61afe64f82a8f8be146d8fa7e26c16cda74073c5ae95a627"
+				},
+				{
+					"repeat": 2,
+					"checks": {
+						"a11y": {
+							"status": "pass",
+							"cause": null,
+							"snapshot": "- article",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								}
+							],
+							"keyboard": [],
+							"controls": 0,
+							"reached": 0
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "fail",
+							"cause": "SSR specimen contains only blank/decorative canvas",
+							"ssr": {
+								"meaningful": false,
+								"html": "<div class=\"svelte-fluid-container svelte-3g892c\" style=\"width: 320px; height: 180px;\"><canvas aria-hidden=\"true\" class=\"svelte-3g892c\"></canvas> <!--[-1--><!--]--></div><!---->"
+							},
+							"snapshot": "- article: This animation requires WebGL, which isn't available in your browser.",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "StaticText",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 320,
+								"height": 180,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"after": {
+								"width": 400,
+								"height": 220,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"selector": ".svelte-fluid-container"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 303096,
+								"pixels": 303120,
+								"fraction": 0.9999208234362629
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/Fluid-r2.png",
+					"screenshotSha": "9098ce1fbc9f651fdf484f69f1ad71404b9e6c5ef8ad1af4acc84215a3607d99"
+				}
+			],
+			"ssr": {
+				"meaningful": false,
+				"html": "<div class=\"svelte-fluid-container svelte-3g892c\" style=\"width: 320px; height: 180px;\"><canvas aria-hidden=\"true\" class=\"svelte-3g892c\"></canvas> <!--[-1--><!--]--></div><!---->"
+			},
+			"score": {
+				"passed": 8,
+				"total": 10,
+				"rate": 0.8
+			}
+		},
+		{
+			"name": "FluidBackground",
+			"split": "test",
+			"hash": "570a2df269925c0ef2aade19673396875c11bfdf218b28a3b557c664b3a21868",
+			"snippet": "<script lang=\"ts\">\n  import { FluidBackground } from 'svelte-fluid';\n</script>\n\n<FluidBackground exclude=\".card, .sidebar\" splatOnHover colorful shading bloom>\n  <!-- your page content -->\n</FluidBackground>",
+			"snippetSha": "ded7a86e670b4d9bb833f9ac002a51c298f26cfdab02f113ac0e8544d690388b",
+			"cpu": {
+				"sync": true,
+				"check": true,
+				"build": true
+			},
+			"bundle": {
+				"gzipBytes": 100485,
+				"assets": [
+					{
+						"file": "component.js",
+						"gzipBytes": 100101
+					},
+					{
+						"file": "component.css",
+						"gzipBytes": 384
+					}
+				]
+			},
+			"trials": [
+				{
+					"repeat": 1,
+					"checks": {
+						"a11y": {
+							"status": "pass",
+							"cause": null,
+							"snapshot": "- article:\n  - button \"Keep dry\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Keep dry"
+								},
+								{
+									"role": "StaticText",
+									"name": "Keep dry"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Keep dry"
+								}
+							],
+							"keyboard": [
+								{
+									"control": 0,
+									"key": "Enter",
+									"activated": true,
+									"focus": true
+								},
+								{
+									"control": 0,
+									"key": "Space",
+									"activated": true,
+									"focus": true
+								}
+							],
+							"controls": 1,
+							"reached": 1
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<div class=\"svelte-fluid-bg svelte-qqlkbo\" style=\"width: 320px; min-height: 180px\"><div class=\"svelte-fluid-bg__canvas svelte-qqlkbo\"><div class=\"svelte-fluid-container svelte-3g892c\"><canvas aria-hidden=\"true\" class=\"svelte-3g892c\"></canvas> <!--[-1--><!--]--></div><!----></div> <div class=\"svelte-fluid-bg__content svelte-qqlkbo\"><button data-ink-resist=\"\" data-ink-wick=\"0\">Keep dry</button><!----></div></div><!---->"
+							},
+							"snapshot": "- article:\n  - text: This animation requires WebGL, which isn't available in your browser.\n  - button \"Keep dry\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Keep dry"
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "StaticText",
+									"name": "Keep dry"
+								},
+								{
+									"role": "StaticText",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Keep dry"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 320,
+								"height": 180,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"after": {
+								"width": 400,
+								"height": 180,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"selector": ".svelte-fluid-bg"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 141420,
+								"pixels": 432000,
+								"fraction": 0.3273611111111111,
+								"dragged": true
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/FluidBackground-r1.png",
+					"screenshotSha": "1d4dee68be84ec981209dea66f62153c2364d3bffe9ec22692dc67408bd4db9a"
+				},
+				{
+					"repeat": 2,
+					"checks": {
+						"a11y": {
+							"status": "pass",
+							"cause": null,
+							"snapshot": "- article:\n  - button \"Keep dry\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Keep dry"
+								},
+								{
+									"role": "StaticText",
+									"name": "Keep dry"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Keep dry"
+								}
+							],
+							"keyboard": [
+								{
+									"control": 0,
+									"key": "Enter",
+									"activated": true,
+									"focus": true
+								},
+								{
+									"control": 0,
+									"key": "Space",
+									"activated": true,
+									"focus": true
+								}
+							],
+							"controls": 1,
+							"reached": 1
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<div class=\"svelte-fluid-bg svelte-qqlkbo\" style=\"width: 320px; min-height: 180px\"><div class=\"svelte-fluid-bg__canvas svelte-qqlkbo\"><div class=\"svelte-fluid-container svelte-3g892c\"><canvas aria-hidden=\"true\" class=\"svelte-3g892c\"></canvas> <!--[-1--><!--]--></div><!----></div> <div class=\"svelte-fluid-bg__content svelte-qqlkbo\"><button data-ink-resist=\"\" data-ink-wick=\"0\">Keep dry</button><!----></div></div><!---->"
+							},
+							"snapshot": "- article:\n  - text: This animation requires WebGL, which isn't available in your browser.\n  - button \"Keep dry\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Keep dry"
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "StaticText",
+									"name": "Keep dry"
+								},
+								{
+									"role": "StaticText",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Keep dry"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 320,
+								"height": 180,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"after": {
+								"width": 400,
+								"height": 180,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"selector": ".svelte-fluid-bg"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 188206,
+								"pixels": 432000,
+								"fraction": 0.43566203703703704,
+								"dragged": true
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/FluidBackground-r2.png",
+					"screenshotSha": "1d4dee68be84ec981209dea66f62153c2364d3bffe9ec22692dc67408bd4db9a"
+				}
+			],
+			"ssr": {
+				"meaningful": true,
+				"html": "<div class=\"svelte-fluid-bg svelte-qqlkbo\" style=\"width: 320px; min-height: 180px\"><div class=\"svelte-fluid-bg__canvas svelte-qqlkbo\"><div class=\"svelte-fluid-container svelte-3g892c\"><canvas aria-hidden=\"true\" class=\"svelte-3g892c\"></canvas> <!--[-1--><!--]--></div><!----></div> <div class=\"svelte-fluid-bg__content svelte-qqlkbo\"><button data-ink-resist=\"\" data-ink-wick=\"0\">Keep dry</button><!----></div></div><!---->"
+			},
+			"score": {
+				"passed": 10,
+				"total": 10,
+				"rate": 1
+			}
+		},
+		{
+			"name": "FluidReveal",
+			"split": "test",
+			"hash": "3ddebfc65dcdb7c7c048913668d977dc301ed4fa2a18e92bf35195feaa0e279a",
+			"snippet": "<script lang=\"ts\">\n  import { FluidReveal } from 'svelte-fluid';\n</script>\n\n<FluidReveal\n  sensitivity={0.24}\n  coverColor={{ r: 0.15, g: 0.15, b: 0.18 }}\n  fringeColor={{ r: 0.6, g: 0.7, b: 0.85 }}\n  accentColor={{ r: 0.2, g: 0.35, b: 0.7 }}\n>\n  <div>Your hidden content here</div>\n</FluidReveal>",
+			"snippetSha": "a343b13fe156f7465d39d1d3eb1d5f984e79b9b67eee3bbc24668ce98eb98056",
+			"cpu": {
+				"sync": true,
+				"check": true,
+				"build": true
+			},
+			"bundle": {
+				"gzipBytes": 100449,
+				"assets": [
+					{
+						"file": "component.js",
+						"gzipBytes": 100070
+					},
+					{
+						"file": "component.css",
+						"gzipBytes": 379
+					}
+				]
+			},
+			"trials": [
+				{
+					"repeat": 1,
+					"checks": {
+						"a11y": {
+							"status": "pass",
+							"cause": null,
+							"snapshot": "- article:\n  - button \"Keep dry\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Keep dry"
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "StaticText",
+									"name": "Keep dry"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Keep dry"
+								}
+							],
+							"keyboard": [
+								{
+									"control": 0,
+									"key": "Enter",
+									"activated": true,
+									"focus": true
+								},
+								{
+									"control": 0,
+									"key": "Space",
+									"activated": true,
+									"focus": true
+								}
+							],
+							"controls": 1,
+							"reached": 1
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<div class=\"svelte-fluid-reveal svelte-12z7ovr\" style=\"width: 320px; height: 180px;\"><div class=\"svelte-fluid-reveal__content svelte-12z7ovr\"><button data-ink-resist=\"\" data-ink-wick=\"0\">Keep dry</button><!----></div> <div class=\"svelte-fluid-reveal__canvas svelte-12z7ovr\"><div class=\"svelte-fluid-container svelte-3g892c\"><canvas aria-hidden=\"true\" style=\"background: transparent;\" class=\"svelte-3g892c\"></canvas> <!--[-1--><!--]--></div><!----></div></div><!---->"
+							},
+							"snapshot": "- article:\n  - button \"Keep dry\"\n  - text: This animation requires WebGL, which isn't available in your browser.",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Keep dry"
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "StaticText",
+									"name": "Keep dry"
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Keep dry"
+								},
+								{
+									"role": "StaticText",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 320,
+								"height": 180,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"after": {
+								"width": 400,
+								"height": 220,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"selector": ".svelte-fluid-reveal"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 174240,
+								"pixels": 187200,
+								"fraction": 0.9307692307692308
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/FluidReveal-r1.png",
+					"screenshotSha": "4bc634273bec1ab6e23b446d1857bcdecb9ced7e227649b82005dd47e0c15499"
+				},
+				{
+					"repeat": 2,
+					"checks": {
+						"a11y": {
+							"status": "pass",
+							"cause": null,
+							"snapshot": "- article:\n  - button \"Keep dry\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Keep dry"
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "StaticText",
+									"name": "Keep dry"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Keep dry"
+								}
+							],
+							"keyboard": [
+								{
+									"control": 0,
+									"key": "Enter",
+									"activated": true,
+									"focus": true
+								},
+								{
+									"control": 0,
+									"key": "Space",
+									"activated": true,
+									"focus": true
+								}
+							],
+							"controls": 1,
+							"reached": 1
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<div class=\"svelte-fluid-reveal svelte-12z7ovr\" style=\"width: 320px; height: 180px;\"><div class=\"svelte-fluid-reveal__content svelte-12z7ovr\"><button data-ink-resist=\"\" data-ink-wick=\"0\">Keep dry</button><!----></div> <div class=\"svelte-fluid-reveal__canvas svelte-12z7ovr\"><div class=\"svelte-fluid-container svelte-3g892c\"><canvas aria-hidden=\"true\" style=\"background: transparent;\" class=\"svelte-3g892c\"></canvas> <!--[-1--><!--]--></div><!----></div></div><!---->"
+							},
+							"snapshot": "- article:\n  - button \"Keep dry\"\n  - text: This animation requires WebGL, which isn't available in your browser.",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Keep dry"
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "StaticText",
+									"name": "Keep dry"
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Keep dry"
+								},
+								{
+									"role": "StaticText",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 320,
+								"height": 180,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"after": {
+								"width": 400,
+								"height": 220,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"selector": ".svelte-fluid-reveal"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 174240,
+								"pixels": 187200,
+								"fraction": 0.9307692307692308
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/FluidReveal-r2.png",
+					"screenshotSha": "6f0add5d4c2b73b271a8831b2ee3dc328258459ec0280c7b739ad95dacdb14d9"
+				}
+			],
+			"ssr": {
+				"meaningful": true,
+				"html": "<div class=\"svelte-fluid-reveal svelte-12z7ovr\" style=\"width: 320px; height: 180px;\"><div class=\"svelte-fluid-reveal__content svelte-12z7ovr\"><button data-ink-resist=\"\" data-ink-wick=\"0\">Keep dry</button><!----></div> <div class=\"svelte-fluid-reveal__canvas svelte-12z7ovr\"><div class=\"svelte-fluid-container svelte-3g892c\"><canvas aria-hidden=\"true\" style=\"background: transparent;\" class=\"svelte-3g892c\"></canvas> <!--[-1--><!--]--></div><!----></div></div><!---->"
+			},
+			"score": {
+				"passed": 10,
+				"total": 10,
+				"rate": 1
+			}
+		},
+		{
+			"name": "FluidDistortion",
+			"split": "train",
+			"hash": "e1acb6aa32c1e006c7f000190e7b2009fd9eced46a07372e869d34d1b86d62a2",
+			"snippet": "<script lang=\"ts\">\n  import { FluidDistortion } from 'svelte-fluid';\n</script>\n\n<FluidDistortion src=\"/hero.jpg\" strength={0.4} intensity={24} />",
+			"snippetSha": "b90500853c7a4cd3192633babe4ccc6944a32f1eeffa16e9857d388d47a72849",
+			"cpu": {
+				"sync": true,
+				"check": true,
+				"build": true
+			},
+			"bundle": {
+				"gzipBytes": 101127,
+				"assets": [
+					{
+						"file": "component.js",
+						"gzipBytes": 100735
+					},
+					{
+						"file": "component.css",
+						"gzipBytes": 392
+					}
+				]
+			},
+			"trials": [
+				{
+					"repeat": 1,
+					"checks": {
+						"a11y": {
+							"status": "pass",
+							"cause": null,
+							"snapshot": "- article:\n  - img \"Colour study\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "image",
+									"name": "Colour study"
+								},
+								{
+									"role": "generic",
+									"name": ""
+								}
+							],
+							"keyboard": [],
+							"controls": 0,
+							"reached": 0
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<div class=\"svelte-fluid-distortion svelte-r8kmyh\" style=\"width: 320px; height: 180px;\"><!--[-1--><!--]--> <div class=\"svelte-fluid-distortion__canvas svelte-r8kmyh\" role=\"img\" aria-label=\"Colour study\" style=\"inset: -60px;\"><div class=\"svelte-fluid-container svelte-3g892c\"><canvas aria-hidden=\"true\" class=\"svelte-3g892c\"></canvas> <!--[-1--><!--]--></div><!----></div></div><!---->"
+							},
+							"snapshot": "- article:\n  - img \"Colour study\":\n    - img \"Colour study\"\n    - text: This animation requires WebGL, which isn't available in your browser.",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "image",
+									"name": "Colour study"
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "image",
+									"name": "Colour study"
+								},
+								{
+									"role": "StaticText",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 320,
+								"height": 180,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"after": {
+								"width": 400,
+								"height": 220,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"selector": ".svelte-fluid-distortion"
+						},
+						"install": {
+							"status": "fail",
+							"cause": "Docs/registry route blank after pointer stroke",
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 0,
+								"pixels": 187200,
+								"fraction": 0,
+								"dragged": true
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/FluidDistortion-r1.png",
+					"screenshotSha": "15ec9723aeba08184a9ec46abc0b7348a832191a136962014ae7d00ff88836f6"
+				},
+				{
+					"repeat": 2,
+					"checks": {
+						"a11y": {
+							"status": "pass",
+							"cause": null,
+							"snapshot": "- article:\n  - img \"Colour study\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "image",
+									"name": "Colour study"
+								},
+								{
+									"role": "generic",
+									"name": ""
+								}
+							],
+							"keyboard": [],
+							"controls": 0,
+							"reached": 0
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<div class=\"svelte-fluid-distortion svelte-r8kmyh\" style=\"width: 320px; height: 180px;\"><!--[-1--><!--]--> <div class=\"svelte-fluid-distortion__canvas svelte-r8kmyh\" role=\"img\" aria-label=\"Colour study\" style=\"inset: -60px;\"><div class=\"svelte-fluid-container svelte-3g892c\"><canvas aria-hidden=\"true\" class=\"svelte-3g892c\"></canvas> <!--[-1--><!--]--></div><!----></div></div><!---->"
+							},
+							"snapshot": "- article:\n  - img \"Colour study\":\n    - img \"Colour study\"\n    - text: This animation requires WebGL, which isn't available in your browser.",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "image",
+									"name": "Colour study"
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "image",
+									"name": "Colour study"
+								},
+								{
+									"role": "StaticText",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 320,
+								"height": 180,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"after": {
+								"width": 400,
+								"height": 220,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"selector": ".svelte-fluid-distortion"
+						},
+						"install": {
+							"status": "fail",
+							"cause": "Docs/registry route blank after pointer stroke",
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 0,
+								"pixels": 187200,
+								"fraction": 0,
+								"dragged": true
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/FluidDistortion-r2.png",
+					"screenshotSha": "29fe8b61cf59017705d21b193833e69eea07b461ee3c9660bea213cbca34f821"
+				}
+			],
+			"ssr": {
+				"meaningful": true,
+				"html": "<div class=\"svelte-fluid-distortion svelte-r8kmyh\" style=\"width: 320px; height: 180px;\"><!--[-1--><!--]--> <div class=\"svelte-fluid-distortion__canvas svelte-r8kmyh\" role=\"img\" aria-label=\"Colour study\" style=\"inset: -60px;\"><div class=\"svelte-fluid-container svelte-3g892c\"><canvas aria-hidden=\"true\" class=\"svelte-3g892c\"></canvas> <!--[-1--><!--]--></div><!----></div></div><!---->"
+			},
+			"score": {
+				"passed": 8,
+				"total": 10,
+				"rate": 0.8
+			}
+		},
+		{
+			"name": "FluidStick",
+			"split": "test",
+			"hash": "37d00140b9b40fb3b09e5ab36a93811fa62ba82eb74ad34243a97768390d9113",
+			"snippet": "<script lang=\"ts\">\n  import { FluidStick } from 'svelte-fluid';\n</script>\n\n<!-- Text mode -->\n<FluidStick text=\"FLUID\" font=\"900 120px sans-serif\" />\n\n<!-- SVG path mode -->\n<FluidStick d=\"M55 5 L25 45 L45 45 L20 95 L75 50 L55 50 L80 5 Z\" />",
+			"snippetSha": "ecb96b36dc197f0298f0fec3e897b0e11a47e707c87a5ffcff39f39400b4dbaf",
+			"cpu": {
+				"sync": true,
+				"check": true,
+				"build": true
+			},
+			"bundle": {
+				"gzipBytes": 100654,
+				"assets": [
+					{
+						"file": "component.js",
+						"gzipBytes": 100330
+					},
+					{
+						"file": "component.css",
+						"gzipBytes": 324
+					}
+				]
+			},
+			"trials": [
+				{
+					"repeat": 1,
+					"checks": {
+						"a11y": {
+							"status": "pass",
+							"cause": null,
+							"snapshot": "- article:\n  - img \"FLUID\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "image",
+									"name": "FLUID"
+								},
+								{
+									"role": "generic",
+									"name": ""
+								}
+							],
+							"keyboard": [],
+							"controls": 0,
+							"reached": 0
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<div class=\"svelte-fluid-stick  svelte-1qkf6gg\" style=\"width: 320px; height: 180px;\" role=\"img\" aria-label=\"FLUID\"><div class=\"svelte-fluid-container svelte-3g892c\"><canvas aria-hidden=\"true\" class=\"svelte-3g892c\"></canvas> <!--[-1--><!--]--></div><!----></div><!---->"
+							},
+							"snapshot": "- article:\n  - img \"FLUID\": This animation requires WebGL, which isn't available in your browser.",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "image",
+									"name": "FLUID"
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "StaticText",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 320,
+								"height": 180,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"after": {
+								"width": 400,
+								"height": 220,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"selector": ".svelte-fluid-stick"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 518217,
+								"pixels": 518400,
+								"fraction": 0.9996469907407407
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/FluidStick-r1.png",
+					"screenshotSha": "36414a2c5b793026aa41eade2f7c741d43449a22750cb7f773c68961217b9739"
+				},
+				{
+					"repeat": 2,
+					"checks": {
+						"a11y": {
+							"status": "pass",
+							"cause": null,
+							"snapshot": "- article:\n  - img \"FLUID\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "image",
+									"name": "FLUID"
+								},
+								{
+									"role": "generic",
+									"name": ""
+								}
+							],
+							"keyboard": [],
+							"controls": 0,
+							"reached": 0
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<div class=\"svelte-fluid-stick  svelte-1qkf6gg\" style=\"width: 320px; height: 180px;\" role=\"img\" aria-label=\"FLUID\"><div class=\"svelte-fluid-container svelte-3g892c\"><canvas aria-hidden=\"true\" class=\"svelte-3g892c\"></canvas> <!--[-1--><!--]--></div><!----></div><!---->"
+							},
+							"snapshot": "- article:\n  - img \"FLUID\": This animation requires WebGL, which isn't available in your browser.",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "image",
+									"name": "FLUID"
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "StaticText",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 320,
+								"height": 180,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"after": {
+								"width": 400,
+								"height": 220,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"selector": ".svelte-fluid-stick"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 505192,
+								"pixels": 518400,
+								"fraction": 0.9745216049382716
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/FluidStick-r2.png",
+					"screenshotSha": "1ede92e43b2aca9fda50015474d951db4a2e3f1596df206f69cd8caa0ff47089"
+				}
+			],
+			"ssr": {
+				"meaningful": true,
+				"html": "<div class=\"svelte-fluid-stick  svelte-1qkf6gg\" style=\"width: 320px; height: 180px;\" role=\"img\" aria-label=\"FLUID\"><div class=\"svelte-fluid-container svelte-3g892c\"><canvas aria-hidden=\"true\" class=\"svelte-3g892c\"></canvas> <!--[-1--><!--]--></div><!----></div><!---->"
+			},
+			"score": {
+				"passed": 10,
+				"total": 10,
+				"rate": 1
+			}
+		},
+		{
+			"name": "FluidText",
+			"split": "train",
+			"hash": "dc51704bb2292bcf7240305f386465dd22514c0392cee3be823bca0779f76c07",
+			"snippet": "<script lang=\"ts\">\n  import { FluidText } from 'svelte-fluid';\n</script>\n\n<FluidText\n  text=\"SVELTE\"\n  height={100}\n  seed={42}\n  splatOnHover\n  shading\n  colorful\n/>",
+			"snippetSha": "7521ff7d5235912640789a8a745888961291c6e36700f43eaa3e754950209949",
+			"cpu": {
+				"sync": true,
+				"check": true,
+				"build": true
+			},
+			"bundle": {
+				"gzipBytes": 99766,
+				"assets": [
+					{
+						"file": "component.js",
+						"gzipBytes": 99436
+					},
+					{
+						"file": "component.css",
+						"gzipBytes": 330
+					}
+				]
+			},
+			"trials": [
+				{
+					"repeat": 1,
+					"checks": {
+						"a11y": {
+							"status": "pass",
+							"cause": null,
+							"snapshot": "- article:\n  - img \"SVELTE\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "image",
+									"name": "SVELTE"
+								},
+								{
+									"role": "generic",
+									"name": ""
+								}
+							],
+							"keyboard": [],
+							"controls": 0,
+							"reached": 0
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<div class=\"svelte-fluid-text  svelte-1q48uvx\" style=\"height: 100px; aspect-ratio: 3.5999999999999996;\" role=\"img\" aria-label=\"SVELTE\"><div class=\"svelte-fluid-container svelte-3g892c\"><canvas aria-hidden=\"true\" style=\"background: transparent;\" class=\"svelte-3g892c\"></canvas> <!--[-1--><!--]--></div><!----></div><!---->"
+							},
+							"snapshot": "- article:\n  - img \"SVELTE\": This animation requires WebGL, which isn't available in your browser.",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "image",
+									"name": "SVELTE"
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "StaticText",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 493.5625,
+								"height": 100,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"after": {
+								"width": 691,
+								"height": 140,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"selector": ".svelte-fluid-text"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 14390,
+								"pixels": 187200,
+								"fraction": 0.07686965811965812
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/FluidText-r1.png",
+					"screenshotSha": "2ec943c5d953a09b903edeffaf0e0cae8e610bb11188172fc923206d42b3c4ad"
+				},
+				{
+					"repeat": 2,
+					"checks": {
+						"a11y": {
+							"status": "pass",
+							"cause": null,
+							"snapshot": "- article:\n  - img \"SVELTE\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "image",
+									"name": "SVELTE"
+								},
+								{
+									"role": "generic",
+									"name": ""
+								}
+							],
+							"keyboard": [],
+							"controls": 0,
+							"reached": 0
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<div class=\"svelte-fluid-text  svelte-1q48uvx\" style=\"height: 100px; aspect-ratio: 3.5999999999999996;\" role=\"img\" aria-label=\"SVELTE\"><div class=\"svelte-fluid-container svelte-3g892c\"><canvas aria-hidden=\"true\" style=\"background: transparent;\" class=\"svelte-3g892c\"></canvas> <!--[-1--><!--]--></div><!----></div><!---->"
+							},
+							"snapshot": "- article:\n  - img \"SVELTE\": This animation requires WebGL, which isn't available in your browser.",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "image",
+									"name": "SVELTE"
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "StaticText",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "This animation requires WebGL, which isn't available in your browser."
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 493.5625,
+								"height": 100,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"after": {
+								"width": 691,
+								"height": 140,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"selector": ".svelte-fluid-text"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 14474,
+								"pixels": 187200,
+								"fraction": 0.07731837606837606
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/FluidText-r2.png",
+					"screenshotSha": "f1ce8cd5d2233d119d360bcb9517b9d63a051767b1b248923387db549dcc6591"
+				}
+			],
+			"ssr": {
+				"meaningful": true,
+				"html": "<div class=\"svelte-fluid-text  svelte-1q48uvx\" style=\"height: 100px; aspect-ratio: 3.5999999999999996;\" role=\"img\" aria-label=\"SVELTE\"><div class=\"svelte-fluid-container svelte-3g892c\"><canvas aria-hidden=\"true\" style=\"background: transparent;\" class=\"svelte-3g892c\"></canvas> <!--[-1--><!--]--></div><!----></div><!---->"
+			},
+			"score": {
+				"passed": 10,
+				"total": 10,
+				"rate": 1
+			}
+		},
+		{
+			"name": "EnamelText",
+			"split": "train",
+			"hash": "c1bc17b764b861ae9a67ce08b6f88ffaf0a237e67aa253d6196c7fea3bb8d22b",
+			"snippet": "<script lang=\"ts\">\n  import { EnamelText } from 'svelte-fluid';\n</script>\n\n<h2 style=\"font-size: 4rem; color: #d9462b\">\n  <EnamelText text=\"Harbour\" />\n</h2>",
+			"snippetSha": "8bac0c8154ddec57015a7ed444f260402e8bb8d72d31e98497f51a10dac56e9f",
+			"cpu": {
+				"sync": true,
+				"check": true,
+				"build": true
+			},
+			"bundle": {
+				"gzipBytes": 42621,
+				"assets": [
+					{
+						"file": "component.js",
+						"gzipBytes": 42353
+					},
+					{
+						"file": "component.css",
+						"gzipBytes": 268
+					}
+				]
+			},
+			"trials": [
+				{
+					"repeat": 1,
+					"checks": {
+						"a11y": {
+							"status": "pass",
+							"cause": null,
+							"snapshot": "- article:\n  - heading \"Harbour\" [level=2]",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "heading",
+									"name": "Harbour"
+								},
+								{
+									"role": "StaticText",
+									"name": "Harbour"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Harbour"
+								}
+							],
+							"keyboard": [],
+							"controls": 0,
+							"reached": 0
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<h2 style=\"font-size:4rem\"><span class=\"enamel-text  svelte-1wfvbnv\" style=\"color: #d9462b;\"><span class=\"source svelte-1wfvbnv\">Harbour</span><canvas aria-hidden=\"true\" class=\"svelte-1wfvbnv\"></canvas></span><!----></h2>"
+							},
+							"snapshot": "- article:\n  - heading \"Harbour\" [level=2]",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "heading",
+									"name": "Harbour"
+								},
+								{
+									"role": "StaticText",
+									"name": "Harbour"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Harbour"
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 241.78125,
+								"height": 74,
+								"color": "rgb(217, 70, 43)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"after": {
+								"width": 241.78125,
+								"height": 74,
+								"color": "rgb(37, 73, 168)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"selector": ".enamel-text"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 5859,
+								"pixels": 187920,
+								"fraction": 0.03117816091954023
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/EnamelText-r1.png",
+					"screenshotSha": "369c0db256fc4220f71beacbce43442aca0ea5837bff1a3ae069e10c23ff7622"
+				},
+				{
+					"repeat": 2,
+					"checks": {
+						"a11y": {
+							"status": "pass",
+							"cause": null,
+							"snapshot": "- article:\n  - heading \"Harbour\" [level=2]",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "heading",
+									"name": "Harbour"
+								},
+								{
+									"role": "StaticText",
+									"name": "Harbour"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Harbour"
+								}
+							],
+							"keyboard": [],
+							"controls": 0,
+							"reached": 0
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<h2 style=\"font-size:4rem\"><span class=\"enamel-text  svelte-1wfvbnv\" style=\"color: #d9462b;\"><span class=\"source svelte-1wfvbnv\">Harbour</span><canvas aria-hidden=\"true\" class=\"svelte-1wfvbnv\"></canvas></span><!----></h2>"
+							},
+							"snapshot": "- article:\n  - heading \"Harbour\" [level=2]",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "heading",
+									"name": "Harbour"
+								},
+								{
+									"role": "StaticText",
+									"name": "Harbour"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Harbour"
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 241.78125,
+								"height": 74,
+								"color": "rgb(217, 70, 43)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"after": {
+								"width": 241.78125,
+								"height": 74,
+								"color": "rgb(37, 73, 168)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": ""
+							},
+							"selector": ".enamel-text"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 5859,
+								"pixels": 187920,
+								"fraction": 0.03117816091954023
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/EnamelText-r2.png",
+					"screenshotSha": "369c0db256fc4220f71beacbce43442aca0ea5837bff1a3ae069e10c23ff7622"
+				}
+			],
+			"ssr": {
+				"meaningful": true,
+				"html": "<h2 style=\"font-size:4rem\"><span class=\"enamel-text  svelte-1wfvbnv\" style=\"color: #d9462b;\"><span class=\"source svelte-1wfvbnv\">Harbour</span><canvas aria-hidden=\"true\" class=\"svelte-1wfvbnv\"></canvas></span><!----></h2>"
+			},
+			"score": {
+				"passed": 10,
+				"total": 10,
+				"rate": 1
+			}
+		},
+		{
+			"name": "InkPaper",
+			"split": "train",
+			"hash": "94496bf1857384d88d9df17e43bfe199fc3542d4b5d0c3cdf326061588f63c02",
+			"snippet": "<script lang=\"ts\">\n  import { InkPaper } from 'svelte-fluid';\n</script>\n\n<InkPaper paper=\"#f4ecdc\" pigments={['#2549a8', '#e7b112']} brush={{ size: 28 }} style=\"height: 260px; padding: 1.5rem\">\n  <h3 data-ink-resist>Field notes</h3>\n  <button data-ink-resist data-ink-wick=\"0\">Keep dry</button>\n</InkPaper>",
+			"snippetSha": "37322e4240a0a49c18fd8d032cfefc7059db8421ad474112f28041ade46ee67d",
+			"cpu": {
+				"sync": true,
+				"check": true,
+				"build": true
+			},
+			"bundle": {
+				"gzipBytes": 41813,
+				"assets": [
+					{
+						"file": "component.js",
+						"gzipBytes": 41634
+					},
+					{
+						"file": "component.css",
+						"gzipBytes": 179
+					}
+				]
+			},
+			"trials": [
+				{
+					"repeat": 1,
+					"checks": {
+						"a11y": {
+							"status": "pass",
+							"cause": null,
+							"snapshot": "- article:\n  - button \"Keep dry\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Keep dry"
+								},
+								{
+									"role": "StaticText",
+									"name": "Keep dry"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Keep dry"
+								}
+							],
+							"keyboard": [
+								{
+									"control": 0,
+									"key": "Enter",
+									"activated": true,
+									"focus": true
+								},
+								{
+									"control": 0,
+									"key": "Space",
+									"activated": true,
+									"focus": true
+								}
+							],
+							"controls": 1,
+							"reached": 1
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<div style=\"width:320px; height:180px; padding:20px; background-color: #f4ecdc;\" class=\"svelte-fluid-ink-paper  svelte-869sza\"><canvas aria-hidden=\"true\" class=\"svelte-869sza\"></canvas> <button data-ink-resist=\"\" data-ink-wick=\"0\">Keep dry</button><!----></div><!---->"
+							},
+							"snapshot": "- article:\n  - button \"Keep dry\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Keep dry"
+								},
+								{
+									"role": "StaticText",
+									"name": "Keep dry"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Keep dry"
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 360,
+								"height": 220,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgb(244, 236, 220)",
+								"fill": ""
+							},
+							"after": {
+								"width": 360,
+								"height": 220,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgb(221, 238, 255)",
+								"fill": ""
+							},
+							"selector": ".svelte-fluid-ink-paper"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 35361,
+								"pixels": 221760,
+								"fraction": 0.15945616883116884
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/InkPaper-r1.png",
+					"screenshotSha": "343abf5cc6d0b839e08881c35a14167ca6800b1f8fcceb363235024ebd830831"
+				},
+				{
+					"repeat": 2,
+					"checks": {
+						"a11y": {
+							"status": "pass",
+							"cause": null,
+							"snapshot": "- article:\n  - button \"Keep dry\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Keep dry"
+								},
+								{
+									"role": "StaticText",
+									"name": "Keep dry"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Keep dry"
+								}
+							],
+							"keyboard": [
+								{
+									"control": 0,
+									"key": "Enter",
+									"activated": true,
+									"focus": true
+								},
+								{
+									"control": 0,
+									"key": "Space",
+									"activated": true,
+									"focus": true
+								}
+							],
+							"controls": 1,
+							"reached": 1
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<div style=\"width:320px; height:180px; padding:20px; background-color: #f4ecdc;\" class=\"svelte-fluid-ink-paper  svelte-869sza\"><canvas aria-hidden=\"true\" class=\"svelte-869sza\"></canvas> <button data-ink-resist=\"\" data-ink-wick=\"0\">Keep dry</button><!----></div><!---->"
+							},
+							"snapshot": "- article:\n  - button \"Keep dry\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Keep dry"
+								},
+								{
+									"role": "StaticText",
+									"name": "Keep dry"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Keep dry"
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 360,
+								"height": 220,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgb(244, 236, 220)",
+								"fill": ""
+							},
+							"after": {
+								"width": 360,
+								"height": 220,
+								"color": "rgb(0, 0, 0)",
+								"background": "rgb(221, 238, 255)",
+								"fill": ""
+							},
+							"selector": ".svelte-fluid-ink-paper"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 35574,
+								"pixels": 221760,
+								"fraction": 0.16041666666666668
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/InkPaper-r2.png",
+					"screenshotSha": "f06df2b745d17e088f156ef651997d88558e53ac48e7221cbc44b9d7679b03ee"
+				}
+			],
+			"ssr": {
+				"meaningful": true,
+				"html": "<div style=\"width:320px; height:180px; padding:20px; background-color: #f4ecdc;\" class=\"svelte-fluid-ink-paper  svelte-869sza\"><canvas aria-hidden=\"true\" class=\"svelte-869sza\"></canvas> <button data-ink-resist=\"\" data-ink-wick=\"0\">Keep dry</button><!----></div><!---->"
+			},
+			"score": {
+				"passed": 10,
+				"total": 10,
+				"rate": 1
+			}
+		},
+		{
+			"name": "LiquidButton",
+			"split": "train",
+			"hash": "e2865b2b33e353dc75798a7effca2c836ebed6dbe9f53763a1cf7aab375c6293",
+			"snippet": "<script lang=\"ts\">\n  import { LiquidButton } from 'svelte-fluid';\nconst save = () => {};\n</script>\n\n<LiquidButton tone=\"auto\" onclick={save}>Save changes</LiquidButton>",
+			"snippetSha": "98d0a690a425dcf196195e70b794ec42ca611ce5150fdc46c14035ccb4d7879b",
+			"cpu": {
+				"sync": true,
+				"check": true,
+				"build": true
+			},
+			"bundle": {
+				"gzipBytes": 48439,
+				"assets": [
+					{
+						"file": "component.js",
+						"gzipBytes": 47913
+					},
+					{
+						"file": "component.css",
+						"gzipBytes": 526
+					}
+				]
+			},
+			"trials": [
+				{
+					"repeat": 1,
+					"checks": {
+						"a11y": {
+							"status": "fail",
+							"cause": "Focus indicator invisible: control 0",
+							"snapshot": "- article:\n  - button \"Save changes\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Save changes"
+								},
+								{
+									"role": "StaticText",
+									"name": "Save changes"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Save changes"
+								}
+							],
+							"keyboard": [
+								{
+									"control": 0,
+									"key": "Enter",
+									"activated": true,
+									"focus": false
+								},
+								{
+									"control": 0,
+									"key": "Space",
+									"activated": true,
+									"focus": false
+								}
+							],
+							"controls": 1,
+							"reached": 1
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<button type=\"button\" class=\"liquid-button  svelte-42jip4\" style=\"--liquid-fill: #2a4fc6; --liquid-fill-low: #2242ad; --liquid-text: #ffffff; --liquid-ring: #1f3f9e; --liquid-pad: 6px;\"><canvas aria-hidden=\"true\" class=\"svelte-42jip4\"></canvas> <span class=\"label svelte-42jip4\"><!---->Save changes<!----></span></button><!---->"
+							},
+							"snapshot": "- article:\n  - button \"Save changes\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Save changes"
+								},
+								{
+									"role": "StaticText",
+									"name": "Save changes"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Save changes"
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 135.015625,
+								"height": 44,
+								"color": "rgb(255, 255, 255)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": "#2a4fc6"
+							},
+							"after": {
+								"width": 135.015625,
+								"height": 44,
+								"color": "rgb(255, 255, 255)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": "#2b4fc4"
+							},
+							"selector": "button"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 5928,
+								"pixels": 187200,
+								"fraction": 0.03166666666666667
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/LiquidButton-r1.png",
+					"screenshotSha": "0d486cbcab684d9da47ba75a88b8236b1b7a4f0f78725fa51e40fb4265e51aa2"
+				},
+				{
+					"repeat": 2,
+					"checks": {
+						"a11y": {
+							"status": "fail",
+							"cause": "Focus indicator invisible: control 0",
+							"snapshot": "- article:\n  - button \"Save changes\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Save changes"
+								},
+								{
+									"role": "StaticText",
+									"name": "Save changes"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Save changes"
+								}
+							],
+							"keyboard": [
+								{
+									"control": 0,
+									"key": "Enter",
+									"activated": true,
+									"focus": false
+								},
+								{
+									"control": 0,
+									"key": "Space",
+									"activated": true,
+									"focus": false
+								}
+							],
+							"controls": 1,
+							"reached": 1
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<button type=\"button\" class=\"liquid-button  svelte-42jip4\" style=\"--liquid-fill: #2a4fc6; --liquid-fill-low: #2242ad; --liquid-text: #ffffff; --liquid-ring: #1f3f9e; --liquid-pad: 6px;\"><canvas aria-hidden=\"true\" class=\"svelte-42jip4\"></canvas> <span class=\"label svelte-42jip4\"><!---->Save changes<!----></span></button><!---->"
+							},
+							"snapshot": "- article:\n  - button \"Save changes\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Save changes"
+								},
+								{
+									"role": "StaticText",
+									"name": "Save changes"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Save changes"
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 135.015625,
+								"height": 44,
+								"color": "rgb(255, 255, 255)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": "#2a4fc6"
+							},
+							"after": {
+								"width": 135.015625,
+								"height": 44,
+								"color": "rgb(255, 255, 255)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": "#2b4fc4"
+							},
+							"selector": "button"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 5928,
+								"pixels": 187200,
+								"fraction": 0.03166666666666667
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/LiquidButton-r2.png",
+					"screenshotSha": "0d486cbcab684d9da47ba75a88b8236b1b7a4f0f78725fa51e40fb4265e51aa2"
+				}
+			],
+			"ssr": {
+				"meaningful": true,
+				"html": "<button type=\"button\" class=\"liquid-button  svelte-42jip4\" style=\"--liquid-fill: #2a4fc6; --liquid-fill-low: #2242ad; --liquid-text: #ffffff; --liquid-ring: #1f3f9e; --liquid-pad: 6px;\"><canvas aria-hidden=\"true\" class=\"svelte-42jip4\"></canvas> <span class=\"label svelte-42jip4\"><!---->Save changes<!----></span></button><!---->"
+			},
+			"score": {
+				"passed": 8,
+				"total": 10,
+				"rate": 0.8
+			}
+		},
+		{
+			"name": "LiquidCaustics",
+			"split": "test",
+			"hash": "6669798d354d8062cb94812076ade1de0fdad9c393ef3f47e6b87e6754894667",
+			"snippet": "<script lang=\"ts\">\n  import { LiquidCaustics } from 'svelte-fluid';\n</script>\n\n<LiquidCaustics tone=\"dark\" intensity={0.75} style=\"padding: 1.5rem; background: #14181f; color: #e8ecf4\">\n  <h3>Tide tables</h3>\n  <p>Move the pointer or tab into the block.</p>\n</LiquidCaustics>",
+			"snippetSha": "df9b329dc2911c840e8d0762ecabcba95d8fb8371be57d3169c5fb287f31f31e",
+			"cpu": {
+				"sync": true,
+				"check": true,
+				"build": true
+			},
+			"bundle": {
+				"gzipBytes": 49684,
+				"assets": [
+					{
+						"file": "component.js",
+						"gzipBytes": 49480
+					},
+					{
+						"file": "component.css",
+						"gzipBytes": 204
+					}
+				]
+			},
+			"trials": [
+				{
+					"repeat": 1,
+					"checks": {
+						"a11y": {
+							"status": "pass",
+							"cause": null,
+							"snapshot": "- article:\n  - button \"Keep dry\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Keep dry"
+								},
+								{
+									"role": "StaticText",
+									"name": "Keep dry"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Keep dry"
+								}
+							],
+							"keyboard": [
+								{
+									"control": 0,
+									"key": "Enter",
+									"activated": true,
+									"focus": true
+								},
+								{
+									"control": 0,
+									"key": "Space",
+									"activated": true,
+									"focus": true
+								}
+							],
+							"controls": 1,
+							"reached": 1
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<div class=\"liquid-caustics  svelte-1qipvi1\" style=\"width:320px;padding:20px;background:#14181f;color:#e8ecf4\"><button data-ink-resist=\"\" data-ink-wick=\"0\">Keep dry</button><!----> <canvas aria-hidden=\"true\" class=\"svelte-1qipvi1\"></canvas></div><!---->"
+							},
+							"snapshot": "- article:\n  - button \"Keep dry\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Keep dry"
+								},
+								{
+									"role": "StaticText",
+									"name": "Keep dry"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Keep dry"
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 360,
+								"height": 61,
+								"color": "rgb(232, 236, 244)",
+								"background": "rgb(20, 24, 31)",
+								"fill": ""
+							},
+							"after": {
+								"width": 360,
+								"height": 61,
+								"color": "rgb(20, 24, 31)",
+								"background": "rgb(238, 238, 238)",
+								"fill": ""
+							},
+							"selector": ".liquid-caustics"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 88252,
+								"pixels": 187200,
+								"fraction": 0.4714316239316239
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/LiquidCaustics-r1.png",
+					"screenshotSha": "a2cf965a0767c1a1d36e730da1e929b94b7e22bfe598b92595db57c94e6722f2"
+				},
+				{
+					"repeat": 2,
+					"checks": {
+						"a11y": {
+							"status": "pass",
+							"cause": null,
+							"snapshot": "- article:\n  - button \"Keep dry\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Keep dry"
+								},
+								{
+									"role": "StaticText",
+									"name": "Keep dry"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Keep dry"
+								}
+							],
+							"keyboard": [
+								{
+									"control": 0,
+									"key": "Enter",
+									"activated": true,
+									"focus": true
+								},
+								{
+									"control": 0,
+									"key": "Space",
+									"activated": true,
+									"focus": true
+								}
+							],
+							"controls": 1,
+							"reached": 1
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<div class=\"liquid-caustics  svelte-1qipvi1\" style=\"width:320px;padding:20px;background:#14181f;color:#e8ecf4\"><button data-ink-resist=\"\" data-ink-wick=\"0\">Keep dry</button><!----> <canvas aria-hidden=\"true\" class=\"svelte-1qipvi1\"></canvas></div><!---->"
+							},
+							"snapshot": "- article:\n  - button \"Keep dry\"",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Keep dry"
+								},
+								{
+									"role": "StaticText",
+									"name": "Keep dry"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Keep dry"
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 360,
+								"height": 61,
+								"color": "rgb(232, 236, 244)",
+								"background": "rgb(20, 24, 31)",
+								"fill": ""
+							},
+							"after": {
+								"width": 360,
+								"height": 61,
+								"color": "rgb(20, 24, 31)",
+								"background": "rgb(238, 238, 238)",
+								"fill": ""
+							},
+							"selector": ".liquid-caustics"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 88252,
+								"pixels": 187200,
+								"fraction": 0.4714316239316239
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/LiquidCaustics-r2.png",
+					"screenshotSha": "a2cf965a0767c1a1d36e730da1e929b94b7e22bfe598b92595db57c94e6722f2"
+				}
+			],
+			"ssr": {
+				"meaningful": true,
+				"html": "<div class=\"liquid-caustics  svelte-1qipvi1\" style=\"width:320px;padding:20px;background:#14181f;color:#e8ecf4\"><button data-ink-resist=\"\" data-ink-wick=\"0\">Keep dry</button><!----> <canvas aria-hidden=\"true\" class=\"svelte-1qipvi1\"></canvas></div><!---->"
+			},
+			"score": {
+				"passed": 10,
+				"total": 10,
+				"rate": 1
+			}
+		},
+		{
+			"name": "LiquidDropZone",
+			"split": "train",
+			"hash": "ff1da7c8b64a7976a43f1c170204916529672fdc5fe5dc631e8d14590671c46a",
+			"snippet": "<script lang=\"ts\">\n  import { LiquidDropZone } from 'svelte-fluid';\nconst upload = (_files: File[]) => {};\n</script>\n\n<LiquidDropZone\n  accept=\"image/*\"\n  multiple\n  label=\"Choose images or drop them here\"\n  onfiles={(files) => upload(files)}\n  announce={(files) => files.length + ' images ready'}\n/>",
+			"snippetSha": "b1610a082bb348daa38510088ba2be879b88b75dd6dc1c6d73ac2666c3ebac93",
+			"cpu": {
+				"sync": true,
+				"check": true,
+				"build": true
+			},
+			"bundle": {
+				"gzipBytes": 49750,
+				"assets": [
+					{
+						"file": "component.js",
+						"gzipBytes": 49097
+					},
+					{
+						"file": "component.css",
+						"gzipBytes": 653
+					}
+				]
+			},
+			"trials": [
+				{
+					"repeat": 1,
+					"checks": {
+						"a11y": {
+							"status": "fail",
+							"cause": "Enter does not activate file",
+							"snapshot": "- article:\n  - button \"Choose images\"\n  - text: Choose images\n  - status",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "LabelText",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Choose images"
+								},
+								{
+									"role": "StaticText",
+									"name": "Choose images"
+								},
+								{
+									"role": "status",
+									"name": ""
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Choose images"
+								}
+							],
+							"keyboard": [
+								{
+									"control": 0,
+									"key": "Enter",
+									"activated": false,
+									"focus": true
+								},
+								{
+									"control": 0,
+									"key": "Space",
+									"activated": true,
+									"focus": true
+								}
+							],
+							"controls": 1,
+							"reached": 1
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<label class=\"liquid-dropzone  svelte-1ul6hx3\" style=\"--liquid-fill: #e6e3db; --liquid-fill-low: #dedad1; --liquid-text: #33363d; --liquid-ring: #1f3f9e; --liquid-pad: 6px;\"><canvas aria-hidden=\"true\" class=\"svelte-1ul6hx3\"></canvas> <input type=\"file\" class=\"input svelte-1ul6hx3\" accept=\"image/*\"/> <span class=\"text svelte-1ul6hx3\"><!--[-1-->Choose images<!--]--></span> <span class=\"status svelte-1ul6hx3\" role=\"status\" aria-live=\"polite\"></span></label><!---->"
+							},
+							"snapshot": "- article:\n  - button \"Choose images\"\n  - text: Choose images\n  - status",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "LabelText",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Choose images"
+								},
+								{
+									"role": "StaticText",
+									"name": "Choose images"
+								},
+								{
+									"role": "status",
+									"name": ""
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Choose images"
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 784,
+								"height": 176,
+								"color": "rgb(51, 54, 61)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": "#e6e3db"
+							},
+							"after": {
+								"width": 784,
+								"height": 176,
+								"color": "rgb(215, 220, 230)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": "#141925"
+							},
+							"selector": "label"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 126484,
+								"pixels": 187200,
+								"fraction": 0.6756623931623932
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/LiquidDropZone-r1.png",
+					"screenshotSha": "e2815dae22995534be5271bed65c4ec0c35a4e42e3f7878a89c7bf38a4625a2e"
+				},
+				{
+					"repeat": 2,
+					"checks": {
+						"a11y": {
+							"status": "pass",
+							"cause": null,
+							"snapshot": "- article:\n  - button \"Choose images\"\n  - text: Choose images\n  - status",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "LabelText",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Choose images"
+								},
+								{
+									"role": "StaticText",
+									"name": "Choose images"
+								},
+								{
+									"role": "status",
+									"name": ""
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Choose images"
+								}
+							],
+							"keyboard": [
+								{
+									"control": 0,
+									"key": "Enter",
+									"activated": true,
+									"focus": true
+								},
+								{
+									"control": 0,
+									"key": "Space",
+									"activated": true,
+									"focus": true
+								}
+							],
+							"controls": 1,
+							"reached": 1
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<label class=\"liquid-dropzone  svelte-1ul6hx3\" style=\"--liquid-fill: #e6e3db; --liquid-fill-low: #dedad1; --liquid-text: #33363d; --liquid-ring: #1f3f9e; --liquid-pad: 6px;\"><canvas aria-hidden=\"true\" class=\"svelte-1ul6hx3\"></canvas> <input type=\"file\" class=\"input svelte-1ul6hx3\" accept=\"image/*\"/> <span class=\"text svelte-1ul6hx3\"><!--[-1-->Choose images<!--]--></span> <span class=\"status svelte-1ul6hx3\" role=\"status\" aria-live=\"polite\"></span></label><!---->"
+							},
+							"snapshot": "- article:\n  - button \"Choose images\"\n  - text: Choose images\n  - status",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "LabelText",
+									"name": ""
+								},
+								{
+									"role": "button",
+									"name": "Choose images"
+								},
+								{
+									"role": "StaticText",
+									"name": "Choose images"
+								},
+								{
+									"role": "status",
+									"name": ""
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Choose images"
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 784,
+								"height": 176,
+								"color": "rgb(51, 54, 61)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": "#e6e3db"
+							},
+							"after": {
+								"width": 784,
+								"height": 176,
+								"color": "rgb(215, 220, 230)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": "#141925"
+							},
+							"selector": "label"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 126484,
+								"pixels": 187200,
+								"fraction": 0.6756623931623932
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/LiquidDropZone-r2.png",
+					"screenshotSha": "e2815dae22995534be5271bed65c4ec0c35a4e42e3f7878a89c7bf38a4625a2e"
+				}
+			],
+			"ssr": {
+				"meaningful": true,
+				"html": "<label class=\"liquid-dropzone  svelte-1ul6hx3\" style=\"--liquid-fill: #e6e3db; --liquid-fill-low: #dedad1; --liquid-text: #33363d; --liquid-ring: #1f3f9e; --liquid-pad: 6px;\"><canvas aria-hidden=\"true\" class=\"svelte-1ul6hx3\"></canvas> <input type=\"file\" class=\"input svelte-1ul6hx3\" accept=\"image/*\"/> <span class=\"text svelte-1ul6hx3\"><!--[-1-->Choose images<!--]--></span> <span class=\"status svelte-1ul6hx3\" role=\"status\" aria-live=\"polite\"></span></label><!---->"
+			},
+			"score": {
+				"passed": 9,
+				"total": 10,
+				"rate": 0.9
+			}
+		},
+		{
+			"name": "LiquidSegmented",
+			"split": "train",
+			"hash": "a9fd7ca4c008e27fa983f701677f78032e18ae4e97e4cbb21165a904eaa31086",
+			"snippet": "<script lang=\"ts\">\n  import { LiquidSegmented } from 'svelte-fluid';\n  let range = $state('week');\n</script>\n\n<LiquidSegmented\n  name=\"range\"\n  legend=\"Time range\"\n  options={[\n    { value: 'day', label: 'Day' },\n    { value: 'week', label: 'Week' },\n    { value: 'month', label: 'Month' }\n  ]}\n  bind:value={range}\n/>",
+			"snippetSha": "6804750ec409f5633a0f9844fbc3cf6ce7246c5652cf2ed34d5e85641bc23ba7",
+			"cpu": {
+				"sync": true,
+				"check": true,
+				"build": true
+			},
+			"bundle": {
+				"gzipBytes": 47230,
+				"assets": [
+					{
+						"file": "component.js",
+						"gzipBytes": 46551
+					},
+					{
+						"file": "component.css",
+						"gzipBytes": 679
+					}
+				]
+			},
+			"trials": [
+				{
+					"repeat": 1,
+					"checks": {
+						"a11y": {
+							"status": "fail",
+							"cause": "Enter does not activate radio; Space does not activate radio",
+							"snapshot": "- article:\n  - group \"Time range\":\n    - text: Time range\n    - radio \"Day\"\n    - text: Day\n    - radio \"Week\" [checked]\n    - text: Week\n    - radio \"Month\"\n    - text: Month",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "group",
+									"name": "Time range"
+								},
+								{
+									"role": "Legend",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "StaticText",
+									"name": "Time range"
+								},
+								{
+									"role": "LabelText",
+									"name": ""
+								},
+								{
+									"role": "LabelText",
+									"name": ""
+								},
+								{
+									"role": "LabelText",
+									"name": ""
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Time range"
+								},
+								{
+									"role": "radio",
+									"name": "Day"
+								},
+								{
+									"role": "StaticText",
+									"name": "Day"
+								},
+								{
+									"role": "radio",
+									"name": "Week"
+								},
+								{
+									"role": "StaticText",
+									"name": "Week"
+								},
+								{
+									"role": "radio",
+									"name": "Month"
+								},
+								{
+									"role": "StaticText",
+									"name": "Month"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Day"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Week"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Month"
+								}
+							],
+							"keyboard": [
+								{
+									"control": 1,
+									"key": "Enter",
+									"activated": false,
+									"focus": true
+								},
+								{
+									"control": 1,
+									"key": "Space",
+									"activated": false,
+									"focus": true
+								}
+							],
+							"controls": 3,
+							"reached": 3
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<fieldset class=\"liquid-segmented  svelte-d69lv8\"><legend class=\"svelte-d69lv8\">Time range</legend> <div class=\"track svelte-d69lv8\" style=\"--liquid-fill: #e8e5de; --liquid-fill-low: #e2dfd7; --liquid-text: #1a1c21; --liquid-ring: #1f3f9e; --liquid-pad: 6px;\"><canvas aria-hidden=\"true\" class=\"svelte-d69lv8\"></canvas> <!--[--><label class=\"svelte-d69lv8\"><input type=\"radio\" name=\"range\" value=\"day\" class=\"svelte-d69lv8\"/> <span class=\"svelte-d69lv8\">Day</span></label><label class=\"svelte-d69lv8\"><input type=\"radio\" name=\"range\" value=\"week\" checked=\"\" class=\"svelte-d69lv8\"/> <span class=\"svelte-d69lv8\">Week</span></label><label class=\"svelte-d69lv8\"><input type=\"radio\" name=\"range\" value=\"month\" class=\"svelte-d69lv8\"/> <span class=\"svelte-d69lv8\">Month</span></label><!--]--></div></fieldset><!---->"
+							},
+							"snapshot": "- article:\n  - group \"Time range\":\n    - text: Time range\n    - radio \"Day\"\n    - text: Day\n    - radio \"Week\" [checked]\n    - text: Week\n    - radio \"Month\"\n    - text: Month",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "group",
+									"name": "Time range"
+								},
+								{
+									"role": "Legend",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "StaticText",
+									"name": "Time range"
+								},
+								{
+									"role": "LabelText",
+									"name": ""
+								},
+								{
+									"role": "LabelText",
+									"name": ""
+								},
+								{
+									"role": "LabelText",
+									"name": ""
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Time range"
+								},
+								{
+									"role": "radio",
+									"name": "Day"
+								},
+								{
+									"role": "StaticText",
+									"name": "Day"
+								},
+								{
+									"role": "radio",
+									"name": "Week"
+								},
+								{
+									"role": "StaticText",
+									"name": "Week"
+								},
+								{
+									"role": "radio",
+									"name": "Month"
+								},
+								{
+									"role": "StaticText",
+									"name": "Month"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Day"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Week"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Month"
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 369.5625,
+								"height": 44,
+								"color": "rgb(26, 28, 33)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": "#e8e5de"
+							},
+							"after": {
+								"width": 369.5625,
+								"height": 44,
+								"color": "rgb(233, 237, 244)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": "#151a26"
+							},
+							"selector": ".track"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 16310,
+								"pixels": 187200,
+								"fraction": 0.08712606837606837
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/LiquidSegmented-r1.png",
+					"screenshotSha": "2a531e6acab52c894d7b2442ef1d416b094f6fa65fb90110e6ea1fadc4fd2330"
+				},
+				{
+					"repeat": 2,
+					"checks": {
+						"a11y": {
+							"status": "fail",
+							"cause": "Enter does not activate radio; Space does not activate radio",
+							"snapshot": "- article:\n  - group \"Time range\":\n    - text: Time range\n    - radio \"Day\"\n    - text: Day\n    - radio \"Week\" [checked]\n    - text: Week\n    - radio \"Month\"\n    - text: Month",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "group",
+									"name": "Time range"
+								},
+								{
+									"role": "Legend",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "StaticText",
+									"name": "Time range"
+								},
+								{
+									"role": "LabelText",
+									"name": ""
+								},
+								{
+									"role": "LabelText",
+									"name": ""
+								},
+								{
+									"role": "LabelText",
+									"name": ""
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Time range"
+								},
+								{
+									"role": "radio",
+									"name": "Day"
+								},
+								{
+									"role": "StaticText",
+									"name": "Day"
+								},
+								{
+									"role": "radio",
+									"name": "Week"
+								},
+								{
+									"role": "StaticText",
+									"name": "Week"
+								},
+								{
+									"role": "radio",
+									"name": "Month"
+								},
+								{
+									"role": "StaticText",
+									"name": "Month"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Day"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Week"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Month"
+								}
+							],
+							"keyboard": [
+								{
+									"control": 1,
+									"key": "Enter",
+									"activated": false,
+									"focus": true
+								},
+								{
+									"control": 1,
+									"key": "Space",
+									"activated": false,
+									"focus": true
+								}
+							],
+							"controls": 3,
+							"reached": 3
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<fieldset class=\"liquid-segmented  svelte-d69lv8\"><legend class=\"svelte-d69lv8\">Time range</legend> <div class=\"track svelte-d69lv8\" style=\"--liquid-fill: #e8e5de; --liquid-fill-low: #e2dfd7; --liquid-text: #1a1c21; --liquid-ring: #1f3f9e; --liquid-pad: 6px;\"><canvas aria-hidden=\"true\" class=\"svelte-d69lv8\"></canvas> <!--[--><label class=\"svelte-d69lv8\"><input type=\"radio\" name=\"range\" value=\"day\" class=\"svelte-d69lv8\"/> <span class=\"svelte-d69lv8\">Day</span></label><label class=\"svelte-d69lv8\"><input type=\"radio\" name=\"range\" value=\"week\" checked=\"\" class=\"svelte-d69lv8\"/> <span class=\"svelte-d69lv8\">Week</span></label><label class=\"svelte-d69lv8\"><input type=\"radio\" name=\"range\" value=\"month\" class=\"svelte-d69lv8\"/> <span class=\"svelte-d69lv8\">Month</span></label><!--]--></div></fieldset><!---->"
+							},
+							"snapshot": "- article:\n  - group \"Time range\":\n    - text: Time range\n    - radio \"Day\"\n    - text: Day\n    - radio \"Week\" [checked]\n    - text: Week\n    - radio \"Month\"\n    - text: Month",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "group",
+									"name": "Time range"
+								},
+								{
+									"role": "Legend",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "StaticText",
+									"name": "Time range"
+								},
+								{
+									"role": "LabelText",
+									"name": ""
+								},
+								{
+									"role": "LabelText",
+									"name": ""
+								},
+								{
+									"role": "LabelText",
+									"name": ""
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Time range"
+								},
+								{
+									"role": "radio",
+									"name": "Day"
+								},
+								{
+									"role": "StaticText",
+									"name": "Day"
+								},
+								{
+									"role": "radio",
+									"name": "Week"
+								},
+								{
+									"role": "StaticText",
+									"name": "Week"
+								},
+								{
+									"role": "radio",
+									"name": "Month"
+								},
+								{
+									"role": "StaticText",
+									"name": "Month"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Day"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Week"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Month"
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 369.5625,
+								"height": 44,
+								"color": "rgb(26, 28, 33)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": "#e8e5de"
+							},
+							"after": {
+								"width": 369.5625,
+								"height": 44,
+								"color": "rgb(233, 237, 244)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": "#151a26"
+							},
+							"selector": ".track"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 16310,
+								"pixels": 187200,
+								"fraction": 0.08712606837606837
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/LiquidSegmented-r2.png",
+					"screenshotSha": "695fe408c3854fcd2f6732824d6dfbea6f6479afbd959c7c01ddb2d1bdfee45c"
+				}
+			],
+			"ssr": {
+				"meaningful": true,
+				"html": "<fieldset class=\"liquid-segmented  svelte-d69lv8\"><legend class=\"svelte-d69lv8\">Time range</legend> <div class=\"track svelte-d69lv8\" style=\"--liquid-fill: #e8e5de; --liquid-fill-low: #e2dfd7; --liquid-text: #1a1c21; --liquid-ring: #1f3f9e; --liquid-pad: 6px;\"><canvas aria-hidden=\"true\" class=\"svelte-d69lv8\"></canvas> <!--[--><label class=\"svelte-d69lv8\"><input type=\"radio\" name=\"range\" value=\"day\" class=\"svelte-d69lv8\"/> <span class=\"svelte-d69lv8\">Day</span></label><label class=\"svelte-d69lv8\"><input type=\"radio\" name=\"range\" value=\"week\" checked=\"\" class=\"svelte-d69lv8\"/> <span class=\"svelte-d69lv8\">Week</span></label><label class=\"svelte-d69lv8\"><input type=\"radio\" name=\"range\" value=\"month\" class=\"svelte-d69lv8\"/> <span class=\"svelte-d69lv8\">Month</span></label><!--]--></div></fieldset><!---->"
+			},
+			"score": {
+				"passed": 8,
+				"total": 10,
+				"rate": 0.8
+			}
+		},
+		{
+			"name": "LiquidToggle",
+			"split": "train",
+			"hash": "ad9ab8c9ce6e9856bc754e6e11c0e94e8bc0ada1ae8071ea2e16935a53c4406d",
+			"snippet": "<script lang=\"ts\">\n  import { LiquidToggle } from 'svelte-fluid';\n  let notifications = $state(false);\nconst save = (_on: boolean) => {};\n</script>\n\n<LiquidToggle bind:checked={notifications} onchange={(on) => save(on)}>Notifications</LiquidToggle>",
+			"snippetSha": "badd28cc2350a1dcde281f1552947fa781701116b3926ac83f0cc8a86a442d70",
+			"cpu": {
+				"sync": true,
+				"check": true,
+				"build": true
+			},
+			"bundle": {
+				"gzipBytes": 49705,
+				"assets": [
+					{
+						"file": "component.js",
+						"gzipBytes": 49076
+					},
+					{
+						"file": "component.css",
+						"gzipBytes": 629
+					}
+				]
+			},
+			"trials": [
+				{
+					"repeat": 1,
+					"checks": {
+						"a11y": {
+							"status": "fail",
+							"cause": "Enter does not activate checkbox",
+							"snapshot": "- article:\n  - switch \"Notifications\"\n  - text: Notifications",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "LabelText",
+									"name": ""
+								},
+								{
+									"role": "switch",
+									"name": "Notifications"
+								},
+								{
+									"role": "StaticText",
+									"name": "Notifications"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Notifications"
+								}
+							],
+							"keyboard": [
+								{
+									"control": 0,
+									"key": "Enter",
+									"activated": false,
+									"focus": true
+								},
+								{
+									"control": 0,
+									"key": "Space",
+									"activated": true,
+									"focus": true
+								}
+							],
+							"controls": 1,
+							"reached": 1
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<label class=\"liquid-toggle  svelte-mlvc14\" style=\"--liquid-fill: #e8e5de; --liquid-fill-low: #e2dfd7; --liquid-text: #1a1c21; --liquid-ring: #1f3f9e; --liquid-pad: 6px;\"><input type=\"checkbox\" role=\"switch\" class=\"svelte-mlvc14\"/> <span class=\"track svelte-mlvc14\" aria-hidden=\"true\"><canvas class=\"svelte-mlvc14\"></canvas> <span class=\"end svelte-mlvc14 selected\"><span>Off</span></span> <span class=\"end svelte-mlvc14\"><span>On</span></span></span> <!--[0--><span class=\"label\"><!---->Notifications<!----></span><!--]--></label><!---->"
+							},
+							"snapshot": "- article:\n  - switch \"Notifications\"\n  - text: Notifications",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "LabelText",
+									"name": ""
+								},
+								{
+									"role": "switch",
+									"name": "Notifications"
+								},
+								{
+									"role": "StaticText",
+									"name": "Notifications"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Notifications"
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 96,
+								"height": 48,
+								"color": "rgb(26, 28, 33)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": "#e8e5de"
+							},
+							"after": {
+								"width": 96,
+								"height": 48,
+								"color": "rgb(233, 237, 244)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": "#151a26"
+							},
+							"selector": ".track"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 4821,
+								"pixels": 187200,
+								"fraction": 0.02575320512820513
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/LiquidToggle-r1.png",
+					"screenshotSha": "64a689fa89289acc58368cafb86e3d8bd594a6ab256c246d574f852eaccf1994"
+				},
+				{
+					"repeat": 2,
+					"checks": {
+						"a11y": {
+							"status": "fail",
+							"cause": "Enter does not activate checkbox",
+							"snapshot": "- article:\n  - switch \"Notifications\"\n  - text: Notifications",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "LabelText",
+									"name": ""
+								},
+								{
+									"role": "switch",
+									"name": "Notifications"
+								},
+								{
+									"role": "StaticText",
+									"name": "Notifications"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Notifications"
+								}
+							],
+							"keyboard": [
+								{
+									"control": 0,
+									"key": "Enter",
+									"activated": false,
+									"focus": true
+								},
+								{
+									"control": 0,
+									"key": "Space",
+									"activated": true,
+									"focus": true
+								}
+							],
+							"controls": 1,
+							"reached": 1
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "pass",
+							"cause": null,
+							"ssr": {
+								"meaningful": true,
+								"html": "<label class=\"liquid-toggle  svelte-mlvc14\" style=\"--liquid-fill: #e8e5de; --liquid-fill-low: #e2dfd7; --liquid-text: #1a1c21; --liquid-ring: #1f3f9e; --liquid-pad: 6px;\"><input type=\"checkbox\" role=\"switch\" class=\"svelte-mlvc14\"/> <span class=\"track svelte-mlvc14\" aria-hidden=\"true\"><canvas class=\"svelte-mlvc14\"></canvas> <span class=\"end svelte-mlvc14 selected\"><span>Off</span></span> <span class=\"end svelte-mlvc14\"><span>On</span></span></span> <!--[0--><span class=\"label\"><!---->Notifications<!----></span><!--]--></label><!---->"
+							},
+							"snapshot": "- article:\n  - switch \"Notifications\"\n  - text: Notifications",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								},
+								{
+									"role": "LabelText",
+									"name": ""
+								},
+								{
+									"role": "switch",
+									"name": "Notifications"
+								},
+								{
+									"role": "StaticText",
+									"name": "Notifications"
+								},
+								{
+									"role": "InlineTextBox",
+									"name": "Notifications"
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "pass",
+							"cause": null,
+							"before": {
+								"width": 96,
+								"height": 48,
+								"color": "rgb(26, 28, 33)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": "#e8e5de"
+							},
+							"after": {
+								"width": 96,
+								"height": 48,
+								"color": "rgb(233, 237, 244)",
+								"background": "rgba(0, 0, 0, 0)",
+								"fill": "#151a26"
+							},
+							"selector": ".track"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 4821,
+								"pixels": 187200,
+								"fraction": 0.02575320512820513
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/LiquidToggle-r2.png",
+					"screenshotSha": "0ededb54aa60770ed64d22acecbdd0a2fb52cd1912b27f44d55a885499a988a8"
+				}
+			],
+			"ssr": {
+				"meaningful": true,
+				"html": "<label class=\"liquid-toggle  svelte-mlvc14\" style=\"--liquid-fill: #e8e5de; --liquid-fill-low: #e2dfd7; --liquid-text: #1a1c21; --liquid-ring: #1f3f9e; --liquid-pad: 6px;\"><input type=\"checkbox\" role=\"switch\" class=\"svelte-mlvc14\"/> <span class=\"track svelte-mlvc14\" aria-hidden=\"true\"><canvas class=\"svelte-mlvc14\"></canvas> <span class=\"end svelte-mlvc14 selected\"><span>Off</span></span> <span class=\"end svelte-mlvc14\"><span>On</span></span></span> <!--[0--><span class=\"label\"><!---->Notifications<!----></span><!--]--></label><!---->"
+			},
+			"score": {
+				"passed": 8,
+				"total": 10,
+				"rate": 0.8
+			}
+		},
+		{
+			"name": "splash-cursor",
+			"split": "train",
+			"hash": "964edd134e9cfa13f0b6757c93f97d15bfe142cfa58854fcc837f61f647578f9",
+			"snippet": "<script lang=\"ts\">import SplashCursor from '$lib/splash-cursor/SplashCursor.svelte';</script><SplashCursor />",
+			"snippetSha": "eb7cb8b09c305e31341adb827b06ef78c5fb2958f375ebec7cf35b91e5220937",
+			"cpu": {
+				"sync": true,
+				"check": true,
+				"build": true
+			},
+			"bundle": {
+				"gzipBytes": 98909,
+				"assets": [
+					{
+						"file": "component.js",
+						"gzipBytes": 98564
+					},
+					{
+						"file": "component.css",
+						"gzipBytes": 345
+					}
+				]
+			},
+			"trials": [
+				{
+					"repeat": 1,
+					"checks": {
+						"a11y": {
+							"status": "pass",
+							"cause": null,
+							"snapshot": "- article",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								}
+							],
+							"keyboard": [],
+							"controls": 0,
+							"reached": 0
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "fail",
+							"cause": "SSR specimen contains only blank/decorative canvas; No meaningful accessible no-GPU fallback/content",
+							"ssr": {
+								"meaningful": false,
+								"html": "<!--[-1--><!--]--><!---->"
+							},
+							"snapshot": "- article",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "na",
+							"cause": "No documented registry theming contract"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 31815,
+								"pixels": 187200,
+								"fraction": 0.16995192307692308
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/splash-cursor-r1.png",
+					"screenshotSha": "a7b28f03cb14cec5d4c697067c226f803eff8e155e08f16929e0c285ff6b4865"
+				},
+				{
+					"repeat": 2,
+					"checks": {
+						"a11y": {
+							"status": "pass",
+							"cause": null,
+							"snapshot": "- article",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								}
+							],
+							"keyboard": [],
+							"controls": 0,
+							"reached": 0
+						},
+						"reducedMotion": {
+							"status": "pass",
+							"cause": null,
+							"idleCallbacks": 0,
+							"postInputCallbacks": 0,
+							"settleMs": 3000
+						},
+						"ssrFallback": {
+							"status": "fail",
+							"cause": "SSR specimen contains only blank/decorative canvas; No meaningful accessible no-GPU fallback/content",
+							"ssr": {
+								"meaningful": false,
+								"html": "<!--[-1--><!--]--><!---->"
+							},
+							"snapshot": "- article",
+							"tree": [
+								{
+									"role": "RootWebArea",
+									"name": ""
+								},
+								{
+									"role": "article",
+									"name": ""
+								},
+								{
+									"role": "generic",
+									"name": ""
+								}
+							],
+							"errors": []
+						},
+						"theming": {
+							"status": "na",
+							"cause": "No documented registry theming contract"
+						},
+						"install": {
+							"status": "pass",
+							"cause": null,
+							"cpu": {
+								"sync": true,
+								"check": true,
+								"build": true
+							},
+							"http": 200,
+							"sample": {
+								"different": 5929,
+								"pixels": 187200,
+								"fraction": 0.031672008547008544
+							},
+							"errors": []
+						}
+					},
+					"screenshot": "baseline/splash-cursor-r2.png",
+					"screenshotSha": "d55637113d3370e2e5c3ac2803c44671b6824f388972455a5caacd0bdf9dd370"
+				}
+			],
+			"ssr": {
+				"meaningful": false,
+				"html": "<!--[-1--><!--]--><!---->"
+			},
+			"score": {
+				"passed": 6,
+				"total": 8,
+				"rate": 0.75
+			}
+		}
+	],
+	"renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)",
+	"summary": {
+		"train": {
+			"passed": 77,
+			"total": 88,
+			"rate": 0.875,
+			"lower": 0.7898824415232533,
+			"upper": 0.9287472584780776,
+			"missing": 0,
+			"na": 2,
+			"allPassComponents": {
+				"passed": 3,
+				"total": 9,
+				"rate": 0.3333333333333333,
+				"lower": 0.1205838183869109,
+				"upper": 0.6457978644196036
+			}
+		},
+		"test": {
+			"passed": 48,
+			"total": 50,
+			"rate": 0.96,
+			"lower": 0.8653990931249297,
+			"upper": 0.9889611156723802,
+			"missing": 0,
+			"na": 0,
+			"allPassComponents": {
+				"passed": 4,
+				"total": 5,
+				"rate": 0.8,
+				"lower": 0.37553462976252533,
+				"upper": 0.9637758913675698
+			}
+		}
+	},
+	"complete": true
+}
