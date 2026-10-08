@@ -338,6 +338,101 @@ Hardware strict parity: one failing test, unchanged after the audit.
 Production `FluidEngine.ts`, `shaders.ts` and solver optimisation browser test
 were restored to `37bbe85`; trial remains only in the local archive tag.
 
+## E1 eval repair — TRAIN-only headless costs, 2026-10-07
+
+Engine frozen at `37bbe85`; preregistration `66ebc38` (ADR 0107 Amendment 3).
+No `src/lib` edits. Installed HeadlessChrome 154, renderer verified
+`ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)`.
+No held-out presets/sizes ran for these cost probes.
+
+**Per-solver-stage GPU attribution unavailable.** Current
+`gpu-budget.browser.test.ts` labels are `ordinary`, `snapshot`, `velocity-N`,
+`dye-N`, `readback`, `full-chain`: stages of the **settle reduction**, not
+velocity advection, curl/vorticity, divergence, pressure, gradient, dye
+advection, bloom or display. Shared-only `no-present` / `no-solver` are coarse
+ablations. ANGLE TIME_ELAPSED / EngineProfiler groups have the command-buffer
+bias documented below. `gpu-capture.mjs` attributes whole-frame Metal interval
+unions; its optional draw-name log provides counts, not execution durations.
+No new engine hooks or synthetic stage timings were introduced. A top-five
+stage ranking, ms/frame and percentage shares cannot be certified from these
+facilities; neither replay costs nor draw counts can be treated as additive
+shares.
+
+Existing opt-in bench ran only `SVELTE_FLUID_GPU_BENCH_STAGES=ordinary`,
+`SVELTE_FLUID_GPU_BENCH_PRESETS=GasFlare,LavaLamp,Karman`, test-name filter
+`DPR 2 own independent stages`, both train sizes. One browser per size,
+200 warm-up frames; 12 batches ×20 frames, synced queue drain. These are
+**wall-throughput upper bounds**, not native GPU-stage costs or independent
+R3 noise estimates. The presets are the existing runnable default subset.
+
+| TRAIN preset | CSS, DPR2 | Ordinary median ms/frame | Batch range ms/frame | (max−min)/median |
+|---|---|---:|---:|---:|
+| Karman | 1440×900 | 1.630 | 1.615–1.655 | 2.45% |
+| GasFlare | 1440×900 | 1.570 | 1.550–1.940 | 24.84% |
+| LavaLamp | 1440×900 | 0.830 | 0.775–0.965 | 22.89% |
+| Karman | 800×500 | 1.615 | 1.585–2.175 | 36.53% |
+| GasFlare | 800×500 | 1.560 | 1.535–1.780 | 15.71% |
+| LavaLamp | 800×500 | 0.915 | 0.770–0.990 | 24.04% |
+
+Evidence `/tmp/e1-headless-stages/{1440x900,800x500}.json`. Both benches pass;
+other DPR/test cases skipped by name filter. Initial dependency scan reports
+missing generated SplashCursor source, then falls back successfully; no bench
+failure. Lock released after each size, owned-process cleanup records no
+remaining PIDs (`/tmp/e1-headless-stages/cleanup.json`).
+
+### Diagnostic-only public-config ablation ladder
+
+Scope amended before ladder execution: Plasma (bloom+shading) and Karman
+(no bloom/shading), 1440×900 DPR2 seed5, **R=1 per rung**; independent baseline
+first and last per preset for drift. Public props only via existing
+`energy-capture.mjs --override`; not candidates, not E1 keep decisions or E2
+quality claims. Each rung captures real component/RAF, unchanged registered
+windows/Metal parser, blank controls. Active GPU-ms/s divided by actual engine
+Hz reports a whole-window mean GPU-ms/frame, not p95. Deltas are changes in
+whole-frame cost under a changed workload; they are **not additive per-stage
+costs**. Baseline endpoints bound observed drift only, not R3 noise.
+
+Registered rungs: baseline, `bloom:false`, `shading:false`, `curl:0`,
+`pressureIterations` half (Plasma 10, Karman 17), `pressureIterations:0`,
+`dyeResolution:512`, `simResolution` half (Plasma 64, Karman 96), baseline.
+Resolution/filtering probes fall outside E2 Amendment 1 certification; no
+library change or keep claim follows them.
+
+**18/18 clean captures; no failed attempts or retries.** Actual active engine
+cadence 60 Hz throughout; blank/offscreen/hidden all 0 GPU-ms/s. Baseline
+first/last means: Plasma **1.6735 / 1.9801 ms/frame**, drift **0.3066 ms
+(16.78% of midpoint)**; Karman **2.4203 / 2.4373**, drift **0.0170 ms
+(0.70%)**. Reference for deltas is the two-endpoint midpoint, Plasma 1.8268,
+Karman 2.4288. Negative Δ means less whole-frame GPU work.
+
+| Diagnostic public prop | Plasma ms/frame | Δ ms/frame | Karman ms/frame | Δ ms/frame |
+|---|---:|---:|---:|---:|
+| `bloom:false` | 1.4232 | −0.4036 | 2.5326 | +0.1038 |
+| `shading:false` | 1.5215 | −0.3054 | 2.9042 | +0.4754 |
+| `curl:0` | 1.6631 | −0.1638 | 2.2791 | −0.1496 |
+| `pressureIterations` half | 1.4582 | −0.3686 | 2.4570 | +0.0282 |
+| `pressureIterations:0` | 1.5595 | −0.2673 | 1.8078 | −0.6210 |
+| `dyeResolution:512` | 1.2173 | −0.6095 | 1.8253 | −0.6034 |
+| `simResolution` half | 1.3421 | −0.4847 | 1.9933 | −0.4354 |
+
+**Noise warning:** Karman bloom/shading are already false. Their null rungs
+increase cost 4.27% / 19.57% versus midpoint: endpoint drift alone badly
+understates local timing variation. Non-monotonic pressure costs likewise
+cannot rank pressure iterations robustly from R1. No significance claim,
+no additive stage percentage shares, no top-five certified stage ranking.
+Descriptive largest five *whole-workload saving probes* across the two
+presets (not stages): Karman pressure-zero 0.6210 ms (25.57%); Plasma
+dye-half 0.6095 (33.36%); Karman dye-half 0.6034 (24.85%); Plasma sim-half
+0.4847 (26.53%); Karman sim-half 0.4354 (17.93%). Spatial-resolution savings
+are excluded from automatic E2 certification. The next candidate needs
+independent R3 noise and unchanged-quality evidence, not this noisy ranking.
+
+Raw parsed evidence `/tmp/energy-eval/cost-{Plasma,Karman}-*-71b8ddf/`;
+assert-based aggregation `/tmp/e1-aggregate-cost.mjs`, synthesis
+`/tmp/e1-headless-stages/attribution-summary.json`. Every rung cleanup reports
+lock released and no owned processes. All raw trace bundles and before/after
+owned Instruments scratch removed; installed/user Chrome processes untouched.
+
 ## Run
 
 ```sh

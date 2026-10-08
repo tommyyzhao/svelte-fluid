@@ -1,6 +1,6 @@
 # Energy eval — ADR 0107 E1
 
-**Frozen held-out baseline complete: 48/48 clean slots.** Full train baseline **incomplete**: R1 21/22 clean; R2/R3 not completed, no train noise-floor claim. **Round 2 energy evidence EXPLORATORY: 2/48 registered held-out candidate slots**, not a pre-registered keep verdict. Owner chose no further energy captures; headed launches prohibited. Headless hardware runs at 60 Hz here; modes must not be pooled.
+**Current headless baseline: 107/114 clean slots (TRAIN65/66; held-out42/48).** Seven infrastructure-missing slots explicitly listed; full registered R3 headline incomplete. Held-out complete11/16 scene median **80.868 active /80.995 untouched GPU-ms/s**, available16-scene n1–3 median **81.937 /80.099** descriptive only. Historical headed baseline remains48/48 clean held-out slots, train incomplete. Round2 evidence remains exploratory n2, not a registered keep. Never pool headless60Hz and historical headed120Hz.
 
 ## Method
 
@@ -22,7 +22,210 @@ Tables show medians over clean independent runs, n explicit. Noise = (max−min)
 - Instruments ignored `TMPDIR`, leaked raw scratch into macOS user temp. Exact before/after `instruments*.ktrace` name diff under exclusive GPU lock, same-UID check, deletion after recording/export. Smoke verified deletion of **6.12 GB**, no residual ktrace. Raw bundles deleted after parse/error JSON. **15 GiB** free-space guard; **10 GiB** raw-scratch watchdog; **110 s** recorder ceiling. Initial 3 GiB watchdog smoke aborts were calibration errors, excluded from baseline/infrastructure counts.
 - Captures serialized under `/tmp/svelte-fluid-gpu.lock`, batches ≤25 min including exports. No foreign processes killed. Evidence: `/tmp/energy-eval/baseline-native/`.
 
-## Frozen baseline
+## Headless 60 Hz frozen baseline — Amendment 3, 2026-10-07/08
+
+Preregistered by `66ebc38` **before new baseline captures**; engine
+`37bbe851c0d52c86241f6964c3b443f17e95611b`, `maxFps:0`, no library edits.
+TRAIN completed before held-out started. Installed HeadlessChrome154;
+every clean slot verifies renderer
+`ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)`,
+CSS/backing/DPR and active RAF59–61Hz (normally60). Historical headed120Hz
+numbers below are not comparable and were never pooled. Frozen metric,
+parser, windows, splits, seeds, R3 noise/keep/0-GPU rules unchanged.
+
+**107/114 clean registered slots: TRAIN65/66, held-out42/48.** All114
+original slots attempted;16 originals failed,15 received their single allowed
+infrastructure retry (9 clean,6 failed). Seven slots remain missing; no
+unclassified or exhausted retry was repeated. **The registered all16-scene
+R3 held-out headline is incomplete.** Offscreen/hidden/control are exactly
+0 GPU-ms/s in every107 clean slot, within blank-control noise0–0.
+
+| Coverage (explicit, not interchangeable) | Active median GPU-ms/s | Descriptive bootstrap95% | Untouched median GPU-ms/s | Descriptive bootstrap95% |
+|---|---:|---|---:|---|
+| TRAIN21/22 completeR3 scenes | 94.184 | 84.431–98.584 | 90.491 | 79.167–92.603 |
+| Held-out11/16 completeR3 scenes | 80.868 | 73.468–82.754 | 80.995 | 77.949–81.674 |
+| TRAIN all22 available scenes, n2–3 | 94.382 | 87.427–99.535 | 90.766 | 81.403–93.554 |
+| Held-out all16 available scenes, n1–3 | 81.937 | 76.444–82.931 | 80.099 | 76.547–82.000 |
+
+Intervals are **descriptive**, not a keep-rule amendment:10,000 bootstrap
+resamples of independent runs **within each scene**, fixed scene set,
+scene medians then split median, percentile2.5/97.5%, xorshift32 seed5.
+Available-scene rows resample their actual n; they cannot repair missingR3
+or certify a candidate. CompleteR3 active-noise range: TRAIN **1.472%–34.214%**;
+held-out **3.580%–19.513%**. Incomplete scenes have no registered noise estimate.
+The original >2× per-scene noise and ≥5% keep bars remain unchanged.
+
+### Headless TRAIN — DPR2, seed5
+
+Units GPU-ms/s; n = clean independent runs. Offscreen/hidden/control all0.
+
+| Preset | CSS | n | Active | Untouched | Active noiseR3 |
+|---|---|---:|---:|---:|---:|
+| (default) | 1440×900 | 3 | 47.673 | 0.000 | 34.21% |
+| (default) | 800×500 | 3 | 42.319 | 0.000 | 12.56% |
+| LavaLamp | 1440×900 | 3 | 100.513 | 103.716 | 29.95% |
+| LavaLamp | 800×500 | 3 | 56.558 | 56.550 | 34.14% |
+| Plasma | 1440×900 | 3 | 99.800 | 116.861 | 26.73% |
+| Plasma | 800×500 | 3 | 100.699 | 103.439 | 7.92% |
+| InkInWater | 1440×900 | 3 | 93.782 | 94.627 | 8.30% |
+| InkInWater | 800×500 | 3 | 64.983 | 60.772 | 17.39% |
+| Aurora | 1440×900 | 3 | 100.486 | 105.623 | 1.47% |
+| Aurora | 800×500 | 3 | 81.071 | 89.554 | 17.59% |
+| CircularFluid | 1440×900 | 3 | 94.579 | 90.491 | 17.12% |
+| CircularFluid | 800×500 | 3 | 65.999 | 63.685 | 22.92% |
+| SvgPathFluid | 1440×900 | 3 | 84.431 | 91.040 | 7.31% |
+| SvgPathFluid | 800×500 | 3 | 75.129 | 67.237 | 7.51% |
+| Toroidal | 1440×900 | 3 | 113.055 | 0.000 | 27.46% |
+| Toroidal | 800×500 | 3 | 102.143 | 0.000 | 2.67% |
+| GasFlare | 1440×900 | 2 | 147.393 | 149.619 | MissingR3 |
+| GasFlare | 800×500 | 3 | 107.721 | 107.166 | 12.39% |
+| Venturi | 1440×900 | 3 | 94.184 | 93.138 | 22.24% |
+| Venturi | 800×500 | 3 | 63.322 | 63.453 | 18.28% |
+| Karman | 1440×900 | 3 | 139.778 | 142.959 | 22.69% |
+| Karman | 800×500 | 3 | 153.022 | 141.156 | 25.65% |
+
+### Headless held-out — 1024×640 CSS
+
+Units GPU-ms/s; n explicit. Offscreen/hidden/control all0. All held-out
+scenes remain active untouched; no settling observed by40s.
+
+| Preset | DPR | Seed | n | Active | Untouched | Active noiseR3 |
+|---|---:|---:|---:|---:|---:|---:|
+| FrozenSwirl | 2 | 11 | 3 | 80.868 | 79.204 | 17.01% |
+| FrozenSwirl | 2 | 23 | 3 | 78.683 | 80.995 | 19.51% |
+| FrozenSwirl | 1 | 11 | 2 | 69.499 | 70.269 | MissingR3 |
+| FrozenSwirl | 1 | 23 | 3 | 70.368 | 70.808 | 4.29% |
+| AnnularFluid | 2 | 11 | 2 | 83.107 | 82.326 | MissingR3 |
+| AnnularFluid | 2 | 23 | 2 | 83.006 | 76.431 | MissingR3 |
+| AnnularFluid | 1 | 11 | 1 | 58.792 | 63.594 | MissingR2/R3 |
+| AnnularFluid | 1 | 23 | 3 | 62.216 | 63.499 | 17.97% |
+| FrameFluid | 2 | 11 | 2 | 83.670 | 89.050 | MissingR1 |
+| FrameFluid | 2 | 23 | 3 | 84.412 | 88.730 | 12.42% |
+| FrameFluid | 1 | 11 | 3 | 67.810 | 67.416 | 3.58% |
+| FrameFluid | 1 | 23 | 3 | 73.468 | 74.095 | 16.45% |
+| TeslaValve | 2 | 11 | 3 | 89.531 | 98.222 | 12.08% |
+| TeslaValve | 2 | 23 | 3 | 87.184 | 94.879 | 10.30% |
+| TeslaValve | 1 | 11 | 3 | 91.366 | 90.707 | 7.97% |
+| TeslaValve | 1 | 23 | 3 | 90.049 | 85.352 | 3.96% |
+
+### Settle classification — descriptive, no library definition change
+
+Every driver-free preset belongs to the following observed classes:
+
+- **(a) At rest → settled:** `(default)` and Toroidal, both TRAIN sizes.
+  Untouched GPU0, RAF subscription stopped; production quiet probes meet
+  ≤5s latency target. “At rest” here means production quiet/display-rest,
+  **not an assertion that all residual velocity is mathematically zero**.
+  Diagnostics stop after settling, so t30–40 field pairs are intentionally
+  absent, not zero-filled evidence.
+- **(b) At rest but failing `isQuiet`: empty among observed driver-free scenes.**
+  This is a descriptive finding from the sampled window, not proof about all
+  future states or all possible configs.
+- **(c) Visibly evolving/not idle:** LavaLamp, Aurora, FrozenSwirl. Nonzero
+  speed plus substantial consecutive-frame RGB changes disprove field rest;
+  changes exceed1/255 by7–55×. This is motion evidence, **not calibrated
+  perceptual certification** (post-processing can amplify or compress it).
+  All production quiet verdicts in t30–40 are false. LavaLamp's visibility
+  maximum65504 is the conservative glass/shading sentinel, not measured
+  dye overflow: it cannot establish rest, but fields are moving anyway.
+
+| Driver-free scene | First quiet s | Unsubscribe s | Latency s |
+|---|---:|---:|---:|
+| (default) 1440×900 | 9.002 | 10.117 | 1.115 |
+| (default) 800×500 | 8.506 | 9.618 | 1.112 |
+| Toroidal 1440×900 | 20.982 | 22.100 | 1.118 |
+| Toroidal 800×500 | 20.986 | 22.102 | 1.115 |
+
+R1-only separate diagnostic mounts, same seeds/configs; five consecutive
+engine-frame pairs first at/after t30/32/34/36/38s. Speed is maximum Euclidean
+velocity, simulation texels/s; dye delta maximum absolute **RGB** channel
+change (thickness excluded), window maximum over sampled pairs. **Full-field
+readbacks stall the diagnostic mount**: actual pair intervals31.7–62.2ms,
+not nominal16.7ms. Consecutive engine frames remain consecutive, but elapsed
+simulation/chaotic trajectories can differ; do not treat these as unperturbed
+60Hz per-frame display deltas. Energy mounts contain no diagnostic readbacks,
+remain≈60Hz; no thresholds, solver or library definitions were changed.
+
+| Non-settling driver-free scene | Max speed texels/s | Max RGB delta/frame | Pair interval range ms | Evolving? |
+|---|---:|---:|---|---|
+| LavaLamp 1440×900 DPR2 seed5 | 14.844 | 0.074219 | 31.7–49.4 | Yes |
+| LavaLamp 800×500 DPR2 seed5 | 17.247 | 0.217041 | 38.9–62.2 | Yes |
+| Aurora 1440×900 DPR2 seed5 | 34.116 | 0.061523 | 33.9–53.1 | Yes |
+| Aurora 800×500 DPR2 seed5 | 32.442 | 0.078552 | 46.9–59.6 | Yes |
+| FrozenSwirl 1024×640 DPR2 seed11 | 33.989 | 0.149414 | 32.0–42.8 | Yes |
+| FrozenSwirl 1024×640 DPR2 seed23 | 31.462 | 0.129639 | 32.0–44.7 | Yes |
+| FrozenSwirl 1024×640 DPR1 seed11 | 35.070 | 0.119141 | 33.5–46.1 | Yes |
+| FrozenSwirl 1024×640 DPR1 seed23 | 31.703 | 0.170166 | 34.0–46.6 | Yes |
+
+**Continuous drivers are not idle by definition:** Plasma, InkInWater,
+CircularFluid, SvgPathFluid, GasFlare, Venturi, Karman (TRAIN);
+AnnularFluid, FrameFluid, TeslaValve (held-out). No driver-scene diagnostic
+readback was used to infer settling.
+
+### Headless preserved failures/retries
+
+| Original scene/run | Original reason | Single retry outcome |
+|---|---|---|
+| (default)800×500 DPR2 seed5 R3 | GPU process exit during owned lane handoff | OK |
+| GasFlare1440×900 DPR2 seed5 R3 | Harness-ceiling interruption during **trace export**, not closed retry list | **Missing; not retried** |
+| GasFlare800×500 DPR2 seed5 R1 | Recorder finalisation timeout | OK |
+| SvgPathFluid1440×900 DPR2 seed5 R2 | Recorder finalisation timeout | OK |
+| Toroidal800×500 DPR2 seed5 R3 | Recorder finalisation timeout | OK |
+| FrozenSwirl DPR1 seed11 R3 | Recorder finalisation timeout | **Same timeout; missing** |
+| AnnularFluid DPR1 seed11 R2 | Recorder finalisation timeout | **Same timeout; missing** |
+| AnnularFluid DPR2 seed11 R3 | Recorder finalisation timeout | **Same timeout; missing** |
+| AnnularFluid DPR2 seed23 R3 | Recorder finalisation timeout | **Same timeout; missing** |
+| AnnularFluid DPR1 seed11 R3 | Recorder finalisation timeout | **15s `goto('about:blank')` timeout after hidden window; missing** |
+| FrameFluid DPR2 seed11 R1 | Recorder finalisation timeout | **Same timeout; missing** |
+| FrameFluid DPR2 seed23 R1 | Recorder finalisation timeout | OK |
+| FrameFluid DPR2 seed23 R2 | Recorder finalisation timeout | OK |
+| FrameFluid DPR1 seed11 R1 | Recorder finalisation timeout | OK |
+| FrameFluid DPR1 seed23 R1 | Recorder finalisation timeout | OK |
+| TeslaValve DPR2 seed23 R1 | Recorder finalisation timeout | OK |
+
+All held-out sizes1024×640. Original JSON and retry JSON preserved. No
+failed-slot active metric inferred from unparsed traces. Exit1 from the
+harness also flags retained originals even when their retries succeed; it
+is not itself a new failed capture.
+
+Finalisation trend diagnosed before later subsets: Annular clean
+post-control-to-result101.5–266.8s **includes finalisation, exports and
+cleanup**, not exact finalisation duration; clean trace299–537MiB,
+scratch2.60–5.32GiB. Timeout traces384–616MiB, scratch3.68–6.28GiB.
+Free disk≈399GiB at diagnosis; no concurrent foreign xctrace observed.
+Machine start-load≈6–43 during that period is a **likely infrastructure
+factor, not proven causation**; GPU-free builds/tests ran concurrently.
+Across all attempts start-load envelope3.55–44.34; end-load telemetry added
+for later32 attempts, envelope4.94–77.15. Envelopes pool recorded1/5/15-minute
+load averages (system-wide, not owned-process CPU utilization). Recorder-finalisation bound stayed
+180s, exports90s/table, attempt600s, recorder110s; no post-hoc timeout or
+retry-class change. Larger groups hit2h outer ceiling: later subsets reduced
+by preset/DPR, never by observed metric. Annular outer ceiling occurred while
+lock unowned/waiting another lane, not an extra failed metric.
+
+Lock atomic/owned, releases reserve10min attempt within25min hold; actual
+acquisition time added separately (`acquired-at`) because initial owner.start
+is process-start, not re-acquisition. Initial SOLO immediately re-acquired
+between holds; disabled before later subsets when other lanes began waiting.
+Two exact-PID handoffs recorded; one interrupted active slot received its
+allowed process-exit retry, one occurred before next recorder started.
+Other lanes E4/dye-review/diagnostics interleaved; no foreign locks removed.
+
+Evidence `/tmp/energy-eval/headless-baseline-37bbe85/`: original/retry JSON,
+`summary.json`, `descriptive-summary.json`, per-batch logs/cleanup.
+Runnable aggregation `/tmp/e1-summary-headless.mjs`; persistent motion
+self-check `bun scripts/energy-capture.mjs --self-check`. Raw trace bundles
+and owned `instruments*.ktrace` diff-cleaned; safeguards15GiB free/10GiB raw
+watchdog retained. No new library code, dependency installs, system settings,
+push, merge, publish or deploy. Final cleanup11:41:32UTC2026-10-08:
+408 recorded owned PID handles checked, no remaining Chrome/vite/xctrace
+capture processes; lock absent, scratch/raw arrays empty, protected Chrome
+PIDs4386/4411/48063/48074 received no signals (`final-cleanup.json`).
+`bun run test && bun run check`, `bun run prepack`, energy self-check green.
+Worktree retained: commits not remotely preserved; ignored dependency symlink
+retained, never staged. TRAIN cost evidence and attribution caveats are in [gpu-budget.md](gpu-budget.md#e1-eval-repair--train-only-headless-costs-2026-10-07).
+
+## Historical headed 120 Hz frozen baseline
 
 **Held-out median active: 141.703 GPU-ms/s. Untouched: 140.898 GPU-ms/s.** Blank control median/range **0 / 0–0**. Offscreen and hidden each **0 in all 48 clean held-out baseline slots**, within control noise. Held-out R3 active noise-floor range **2.266%–18.401%**.
 
