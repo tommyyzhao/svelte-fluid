@@ -240,7 +240,13 @@ try {
   const combined = process.env.E5_BASELINE_BATCH === "1";
   const slots =
     split === "diagnostic"
-      ? [{ image: "pearl-earring.jpg", seed: 23, phase: "diagnostic" }]
+      ? [
+          {
+            image: variant === 2 ? "the-kiss.jpg" : "pearl-earring.jpg",
+            seed: 23,
+            phase: "diagnostic",
+          },
+        ]
       : combined
       ? [
           { image: IMAGES[0], seed: 5, phase: "probe-fix" },
@@ -378,7 +384,18 @@ try {
         result: await page.evaluate(() => window.__e5.result()),
       };
     }
+    const postVerdictDiagnostic = [];
+    if (split === "diagnostic" && timedOut) {
+      for (let sample = 0; sample <= 10; sample++) {
+        postVerdictDiagnostic.push({
+          afterVerdictSeconds: sample / 2,
+          ...(await page.evaluate(() => window.__e5.state())),
+        });
+        if (sample < 10) await sleep(500);
+      }
+    }
     rows.push({
+      postVerdictDiagnostic,
       image,
       seed,
       variant,

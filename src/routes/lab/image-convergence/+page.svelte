@@ -13,8 +13,7 @@
 	let retained: HTMLCanvasElement;
 	let frames: { seconds: number; wallMs: number; png: string }[] = [];
 	let draws = 0, pixels = 0, frameCount = 0, seconds = 0, start = 0, settledAt = 0;
-	let alive = true, generation = 0;
-	let drawOffset = 0, pixelOffset = 0, dyeFormat = 'unknown', velocityMax = 0, targetErrorMax = 0;
+	let alive = true, generation = 0;	let drawOffset = 0, pixelOffset = 0, dyeFormat = 'unknown', velocityMax = 0, targetErrorMax = 0;
 	function beginDisturbance() {
 		drawOffset += draws; pixelOffset += pixels;
 		draws = 0; pixels = 0; frameCount = 0; frames = []; settledAt = 0; start = performance.now();
