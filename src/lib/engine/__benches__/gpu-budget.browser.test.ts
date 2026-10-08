@@ -9,6 +9,8 @@ import { FluidEngine, _setContextTier } from '../FluidEngine.js';
 import { cssQualityPolicy } from '../resolution.js';
 import { PRESETS } from '../../presets/registry.js';
 import type { FluidConfig } from '../types.js';
+import { withBaseline } from './precision-probe.js';
+const BASELINE_PRECISION = import.meta.env.SVELTE_FLUID_PRECISION_ARM === 'A';
 
 const [CSS_W, CSS_H] = String(import.meta.env.SVELTE_FLUID_GPU_BENCH_CSS || '1440x900').split('x').map(Number);
 const OUT = import.meta.env.SVELTE_FLUID_GPU_BENCH_OUT || '/tmp/strict-budget-followup.json';
@@ -36,7 +38,7 @@ function shuffle<T>(values: T[]): T[] {
 	return result;
 }
 function config(base: FluidConfig, w: number, h: number, dpr: number): FluidConfig {
-	const cfg = { ...base, pointerInput: false };
+	const cfg = { ...base, seed: 5, pointerInput: false };
 	const max = Math.max(Math.round(w * dpr), Math.round(h * dpr));
 	cfg.dyeResolution = Math.min(cfg.dyeResolution ?? 1024, max);
 	cfg.bloomResolution = Math.min(cfg.bloomResolution ?? 256, max);
@@ -53,7 +55,10 @@ function build(preset: string, dpr: number, shared: boolean, cssW = CSS_W, cssH 
 	canvas.style.cssText = `width:${cssW}px;height:${cssH}px`;
 	document.body.append(canvas);
 	_setContextTier(shared ? 'shared' : 'own');
-	try { return new FluidEngine({ canvas, autoStart: false, config: config(PRESETS.find((p) => p.id === preset)!.config as FluidConfig, cssW, cssH, dpr) }); }
+	try {
+		const create = () => new FluidEngine({ canvas, autoStart: false, config: config(PRESETS.find((p) => p.id === preset)!.config as FluidConfig, cssW, cssH, dpr) });
+		return BASELINE_PRECISION ? withBaseline(create) : create();
+	}
 	finally { _setContextTier('auto'); }
 }
 function frame(e: FluidEngine) {

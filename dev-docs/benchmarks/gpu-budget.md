@@ -14,6 +14,52 @@ Earlier wall-throughput/UNCERTIFIED sections remain historical evidence.
 Harness: `src/lib/engine/__benches__/gpu-budget.browser.test.ts`. Measurement,
 not a performance gate. Decision records: ADRs 0089, 0093, 0099.
 
+## E1 TRAIN mixed-precision probe — 2026-10-08
+
+### Pre-registered protocol (before GPU measurement)
+
+Baseline local main `3f73af4`; TRAIN only Plasma, LavaLamp, InkInWater,
+Aurora, 1440×900 CSS / 2880×1800 backing, DPR2, seed5, own tier, no pointer
+input. **Primary gate:** after **120 real fixed-1/60-s `advance` steps**, render
+baseline and prototype from identical seeded fields. Read final default
+framebuffer RGBA8 immediately (including LavaLamp's unchanged glass pass).
+Every preset must have max absolute channel difference ≤1 LSB and any-channel
+changed pixels ≤0.1% of all 5,184,000 pixels. Velocity, dye, pressure,
+divergence and curl stored read fields must be byte-identical; assert nonempty
+canvas and no GL errors. Same-instance baseline/prototype render replays isolate
+display, mask and radial contributions if the gate fails. At most **one**
+fallback: keep the offending shader(s) highp, rerun the four-preset gate once,
+then stop. No tolerance change or additional precision search.
+
+**Cost gate:** existing `gpu-budget.browser.test.ts` ordinary synced throughput,
+200 warm-up frames, 12×20-frame batches, DPR2 own-tier, seed5; eight independent
+invocations A/B/A/B/A/B/A/B, R=4 per arm, all four TRAIN presets each invocation.
+Record `uptime` before/after each. Median(A)−median(B) must be ≥10% of median(A)
+on ≥3/4 presets and strictly >2×the absolute A-vs-A spread (range of four A
+invocation medians). Even-sized arm medians average their middle two values;
+per-invocation medians retain the existing harness reducer. Report both arms'
+ranges. This is a cheap wall-throughput cost screen, **not native GPU execution
+or energy certification**. Run cost only if primary parity passes.
+
+### Static inventory
+
+| Fragment shader | Baseline float / sampler | Precision-sensitive values / action |
+|---|---|---|
+| `displayShaderSource` | highp / highp | Probe mediump local colour/composite ALU. Keep all UV varyings, `texelSize`, `ditherScale`, container uniforms/coverage arithmetic highp; highp sRGB/tone-map and dye-geometry helpers (pow/log/exp, normal differences), normal/height, dithering. No field writes. |
+| `bloomPrefilterShader` | mediump / mediump | Already fp16; no downgrade available. Soft-knee square/division is existing mediump. Leave exact. |
+| `bloomBlurShader` (down/up) | mediump / mediump | Already fp16, four-tap weighted sum and Karis weights. Existing coordinate precision unchanged; leave exact. |
+| `bloomFinalShader` | mediump / mediump | Already fp16 four-tap sum; leave exact. |
+| `sunraysMaskShader` | highp / highp | Probe mediump brightness only; highp `vUv`, `c` and sampler preserve copied RGB. Writes dye `.write` scratch, not `.read`; next dye step fully overwrites scratch. Verify fields across renders/steps. |
+| `sunraysShader` (radial) | highp / highp | Probe mediump default; highp `vUv`, `coord`, `dir`, `Density`, `Decay`, `Exposure`, `weight`, `illuminationDecay`, `color`, `col` preserve coordinates and 16-sample accumulation. Little remaining eligible ALU; no blanket fp16 sum. |
+| `blurShader` (sunrays H/V) | mediump / mediump | Already fp16 three-tap sum. Leave exact. |
+
+Simulation shaders, glass shader, vertex shaders and shared interpolated GLSL
+constants are unchanged. Only display-local precision directives wrap helpers;
+`shaders.ts` stays raw GLSL, GL-free. GPU lock lane `E1-precision`, atomic mkdir,
+owner JSON + acquired-at, ≤12 min per batch. Installed headless Chrome only;
+require ANGLE Metal Apple M1 Max. No held-out presets, 1024×640, xctrace,
+build during measurement, unsafe flags, push/merge, memory or Beads changes.
+
 ## E1 per-encoder attribution (train only)
 
 **2026-10-08; measurement only, engine `29065ca`, no `src/lib` changes.**

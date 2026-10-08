@@ -296,22 +296,23 @@ export const TONE_MAP_GLSL = `
 `;
 
 export const displayShaderSource = `
-    precision highp float;
+    precision mediump float;
     precision highp sampler2D;
 
-    varying vec2 vUv;
-    varying vec2 vL;
-    varying vec2 vR;
-    varying vec2 vT;
-    varying vec2 vB;
+    varying highp vec2 vUv;
+    varying highp vec2 vL;
+    varying highp vec2 vR;
+    varying highp vec2 vT;
+    varying highp vec2 vB;
     uniform sampler2D uTexture;
     uniform sampler2D uBloom;
     uniform sampler2D uSunrays;
     uniform sampler2D uDithering;
-    uniform vec2 ditherScale;
-    uniform vec2 texelSize;
+    uniform highp vec2 ditherScale;
+    uniform highp vec2 texelSize;
     uniform vec3 uBackColor;
     uniform float uCompositeBackground;
+    precision highp float;
     uniform int uContainerShapeType;
     uniform vec2 uContainerCenter;
     uniform float uContainerRadius;
@@ -470,13 +471,14 @@ ${DYE_GEOMETRY_GLSL}
         return clamp(0.5 - dPx, 0.0, 1.0);
     }
 
+    precision mediump float;
     void main () {
         vec4 dye = texture2D(uTexture, vUv);
         vec3 c = dye.rgb;
 
     #if defined(SHADING) || defined(SPECULAR) || defined(REFRACTION)
-        vec3 n = dyeNormal(vUv);
-        float h = dyeHeight(dye.a);
+        highp vec3 n = dyeNormal(vUv);
+        highp float h = dyeHeight(dye.a);
     #endif
     #ifdef SHADING
         // Artistic ambient/key ratio, true unit normal and the same studio
@@ -511,6 +513,7 @@ ${DYE_GEOMETRY_GLSL}
     #endif
 
         float a = max(c.r, max(c.g, c.b));
+        precision highp float;
         float cmask = 1.0;
 
     #ifdef CONTAINER_MASK
@@ -735,11 +738,12 @@ ${DYE_GEOMETRY_GLSL}
     #else
     #if defined(TONE_MAP_NEUTRAL) || defined(TONE_MAP_AGX)
         // Display-referred dye + glow: decode once, tone-map, encode once.
-        vec3 display = clamp(linearToSrgb(toneMap(dyeToLinear(c))), 0.0, 1.0);
+        highp vec3 display = clamp(linearToSrgb(toneMap(dyeToLinear(c))), 0.0, 1.0);
     #else
         // 'none' (default): 0.8.0 exactly. HDR dye stays unclamped through the
         // composite, so coverage above 1 darkens the backColor term and keeps
         // saturated wax over light backs (LavaLamp); the final write clips.
+        precision mediump float;
         vec3 display = max(c, vec3(0.0));
     #endif
         // The background/fill composite stays display-referred, exactly what
@@ -1141,14 +1145,14 @@ export const bloomFinalShader = `
 `;
 
 export const sunraysMaskShader = `
-    precision highp float;
+    precision mediump float;
     precision highp sampler2D;
 
-    varying vec2 vUv;
+    varying highp vec2 vUv;
     uniform sampler2D uTexture;
 
     void main () {
-        vec4 c = texture2D(uTexture, vUv);
+        highp vec4 c = texture2D(uTexture, vUv);
         float br = max(c.r, max(c.g, c.b));
         c.a = 1.0 - min(max(br * 20.0, 0.0), 0.8);
         gl_FragColor = c;
@@ -1156,32 +1160,32 @@ export const sunraysMaskShader = `
 `;
 
 export const sunraysShader = `
-    precision highp float;
+    precision mediump float;
     precision highp sampler2D;
 
-    varying vec2 vUv;
+    varying highp vec2 vUv;
     uniform sampler2D uTexture;
-    uniform float weight;
+    uniform highp float weight;
 
     #define ITERATIONS 16
 
     void main () {
-        float Density = 0.3;
-        float Decay = 0.95;
-        float Exposure = 0.7;
+        highp float Density = 0.3;
+        highp float Decay = 0.95;
+        highp float Exposure = 0.7;
 
-        vec2 coord = vUv;
-        vec2 dir = vUv - 0.5;
+        highp vec2 coord = vUv;
+        highp vec2 dir = vUv - 0.5;
 
         dir *= 1.0 / float(ITERATIONS) * Density;
-        float illuminationDecay = 1.0;
+        highp float illuminationDecay = 1.0;
 
-        float color = texture2D(uTexture, vUv).a;
+        highp float color = texture2D(uTexture, vUv).a;
 
         for (int i = 0; i < ITERATIONS; i++)
         {
             coord -= dir;
-            float col = texture2D(uTexture, coord).a;
+            highp float col = texture2D(uTexture, coord).a;
             color += col * illuminationDecay * weight;
             illuminationDecay *= Decay;
         }
