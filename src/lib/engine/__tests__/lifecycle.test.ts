@@ -222,7 +222,7 @@ describe('setConfig bucket classification', () => {
 		});
 
 		it('changing dyeResolution triggers framebuffer rebuild', () => {
-			const c = classifyChanges({ dyeResolution: 1024 });
+			const c = classifyChanges({ dyeResolution: 512 });
 			expect(c.fbChanged).toBe(true);
 			expect(c.simChanged).toBe(false);
 			expect(c.dyeChanged).toBe(true);

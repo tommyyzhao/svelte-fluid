@@ -358,7 +358,7 @@ export interface StickyMask {
 export interface FluidConfig {
 	/** Velocity grid resolution. Default 128. */
 	simResolution?: number;
-	/** Dye grid resolution. Default 512; set 1024 to restore the previous default (clamped to 512 if linear filtering is unsupported). */
+	/** Dye grid resolution. Default 1024 (clamped to 512 if linear filtering is unsupported). */
 	dyeResolution?: number;
 	/** How fast dye fades. Default 1. */
 	densityDissipation?: number;

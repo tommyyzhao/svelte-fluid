@@ -187,7 +187,7 @@ config from the upstream project.
 | `maxPixelRatio` | `number \| null` | `null` | native DPR; pass a number (e.g. `2`) to cap physical DPR |
 | `seed` | `number` | random | 32-bit uint; deterministic initial splats |
 | `simResolution` | `number` | `128` | velocity grid; **rebuilds FBOs** |
-| `dyeResolution` | `number` | `512` | dye grid; **rebuilds FBOs**; set `dyeResolution={1024}` to restore the previous default |
+| `dyeResolution` | `number` | `1024` | dye grid; **rebuilds FBOs** |
 | `densityDissipation` | `number` | `1` | hot; **steady-state** value |
 | `initialDensityDissipation` | `number` | (= `densityDissipation`) | hot; ramp start (see [burn-in pattern](#burn-in-density-dissipation)) |
 | `initialDensityDissipationDuration` | `number` | `0` | seconds; duration of the linear ramp |
