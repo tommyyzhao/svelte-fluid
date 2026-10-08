@@ -242,6 +242,25 @@ failures stay missing with their reason. Existing 15 GiB free-space guard,
 remain mandatory. Rank stages on TRAIN only using existing measurement
 facilities; unavailable stage attribution must be reported, not fabricated.
 
+## Amendment 4 — owner approval for spatial changes (2026-10-08)
+
+Committed before Round 6 captures. Spatial/resolution changes remain outside
+E2 scope under Amendment 1. For these changes, explicit owner visual approval
+of a committed review packet replaces the E2 gate; E2 cannot certify them.
+The owner approved half dye resolution on **2026-10-08**, without naming
+presets, after reviewing the [committed dye-resolution packet](../benchmarks/owner-review/dye-resolution/README.md)
+(reference source `0456ebd`). This approves the generic default 1024→512;
+explicit preset/prop values remain unchanged. Never special-case preset names.
+
+The E1 keep rule is unchanged: use the frozen headless 60 Hz Amendment 3
+baseline, never the historical headed baseline. TRAIN and held-out must each
+improve by **>2× each scene's registered active-window noise and ≥5%**, with
+active and untouched split headline medians reported. Missing registered R3
+noise cannot certify a pass. Approval replaces only the visual gate, not E1.
+
+Round 6 fixes one candidate value (512), with no tuning. Its single held-out
+keep/revert decision may run immediately after a passing TRAIN result.
+
 ## Amendment 6: E1 keep-rule unit (lead, 2026-10-08, before any round 6 or 120 Hz candidate result)
 
 **Written before any candidate result reached the lead.** Rounds 6 (dye default
