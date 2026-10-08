@@ -183,6 +183,94 @@ wait until another lane acquired/released or the lock stayed free ≥5 minutes;
 poll using background 60–90 second sleeps. Never touch an unowned lock.
 Exact spawned processes only; remove owned /tmp fixtures after archiving.
 
+## Amendment 1 — eval validity (post-hoc)
+
+**Date:** 2026-10-08. **Written after observing the original baseline**
+(train 77/88, held-out 48/50). This is a validity correction, not a
+pre-registered discovery. Original results remain historical. The same rules
+apply to train and held-out; no component code changes precede `baseline-a1`.
+The population, split, specimens, R=2 scored cells, 800 ms event timeout and
+other checks remain frozen.
+
+### Keyboard contracts
+
+| Component | Specimen's native role/control | Expected keys |
+|---|---|---|
+| Fluid | Decorative | None |
+| FluidBackground | Child button | Enter, Space |
+| FluidReveal | Child button | Enter, Space |
+| FluidDistortion | Named image | None |
+| FluidStick | Named text image | None |
+| FluidText | Named text image | None |
+| EnamelText | Named heading | None |
+| InkPaper | Child button | Enter, Space |
+| LiquidButton | Native button | Enter, Space |
+| LiquidCaustics | Child button | Enter, Space |
+| LiquidDropZone | Native file input, AX button | Enter, Space (filechooser) |
+| LiquidSegmented | Native radio group | ArrowRight and ArrowLeft move focus **and select** every option; Space selects a focused **unselected** option |
+| LiquidToggle | Native checkbox with switch role | Space |
+| splash-cursor | Decorative | None |
+
+Switches/checkboxes are not required to implement Enter. Radio Space is tested
+with an unselected input focused without changing its checked state. Arrow
+traversal must retain selection/focus agreement. Each keyboard/filechooser
+probe uses R=3 fresh browser contexts; each required probe passes by majority
+(≥2/3), with all observations retained. Missing attempts cannot count as passes;
+fewer than three observations make the scored accessibility cell missing.
+Other accessibility evidence remains one observation per scored repetition.
+
+### Focus-visible pixels
+
+Replace the computed outline/shadow proxy with focused versus unfocused
+screenshots; retain computed CSS as secondary evidence only. Use reduced-motion
+mode for this measurement, wait 150 ms after focus/blur, DPR 1. The visual box is
+the native button; for visually hidden file/radio inputs use their label/track;
+for the switch use its containing label. Crop the visual box padded by 12 CSS
+px, clipped to the viewport. Score only the perimeter band from 4 px inside the
+box to 12 px outside, excluding its content. A changed pixel has RGB L1 distance
+>30. Pass requires at least 12 changed pixels **and** ≥0.25% of band pixels.
+Subtract pixels changing between two unfocused screenshots 150 ms apart, so
+continuous paint is not mistaken for a focus ring. Preserve PNGs, counts,
+crop bounds and the computed proxy. Tab supplies keyboard-visible focus; no
+style assertion alone can pass this check. Fixed thresholds apply to both splits.
+
+### Decorative SSR
+
+The decorative-only population is fixed from documented semantics: **Fluid**
+(default decorative canvas, `aria-hidden`) and **splash-cursor** (decorative,
+fixed pointer overlay, entire subtree `aria-hidden`). Every other specimen has
+named text, image or controls and keeps the meaningful-content rule.
+
+Decorative SSR passes only if the component's own SSR output contains an
+element reserving its documented layout (not a test-fixture wrapper), hydration
+changes its bounding box by ≤1 CSS px in each coordinate/dimension, and no-GPU
+mount either exposes the documented accessible fallback message or keeps the
+component subtree correctly `aria-hidden`, without page errors. A fixed overlay
+reserves no normal-flow space, but must still emit its own SSR element; empty
+SSR is a failure, not an excuse to fabricate a label. Compare SSR/hydrated boxes
+with JavaScript disabled/enabled on fresh pages. Record layout-shift entries;
+any component-attributable nonzero shift fails. Fluid's no-GPU message is the
+expected fallback; splash-cursor must remain excluded from AX.
+
+### Ceiling and candidate decisions
+
+At held-out n=50, even 50/50 has Wilson 95% lower bound 92.87%, below the
+historical baseline point estimate 96%. The original held-out gain gate cannot
+be met. Held-out outcome is therefore **documented as no gain**, unless it falls;
+no replacement gain rule is introduced. A candidate must additionally retain
+**every passing held-out cell** of `baseline-a1` (component × check × repetition),
+with no missing cells. This is a no-regression guard, not evidence of gain.
+
+For the requested train-only round, retain the original “up beyond CI” form:
+train candidate lower Wilson bound must exceed the `baseline-a1` train point
+estimate, with no missing cells. Failure means revert and log, even if the point
+estimate improves or this gate also has a finite-sample ceiling. One root cause
+per round. A docs-only sizing candidate changes no library, engine, specimen or
+static visual output; verify source/package identity instead of claiming a new
+E2/static-UI judged win. Any rendering/library change still requires the original
+calibrated visual gates. Original baseline remains in `baseline.json` and
+`baseline/`; amended baseline and round evidence use separate names.
+
 ## Consequences
 
 The baseline is a measurement, not approval of every component. Native keyboard
