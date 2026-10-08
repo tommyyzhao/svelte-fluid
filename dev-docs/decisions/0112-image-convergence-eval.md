@@ -74,4 +74,6 @@ V0 remains the comparator for the primary judge metric even where it fails its o
 
 ## Results
 
-Pending. This pre-registration is committed before implementation or candidate data.
+V0 R3 train complete at `57108d4`: 14/18 initial exact/rest, 13/18 visibly disturbed successful re-form. Great Wave all3 initial timeouts; FLUID text one initial and one re-form timeout. No post-hoc V0 tuning. V1 `db59bf9`: **non-kept round1**, 17/18 exact/rest/re-form; Pearl seed23 initial30s timeout. All-slot gate fails; held-out not run. Archived `archive/e5-v1`; V2 builds on V1 plus controller only. Full tables and exact compact rows: `dev-docs/benchmarks/image-convergence.md`, `evals/image-convergence/v{0,1}-train.json`.
+
+Judge infrastructure: initial READY probe succeeded; first calibration saved3 identical controls (all ties), then CLI exited nonzero with `unrecognized_model` warning. Infrastructure failure, not a calibration verdict. Lead permits **one** resume from saved controls (no repeats), preceded by READY; a second infrastructure failure permanently selects the pre-registered deterministic fallback for E5. No candidate judge observations before this note.
