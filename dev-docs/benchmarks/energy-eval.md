@@ -346,6 +346,13 @@ only saves energy above 60 Hz; owner packet `owner-review/max-fps/`, Bead
 - **Bloom:** small levels are fixed-cost (about 20 µs per pass). Capping them changes post-processing, which E2 cannot certify (Amendment 1).
 - **Display, sunrays and dye levers:** all spatial or post-processing.
 
+Two further train-only probes after attribution also failed:
+
+- **Round 5: pressure default 14.** E2 statistics were WORSE (131/440, p=4e-77), so the default stays 20.
+- **Post-processing mixed precision.** Output was pixel-identical, but the cost changed by only −0.3% to −1.2%, 0/4 presets past the gate. See `gpu-budget.md`.
+
+That brings the total to **seven rejected lever classes**.
+
 Every remaining lever large enough for the keep rule is therefore owner-gated (Bead `svelte-fluid-a9t`). No further autonomous E1 round is justified under this protocol.
 
 Idle and background contracts **are met**:
