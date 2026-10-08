@@ -177,6 +177,47 @@ try {
       assert.equal(await new Promise((r) => p.once("close", r)), 0);
     }
   }
+  if (process.env.E5_PREPARE_V2 === "1") {
+    const patch = spawn("python3", ["/tmp/e5-spike/patch-v2.py"], {
+      cwd: ROOT,
+      stdio: "inherit",
+    });
+    assert.equal(await new Promise((r) => patch.once("close", r)), 0);
+    for (const script of ["test", "check", "prepack"]) {
+      preflight = spawn("bun", ["run", script], {
+        cwd: ROOT,
+        stdio: "inherit",
+      });
+      const code = await new Promise((r) => preflight.once("close", r));
+      preflight = undefined;
+      assert.equal(code, 0);
+    }
+    for (const argv of [
+      [
+        "git",
+        "add",
+        "src/lib/engine/FluidEngine.ts",
+        "src/lib/engine/shaders.ts",
+        "src/lib/engine/image-convergence.ts",
+        "src/routes/lab/image-convergence/+page.svelte",
+        "src/lib/engine/image-convergence.browser.test.ts",
+        "src/routes/lab/image-convergence/metrics.test.ts",
+      ],
+      [
+        "git",
+        "commit",
+        "-m",
+        "feat(lab): add projected reference-map controller",
+        "-m",
+        "V2 k=8 tapered to zero by 3.75 seconds; train only, no gate changes.",
+        "-m",
+        "Co-Authored-By: Claude Code <noreply@anthropic.com>",
+      ],
+    ]) {
+      const p = spawn(argv[0], argv.slice(1), { cwd: ROOT, stdio: "inherit" });
+      assert.equal(await new Promise((r) => p.once("close", r)), 0);
+    }
+  }
   server = spawn(
     "bun",
     ["run", "dev", "--host", "127.0.0.1", "--port", "5210", "--strictPort"],

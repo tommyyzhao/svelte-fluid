@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { FluidEngine } from '$lib/engine/FluidEngine.js';
 	import { registerImageConvergence } from '$lib/engine/image-convergence.js';
-	import { images, fidelity } from './metrics.js';
+	import { images, fidelity, settledTimestamp } from './metrics.js';
 	let canvas: HTMLCanvasElement;
 	let selected = $state(images[0]);
 	let status = $state('Loading');
@@ -38,7 +38,7 @@
 		const params = new URLSearchParams(location.search);
 		release = registerImageConvergence(canvas, { variant: params.get('variant') === '1' ? 1 : 0, onFrame: (state) => {
 			draws = state.draws - drawOffset; pixels = state.pixels - pixelOffset; dyeFormat = state.dyeFormat; seconds = state.seconds; velocityMax = state.velocityMax; targetErrorMax = state.targetErrorMax; frameCount++;
-			if (state.final && !settledAt) settledAt = performance.now() - start;
+			settledAt = settledTimestamp(settledAt, state.final, performance.now() - start);
 			const capture = state.final || [0.5, 1, 2, 4][frames.length] <= seconds;
 			if (capture) {
 				retained.getContext('2d')!.drawImage(canvas, 0, 0);

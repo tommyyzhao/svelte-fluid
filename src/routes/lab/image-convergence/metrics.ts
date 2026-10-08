@@ -11,6 +11,9 @@ export const images = [
   "birth-of-venus.png",
 ];
 export const seeds = [5, 11, 23];
+export function settledTimestamp(previous: number, final: boolean, elapsed: number): number {
+	return final ? previous || elapsed : 0;
+}
 export function median(values: number[]): number {
   const a = [...values].sort((x, y) => x - y);
   return a.length
