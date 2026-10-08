@@ -92,6 +92,7 @@ import {
 import { type Rng, generateColor, mulberry32, normalizeColor, randomSeed } from './rng.js';
 import { fitDrawingBufferSize } from './resolution.js';
 import { flowCanDriveSolver } from './solver-activity.js';
+import { imageConvergenceFor, targetRelaxation, relaxationKeep } from './image-convergence.js';
 import { SETTLE_CHECKS, SETTLE_CHECK_INTERVAL, hasContinuousDriver, dyeVisibilityGain, heightVisibilityScale, isInertSolver, isQuiet, isQuietFlags } from './settle.js';
 import { blurMaskData } from './sticky-blur.js';
 import { createFrameGate, subscribeFrame } from './frame-scheduler.js';
@@ -682,6 +683,14 @@ const STILL_DT = 1 / 60;
 export class FluidEngine implements FluidHandle {
 	// --- Owned references ---
 	private canvas: HTMLCanvasElement;
+	private imageExperiment: ReturnType<typeof imageConvergenceFor>;
+	private targetNudgeProgram: ProgramWrap | null = null;
+	private targetSeconds = 0;
+	private targetFinal = false;
+	private targetRestore = false;
+	private targetDraws = 0;
+	private targetPixels = 0;
+	private targetDyeFormat: 'RGBA32F' | 'RGBA16F' = 'RGBA16F';
 	private gl!: GL;
 	private ext!: ExtInfo;
 	/**
@@ -903,6 +912,7 @@ export class FluidEngine implements FluidHandle {
 
 	constructor(opts: FluidEngineOptions) {
 		this.canvas = opts.canvas;
+		this.imageExperiment = imageConvergenceFor(this.canvas);
 		this.hostInstance = {
 			canvas: this.canvas,
 			onContextLost: () => this.handleContextLost(),
@@ -1001,6 +1011,42 @@ export class FluidEngine implements FluidHandle {
 		this.initSolidDerivedTextures();
 		this.initPrescribedGridTextures();
 		this.initGlassFramebuffer();
+		if (this.imageExperiment) {
+			this.targetNudgeProgram = this.host ? this.host.program('fluid:targetNudge', S.baseVertexShader, S.targetNudgeShader) : this.makeTargetProgram(S.targetNudgeShader);
+		}
+	}
+
+	private makeTargetProgram(source: string): ProgramWrap {
+		const shader = compileShader(this.gl, this.gl.FRAGMENT_SHADER, source);
+		this.fragmentShaders.push(shader);
+		return makeProgram(this.gl, this.baseVertexShader, shader);
+	}
+
+	private nudgeTarget(keep: number): void {
+		const gl = this.gl, program = this.targetNudgeProgram!;
+		gl.disable(gl.BLEND);
+		program.bind();
+		gl.uniform1i(program.uniforms.uSource, this.dye.read.attach(0));
+		gl.activeTexture(gl.TEXTURE1);
+		gl.bindTexture(gl.TEXTURE_2D, this.distortionTexture);
+		gl.uniform1i(program.uniforms.uTarget, 1);
+		gl.uniform1f(program.uniforms.uKeep, keep);
+		this.blit(this.dye.write);
+		this.dye.swap();
+	}
+
+	private finalizeTarget(): void {
+		this.withGl(() => {
+			this.nudgeTarget(0);
+			this.clearProgram.bind();
+			this.gl.uniform1i(this.clearProgram.uniforms.uTexture, this.velocity.read.attach(0));
+			this.gl.uniform1f(this.clearProgram.uniforms.value, 0);
+			this.blit(this.velocity.write);
+			this.velocity.swap();
+			this.targetFinal = true;
+			this.renderCore(null);
+			this.renderDirty = false;
+		});
 	}
 
 	/**
@@ -1158,6 +1204,7 @@ export class FluidEngine implements FluidHandle {
 		// caller's future values are zero is not worth a false-idle solver.
 		this.wake();
 		this.cancelSettleProbe();
+		if (this.targetFinal) { this.targetSeconds = 0; this.targetFinal = false; }
 		const radius = this.config.SPLAT_RADIUS / 100.0;
 		if (!Number.isFinite(radius) || radius <= 0) return;
 		this.solverMayContainContent = true;
@@ -1208,7 +1255,8 @@ export class FluidEngine implements FluidHandle {
 		this.still = true;
 		if (this.contextLost || this.failed) return;
 		this.withGl(() => {
-			this.settleSteps();
+			if (this.imageExperiment && this.distortionLoadedUrl) this.finalizeTarget();
+			else this.settleSteps();
 			this.renderOnce();
 		});
 	}
@@ -1595,6 +1643,7 @@ export class FluidEngine implements FluidHandle {
 	private handleContextLost(e?: Event): void {
 		e?.preventDefault(); // Signals to the browser we intend to restore
 		this.contextLost = true;
+		this.targetRestore = !!this.imageExperiment;
 		this.cancelSettleProbe();
 		this.profiler?.rejectContextLost();
 		this.stopRaf();
@@ -1638,7 +1687,7 @@ export class FluidEngine implements FluidHandle {
 				this.settleSteps();
 				this.renderOnce();
 			});
-		} else if (this.autoStart) {
+		} else if (this.autoStart && !this.targetFinal) {
 			this.settled = false;
 			this.settleFrames = 0;
 			this.settleQuietChecks = 0;
@@ -1656,6 +1705,7 @@ export class FluidEngine implements FluidHandle {
 		this.blurVertexShader = undefined!;
 		// Absent when the engine was built against an already-lost shared context.
 		this.ditheringTexture?.dispose();
+		this.targetNudgeProgram = null;
 		this.distortionTexture = null;
 		this.distortionLoadedUrl = null;
 		this.distortionTextureW = 0;
@@ -1702,7 +1752,7 @@ export class FluidEngine implements FluidHandle {
 		this.autoSplatTimer = 0;
 		this.dyeMayContainContent = false;
 		this.solverMayContainContent = false;
-		this.multipleSplats(this.initialRandomSplatCount());
+		if (!this.targetRestore) this.multipleSplats(this.initialRandomSplatCount());
 		for (const s of this.openingPresetSplats) {
 			this.splat(s.x, s.y, s.dx, s.dy, s.color);
 		}
@@ -1862,7 +1912,8 @@ export class FluidEngine implements FluidHandle {
 			this.flowForceProgram,
 			this.prescribedFieldProgram,
 			this.applyMaskProgram,
-			this.glassProgram
+			this.glassProgram,
+			this.targetNudgeProgram
 		].filter((program): program is ProgramWrap => program != null);
 		this.displayMaterial?.dispose();
 		if (this.host) {
@@ -1947,6 +1998,7 @@ export class FluidEngine implements FluidHandle {
 		}
 		this.gl = gl;
 		this.ext = ext;
+		if (this.imageExperiment && (!ext.isWebGL2 || !ext.supportLinearFiltering || !this.canReadSettleFloat())) throw new Error('Image convergence requires WebGL2, linear filtering and float readback');
 		const viewport = gl.getParameter(gl.MAX_VIEWPORT_DIMS) as Int32Array | number[];
 		const fitted = fitDrawingBufferSize(
 			this.canvas.width,
@@ -2130,6 +2182,14 @@ export class FluidEngine implements FluidHandle {
 			};
 		} else {
 			this.blit = rawBlit;
+		}
+		if (this.imageExperiment) {
+			const blit = this.blit;
+			this.blit = (target, clear) => {
+				this.targetDraws++;
+				this.targetPixels += target ? target.width * target.height : this.bufferWidth() * this.bufferHeight();
+				blit(target, clear);
+			};
 		}
 
 		for (const name of CORE_PROGRAM_NAMES) this.assignProgram(name, this.linkCompiledProgram(name));
@@ -2332,8 +2392,11 @@ export class FluidEngine implements FluidHandle {
 	private initDyeFramebuffers(mode: ResourceInitMode): void {
 		const gl = this.gl;
 		const dyeRes = getResolution(gl, this.config.DYE_RESOLUTION, this.bufferWidth(), this.bufferHeight());
-		const texType = this.ext.halfFloatTexType;
-		const rgba = this.ext.formatRGBA;
+		// Half-float dye rounding can arrest a lambda=3 relaxation above the frozen epsilon.
+		const floatDye = !!this.imageExperiment && !!gl.getExtension('OES_texture_float_linear');
+		this.targetDyeFormat = floatDye ? 'RGBA32F' : 'RGBA16F';
+		const texType = floatDye ? gl.FLOAT : this.ext.halfFloatTexType;
+		const rgba = floatDye ? { internalFormat: (gl as WebGL2RenderingContext).RGBA32F, format: gl.RGBA } : this.ext.formatRGBA;
 		const filtering = this.ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST;
 
 		gl.disable(gl.BLEND);
@@ -2603,7 +2666,8 @@ export class FluidEngine implements FluidHandle {
 
 			try {
 				this.withGl(() => this.uploadDistortionImage(gl, image, url));
-			} catch {
+			} catch (error) {
+				if (this.imageExperiment) this.failTransition(error);
 				// Context lost between check and GL calls — silently ignore
 			}
 		};
@@ -2634,12 +2698,30 @@ export class FluidEngine implements FluidHandle {
 				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+				if (this.imageExperiment) {
+					// Decode through the same sRGB 2D path as the canvas-resolution reference.
+					const raster = new OffscreenCanvas(this.canvas.width, this.canvas.height);
+					const context = raster.getContext('2d', { colorSpace: 'srgb' })!;
+					context.drawImage(image, 0, 0, raster.width, raster.height);
+					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, raster.width, raster.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, context.getImageData(0, 0, raster.width, raster.height).data);
+				} else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
 				this.distortionImgRatio = image.naturalWidth / image.naturalHeight;
 				this.distortionLoadedUrl = url;
-				this.distortionTextureW = image.naturalWidth;
-				this.distortionTextureH = image.naturalHeight;
-				this.invalidateRender();
+				this.distortionTextureW = this.imageExperiment ? this.canvas.width : image.naturalWidth;
+				this.distortionTextureH = this.imageExperiment ? this.canvas.height : image.naturalHeight;
+					if (this.imageExperiment) {
+						this.targetSeconds = 0;
+						this.targetFinal = false;
+						this.dyeMayContainContent = true;
+						this.solverMayContainContent = true;
+						this.cancelSettleProbe();
+						if (this.targetRestore || this.still) {
+							this.finalizeTarget();
+							this.settled = true; this.stopRaf();
+							this.targetRestore = false;
+						} else this.resume();
+					}
+					this.invalidateRender();
 	}
 
 	/**
@@ -3316,6 +3398,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	}
 
 	private displayKeywords(config: ResolvedConfig): string[] {
+		if (this.imageExperiment) return ['TARGET_IMAGE'];
 		const keywords: string[] = [];
 		if (config.SHADING) keywords.push('SHADING');
 		if (config.SPECULAR > 0 && !config.REVEAL) keywords.push('SPECULAR');
@@ -3389,6 +3472,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	private trackSettle(): void {
 		if (
 			!this.autoStart || this.deterministicMode || this.config.PAUSED || this.hasPendingFrameInput() ||
+			(this.imageExperiment && (!this.distortionLoadedUrl || this.targetSeconds < 0.75)) ||
 			this.pointers.some((p) => p.down) || hasContinuousDriver(this.config, this.elapsedSeconds()) ||
 			// ponytail: field-aware flow convergence needs pressure/scalar probes; dye cannot prove it.
 			(this.flowVisualizationActive() && this.solverMayContainContent)
@@ -3403,6 +3487,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		if (this.failed) return;
 		if (quiet === false) this.settleQuietChecks = 0;
 		else if (quiet === true && ++this.settleQuietChecks >= SETTLE_CHECKS) {
+			if (this.imageExperiment) this.finalizeTarget();
 			// The final solve may have missed its presentation deadline. Never stop stale.
 			if (this.renderDirty) {
 				this.renderCore(null);
@@ -3566,6 +3651,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			if (!Number.isFinite(this.settlePixels[0]) || !Number.isFinite(this.settlePixels[4]) || this.settlePixels[0] === 65504 || this.settlePixels[4] === 65504) return false;
 			this.settleCheckCount++;
 			if (!Number.isFinite(this.config.DENSITY_DISSIPATION) || this.config.DENSITY_DISSIPATION < 0) return false;
+				if (this.imageExperiment) return this.settlePixels[0] <= 0.05 && this.settlePixels[4] <= 1 / 512;
 			if (probe.inert) return this.settlePixels[0] === 0;
 			// Arbitrary image frequency/power and reveal curves can amplify any nonzero dye.
 			if (this.config.DISTORTION || this.config.REVEAL) return this.settlePixels[4] === 0;
@@ -3622,6 +3708,10 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		gl.disable(gl.BLEND);
 		program.bind();
 		gl.uniform1i(program.uniforms.uSource, src.attach(0));
+		gl.activeTexture(gl.TEXTURE1);
+		gl.bindTexture(gl.TEXTURE_2D, this.distortionTexture ?? this.stickyFallbackTexture);
+		gl.uniform1i(program.uniforms.uTargetImage, 1);
+		gl.uniform1i(program.uniforms.uTargetError, this.imageExperiment && src === this.dye.read ? 1 : 0);
 		gl.uniform2f(program.uniforms.uSourceTexel, src.texelSizeX, src.texelSizeY);
 		gl.uniform4f(program.uniforms.uChannels, r, g, b, 0);
 		gl.uniform1i(program.uniforms.uFlagMode, flagMode);
@@ -4667,6 +4757,8 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	}
 
 	private step(dt: number): void {
+		if (this.imageExperiment && !this.distortionLoadedUrl) return;
+		if (this.imageExperiment) this.targetSeconds += dt;
 		if (this.deterministicMode) {
 			this.simTime += dt;
 		}
@@ -4737,6 +4829,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		}
 		this.advectScalar(dt);
 		this.applyFlowOutlets(simulateDye ? ['dye', 'scalar'] : ['scalar']);
+		if (this.imageExperiment) this.nudgeTarget(relaxationKeep(targetRelaxation(this.targetSeconds), dt));
 	}
 
 	private renderProfiled(target: FBO | null): void {
@@ -4782,7 +4875,10 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	private renderCore(target: FBO | null): void {
 		this.withGl(() => {
 			this.renderCoreInner(target);
-			if (target === null) this.present();
+			if (target === null) {
+				this.imageExperiment?.onFrame?.({ seconds: this.targetSeconds, final: this.targetFinal, draws: this.targetDraws, pixels: this.targetPixels, dyeFormat: this.targetDyeFormat });
+				this.present();
+			}
 		});
 	}
 
@@ -4855,6 +4951,16 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		const height = target == null ? this.bufferHeight() : target.height;
 
 		this.displayMaterial.bind();
+		if (this.imageExperiment) {
+			gl.uniform2f(this.displayMaterial.uniforms.texelSize, 1 / width, 1 / height);
+			gl.uniform1i(this.displayMaterial.uniforms.uTexture, this.dye.read.attach(0));
+			gl.activeTexture(gl.TEXTURE1);
+			gl.bindTexture(gl.TEXTURE_2D, this.distortionTexture);
+			gl.uniform1i(this.displayMaterial.uniforms.uTargetImage, 1);
+			gl.uniform1i(this.displayMaterial.uniforms.uTargetFinal, this.targetFinal ? 1 : 0);
+			this.blit(target);
+			return;
+		}
 		gl.uniform2f(this.displayMaterial.uniforms.texelSize, 1.0 / width, 1.0 / height);
 		gl.uniform1f(this.displayMaterial.uniforms.uCompositeBackground, backgroundColor ? 1.0 : 0.0);
 		const bg = backgroundColor ?? { r: 0, g: 0, b: 0 };

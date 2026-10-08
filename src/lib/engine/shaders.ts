@@ -97,6 +97,8 @@ export const settleMaxShader = `
     uniform float uHeightVisibility;
     uniform float uDyeVisibilityGain;
     uniform float uInertSolver;
+    uniform sampler2D uTargetImage;
+    uniform int uTargetError;
 
     void main () {
         vec2 base = (floor(gl_FragCoord.xy) * 8.0 + 0.5) * uSourceTexel;
@@ -105,6 +107,8 @@ export const settleMaxShader = `
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
                 vec4 sampleValue = texture2D(uSource, base + vec2(float(x), float(y)) * uSourceTexel);
+                vec2 sampleUv = min(base + vec2(float(x), float(y)) * uSourceTexel, vec2(1.0) - 0.5 * uSourceTexel);
+                if (uTargetError == 1) sampleValue = vec4(sampleValue.rgb - texture2D(uTargetImage, vec2(sampleUv.x, 1.0 - sampleUv.y)).rgb, 0.0);
                 vec4 raw = abs(sampleValue);
                 // Validate raw channels before masking: NaN * 0 is not a validity test.
                 bool valid = raw.r >= 0.0 && raw.r <= 65504.0 && raw.g >= 0.0 && raw.g <= 65504.0 && raw.b >= 0.0 && raw.b <= 65504.0 && raw.a >= 0.0 && raw.a <= 65504.0;
@@ -142,6 +146,19 @@ export const settleMaxShader = `
             }
         }
         gl_FragColor = uFlagMode == 0 ? vec4(m, 0.0, 0.0, 1.0) : vec4(flags.rgb, 1.0);
+    }
+`;
+
+export const targetNudgeShader = `
+    precision highp float;
+    precision highp sampler2D;
+    varying vec2 vUv;
+    uniform sampler2D uSource;
+    uniform sampler2D uTarget;
+    uniform float uKeep;
+    void main () {
+        vec3 target = texture2D(uTarget, vec2(vUv.x, 1.0 - vUv.y)).rgb;
+        gl_FragColor = vec4(target + uKeep * (texture2D(uSource, vUv).rgb - target), 0.0);
     }
 `;
 
@@ -375,6 +392,11 @@ export const displayShaderSource = `
     uniform vec3 uRevealFringeColor;
 #endif
 
+#ifdef TARGET_IMAGE
+    uniform sampler2D uTargetImage;
+    uniform int uTargetFinal;
+#endif
+
 #ifdef DISTORTION
     uniform sampler2D uDistortionTexture;
     uniform sampler2D uVelocity;
@@ -471,6 +493,11 @@ ${DYE_GEOMETRY_GLSL}
     }
 
     void main () {
+    #ifdef TARGET_IMAGE
+        // Final source sampling bypasses dye quantization and every artistic display transform.
+        gl_FragColor = uTargetFinal == 1 ? vec4(texture2D(uTargetImage, vec2(gl_FragCoord.x * texelSize.x, 1.0 - gl_FragCoord.y * texelSize.y)).rgb, 1.0) : vec4(clamp(texture2D(uTexture, vUv).rgb, 0.0, 1.0), 1.0);
+        return;
+    #endif
         vec4 dye = texture2D(uTexture, vUv);
         vec3 c = dye.rgb;
 

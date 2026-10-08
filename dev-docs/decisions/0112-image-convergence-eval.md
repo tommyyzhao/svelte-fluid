@@ -1,8 +1,8 @@
 # ADR 0112 — E5 image convergence spike
 
-Date: 2026-10-08. **Status:** Accepted (pre-registered, lab only). Baseline source: `4cc3185`.
+Date: 2026-10-08. Baseline source: `4cc3185`.
 
-**Status:** Accepted
+**Status:** Accepted (pre-registered, lab only).
 
 ## Decision and scope
 
@@ -63,6 +63,10 @@ Installed headless hardware Chrome only; reject SwiftShader/software renderer. A
 ## Pre-data implementation note
 
 Frozen before first V0 observations: V0 dye uses RGBA32F when OES_texture_float_linear is available, otherwise RGBA16F with a known rounding floor which may fail the unchanged epsilon (no forced successful settle). Record actual dye format per run. V1 stores displacement `d=xi-x` in RG16F, reconstructing `xi` analytically: advection gives `d_a = d(x-dt*u) - dt*u`, then `d'=exp(-lambda*dt)*d_a`. This is the same reference-map equation without half-float identity cancellation. Final identity is exactly `d=0`. Work proxies count draws/pixels, not bytes; RGBA32F bandwidth is not captured, so no bandwidth savings claim follows.
+
+## Pre-baseline implementation fix
+
+Train-only diagnostic probe (Kiss, seed5) finalized SSIM .999686 / mean DeltaE76 .422221, not byte-exact. This is harness bring-up, not frozen V0 R3 baseline. Shared V0/V1/V2 target upload now decodes/resamples through explicit sRGB OffscreenCanvas ImageData matching the reference; final display uses physical pixel-centre coordinates. This removes browser image-upload colour conversion / varying-coordinate sampling ambiguity without changing any metric/gate. Verify on train before freezing baseline; do not tune from held-out. Work proxy still excludes bytes. Source-download scratch deleted after frozen small assets verified.
 
 ## Results
 
