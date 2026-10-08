@@ -8,7 +8,7 @@
  */
 import { mount, unmount } from 'svelte';
 import { commands } from 'vitest/browser';
-import { afterAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import FluidText from '../../FluidText.svelte';
 import { cssColorToRgb, measurePageColor, resetCssColorWarnings } from '../css-color.js';
 import { FluidEngine, _setContextTier } from '../FluidEngine.js';
@@ -23,6 +23,8 @@ const FRAMES = 150;
 const DT = 1 / 60;
 const W = 640;
 const H = 200;
+// Contrast needs display-sized samples, not multi-megapixel simulation fields.
+const RESOLUTION = { simResolution: 64, dyeResolution: 256 } satisfies FluidConfig;
 
 interface Harness {
 	gl: WebGL2RenderingContext;
@@ -33,6 +35,34 @@ const table: Record<string, Record<string, unknown>> = {};
 
 const BLACK: RGB = { r: 0, g: 0, b: 0 };
 const WHITE: RGB = { r: 255, g: 255, b: 255 };
+
+let testSignal: AbortSignal;
+beforeEach(({ signal, task }) => {
+	testSignal = signal;
+	console.info(`[contrast] ${task.name}`);
+});
+
+async function advance(engine: FluidEngine, steps: number, signal = testSignal): Promise<void> {
+	// A synchronous 150-frame pass starves Vitest's timeout on software GL.
+	for (let i = 0; i < steps; i += 5) {
+		signal.throwIfAborted();
+		engine.advance(Math.min(5, steps - i), DT);
+		await new Promise<void>((resolve) => setTimeout(resolve, 0));
+	}
+	signal.throwIfAborted();
+}
+
+it('bounded advance preserves steps and stops after timeout cancellation', async () => {
+	const controller = new AbortController();
+	const run = vi.fn();
+	const engine = { advance: run } as unknown as FluidEngine;
+	await advance(engine, 12, controller.signal);
+	expect(run.mock.calls).toEqual([[5, DT], [5, DT], [2, DT]]);
+	run.mockClear();
+	setTimeout(() => controller.abort(new Error('test deadline')), 0);
+	await expect(advance(engine, 150, controller.signal)).rejects.toThrow('test deadline');
+	expect(run.mock.calls).toEqual([[5, DT]]);
+});
 
 /** Force the no-jump-flood path: the engine falls back to a WebGL1 context. */
 function noWebGL2(canvas: HTMLCanvasElement): void {
@@ -45,15 +75,15 @@ function noWebGL2(canvas: HTMLCanvasElement): void {
 }
 
 /** Render and read the canvas as top-down premultiplied RGBA bytes. */
-function frame(config: FluidConfig, w = W, h = H, steps = FRAMES, webgl1 = false): Uint8Array {
+async function frame(config: FluidConfig, w = W, h = H, steps = FRAMES, webgl1 = false): Promise<Uint8Array> {
 	const canvas = document.createElement('canvas');
 	canvas.width = w;
 	canvas.height = h;
 	if (webgl1) noWebGL2(canvas);
-	const engine = new FluidEngine({ canvas, autoStart: false, config: { pointerInput: false, seed: 42, ...config } });
+	const engine = new FluidEngine({ canvas, autoStart: false, config: { pointerInput: false, seed: 42, ...config, ...RESOLUTION } });
 	const harness = engine as unknown as Harness;
 	try {
-		engine.advance(steps, DT);
+		await advance(engine, steps);
 		harness.renderCore(null);
 		const gl = harness.gl;
 		const px = new Uint8Array(w * h * 4);
@@ -113,8 +143,8 @@ function fluidTextConfig(extra: FluidConfig): FluidConfig {
 const FIX = TAG !== 'before';
 
 /** Glyph-interior pixel indices: reveal-mode alpha with no dye is exactly the display mask. */
-function glyphInterior(config: FluidConfig, webgl1 = false): number[] {
-	const px = frame(
+async function glyphInterior(config: FluidConfig, webgl1 = false): Promise<number[]> {
+	const px = await frame(
 		{ containerShape: config.containerShape, obstructions: config.obstructions, reveal: true, revealSensitivity: 0, initialSplatCount: 0 },
 		W,
 		H,
@@ -135,12 +165,12 @@ const textCases: [string, FluidConfig][] = [
 ];
 
 describe('contrast floor leaves passing pixels alone (0.8.0 look)', () => {
-	it('Fluid Plasma: pixels already >= 3:1 are unchanged, and the default (no floor) path is bit-identical', () => {
+	it('Fluid Plasma: pixels already >= 3:1 are unchanged, and the default (no floor) path is bit-identical', async () => {
 		const base = { ...(PRESETS.find((p) => p.id === 'Plasma')!.config as FluidConfig), containerShape: null };
-		const raw = frame(base);
-		const same = frame({ ...base, minContrast: 0 });
+		const raw = await frame(base);
+		const same = await frame({ ...base, minContrast: 0 });
 		expect(same.every((v, i) => v === raw[i])).toBe(true);
-		const fixed = frame({ ...base, minContrast: 3, contrastColor: BLACK });
+		const fixed = await frame({ ...base, minContrast: 3, contrastColor: BLACK });
 		const lp = relativeLuminance(0, 0, 0);
 		let passing = 0;
 		for (let i = 0; i < raw.length; i += 4) {
@@ -161,7 +191,7 @@ function eroded(set: Set<number>): number[] {
 const lumOf = (c: number[]) => relativeLuminance(c[0], c[1], c[2]);
 
 describe('text halo without jump flood (WebGL1 coverage-mask path)', () => {
-	it('uses the outline, never the per-pixel floor, and keeps interiors bit-identical', () => {
+	it('uses the outline, never the per-pixel floor, and keeps interiors bit-identical', async () => {
 		const cfg = fluidTextConfig({ glass: false, contrastMode: 'outline' });
 		const canvas = document.createElement('canvas');
 		noWebGL2(canvas);
@@ -176,12 +206,12 @@ describe('text halo without jump flood (WebGL1 coverage-mask path)', () => {
 		} finally {
 			engine.dispose();
 		}
-		const interior = glyphInterior(cfg, true);
+		const interior = await glyphInterior(cfg, true);
 		expect(interior.length).toBeGreaterThan(2000);
 		const inside = new Set(interior);
 		for (const page of [WHITE, BLACK]) {
-			const plain = frame({ ...cfg, minContrast: 1 }, W, H, FRAMES, true);
-			const px = frame({ ...cfg, minContrast: 3, contrastColor: page }, W, H, FRAMES, true);
+			const plain = await frame({ ...cfg, minContrast: 1 }, W, H, FRAMES, true);
+			const px = await frame({ ...cfg, minContrast: 3, contrastColor: page }, W, H, FRAMES, true);
 			for (const i of eroded(inside)) for (let k = 0; k < 4; k++) expect(px[i + k]).toBe(plain[i + k]);
 			// A halo band exists and clears 3:1 at its core.
 			const lp = lumOf([page.r / 255, page.g / 255, page.b / 255]);
@@ -200,17 +230,17 @@ describe('text halo without jump flood (WebGL1 coverage-mask path)', () => {
 
 describe('floor needs a reference and spares passing pixels', () => {
 	const plasma = { ...(PRESETS.find((p) => p.id === 'Plasma')!.config as FluidConfig), containerShape: null };
-	it('minContrast without contrastColor is bit-identical to off (no grey canvas)', () => {
-		const off = frame({ ...plasma, minContrast: 0 });
-		const noRef = frame({ ...plasma, minContrast: 3 });
+	it('minContrast without contrastColor is bit-identical to off (no grey canvas)', async () => {
+		const off = await frame({ ...plasma, minContrast: 0 });
+		const noRef = await frame({ ...plasma, minContrast: 3 });
 		expect(noRef.every((v, i) => v === off[i])).toBe(true);
 	});
-	it('mid-grey #6e6e6e reference: black stays black, passing pixels untouched', () => {
+	it('mid-grey #6e6e6e reference: black stays black, passing pixels untouched', async () => {
 		const ref: RGB = { r: 0x6e, g: 0x6e, b: 0x6e };
 		const lr = relativeLuminance(0x6e / 255, 0x6e / 255, 0x6e / 255);
 		const base = { ...plasma, transparent: false, backColor: BLACK };
-		const raw = frame(base);
-		const fixed = frame({ ...base, minContrast: 3, contrastColor: ref });
+		const raw = await frame(base);
+		const fixed = await frame({ ...base, minContrast: 3, contrastColor: ref });
 		let checked = 0;
 		for (let i = 0; i < raw.length; i += 4) {
 			if (contrastRatio(lumOf(over(raw, i, BLACK)), lr) < 3.2) continue;
@@ -220,8 +250,8 @@ describe('floor needs a reference and spares passing pixels', () => {
 		expect(checked).toBeGreaterThan(100);
 		// Undyed black is already 3.12:1 against #6e6e6e: it must stay exactly black.
 		const empty = { ...base, initialSplatCount: 0, presetSplats: [], autoSplatRate: 0 };
-		const blank = frame({ ...empty, minContrast: 3, contrastColor: ref }, W, H, 1);
-		const blankOff = frame({ ...empty, minContrast: 0 }, W, H, 1);
+		const blank = await frame({ ...empty, minContrast: 3, contrastColor: ref }, W, H, 1);
+		const blankOff = await frame({ ...empty, minContrast: 0 }, W, H, 1);
 		expect(blank.every((v, i) => v === blankOff[i])).toBe(true);
 		expect(blankOff[0] + blankOff[1] + blankOff[2]).toBeLessThanOrEqual(3);
 	});
@@ -229,23 +259,23 @@ describe('floor needs a reference and spares passing pixels', () => {
 
 describe('FluidText halo: obstructions and opaque canvas', () => {
 	const cfg = fluidTextConfig({ glass: false, contrastMode: 'outline' });
-	it('obstruction holes inside glyphs stay unhaloed and interiors bit-identical', () => {
+	it('obstruction holes inside glyphs stay unhaloed and interiors bit-identical', async () => {
 		const withObs = { ...cfg, obstructions: [{ d: 'M35,25h30v50h-30Z', viewBox: [0, 0, 100, 100] as [number, number, number, number] }] };
-		const whole = new Set(glyphInterior(cfg));
-		const live = new Set(glyphInterior(withObs));
+		const whole = new Set(await glyphInterior(cfg));
+		const live = new Set(await glyphInterior(withObs));
 		const hole = new Set([...whole].filter((i) => !live.has(i)));
 		expect(hole.size).toBeGreaterThan(500);
-		const plain = frame({ ...withObs, minContrast: 1 });
-		const px = frame({ ...withObs, minContrast: 3, contrastColor: WHITE });
+		const plain = await frame({ ...withObs, minContrast: 1 });
+		const px = await frame({ ...withObs, minContrast: 3, contrastColor: WHITE });
 		for (const i of [...eroded(live), ...eroded(hole)]) for (let k = 0; k < 4; k++) expect(px[i + k]).toBe(plain[i + k]);
 	});
 	it('opaque canvas: halo replaces the composite, interiors identical', async () => {
 		const grey: RGB = { r: 128, g: 128, b: 128 };
 		const opaque = { ...cfg, transparent: false, backColor: grey };
 		const lp = relativeLuminance(128 / 255, 128 / 255, 128 / 255);
-		const inside = new Set(glyphInterior(opaque));
-		const plain = frame({ ...opaque, minContrast: 1 });
-		const px = frame({ ...opaque, minContrast: 3 });
+		const inside = new Set(await glyphInterior(opaque));
+		const plain = await frame({ ...opaque, minContrast: 1 });
+		const px = await frame({ ...opaque, minContrast: 3 });
 		for (const i of eroded(inside)) for (let k = 0; k < 4; k++) expect(px[i + k]).toBe(plain[i + k]);
 		let changed = 0;
 		let best = 0;
@@ -276,9 +306,9 @@ describe('CSS page measurement', () => {
 			expect(pg.r).toBeGreaterThan(240);
 			expect(pg.r).toBeLessThan(255);
 			const cfg = fluidTextConfig({ glass: false, contrastMode: 'outline' });
-			const inside = new Set(glyphInterior(cfg));
-			const plain = frame({ ...cfg, minContrast: 1 });
-			const px = frame({ ...cfg, minContrast: 3, contrastColor: pg });
+			const inside = new Set(await glyphInterior(cfg));
+			const plain = await frame({ ...cfg, minContrast: 1 });
+			const px = await frame({ ...cfg, minContrast: 3, contrastColor: pg });
 			const lp = relativeLuminance(pg.r / 255, pg.g / 255, pg.b / 255);
 			let best = 0;
 			let band = 0;
@@ -347,7 +377,7 @@ describe('FluidText outline halo vs page (ADR-0086)', () => {
 		it(name, async () => {
 			// Preset physics, but the text container replaces the preset geometry.
 			const cfg = fluidTextConfig({ ...base, glass: false, obstructions: undefined });
-			const interior = glyphInterior(cfg);
+			const interior = await glyphInterior(cfg);
 			expect(interior.length).toBeGreaterThan(2000);
 			const inside = new Set(interior);
 			const pages: Record<string, RGB> = {
@@ -356,12 +386,12 @@ describe('FluidText outline halo vs page (ADR-0086)', () => {
 				own: (base.backColor as RGB | undefined) ?? BLACK
 			};
 			const row: Record<string, unknown> = { glyphPixels: interior.length };
-			const plain = frame({ ...cfg, minContrast: 1 });
+			const plain = await frame({ ...cfg, minContrast: 1 });
 			let worst = Infinity;
 			for (const [pn, page] of Object.entries(pages)) {
 				const lp = relativeLuminance(page.r / 255, page.g / 255, page.b / 255);
-				const px = frame(FIX ? { ...cfg, minContrast: 3, contrastColor: page, contrastMode: 'outline' } : cfg);
-				const band = frame({ ...cfg, initialSplatCount: 0, presetSplats: [], autoSplatRate: 0, bloom: false, minContrast: 3, contrastColor: page, contrastMode: 'outline' }, W, H, 1);
+				const px = await frame(FIX ? { ...cfg, minContrast: 3, contrastColor: page, contrastMode: 'outline' } : cfg);
+				const band = await frame({ ...cfg, initialSplatCount: 0, presetSplats: [], autoSplatRate: 0, bloom: false, minContrast: 3, contrastColor: page, contrastMode: 'outline' }, W, H, 1);
 				if (FIX) {
 					// Interior pixels (eroded one pixel: the edge ramp is the halo's own AA) equal the minContrast=1 render exactly.
 					for (const i of interior) if (inside.has(i - 4) && inside.has(i + 4) && inside.has(i - W * 4) && inside.has(i + W * 4)) for (let k = 0; k < 4; k++) expect(px[i + k]).toBe(plain[i + k]);
@@ -503,19 +533,19 @@ function revealConfig(cover?: RGB): FluidConfig {
 	};
 }
 
-function revealFrame(cover?: RGB): Uint8Array {
+async function revealFrame(cover?: RGB): Promise<Uint8Array> {
 	const canvas = document.createElement('canvas');
 	canvas.width = W;
 	canvas.height = H;
-	const engine = new FluidEngine({ canvas, autoStart: false, config: { pointerInput: false, ...revealConfig(cover) } });
+	const engine = new FluidEngine({ canvas, autoStart: false, config: { pointerInput: false, ...revealConfig(cover), ...RESOLUTION } });
 	const harness = engine as unknown as Harness;
 	try {
 		// A pointer sweep: same 5x pixel-delta force FluidReveal applies.
 		for (let k = 0; k < 40; k++) {
 			engine.splat(0.15 + k * 0.017, 0.5 + 0.15 * Math.sin(k / 6), 5 * 12, 5 * 3, { r: 1, g: 1, b: 1 });
-			engine.advance(1, DT);
+			await advance(engine, 1);
 		}
-		engine.advance(20, DT);
+		await advance(engine, 20);
 		harness.renderCore(null);
 		const gl = harness.gl;
 		const px = new Uint8Array(W * H * 4);
@@ -540,7 +570,7 @@ const revealPairs: [string, RGB, RGB][] = [
 describe('FluidReveal text vs cover (per-pixel text/bg contrast under the cover)', () => {
 	for (const [cn, cover] of revealCovers) {
 		it(cn, async () => {
-			const px = revealFrame(cover);
+			const px = await revealFrame(cover);
 			const row: Record<string, unknown> = {};
 			let a0 = 0;
 			let partial = 0;
@@ -591,21 +621,21 @@ const bgDefaults: FluidConfig = {
 	splatOnHover: true
 };
 
-function bgFrame(config: FluidConfig, extra: FluidConfig = {}): Uint8Array {
+async function bgFrame(config: FluidConfig, extra: FluidConfig = {}): Promise<Uint8Array> {
 	const w = 480;
 	const h = 270;
 	const canvas = document.createElement('canvas');
 	canvas.width = w;
 	canvas.height = h;
-	const engine = new FluidEngine({ canvas, autoStart: false, config: { pointerInput: false, ...bgDefaults, ...config, ...extra } });
+	const engine = new FluidEngine({ canvas, autoStart: false, config: { pointerInput: false, ...bgDefaults, ...config, ...extra, ...RESOLUTION } });
 	const harness = engine as unknown as Harness;
 	try {
 		// Pointer-like strokes (random splats at the engine's default intensity).
 		for (let k = 0; k < 30; k++) {
 			engine.splat(0.1 + 0.027 * k, 0.5 + 0.3 * Math.sin(k / 4), 600, 100 * Math.cos(k / 3), generateColor(mulberry32(k + 1)));
-			engine.advance(2, DT);
+			await advance(engine, 2);
 		}
-		engine.advance(60, DT);
+		await advance(engine, 60);
 		harness.renderCore(null);
 		const gl = harness.gl;
 		const px = new Uint8Array(w * h * 4);
@@ -636,7 +666,7 @@ describe('FluidBackground text contrast (white / black text vs fluid canvas)', (
 		it(name, async () => {
 			const row: Record<string, unknown> = {};
 			for (const [tn, text] of [['whiteText', WHITE], ['blackText', BLACK]] as const) {
-				const px = bgFrame(base, FIX ? { minContrast: 4.5, contrastColor: text } : {});
+				const px = await bgFrame(base, FIX ? { minContrast: 4.5, contrastColor: text } : {});
 				row[tn] = bgRow(px, text);
 				await saveComposite('bg-' + name + '-' + tn, px, 480, 270, BLACK);
 			}
