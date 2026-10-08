@@ -1,0 +1,128 @@
+[
+  {
+    "image": "the-kiss.jpg",
+    "seed": 5,
+    "scorer": "fallback",
+    "baselineTransport": 0.11532292485720667,
+    "candidateTransport": 1.278633418826449
+  },
+  {
+    "image": "the-kiss.jpg",
+    "seed": 11,
+    "scorer": "fallback",
+    "baselineTransport": 0.11126101890459676,
+    "candidateTransport": 1.382939174366778
+  },
+  {
+    "image": "the-kiss.jpg",
+    "seed": 23,
+    "scorer": "fallback",
+    "baselineTransport": 0.09907986974678447,
+    "candidateTransport": 1.3498495914876532
+  },
+  {
+    "image": "earth.jpg",
+    "seed": 5,
+    "scorer": "fallback",
+    "baselineTransport": 0.1650033088417414,
+    "candidateTransport": 0.9920369720198766
+  },
+  {
+    "image": "earth.jpg",
+    "seed": 11,
+    "scorer": "fallback",
+    "baselineTransport": 0.1669765234016051,
+    "candidateTransport": 1.0985073438059205
+  },
+  {
+    "image": "earth.jpg",
+    "seed": 23,
+    "scorer": "fallback",
+    "baselineTransport": 0.15306795030352233,
+    "candidateTransport": 1.0488532378011766
+  },
+  {
+    "image": "fluid-text.png",
+    "seed": 5,
+    "scorer": "fallback",
+    "baselineTransport": 0.18699339024977915,
+    "candidateTransport": 0.6643341176050797
+  },
+  {
+    "image": "fluid-text.png",
+    "seed": 11,
+    "scorer": "fallback",
+    "baselineTransport": 0.16436527300332274,
+    "candidateTransport": 0.7254768703736968
+  },
+  {
+    "image": "fluid-text.png",
+    "seed": 23,
+    "scorer": "fallback",
+    "baselineTransport": 0.14969713575586346,
+    "candidateTransport": 0.743140740059543
+  },
+  {
+    "image": "great-wave.jpg",
+    "seed": 5,
+    "scorer": "fallback",
+    "baselineTransport": 0.15807900678653955,
+    "candidateTransport": 1.3619881392883064
+  },
+  {
+    "image": "great-wave.jpg",
+    "seed": 11,
+    "scorer": "fallback",
+    "baselineTransport": 0.15654194625817452,
+    "candidateTransport": 1.5645181973475308
+  },
+  {
+    "image": "great-wave.jpg",
+    "seed": 23,
+    "scorer": "fallback",
+    "baselineTransport": 0.1464258717436003,
+    "candidateTransport": 1.5262670425131102
+  },
+  {
+    "image": "pearl-earring.jpg",
+    "seed": 5,
+    "scorer": "fallback",
+    "baselineTransport": 0.1959477259542072,
+    "candidateTransport": 0.8796337394156142
+  },
+  {
+    "image": "pearl-earring.jpg",
+    "seed": 11,
+    "scorer": "fallback",
+    "baselineTransport": 0.18017414130682766,
+    "candidateTransport": 1.0651642182945105
+  },
+  {
+    "image": "pearl-earring.jpg",
+    "seed": 23,
+    "scorer": "fallback",
+    "baselineTransport": 0.17658779612278028,
+    "candidateTransport": 1.111751025202484
+  },
+  {
+    "image": "starry-night.jpg",
+    "seed": 5,
+    "scorer": "fallback",
+    "baselineTransport": 0.24499856786489363,
+    "candidateTransport": 1.4255541008265897
+  },
+  {
+    "image": "starry-night.jpg",
+    "seed": 11,
+    "scorer": "fallback",
+    "baselineTransport": 0.23763565547579887,
+    "candidateTransport": 1.5234191400781152
+  },
+  {
+    "image": "starry-night.jpg",
+    "seed": 23,
+    "scorer": "fallback",
+    "baselineTransport": 0.2262630000219743,
+    "candidateTransport": 1.5284366407288077
+  }
+]

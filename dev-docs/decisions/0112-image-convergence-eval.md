@@ -78,6 +78,16 @@ Re-form wall-clock values for V0/V1 are **INVALID**: pointerdown wakes and may r
 
 Pearl seed23 V1 diagnostic rerun did not reproduce the30s timeout:6.905wall s, last issue-time max velocity .0315552, map displacement .0000910759, exact settle/re-form. Original V1 remains non-kept; timing-sensitive flakiness is a robustness finding, not permission to replace its failed slot. Existing max-reduction values now reported for all subsequent arms (no extra passes/readback). V2 uses pre-registered controller k=8, zero before .75s, taper to0 by3.75s; gates unchanged.
 
+## Amendment 3 (lead, after V2 data) — switch: settle schedule
+
+Two non-kept rounds: V1 Pearl23 timeout, V2 Kiss23 timeout; original verdicts stand. Judge infra: **unrecognized_model after 1 retry**; permanently use registered deterministic fallback, no return to subjective scoring.
+
+Fallbacktrain existingdata: V1splitrelativegain549.48%, medianmaxarmnoise13.934%,2×27.869%; V2gain584.06%,noise12.924%,2×25.847%. BOTHprimarypassignoresettlegate;V2better. Perimage V0median/V1median/V2median (noisesV1/V2 maxarms): Kiss.1113/1.3498/1.3781(14.60%/14.60%),Earth.1650/1.0489/1.1427(10.15%/9.82%),Text.1644/.7255/.7141(22.69%/22.69%),Wave.1565/1.5263/1.5504(13.27%/12.36%),Pearl.1802/1.0652/1.1422(21.79%/13.49%),Starry.2376/1.5234/1.5778(7.88%/7.88%). Scorer is spatialgradientchange proxy, notblindaestheticproof. No newGPUqueuedyet.
+
+V2 Kiss23 at30s: mapMax.000290632 <1/512, uMax.116272 >.05;500ms later u.116394, map.000289440. Controller already0 after3.75s; untapered curl10 is the remaining energy source. First run diagnostic-only Kiss23 V2 with existing-state 5s post-verdict sampler (no extra readback), original verdict never replaced.
+
+**V2s = V2 + curl tapered linearly to0 over .75–3.75s, the only change.** Same images/seeds/gates/scorer. R3train, then held-out once (V0 and V2s four images × three seeds) only if all train gates and primary2xnoise pass. If train fails, stop, no further variants. A fallback-kept result awaits owner visual review; prepare review packet only if held-out passes, never adopt public API.
+
 ## Results
 
 V0 R3 train complete at `57108d4`: 14/18 initial exact/rest, 13/18 visibly disturbed successful re-form. Great Wave all3 initial timeouts; FLUID text one initial and one re-form timeout. No post-hoc V0 tuning. V1 `db59bf9`: **non-kept round1**, 17/18 exact/rest/re-form; Pearl seed23 initial30s timeout. All-slot gate fails; held-out not run. Archived `archive/e5-v1`; V2 builds on V1 plus controller only. Full tables and exact compact rows: `dev-docs/benchmarks/image-convergence.md`, `evals/image-convergence/v{0,1}-train.json`.
