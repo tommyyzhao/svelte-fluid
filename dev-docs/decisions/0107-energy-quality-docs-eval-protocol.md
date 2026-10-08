@@ -241,3 +241,28 @@ failures stay missing with their reason. Existing 15 GiB free-space guard,
 10 GiB scratch watchdog, exclusive owned GPU lock and ≤25-minute batches
 remain mandatory. Rank stages on TRAIN only using existing measurement
 facilities; unavailable stage attribution must be reported, not fabricated.
+
+## Amendment 6: E1 keep-rule unit (lead, 2026-10-08, before any round 6 or 120 Hz candidate result)
+
+**Written before any candidate result reached the lead.** Rounds 6 (dye default
+512, Amendment 4) and the 120 Hz paired `maxFps` run (Amendment 5) were
+capturing when this was committed. Neither lane had reported a candidate metric.
+
+Hill-climb rule 2 says "train and test both improve by more than 2× the measured
+noise floor (E1: and ≥ 5% relative)". It does not fix whether the unit is the
+scene or the split. The headless baseline (Amendment 3) measured per-scene R3
+noise of 1.5–34.2% (train) and 3.6–19.5% (held-out). A strict every-scene reading
+lets the single noisiest scene veto any change, and blocks scenes without a
+registered R3 noise.
+
+Decision:
+
+1. **Primary (decides):** for each split, the headline-median saving over scenes
+   with registered R3 noise must exceed 2× that split's **median** registered
+   per-scene noise, and be ≥ 5%. Train and held-out must both pass.
+2. **Secondary (reported, does not decide):** the per-scene variant, where every
+   scene beats 2× its own noise.
+3. Scenes without registered noise are reported per scene, descriptively. They
+   neither block nor count towards the primary headline.
+4. Each lane's own amendment text stands as written. Reports give both verdicts.
+   The owner sees both.
