@@ -362,6 +362,30 @@ Idle and background contracts **are met**:
 
 No pre-registered E1 keep/revert verdict completed.
 
+### Round 5 — lower generic pressure default: train-only design rule
+
+Fixed before any Round 5 capture, 2026-10-08; base local main `28219ef`.
+Default-using TRAIN presets: `(default)`, LavaLamp, Plasma, InkInWater,
+Aurora, CircularFluid, SvgPathFluid, Toroidal. Explicit TRAIN counts remain
+GasFlare24, Venturi26, Karman34. No preset configuration changes.
+
+Evaluate generic defaults **14, 10, 8 in that order**; choose the **lowest**
+passing the coded ADR 0107 Amendment 2 E2 TRAIN pre-check. Prefer larger
+savings because the forecast at14 falls below the keep bar. Dynamics only;
+resolution, filtering and post-processing unchanged. Bit identity is not the
+gate. The existing frame-time governor's pressure floor8 motivates the trial,
+not a quality certification.
+
+`quality-eval.mjs --props` overrides explicit preset counts, so use candidate
+source commits via `--source-root` with empty props, entire TRAIN split
+(seed5, both registered sizes); explicit-count scenes are unchanged controls.
+Judge invocation verified: `claude --model opus --dangerously-skip-permissions
+-p`; implementer Sonnet, distinct tier. Frozen rubric/null counts/gates stay
+unchanged. If none pass E2, stop without energy captures. Otherwise capture
+chosen source TRAIN E1 R3, compare frozen headless baseline using >2× each
+scene's registered active noise and ≥5%; stop/revert on failure. Lead alone
+schedules the single held-out decision; this lane never runs held-out.
+
 ### Round 1 — solve-rate cap, rejected by E2
 
 Candidate `8f27341`: **rejected by E2**, so no E1 candidate capture was performed. No energy result inferred. Owned rejected source archive removed.
