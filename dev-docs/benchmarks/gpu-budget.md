@@ -14,6 +14,225 @@ Earlier wall-throughput/UNCERTIFIED sections remain historical evidence.
 Harness: `src/lib/engine/__benches__/gpu-budget.browser.test.ts`. Measurement,
 not a performance gate. Decision records: ADRs 0089, 0093, 0099.
 
+## E1 per-encoder attribution (train only)
+
+**2026-10-08; measurement only, engine `29065ca`, no `src/lib` changes.**
+Ten clean captures: Plasma/Karman, 1440×900 CSS, DPR2, seed5; baseline ×2,
+`bloom:false`, `curl:0`, half `pressureIterations` ×1 per preset. Installed
+headless Chrome 154, ordinary hardware flags; every adapter reports
+`ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)`.
+Active windows remain t=5–15 s, 600 engine frames at 60 Hz (Karman curl:
+599, 59.9 Hz). No held-out
+preset, 1024×640 capture, quality candidate or E1 keep claim.
+
+### Export, frame identity and mapping validation
+
+`energy-capture.mjs --per-encoder-export` adds read-only diagnostic exports
+**outside** the frozen parser/windows. `--self-check` still passes;
+measurement hash remains
+`24c277a4f8bfed880b03a371513a229b0a26f9d45765d0240516b9851bb0cef9`.
+TOCs expose `metal-gpu-intervals`, `metal-application-encoders-list`,
+`metal-application-command-buffer-submissions`, `metal-io-surface-access`.
+The encoder-list `encoder-id` joins both Vertex and Fragment execution
+intervals; `cmdbuffer-id`, CPU encoding start/end, native labels and IOSurface
+accesses survive export. CPU encoder durations are **not** GPU durations.
+A one-frame draw/program/target inventory at t≈3 s is restored immediately,
+outside the active window; the component and ordinary RAF are unchanged.
+
+Frames are complete Chrome-GPU Fragment bursts separated by >8 ms idle
+execution gaps, inside the active window. Modal encoder-count frames are
+indexed **in CPU encoding order**, joined by encoder ID, not Fragment start
+order. This distinction matters: Karman reorders an independent dye-source
+encoder in **283/591 and 252/591** baseline frames. Plasma has zero such
+reorders. Command buffers can begin encoding on the preceding RAF, so CPU
+commit-gap clustering alone would straddle frames. Merged bursts, boundary
+fragments, occasional Plasma auto-splat frames are counted separately,
+never used as ordinary steady-frame samples. All retained samples exceed 300.
+
+| Preset / arm | Steady frames | Encoders | Median union µs/frame | Full active GPU-ms/s | CPU/GPU order disagreement frames | `uptime` load 1/5/15 min |
+|---|---:|---:|---:|---:|---:|---|
+| Plasma baseline 1 | 574 | 37 | 1951.71 | 101.478 | 0 | 5.28 / 5.51 / 6.33 |
+| Plasma baseline 2 | 549 | 37 | 1942.16 | 104.212 | 0 | 9.48 / 8.71 / 7.55 |
+| Plasma bloom off | 543 | 22 | 1567.41 | 87.329 | 0 | 6.75 / 8.19 / 7.73 |
+| Plasma curl zero | 555 | 35 | 1933.08 | 103.672 | 0 | 12.18 / 11.75 / 9.57 |
+| Plasma pressure 10 | 556 | 32 | 1807.23 | 97.371 | 0 | 6.57 / 8.63 / 8.71 |
+| Karman baseline 1 | 591 | 40 | 2490.21 | 150.079 | 283 | 6.77 / 7.84 / 8.29 |
+| Karman baseline 2 | 591 | 40 | 2133.37 | 135.411 | 252 | 10.16 / 10.87 / 9.56 |
+| Karman bloom off (null) | 531 | 40 | 3074.66 | 164.790 | 252 | 11.68 / 13.07 / 11.41 |
+| Karman curl zero | 582 | 38 | 3067.60 | 169.832 | 281 | 7.64 / 10.49 / 10.69 |
+| Karman pressure 17 | 557 | 32 | 2459.46 | 132.758 | 268 | 7.99 / 8.63 / 9.69 |
+
+Modal-count exclusions: Plasma baselines include 10 auto-splat frames each
+(45 encoders), 7/19 merged 74-encoder bursts, 2/3 boundary 36-encoder bursts.
+Karman baselines include 3 merged 80-encoder bursts and 2 boundary 39-encoder
+bursts each. No favorable timing filter. Median frame union can differ from
+window mean, particularly with DVFS/content-dependent distributions.
+
+Expected draw order derives from `FluidEngine.ts` `step` (4669–4739),
+`projectVelocity` (4589–4666), `renderCoreInner` (4789–4831), `applyBloom`
+(5073–5119), `applySunrays`/`blur` (5121–5145), registry preset configs.
+Ordinary Plasma: curl, vorticity, velocity advection, divergence, 10 paired
+Jacobi, gradient, dye advection (**16**); bloom prefilter, 7 downsample,
+6 additive upsample, final (**15**); sunrays mask/radial/2 blur (**4**),
+display (**1**). Ordinary Karman: 2 dye-source batches, force, velocity
+outlet, curl, vorticity, velocity advection, viscosity copy +8 iterations,
+wall friction, divergence, 17 paired Jacobi, gradient, dye advection,
+dye outlet, display (**39**). Draw inventories match these sequences.
+
+**Ordered group mapping validates all three ablations**, with one leading
+non-engine canvas encoder retained. Count changes and moved high-cost
+signatures agree; repeated Jacobi iterations are interchangeable identities
+within their ordered block, not distinguishable shader labels.
+
+| Preset / ablation | Predicted baseline indices removed/replaced (0-based native) | Observed | Surviving anchors |
+|---|---|---|---|
+| Plasma bloom off | remove 17–31 | 37→22, exactly −15 | dye 16 unchanged; mask/radial 32/33→17/18; display 36→21 |
+| Plasma curl zero | remove 1–2 | 37→35, exactly −2 | dye 16→14; radial 33→31; display 36→34 |
+| Plasma pressure half | remove final five paired passes 10–14 | 37→32, exactly −5 | gradient 15→10; dye 16→11; radial 33→28; display 36→31 |
+| Karman bloom off | none (already false) | 40→40, exactly 0 | all indices retained |
+| Karman curl zero | remove 5–6 | 40→38, exactly −2 | pressure 19–35→17–33; dye 37→35; display 39→37 |
+| Karman pressure half | replace pair 27 with single Jacobi; remove pairs 28–35 | 40→32, exactly −8 | pairs 19–26 retained; single 27; gradient 36→28; dye 37→29; display 39→31 |
+
+Karman 34→17 logical iterations is **17 paired draws→8 paired +1 single**,
+not −8.5 or −9 native draws. The single at index27 is ≈30.25 µs versus
+≈80–88 µs adjacent paired passes in that capture. Plasma dye costs remain
+124–129 µs across ablations; radial sunrays 390–394 µs. Karman count validation
+is independent of its substantial timing variation: null bloom raises full
+active cost 15.45% against baseline midpoint. Do not infer saving from R1
+ablation deltas or treat this as independent R3 noise certification.
+
+### Pass costs (two-baseline midpoint of per-run medians)
+
+`µs` is median **union of that encoder's Vertex+Fragment execution**; grouped
+rows sum constituent encoder unions per frame before taking the median.
+Different encoders overlap, so these durations **must not be summed** into
+frame cost. Share splits each concurrently busy GPU instant equally among
+active encoder IDs, then takes the median per-frame share; explicit accounting
+convention, **not marginal savings**. GPU-ms/s uses the same allocation, mean
+over retained frames × actual 60 Hz, then midpoint over baseline runs. Each
+frame's allocated times sum exactly to its busy union; medians need not sum.
+
+Classification: **fixed-dominant** only where a size fit supports it;
+**area-like** denotes the measured same-shader size contrast, not proof of a
+pure area law; **unidentified** means this design has one target size or
+confounded variants. Shading is part of the display shader, not an encoder.
+
+| Plasma pass | Native indices | Median µs | Share % | Allocated GPU-ms/s | Fixed vs area evidence |
+|---|---|---:|---:|---:|---|
+| Display, shading+bloom+sunrays | 36 | 494.88 | 23.92 | 23.95 | Unidentified; one 2880×1800 target |
+| Bloom whole chain | 17–31 | 411.46 | 17.84 | 18.43 | Blur levels fixed-dominant; prefilter/final unidentified |
+| Pressure, 10 paired passes | 5–14 | 403.32 | 18.23 | 18.93 | Unidentified; one 205×128 grid |
+| Sunrays radial | 33 | 391.45 | 17.59 | 17.74 | Unidentified; one 314×196 target; 16-sample shader |
+| Dye advection | 16 | 126.01 | 5.60 | 6.01 | Area-like vs velocity advection, same program |
+| Sunrays mask | 32 | 98.35 | 3.57 | 3.68 | Unidentified; one 1638×1024 target |
+| Sunrays blur, horizontal+vertical | 34–35 | 68.33 | 2.39 | 2.63 | Unidentified; same-size directional variants |
+| Vorticity | 2 | 35.33 | 1.31 | 1.40 | Unidentified; one 205×128 grid |
+| Velocity advection | 3 | 33.48 | 1.27 | 1.33 | Fixed-dominant intercept in two-size contrast |
+| Curl | 1 | 26.00 | 1.07 | 1.08 | Unidentified; one 205×128 grid |
+| Divergence | 4 | 23.98 | 1.05 | 1.09 | Unidentified; one 205×128 grid |
+| Gradient subtraction | 15 | 23.38 | 1.06 | 1.11 | Unidentified; one 205×128 grid |
+| **Unmapped canvas work, not engine** | **0** | **120.45** | **4.88** | **5.47** | One canvas-sized IOSurface write |
+
+| Karman pass | Native indices | Median µs | Share % | Allocated GPU-ms/s | Fixed vs area evidence |
+|---|---|---:|---:|---:|---|
+| Pressure, 17 paired passes | 19–35 | 1025.87 | 38.62 | 55.17 | Unidentified; one 307×192 grid |
+| Dye-source batches, 2 | 1–2 | 578.58 | 17.82 | 25.41 | Unidentified; both 1638×1024, different source counts |
+| Dye outlet | 38 | 265.96 | 11.13 | 15.88 | Area-like vs velocity outlet, confounded batch/uniforms |
+| Viscosity, 8 passes | 9–16 | 257.87 | 8.36 | 11.95 | Unidentified; one 307×192 grid |
+| Display | 39 | 207.77 | 8.30 | 11.76 | Unidentified; one 2880×1800 target |
+| Dye advection | 37 | 111.81 | 4.35 | 6.16 | Area-like vs velocity advection, same program |
+| Flow force | 3 | 72.75 | 1.38 | 1.94 | Unidentified; one 307×192 grid |
+| Velocity outlet | 4 | 32.42 | 0.85 | 1.25 | Fixed-dominant intercept; outlet contrast confounded |
+| Wall friction | 17 | 28.98 | 1.00 | 1.43 | Unidentified; one 307×192 grid |
+| Curl | 5 | 28.65 | 0.78 | 1.16 | Unidentified; one 307×192 grid |
+| Vorticity | 6 | 28.06 | 0.90 | 1.30 | Unidentified; one 307×192 grid |
+| Velocity advection | 7 | 27.98 | 0.91 | 1.32 | Fixed-dominant intercept in two-size contrast |
+| Gradient subtraction | 36 | 26.54 | 0.90 | 1.29 | Unidentified; one 307×192 grid |
+| Divergence | 18 | 25.92 | 0.86 | 1.24 | Unidentified; one 307×192 grid |
+| Viscosity source copy | 8 | 19.38 | 0.54 | 0.78 | Unidentified; one 307×192 grid |
+| **Unmapped canvas work, not engine** | **0** | **115.96** | **3.26** | **4.76** | One canvas-sized IOSurface write |
+
+### Fixed overhead versus area: descriptive fits
+
+Fit `cost (µs) = a (µs) + b (µs/pixel) × target pixels`, ordinary least
+squares on the baseline-midpoint per-index medians. Bloom uses separate
+same-program down/up families; first Karis downsample excluded, additive
+upsampling not pooled with overwrite downsampling. Targets shrink by ≈2 per
+dimension (≈4 in area), with integer rounding. No new resolution captures.
+
+| Same pass family | Pixels | a µs | b µs/pixel | R² | Interpretation / ceiling |
+|---|---|---:|---:|---:|---|
+| Plasma bloom downsample, no Karis | 6528,1632,400,96,24,6 | 21.36 | 0.00143923 | 0.639 | Fixed dominates at ≤1632 px; fit noisy, tiny-level granularity not a physical slope guarantee |
+| Plasma bloom additive upsample | 24,96,400,1632,6528,26240 | 19.04 | 0.00007949 | 0.197 | Essentially flat 17–22 µs across 1093× area; fixed-dominant, poor linear fit |
+| Plasma advection, velocity vs dye | 26240 vs 1677312 | 32.01 | 0.00005604 | 1 by construction | Two-point contrast only; dye-height uniform differs; no independently validated law |
+| Karman advection, velocity vs dye | 58944 vs 1677312 | 24.93 | 0.00005180 | 1 by construction | Two-point contrast only; target masks/height differ |
+| Karman outlet, velocity vs dye | 58944 vs 1677312 | 23.91 | 0.00014430 | 1 by construction | Confounded: one vs four outlets, height ceiling; not an identified area coefficient |
+
+The earlier claim that time is evenly distributed across every pass is false:
+Plasma display+radial sunrays alone occupy ≈41.5% of allocated busy time;
+Karman pressure ≈38.6%, dye source/outlet ≈29.0%. Small bloom levels really
+are fixed-dominant. A universal fixed-overhead model for solver/display cannot
+be established by this dataset; labelling every pass fixed or area-bound
+would overstate these measurements.
+
+### Unmapped work and ranked lever budgets
+
+Native index0 writes the 2880×1800 IOSurface **before** all engine draws;
+only final display writes that size among engine targets. It persists under
+all ablations, ~116–120 µs union. Thus it is extra browser/ANGLE canvas
+clear/copy work, **not assigned to an engine pass**. Generic Render Command
+labels cannot distinguish clear from blit; no compositor attribution claim.
+No steady extra Compute/blit-only encoder was found. Baseline partial
+Vertex-only rows: Plasma 2/3, Karman 2/4; total ≈0.017/0.034 and
+≈0.023/0.065 GPU-ms per 10 s, excluded from steady samples, preserved in
+analysis. WindowServer/other clients remain outside Chrome-process attribution;
+foreign activity is retained in the unchanged energy rows. No claim that
+headless downstream composition/scanout has zero cost.
+
+Top five **allocated work budgets**, ranked by two-preset mean allocated
+GPU-ms/s (Plasma / Karman). These are measured costs of the pass groups,
+not expected savings or upper bounds: optimising away a group changes overlap,
+scheduling, DVFS and often image quality. A 25% reduction of the group's cost is a
+planning estimate only; no E2 certification follows these diagnostic props.
+
+| Rank / next lever | Current allocated GPU-ms/s, Plasma / Karman | Mean budget | Illustrative 25%-group reduction |
+|---|---|---:|---:|
+| 1. Pressure implementation / pass count, equal-quality gate required | 18.93 / 55.17 | 37.05 | 9.26 GPU-ms/s |
+| 2. Dye-source/outlet full-field work | 0 / 41.30 | 20.65 | 5.16 GPU-ms/s |
+| 3. Display shader (shading is fused, not separable here) | 23.95 / 11.76 | 17.85 | 4.46 GPU-ms/s |
+| 4. Bloom chain pass count | 18.43 / 0 | 9.21 | 2.30 GPU-ms/s |
+| 5. Radial sunrays shader | 17.74 / 0 | 8.87 | 2.22 GPU-ms/s |
+
+Priority ordering is pressure, source/outlet, display, bloom, radial sunrays.
+Viscosity budget 0/11.95; dye advection 6.01/6.16; extra
+canvas work 5.47/4.76. Spatial dye changes affect source/outlet/mask and
+other dye-sized passes, not only advection: this explains why the prior
+~0.6 ms whole-workload dye-half saving exceeds dye-advection cost alone.
+Previously rejected pressure fusion/iteration reduction stays rejected;
+this ranking does not reopen parity tolerances. Next equal-quality lever
+should target measured work, not generic encoder-count arithmetic.
+
+Reproduce one preset per invocation:
+
+```sh
+ENERGY_CAPTURE_SOLO=1 bun scripts/energy-capture.mjs --label attrib-Plasma-baseline-29065ca --cases Plasma@1440x900:2:5 --runs 2 --per-encoder-export
+# Separate --label for --override '{"bloom":false}', '{"curl":0}', '{"pressureIterations":10}'.
+# Karman baseline same arguments except preset; pressure override 17; bloom false is null.
+bun scripts/encoder-attribution.mjs --analyse /tmp/energy-eval/attrib-Plasma-baseline-29065ca/Plasma-1440x900-dpr2-seed5-r1.json /tmp/attrib-Plasma-baseline-r1.analysis.json
+bun scripts/encoder-attribution.mjs --self-check
+```
+
+Evidence: `/tmp/energy-eval/attrib-{Plasma,Karman}-{baseline,bloom,curl,pressure}-29065ca/`
+(TOCs, interval/encoder/submission/IOSurface XML with SHA256, parsed rows,
+uptime, raw cleanup receipts); `/tmp/attrib-*-r*.analysis.json` contains
+ordered examples, per-frame costs, medians, count exclusions, partial rows.
+GPU lock lane `E1-attrib`, atomic mkdir + owner JSON + acquired-at; holds
+<25 min, released between invocation batches. Every raw `.trace`, trace TMPDIR
+and before/after owned Instruments `.ktrace` deleted; exact owned browser,
+recorder/notifier/Vite processes exited. Protected/user Chrome untouched.
+Tests **882/882**, check **0 errors/0 warnings**, prepack **pass** (existing
+bench `import.meta.env` warning). Frozen energy and encoder self-checks pass.
+
 ## E1 round 4: pressure residual diagnostic (train only)
 
 ### Pre-registered protocol — 2026-10-08, before any GPU run
