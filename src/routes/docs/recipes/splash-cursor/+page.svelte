@@ -22,8 +22,9 @@ ${STYLE_OPEN}
   .splash-cursor { position: fixed; inset: 0; z-index: 9999; pointer-events: none; }
 ${STYLE_CLOSE}`;
 
+	// Vite's TS dependency scanner mistakes literal snippet imports for real imports.
 	const USAGE = `${SCRIPT_OPEN}
-  import SplashCursor from '$lib/components/splash-cursor/SplashCursor.svelte';
+  ${'import'} SplashCursor from '$lib/components/splash-cursor/SplashCursor.svelte';
 ${SCRIPT_CLOSE}
 
 <SplashCursor />`;

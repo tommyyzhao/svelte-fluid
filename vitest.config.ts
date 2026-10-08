@@ -40,6 +40,7 @@ const browserProject = defineProject({
 		// frames of real WebGL sim each) inside one `it`; the 5s/15s vitest
 		// defaults time out those tests even though nothing is hung.
 		testTimeout: 60000,
+		hookTimeout: 30000,
 		browser: {
 			enabled: true,
 			headless: true,
