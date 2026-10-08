@@ -1,5 +1,7 @@
 # Energy eval — ADR 0107 E1
 
+**Outcome: E1 not met at equal quality**: five lever classes rejected, offscreen/hidden 0 GPU and idle settling met ([Outcome](#outcome--e1-not-met-at-equal-quality-2026-10-08)).
+
 **Current headless baseline: 107/114 clean slots (TRAIN65/66; held-out42/48).** Seven infrastructure-missing slots explicitly listed; full registered R3 headline incomplete. Held-out complete11/16 scene median **80.868 active /80.995 untouched GPU-ms/s**, available16-scene n1–3 median **81.937 /80.099** descriptive only. Historical headed baseline remains48/48 clean held-out slots, train incomplete. Round2 evidence remains exploratory n2, not a registered keep. Never pool headless60Hz and historical headed120Hz.
 
 ## Method
@@ -305,6 +307,38 @@ Non-settling diagnostics observed only through 40 s. “Not observed” is censo
 | AnnularFluid 1024×640 DPR2 seed11 r2 | Missing execution coverage (one untouched command buffer) | OK |
 | FrameFluid 1024×640 DPR2 seed11 r3 | Recorder finalisation timeout | OK |
 | FrozenSwirl 1024×640 DPR1 seed11 r3 | xctrace exit 134: libc++abi: terminating due to uncaught exception of type std::__1::system_error: Could not trim file: No space left on device | OK |
+
+## Outcome — E1 not met at equal quality (2026-10-08)
+
+**No E1 candidate was kept.** Held-out median GPU-ms/s is unchanged from the
+headless baseline (80.868 active, complete scenes). Five lever classes were
+tried; each failed before reaching a held-out energy decision:
+
+| Lever class | Result | Evidence |
+|---|---|---|
+| Solver-rate cap (60 fps) | Rejected by E2 (step-count-dependent physics) | ADR 0109, round 1 above |
+| Presentation-only cap | Zero effect at headless 60 Hz; shipped opt-in `maxFps` | ADR 0110, round 2 above |
+| Pass fusion (4-iteration pressure batching) | Failed fp16 bit parity; forecast only 10–12% | `gpu-budget.md` round 3, tag `archive/pressure4-round3-rejected` |
+| Fewer pressure iterations / stronger warm start | 0 redundant iterations on 5/5 train presets | `gpu-budget.md` round 4 |
+| Framebuffer invalidation (TBDR load actions) | Bit-identical, saving −1.3% to +1.0%, 0/4 past gate | `gpu-budget.md` invalidation probe, tag `archive/e1-invalidate-probe` |
+
+The train cost ladder (`gpu-budget.md`, headless cost attribution) identifies
+the only levers of goal-relevant size as **spatial**: halving dye resolution
+saved about 0.6 ms/frame of 1.8–2.4 ms. E2 cannot certify spatial changes
+(Amendment 1), so this is owner-gated: review packet
+`owner-review/dye-resolution/`, Bead `svelte-fluid-a9t`. A presentation cap
+only saves energy above 60 Hz; owner packet `owner-review/max-fps/`, Bead
+`svelte-fluid-v73`.
+
+Idle and background contracts **are met**:
+
+- Offscreen, hidden and blank control use exactly 0 GPU-ms/s in all 107
+  clean slots.
+- Driver-free scenes at rest settle within about 1.1 s of first quiet
+  (≤5 s target).
+- Class (b), at rest but failing `isQuiet`, is empty.
+- LavaLamp, Aurora and FrozenSwirl visibly evolve, so they count as not idle.
+- Driver scenes are not idle by definition (settle classification above).
 
 ## Rounds
 
