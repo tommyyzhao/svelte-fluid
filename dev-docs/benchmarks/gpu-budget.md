@@ -14,6 +14,147 @@ Earlier wall-throughput/UNCERTIFIED sections remain historical evidence.
 Harness: `src/lib/engine/__benches__/gpu-budget.browser.test.ts`. Measurement,
 not a performance gate. Decision records: ADRs 0089, 0093, 0099.
 
+## E1 round 4: pressure residual diagnostic (train only)
+
+### Pre-registered protocol — 2026-10-08, before any GPU run
+
+Measurement only at local-main `e104fcd`; no production solver/default change,
+ADR or energy capture. Fixed train set: Plasma, Karman, InkInWater, Aurora,
+CircularFluid. Own-tier 800×500 canvas, registry config unchanged, pointer input
+off, seed 5. Warm 180 fixed-1/60-s production `simulateFrame` frames paced by RAF
+(about 3 s); capture immediately after production divergence, before pressure,
+at frames 181, 196, 211, 226, 241. Normal registry projection completes each
+frame: Karman still warms with 34 iterations. Replay each identical snapshot
+through production `projectVelocity` at counts 0,2,…,20 and warm-start retention
+current,0.9,0.95. Store previous pressure plus its separately decayed R16F image;
+replay uses raw previous pressure because production folds decay into its first
+Jacobi inner level, without an intermediate R16F decay store.
+
+Residual uses the production nearest/clamped pressure-neighbor operator,
+solid-center exclusion, solid-face center substitution, sticky forcing:
+`L+R+B+T-4*C-divergence+4*stickyVal*stickyPressure`. Evaluate in highp into
+RGBA32F, not a second fp16-rounded Jacobi update. Post-projection divergence
+uses the production divergence shader (including open edges/solid faces),
+read back from its normal R16F target. Report residual RMS/max, divergence RMS,
+velocity-component error RMS/max over fluid cells, including clamped edge cells.
+
+**Primary equality (coordinator clarification, fixed before data):** every
+projected velocity component differs by at most one fp16 ULP of its reference
+value; zero/subnormal ULP = 2^-24, normal ULP = 2^(floor(log2(abs(v)))-10).
+Downstream passes consume stored velocity. Before running, the coordinator
+specified each preset's own registry count as its primary reference: Karman 34,
+the other four 20. Add count 34 for Karman's reference/fallback only; retain the
+complete requested 0..20 sweep and separate 20-reference measurements.
+**Secondary:** residual RMS/max and post-projection divergence, compared with
+the current-retention registry reference; no secondary tolerance silently added. **Also report literal strict
+floor:** all absolute residual RMS/max, post-divergence RMS and velocity error
+RMS/max ≤ corresponding reference-vs-identical-rerun spreads. Bit-identical
+reruns give zero floor; a nonzero reference residual/divergence can therefore
+fail even at 20. Also report no-worse-than-reference secondary equality with
+those measured spreads. These separate gates must not be conflated.
+
+For each snapshot/retention, report the smallest equal even count (none = ∞).
+Per preset take the median of its five counts for each fixed retention; report
+all retention columns, plus the best fixed-retention median (no per-snapshot
+retention cherry-picking). **Lever viable only if that median is ≤12 on at least
+4/5 presets**, i.e. ≥8 of the 20 iterations / ≥4 paired draws redundant,
+approximately ≥8 GPU-ms/s at 60 Hz. Otherwise **lever not viable**. Literal
+strict-floor verdict reported separately; disagreement authorizes no engine
+implementation. No held-out scene or 1024×640 canvas; no xctrace, unsafe flags
+or software renderer. Hardware renderer string mandatory. GPU lock acquired
+atomically, held ≤12 min, released before CPU checks; any reacquisition observes
+strict alternation or five continuously free minutes.
+
+### Results — 2026-10-08
+
+**Lever not viable.** Zero of five presets meet the ≤12 median-count threshold.
+No tested smaller count is storage-indistinguishable from its own registry
+projection; no engine implementation or energy round follows. Karman's untested
+22..32 counts cannot change the ≤12 verdict. No fraction of its 34 iterations
+is certified redundant by this bounded sweep; it is not a proof that all 34
+are necessary. This diagnostic does not establish energy/power savings.
+
+Hardware headless installed Chrome 154.0.8037.98 (UA HeadlessChrome/154.0.0.0),
+WebGL2, renderer
+`ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)`.
+Canvas 800×500; registry seed-5 workload, five pre-projection snapshots per
+preset after 180 real production frames. 25 snapshots, 900 diagnostic projections
+(including references/reruns), six browser tests passed. Only train presets
+ran; registry imports containing held-out definitions do not execute them.
+
+`∞` = no tested equal count. Every count listed was identical across all five
+snapshot times; the count is their median, not a best snapshot.
+
+| Preset | Registry iterations / retention | Solver grid / fluid cells | Current retention | 0.9 retention | 0.95 retention | Best fixed-retention median | Certified saved iterations / fraction | Literal 20-reference floor |
+|---|---|---|---:|---:|---:|---:|---|---|
+| Plasma | 20 / 0.8 | 205×128 / 26,240 | 20 | ∞ | ∞ | 20 | 0 / 0% | ∞ |
+| Karman | 34 / 0.9 | 307×192 / 57,050 | 34 | 34 | ∞ | 34 | 0 / 0% | ∞ |
+| InkInWater | 20 / 0.85 | 205×128 / 26,240 | 20 | ∞ | ∞ | 20 | 0 / 0% | ∞ |
+| Aurora | 20 / 0.85 | 205×128 / 26,240 | 20 | ∞ | ∞ | 20 | 0 / 0% | ∞ |
+| CircularFluid | 20 / 0.8 | 205×128 / 10,436 | 20 | ∞ | ∞ | 20 | 0 / 0% | ∞ |
+
+Requested fixed-20-reference sweep gives smallest primary count **20 for every
+preset** at current retention (Karman 0.9 duplicates current). All other
+retentions give ∞. Thus fixing Karman's reference to 20 would not rescue the
+lever. The secondary no-worse-than-reference plus zero velocity-rerun-error
+gate also requires **20 / 34 / 20 / 20 / 20** at current retention.
+
+All 25 registry-reference reruns and all 25 fixed-20 reruns are bit-identical
+for pressure, velocity, residual and post-projection divergence. Their measured
+RMS/max repeatability floors are **exactly zero**. The literal requested
+absolute-floor gate fails even at the reference because its physical residual
+and post-projection divergence are nonzero; it rejects every count/retention
+on all five presets. A repeatability floor is not a convergence residual.
+The primary and literal verdicts both reject; no tolerance was widened after
+looking at data.
+
+Secondary metrics below are medians of the five snapshots, current retention,
+compared with each preset's registry reference. RMS velocity error uses both
+stored components; max uses the largest absolute component error, not vector
+norm. Residual is the highp production-stencil fixed-point defect; it is not
+assumed equal to post-projection divergence. Lower divergence at a smaller
+count is not convergence proof for this collocated operator.
+
+| Preset | Count | Residual RMS | Residual max | Post-projection divergence RMS | Velocity error RMS | Velocity error max |
+|---|---:|---:|---:|---:|---:|---:|
+| Plasma | 12 | 0.276133 | 2.687500 | 3.133087 | 0.202494 | 1.937500 |
+| Plasma | 18 | 0.195250 | 1.511719 | 3.151765 | 0.038252 | 0.312500 |
+| Plasma | 20 reference | 0.179471 | 1.308594 | 3.155327 | 0 | 0 |
+| Karman | 12 | 0.433911 | 1.127930 | 0.581706 | 0.103722 | 2.171875 |
+| Karman | 18 | 0.432781 | 1.106445 | 0.585780 | 0.068711 | 1.125000 |
+| Karman | 20 | 0.432626 | 1.139648 | 0.586618 | 0.059431 | 0.890625 |
+| Karman | 34 reference | 0.431762 | 1.126953 | 0.590056 | 0 | 0 |
+| InkInWater | 12 | 0.026236 | 0.519531 | 0.217695 | 0.016308 | 0.312500 |
+| InkInWater | 18 | 0.023719 | 0.421875 | 0.221712 | 0.003741 | 0.062500 |
+| InkInWater | 20 reference | 0.023126 | 0.398438 | 0.222540 | 0 | 0 |
+| Aurora | 12 | 0.209251 | 1.708984 | 2.629897 | 0.155173 | 1.250000 |
+| Aurora | 18 | 0.149246 | 1.109375 | 2.638975 | 0.029685 | 0.218750 |
+| Aurora | 20 reference | 0.137247 | 0.960938 | 2.640679 | 0 | 0 |
+| CircularFluid | 12 | 0.477035 | 3.242188 | 4.147227 | 0.326461 | 2.218750 |
+| CircularFluid | 18 | 0.375089 | 2.250000 | 4.190553 | 0.063791 | 0.421875 |
+| CircularFluid | 20 reference | 0.356239 | 2.046875 | 4.198661 | 0 | 0 |
+
+Full per-snapshot metrics for every retention × count, warm-start raw/decayed
+pressure summaries, reference metrics and measured floors:
+`/tmp/E1-r4-diag.json`, SHA256
+`e97d0a65796f77f1a8a4398c85578628d4a3028b0e73baf164d8ab23288f6ab9`.
+Machine-local evidence retained; not a production artifact.
+
+```sh
+VITEST_CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  VITEST_BROWSER=1 SVELTE_FLUID_GPU_BENCH=1 \
+  SVELTE_FLUID_GPU_BENCH_OUT=/tmp/E1-r4-diag.json \
+  bunx vitest run --project browser src/lib/engine/__benches__/pressure-residual.browser.test.ts
+```
+
+GPU lock acquired atomically 08:33:55Z, released 08:34:58Z (**62.9 s**); no
+reacquisition. Vitest/Chrome handles exited normally; exact owned process
+inventory confirmed empty. No other lock/process touched, including protected
+Chrome PIDs 4386/4411/48063/48074. Node **882/882**, check **0 errors/warnings**,
+prepack passed; existing import.meta.env packaging warning and unrelated
+SplashCursor Vite dependency-scan warning retained. No library/default/ADR,
+xctrace, held-out capture, 1024×640, memory, Beads, push or merge changes.
+
 ## E1 round 3: four-iteration pressure batching rejected — 2026-10-07
 
 **Rejected at the first isolated bit-parity gate; no runtime change retained.**
