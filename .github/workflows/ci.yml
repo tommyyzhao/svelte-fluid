@@ -44,12 +44,16 @@ jobs:
         run: bun run build
 
   browser:
-    name: Browser tests (Chromium)
+    name: Browser tests (Chromium, shard ${{ matrix.shard }}/3)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     runs-on: ubuntu-latest
-    # SwiftShader suite measured 1088 s; leave setup and runner-variance headroom.
-    timeout-minutes: 30
+    # File-level shards bound SwiftShader runtime variance without parallel GL contention.
+    timeout-minutes: 25
 
     steps:
       - name: Checkout
@@ -77,13 +81,13 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p browser-test-results
-          bun run test:browser 2>&1 | tee browser-test-results/vitest-browser.log
+          bun run test:browser -- --shard=${{ matrix.shard }}/3 2>&1 | tee browser-test-results/vitest-browser.log
 
       - name: Upload browser failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: browser-test-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          name: browser-test-failure-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}
           path: |
             browser-test-results/
             test-results/

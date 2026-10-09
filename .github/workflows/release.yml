@@ -18,12 +18,63 @@ permissions:
   id-token: write
 
 jobs:
-  release:
-    name: Version PR or publish
+  browser:
+    name: Browser tests (Chromium, shard ${{ matrix.shard }}/3)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     runs-on: ubuntu-latest
-    # verify:release runs node, check, the SwiftShader browser suite (~25 min) and build.
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('bun.lock') }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run browser tests
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p browser-test-results
+          bun run test:browser -- --shard=${{ matrix.shard }}/3 2>&1 | tee browser-test-results/vitest-browser.log
+
+      - name: Upload browser failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-browser-test-failure-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}
+          path: |
+            browser-test-results/
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  release:
+    name: Version PR or publish
+    needs: browser
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    runs-on: ubuntu-latest
     timeout-minutes: 45
 
     steps:
@@ -51,14 +102,11 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Install Playwright Chromium
-        run: bunx playwright install --with-deps chromium
-
-      # Keep publishing in the same gate as the real-WebGL suite. The release
-      # workflow is independent of CI, so relying on the CI workflow alone can
-      # race a publish against a browser-test failure.
+      # needs: browser keeps publishing behind every real-WebGL shard in this
+      # workflow. Relying on the independent CI workflow alone can race a publish
+      # against a browser-test failure. verify:release remains the local gate.
       - name: Verify release candidate
-        run: bun run verify:release
+        run: bun run test && bun run check && bun run build
 
       # If `.changeset/*.md` files exist, opens a "Version Packages" PR.
       # When that PR is merged (no remaining changesets), runs `publish`.
