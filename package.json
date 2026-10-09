@@ -19,7 +19,7 @@
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"prepack": "svelte-kit sync && svelte-package && publint && node scripts/check-public-declarations.mjs",
-		"prepublishOnly": "bun run verify:release",
+		"prepublishOnly": "if [ -n \"$RELEASE_BROWSER_VERIFIED\" ]; then bun run test && bun run check && bun run build; else bun run verify:release; fi",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"test": "vitest run",
