@@ -134,7 +134,7 @@ describe('LiquidDropZone', () => {
 		const onfiles = vi.fn();
 		const z = zone({ onfiles, multiple: true });
 		await frames(3);
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 4000 });
+		await waitForSurfaceSettle(activeFrameSubscribers, 4000);
 		const r = z.getBoundingClientRect();
 		const files = [new File(['a'], 'a.txt', { type: 'text/plain' }), new File(['b'], 'b.txt', { type: 'text/plain' })];
 		z.dispatchEvent(dragEvent('dragenter', r.left + 10, r.top + 100, files));

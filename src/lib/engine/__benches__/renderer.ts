@@ -13,15 +13,16 @@ if (import.meta.env.SVELTE_FLUID_HARDWARE_GATE) {
 	expect(softwareGL, `hardware gate renderer: ${renderer}`).toBe(false);
 }
 
-/** Surface physics advances at most 3 fixed steps per rAF, not wall-clock time. */
-export async function waitForSurfaceSettle(subscribers: () => number, hardwareTimeout: number): Promise<void> {
+/** Fixed-step models slow with rAF on software GL; hardware keeps its original deadline. */
+export async function waitForSurfaceSettle(subscribers: () => number, hardwareTimeout: number, maxFrames = 150, interval = 50): Promise<void> {
 	let timeout = hardwareTimeout;
 	if (softwareGL) {
 		const start = performance.now();
 		for (let i = 0; i < 6; i++) await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 		const frameMs = (performance.now() - start) / 6;
-		// 3.6px presses decay below .03px in <150 fixed steps; allow twofold headroom.
-		timeout = Math.min(45_000, Math.max(timeout, frameMs * 150 * 2));
+		// Default: 3.6px presses decay below .03px in <150 fixed steps.
+		// Pigment supplies its longer drying clock; allow twofold headroom.
+		timeout = Math.min(45_000, Math.max(timeout, frameMs * maxFrames * 2));
 	}
-	await vi.waitFor(() => expect(subscribers()).toBe(0), { timeout });
+	await vi.waitFor(() => expect(subscribers()).toBe(0), { timeout, interval });
 }

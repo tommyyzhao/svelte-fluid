@@ -11,6 +11,7 @@ import { acquireGlHost, releaseGlHost } from '../gl-host.js';
 import { SurfaceEngine } from '../surface/SurfaceEngine.js';
 import type { SurfaceConfig } from '../surface/SurfaceEngine.js';
 import { mottle } from './surface-mottle.js';
+import { waitForSurfaceSettle } from './renderer.js';
 
 const live: (() => void)[] = [];
 afterEach(() => {
@@ -362,11 +363,11 @@ describe('LiquidButton', () => {
 		const boom = () => { throw new Error('consumer'); };
 		const b = button({ onpointerdown: boom, onkeydown: boom });
 		await frames(3);
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 4000 });
+		await waitForSurfaceSettle(activeFrameSubscribers, 4000);
 		b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, clientX: 20, clientY: 20 }));
 		expect(activeFrameSubscribers()).toBeGreaterThan(0);
 		expect(err).toHaveBeenCalledTimes(1);
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 4000 });
+		await waitForSurfaceSettle(activeFrameSubscribers, 4000);
 		b.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }));
 		expect(activeFrameSubscribers()).toBeGreaterThan(0);
 		expect(err).toHaveBeenCalledTimes(2);
@@ -386,7 +387,7 @@ describe('LiquidButton', () => {
 		stubReducedMotion(true);
 		const b = button();
 		await frames(6);
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 4000 });
+		await waitForSurfaceSettle(activeFrameSubscribers, 4000);
 		await userEvent.click(b);
 		await frames(2);
 		expect(activeFrameSubscribers()).toBe(0);
@@ -421,7 +422,7 @@ describe('LiquidSegmented', () => {
 	it('native arrow keys change the selection and slosh the lens', async () => {
 		const f = segmented();
 		await frames(3);
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 4000 });
+		await waitForSurfaceSettle(activeFrameSubscribers, 4000);
 		const radios = f.querySelectorAll<HTMLInputElement>('input');
 		radios[0].focus();
 		await userEvent.keyboard('{ArrowRight}');
@@ -429,7 +430,7 @@ describe('LiquidSegmented', () => {
 		expect(radios[1].checked).toBe(true);
 		expect(document.activeElement).toBe(radios[1]);
 		expect(activeFrameSubscribers()).toBeGreaterThan(0);
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 4000 });
+		await waitForSurfaceSettle(activeFrameSubscribers, 4000);
 	});
 
 	it('clicking an option updates the bound value', async () => {
@@ -461,7 +462,7 @@ describe('LiquidSegmented', () => {
 		const set = stubReducedMotion(true);
 		const f = segmented();
 		await frames(3);
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 4000 });
+		await waitForSurfaceSettle(activeFrameSubscribers, 4000);
 		await userEvent.click(f.querySelectorAll('label')[2]);
 		flushSync();
 		await frames(3);

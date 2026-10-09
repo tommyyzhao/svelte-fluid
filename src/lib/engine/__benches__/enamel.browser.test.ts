@@ -9,6 +9,7 @@ import { activeFrameSubscribers } from '../frame-scheduler.js';
 import { acquireGlHost } from '../gl-host.js';
 import { EnamelEngine } from '../enamel/EnamelEngine.js';
 import type { EnamelConfig } from '../enamel/EnamelEngine.js';
+import { waitForSurfaceSettle } from './renderer.js';
 
 const live: (() => void)[] = [];
 afterEach(() => {
@@ -187,7 +188,7 @@ describe('EnamelEngine', () => {
 		expect(activeFrameSubscribers()).toBe(0);
 		e.setVisible(true);
 		e.release();
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 4000 });
+		await waitForSurfaceSettle(activeFrameSubscribers, 4000);
 	});
 
 	it('undefined config fields keep their resolved values', async () => {
@@ -275,7 +276,7 @@ describe('EnamelText', () => {
 		expect(down.defaultPrevented).toBe(false);
 		expect(activeFrameSubscribers()).toBeGreaterThan(0);
 		window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 3 }));
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 4000 });
+		await waitForSurfaceSettle(activeFrameSubscribers, 4000);
 	});
 
 	it('shows plain text when float colour buffers are unavailable', async () => {
@@ -298,7 +299,7 @@ describe('EnamelText', () => {
 		const h = heading();
 		const root = h.querySelector<HTMLElement>('.enamel-text')!;
 		await vi.waitFor(() => expect(root.classList.contains('live')).toBe(true), { timeout: 4000 });
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 4000 });
+		await waitForSurfaceSettle(activeFrameSubscribers, 4000);
 		root.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 30, clientY: 50, pointerId: 4, button: 0 }));
 		await frames(2);
 		expect(activeFrameSubscribers()).toBe(0);

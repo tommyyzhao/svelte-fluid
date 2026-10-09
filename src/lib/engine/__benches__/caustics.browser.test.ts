@@ -221,7 +221,7 @@ describe('LiquidCaustics', () => {
 	it.each(['light', 'dark'] as const)('%s: at rest nothing is drawn; a ripple settles back to nothing and zero subscriptions', async (tone) => {
 		const { root } = caustics(tone);
 		await frames(4);
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 3000 });
+		await waitForSurfaceSettle(activeFrameSubscribers, 3000);
 		const canvas = root.querySelector('canvas')!;
 		const blank = (px: Uint8ClampedArray) => px.every((v, i) => i % 4 !== 3 || v === 0);
 		expect(blank(pixels(canvas))).toBe(true);
@@ -289,14 +289,14 @@ describe('LiquidCaustics', () => {
 		expect(activeFrameSubscribers()).toBeGreaterThan(0);
 		root.style.position = 'fixed';
 		root.style.top = '-5000px';
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 3000 });
+		await waitForSurfaceSettle(activeFrameSubscribers, 3000);
 	});
 
 	it('a throwing forwarded onpointermove still ripples and is logged once', async () => {
 		const err = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const { root } = caustics('dark', { onpointermove: () => { throw new Error('consumer'); } });
 		await frames(4);
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 3000 });
+		await waitForSurfaceSettle(activeFrameSubscribers, 3000);
 		const r = root.getBoundingClientRect();
 		root.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: r.left + 100, clientY: r.top + 200 }));
 		expect(activeFrameSubscribers()).toBeGreaterThan(0);
@@ -307,7 +307,7 @@ describe('LiquidCaustics', () => {
 		stubReducedMotion();
 		const { root } = caustics('dark');
 		await frames(6);
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 3000 });
+		await waitForSurfaceSettle(activeFrameSubscribers, 3000);
 		const canvas = root.querySelector('canvas')!;
 		const before = pixels(canvas);
 		// The effect carries no information, so the still final state is the content alone.

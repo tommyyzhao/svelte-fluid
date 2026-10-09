@@ -5,9 +5,10 @@ import InkPaper from '../../InkPaper.svelte';
 import { activeFrameSubscribers } from '../frame-scheduler.js';
 import { PigmentEngine } from '../pigment/PigmentEngine.js';
 import type { PigmentEngineOptions } from '../pigment/PigmentEngine.js';
-import { bloom } from '../pigment/brush.js';
+import { bloom, MAX_WET_STEPS, MAX_DAB_DELAY } from '../pigment/brush.js';
 import type { Dab } from '../pigment/brush.js';
 import * as S from '../pigment/shaders.js';
+import { waitForSurfaceSettle } from './renderer.js';
 
 /* ADR-0090: PigmentEngine and InkPaper on hardware WebGL2. */
 
@@ -394,10 +395,10 @@ describe('InkPaper', () => {
 		expect(root.querySelector('h2')?.textContent).toBe('Dry title');
 		await vi.waitFor(() => expect(canvas.width).toBeGreaterThan(0));
 		// Opening wash dries, then nothing is subscribed.
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 30000, interval: 100 });
+		await waitForSurfaceSettle(activeFrameSubscribers, 30000, MAX_WET_STEPS + MAX_DAB_DELAY, 100);
 		(root.querySelector('button') as HTMLButtonElement).focus();
 		expect(activeFrameSubscribers()).toBe(1);
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 30000, interval: 100 });
+		await waitForSurfaceSettle(activeFrameSubscribers, 30000, MAX_WET_STEPS + MAX_DAB_DELAY, 100);
 	});
 
 	it('wicks right up to a pill button outline and keeps the pill dry', async () => {
@@ -415,10 +416,10 @@ describe('InkPaper', () => {
 		const root = el.firstElementChild as HTMLElement;
 		const canvas = root.querySelector('canvas')!;
 		await vi.waitFor(() => expect(canvas.width).toBe(360), { timeout: 5000 });
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 30000, interval: 100 });
+		await waitForSurfaceSettle(activeFrameSubscribers, 30000, MAX_WET_STEPS + MAX_DAB_DELAY, 100);
 		const before = pixels(canvas);
 		(root.querySelector('button') as HTMLButtonElement).focus();
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 30000, interval: 100 });
+		await waitForSurfaceSettle(activeFrameSubscribers, 30000, MAX_WET_STEPS + MAX_DAB_DELAY, 100);
 		await new Promise((r) => setTimeout(r, 50));
 		const after = pixels(canvas);
 		const W = canvas.width;
@@ -468,7 +469,7 @@ describe('InkPaper', () => {
 		const root = el.firstElementChild as HTMLElement;
 		const canvas = root.querySelector('canvas')!;
 		await vi.waitFor(() => expect(canvas.width).toBeGreaterThan(0));
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 30000, interval: 100 });
+		await waitForSurfaceSettle(activeFrameSubscribers, 30000, MAX_WET_STEPS + MAX_DAB_DELAY, 100);
 		const dark = () => {
 			const px = pixels(canvas);
 			let n = 0;
@@ -487,7 +488,7 @@ describe('InkPaper', () => {
 		expect(dark()).toBeGreaterThan(before);
 
 		getSelection()?.removeAllRanges();
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 30000, interval: 100 });
+		await waitForSurfaceSettle(activeFrameSubscribers, 30000, MAX_WET_STEPS + MAX_DAB_DELAY, 100);
 		const afterBare = dark();
 		await dragFrom([22, 30], [190, 30]);
 		expect(getSelection()?.toString().length).toBeGreaterThan(3);
