@@ -121,3 +121,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Trusted Publishing writes a verified-build attestation to npm.
           NPM_CONFIG_PROVENANCE: 'true'
+          # prepublishOnly skips the browser suite: every shard above already passed.
+          RELEASE_BROWSER_VERIFIED: '1'
