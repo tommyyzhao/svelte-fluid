@@ -260,7 +260,7 @@ ${SCRIPT_CLOSE}
   import {'{'} FluidDistortion {'}'} from 'svelte-fluid';
 {SCRIPT_CLOSE}
 
-&lt;FluidDistortion src="/hero.jpg" strength={'{'}0.4{'}'} intensity={'{'}24{'}'} /&gt;</code></pre>
+&lt;FluidDistortion src="/hero.jpg" width={'{'}640{'}'} height={'{'}360{'}'} strength={'{'}0.4{'}'} intensity={'{'}24{'}'} /&gt;</code></pre>
 
 <table>
 	<thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
