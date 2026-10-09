@@ -9,6 +9,7 @@ import { activeFrameSubscribers } from '../frame-scheduler.js';
 import { acquireGlHost } from '../gl-host.js';
 import { SurfaceEngine } from '../surface/SurfaceEngine.js';
 import type { SurfaceConfig } from '../surface/SurfaceEngine.js';
+import { waitForSurfaceSettle } from './renderer.js';
 
 const live: (() => void)[] = [];
 afterEach(() => {
@@ -154,7 +155,7 @@ describe('LiquidDropZone', () => {
 		expect(z.querySelector('[aria-live=polite]')!.textContent).toBe('2 files selected');
 		expect(z.classList.contains('over')).toBe(false);
 		// The ripple and the climb settle; then nothing is scheduled.
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 5000 });
+		await waitForSurfaceSettle(activeFrameSubscribers, 5000);
 	});
 
 	it('a throwing onfiles cannot break the zone; the announcement still happens', async () => {

@@ -18,6 +18,8 @@ const browserProject = defineProject({
 				: ['**/pressure-residual.browser.test.ts', '**/gpu-budget.browser.test.ts', '**/dpr-shots.browser.test.ts', '**/surface-shots.browser.test.ts', '**/surface-gpu.browser.test.ts', '**/dropzone-shots.browser.test.ts', '**/caustics-shots.browser.test.ts', '**/dropzone-gpu.browser.test.ts', '**/enamel-shots.browser.test.ts', '**/enamel-gpu.browser.test.ts', '**/shared-present.browser.test.ts'])
 		],
 		env: {
+			// Explicit local Chrome remains a hardware gate, not a software skip run.
+			SVELTE_FLUID_HARDWARE_GATE: process.env.VITEST_CHROME_PATH ? '1' : '',
 			SVELTE_FLUID_GPU_BENCH_OUT: process.env.SVELTE_FLUID_GPU_BENCH_OUT ?? '',
 			SVELTE_FLUID_GPU_BENCH_PRESETS: process.env.SVELTE_FLUID_GPU_BENCH_PRESETS ?? '',
 			SVELTE_FLUID_GPU_BENCH_TIER: process.env.SVELTE_FLUID_GPU_BENCH_TIER ?? '',
@@ -104,6 +106,8 @@ const nodeProject = defineProject({
 });
 
 export default defineConfig({
+	// Keep worktree runs from writing through a shared node_modules symlink.
+	cacheDir: '.svelte-kit/vitest-cache',
 	plugins: [sveltekit()],
 	test: {
 		projects: [nodeProject, ...(process.env.VITEST_BROWSER ? [browserProject] : [])]

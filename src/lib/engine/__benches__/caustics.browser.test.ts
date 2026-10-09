@@ -10,6 +10,7 @@ import { acquireGlHost } from '../gl-host.js';
 import { LABEL_MIN_CONTRAST, LOOKS, hexToSrgb, overlayCap, overlayContrast } from '../surface/look.js';
 import { SurfaceEngine } from '../surface/SurfaceEngine.js';
 import { seams } from './seams.js';
+import { waitForSurfaceSettle } from './renderer.js';
 
 const live: (() => void)[] = [];
 afterEach(() => {
@@ -229,7 +230,7 @@ describe('LiquidCaustics', () => {
 		expect(activeFrameSubscribers()).toBeGreaterThan(0);
 		await frames(10);
 		expect(blank(pixels(canvas))).toBe(false);
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0), { timeout: 4000 });
+		await waitForSurfaceSettle(activeFrameSubscribers, 4000);
 		expect(blank(pixels(canvas))).toBe(true);
 	});
 

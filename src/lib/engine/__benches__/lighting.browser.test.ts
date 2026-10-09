@@ -187,7 +187,9 @@ describe('independent thickness transport', () => {
 		}
 	});
 	it('sunrays gain prevents a sub-byte RGB/height field from settling while visibly amplified', async () => {
-		for (const bytes of [false, true]) for (const weight of [100, 1e6]) {
+		// 1e6 overflows the R16F ray target (max 65504); Inf filtering is driver-dependent.
+		// 1000 still amplifies sub-byte dye ~7800x, with the same assertions and finite storage.
+		for (const bytes of [false, true]) for (const weight of [100, 1000]) {
 			const { engine, h } = setup({ sunrays: true, sunraysWeight: weight });
 			try {
 				engine.splat(0.5, 0.5, 20, 0, { r: 0.001, g: 0, b: 0 });
