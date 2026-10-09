@@ -116,3 +116,28 @@ readbacks), and the energy evidence is strong but exploratory, so users on
 high-refresh displays can choose `maxFps={60}`. Changing the default needs the
 full held-out E1 matrix at 120 Hz (headed or on a 120 Hz-capable runner), a
 held-out E2 pass, and an owner motion review.
+
+### Owner-approved paired follow-up (2026-10-09 train checkpoint)
+
+ADR 0107 Amendment 5 (`9678d33`, before capture) reopened headed 120 Hz
+measurement for this lane only. Engine source `9984ca1`, harness `d9563ce`;
+public `maxFps=0`/`60` overrides, independent-browser paired R3, frozen
+windows/parser/retry list. Train attempted all 132 originals plus 18 registered
+retries: 126 resolved clean slots, 18/22 complete scenes. Six missing slots
+and four incomplete scenes remain descriptive, never silently replayed.
+
+Train active Amendment 5 secondary: **18/18 complete scenes pass**. Amendment 6
+(`a3d2dee`) primary: median paired saving **40.1514%**, median baseline active
+noise **2.81076%**, twice noise **5.62152%**, ≥5% floor: **PASS**. Active arm
+headlines **205.3913 → 116.8297 GPU-ms/s**. Untouched nonzero complete-scene
+paired saving **39.2635%**, own measured noise **3.53698%** descriptive; the
+registered active-noise rule is not replaced by an untouched threshold.
+Default/Toroidal untouched windows preserve 0/0 rest without a relative ratio.
+All clean RAF probes approximately 120 Hz, genuine hidden RAF 0. One hidden
+window is nonzero but within its blank-control floor; not called exact zero.
+
+Full tables, missing slots, load/CI/wrapper incidents and verified cleanup:
+`dev-docs/benchmarks/energy-eval.md`, “120 Hz paired maxFps evaluation”. Train
+results committed before held-out. Lead accepted train A6 go; held-out decision
+still pending. Amendment 5 uses existing byte-equality hardware evidence for E2
+stills; motion review still belongs to the owner. **Default remains 0**.
