@@ -1,6 +1,6 @@
 # Independent-thickness lighting — owner review packet
 
-Owner appearance approval **pending**. Current treatment under ADR 0100; no
+Appearance **approved** 2026-10-09 (lead, under owner-delegated decision; Bead 9yj). Current treatment under ADR 0100; no
 historical parity or calibrated free-surface claim. Ten presets selected from
 `src/lib/presets/registry.ts` by `shading: true`:
 

@@ -68,7 +68,7 @@ Fresh statistics separate half-resolution 12/12, Karman128/p24 4/4, desaturation
 
 ## Owner spot-check
 
-Five randomly sampled calibration pairs; owner review **pending**. Disagreement reopens the affected decision. Composites committed (2938902 bytes total); original /tmp paths ephemeral. Read the composite before consulting verdict/mapping. Owner copies are losslessly re-encoded PNGs, preserving pixels.
+Five randomly sampled calibration pairs; reviewed 2026-10-09 by the lead under owner delegation (Bead e27): spot-3 agrees; spot-2 not unblinded, and resolution changes are outside E2 per Amendment 1. No decision reopened. Disagreement reopens the affected decision. Composites committed (2938902 bytes total); original /tmp paths ephemeral. Read the composite before consulting verdict/mapping. Owner copies are losslessly re-encoded PNGs, preserving pixels.
 
 | # | Scene | Control | Unblinded pair verdict | Durable image | Original input |
 |---|---|---|---|---|---|
