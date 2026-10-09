@@ -8,7 +8,7 @@ import type { PigmentEngineOptions } from '../pigment/PigmentEngine.js';
 import { bloom, MAX_WET_STEPS, MAX_DAB_DELAY } from '../pigment/brush.js';
 import type { Dab } from '../pigment/brush.js';
 import * as S from '../pigment/shaders.js';
-import { waitForSurfaceSettle } from './renderer.js';
+import { glDeadline, waitForSurfaceSettle } from './renderer.js';
 
 /* ADR-0090: PigmentEngine and InkPaper on hardware WebGL2. */
 
@@ -269,14 +269,14 @@ describe('PigmentEngine (ADR-0090)', () => {
 		e.setStill(true);
 		e.resize(320, 200, 1);
 		expect(e.wet).toBe(true);
-		await vi.waitFor(() => expect(e.wet).toBe(false), { timeout: 20000, interval: 50 });
+		await vi.waitFor(() => expect(e.wet).toBe(false), { timeout: glDeadline(20000), interval: 50 });
 		await frames(2);
 		expect(atPresent.length).toBeGreaterThan(0);
 		expect(atPresent.every((wet) => wet === false)).toBe(true);
 		expect(sum(e.readField('water'), 0)).toBe(0);
 		expect(sum(e.readField('deposited'))).toBeGreaterThan(1);
 		expect(e.subscribed).toBe(false);
-	});
+	}, glDeadline(60_000));
 
 	it('subscribes no frames when dry, idle or hidden', async () => {
 		const e = engine();

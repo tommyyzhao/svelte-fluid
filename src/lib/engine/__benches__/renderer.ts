@@ -13,6 +13,10 @@ if (import.meta.env.SVELTE_FLUID_HARDWARE_GATE) {
 	expect(softwareGL, `hardware gate renderer: ${renderer}`).toBe(false);
 }
 
+// Threefold headroom tolerates 20 fps versus the engine's 60 Hz clamped clock;
+// cap software waits/tests at three minutes, without changing hardware deadlines.
+export const glDeadline = (ms: number) => softwareGL ? Math.min(ms * 3, 180_000) : ms;
+
 /** Fixed-step models slow with rAF on software GL; hardware keeps its original deadline. */
 export async function waitForSurfaceSettle(subscribers: () => number, hardwareTimeout: number, maxFrames = 150, interval = 50): Promise<void> {
 	let timeout = hardwareTimeout;
