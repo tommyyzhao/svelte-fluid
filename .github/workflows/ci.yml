@@ -48,7 +48,8 @@ jobs:
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # SwiftShader suite measured 1088 s; leave setup and runner-variance headroom.
+    timeout-minutes: 30
 
     steps:
       - name: Checkout

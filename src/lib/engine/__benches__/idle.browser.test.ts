@@ -8,6 +8,7 @@ import { dyeVisibilityGain, isQuiet, isQuietFlags } from '../settle.js';
 import { createFBO, disposeFBO } from '../gl-utils.js';
 import type { FBO } from '../internal-types.js';
 import { DYE_HEIGHT_CEILING } from '../shaders.js';
+import { softwareGL } from './renderer.js';
 
 /* ADR 0099: a decayed visible engine stops scheduling frames until input. */
 
@@ -663,10 +664,18 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		// same wall time and are compared 1 s later. Not bit-exact: each runs its
 		// own wall-clock dt sequence (variable, clamped), and A's first dt after
 		// wake is clamped from a long gap.
-		const cfg = { densityDissipation: 4, seed: 7 } satisfies FluidConfig;
+		const cfg = {
+			densityDissipation: 4, seed: 7,
+			// Software GL's long draws give the engines different clamped wall-clock dt.
+			// Isolate wake parity there; retain the original live hardware timing gate.
+			...(softwareGL ? { simResolution: 16, dyeResolution: 64, initialSplatCount: 0, bloom: false, sunrays: false } : {})
+		} satisfies FluidConfig;
 		const a = engine(cfg);
 		const b = engine({ ...cfg, autoSplatRate: 1e-9 });
 		await until(() => a.isSettled, 20_000);
+		if (softwareGL) for (const e of [a, b]) {
+			(e as unknown as { calcDeltaTime(): number }).calcDeltaTime = () => 1 / 60;
+		}
 		expect(b.isSettled).toBe(false);
 		const S = [0.4, 0.5, 200, 20, { r: 0.8, g: 0.3, b: 0.1 }] as const;
 		a.splat(...S);

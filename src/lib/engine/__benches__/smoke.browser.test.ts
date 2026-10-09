@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { FluidEngine, _setContextTier } from '../FluidEngine.js';
+import { softwareGL } from './renderer.js';
 
 afterEach(() => _setContextTier('auto'));
 
 describe('FluidEngine smoke boot (WebGL2)', () => {
-	it('constructs on its own WebGL2 canvas context below the tier limit', () => {
+	// Hardware-only: renderer assertion + requireHardwareAcceleration reject software GL.
+	// Context-tier/disposal coverage still runs on software GL in shared-context.browser.test.ts.
+	it.skipIf(softwareGL)('constructs on its own WebGL2 canvas context below the tier limit [hardware: non-software renderer and requireHardwareAcceleration]', () => {
 		const canvas = document.createElement('canvas');
 		canvas.width = 64;
 		canvas.height = 64;
@@ -17,6 +20,11 @@ describe('FluidEngine smoke boot (WebGL2)', () => {
 		console.log('RELEASE_GATE_RENDERER', renderer);
 		expect(renderer).not.toMatch(/swiftshader|llvmpipe|software/i);
 		engine.dispose();
+		// Even when the shared tier is selected, hardware-required engines own their context.
+		_setContextTier('shared');
+		const hw = new FluidEngine({ canvas: document.createElement('canvas'), autoStart: false, config: { pointerInput: false, requireHardwareAcceleration: true } });
+		try { expect(hw.sharedContext).toBe(false); }
+		finally { hw.dispose(); }
 	});
 
 	it('constructs on the shared WebGL2 host', () => {
