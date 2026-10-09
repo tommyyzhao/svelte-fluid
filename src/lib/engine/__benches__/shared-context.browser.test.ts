@@ -13,6 +13,7 @@ import { FluidEngine, _ownContextEngines, _setContextTier } from '../FluidEngine
 import { activeFrameSubscribers } from '../frame-scheduler.js';
 import { PRESETS } from '../../presets/registry.js';
 import type { FluidConfig } from '../types.js';
+import { softwareGL, waitForSurfaceSettle } from './renderer.js';
 
 interface Harness {
 	gl: WebGL2RenderingContext;
@@ -119,13 +120,16 @@ describe('shared WebGL2 host: pixel parity with the per-canvas path', () => {
 	const table: Record<string, { gl: number; glMax: number; page: number; pageMax: number }> = {};
 	for (const [name, config] of CASES) {
 		it(name, async () => {
-			const own = create(config, false);
+			// Tier parity is resolution-independent; keep Karman's full solver and
+			// 30 frames, but avoid its 1024px dye field on CPU-rendered GL.
+			const fixture = softwareGL && name === 'Karman' ? { ...config, simResolution: 96, dyeResolution: 256 } : config;
+			const own = create(fixture, false);
 			own.engine.advance(STEPS, DT);
 			const ref = output(own.h, W, H);
 			own.h.renderCore(null);
 			const refPage = visible(own.canvas);
 
-			const shared = create(config, true);
+			const shared = create(fixture, true);
 			shared.engine.advance(STEPS, DT);
 			const got = output(shared.h, W, H);
 			shared.h.renderCore(null);
@@ -357,7 +361,7 @@ describe('context tiers through <Fluid>', () => {
 		expect(live()).toBe(expected);
 		for (let i = 0; i < 50; i++) {
 			window.scrollTo(0, 2500);
-			await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0));
+			await waitForSurfaceSettle(activeFrameSubscribers, 1000);
 			if (tier === 'own') expect(_ownContextEngines()).toBe(0);
 			window.scrollTo(0, 0);
 			await vi.waitFor(() => expect(ready).toHaveBeenCalledTimes(3 * (i + 2)));
@@ -390,7 +394,7 @@ describe('review fixes (ADR-0093)', () => {
 		const sharedCanvas = els[8].querySelector('canvas')!;
 		// Scroll every instance out: own slots free up (0 own live).
 		window.scrollTo(0, 2500);
-		await vi.waitFor(() => expect(activeFrameSubscribers()).toBe(0));
+		await waitForSurfaceSettle(activeFrameSubscribers, 1000);
 		expect(_ownContextEngines()).toBe(0);
 		// Back in: each canvas keeps its first tier, so S stays shared.
 		window.scrollTo(0, 0);
