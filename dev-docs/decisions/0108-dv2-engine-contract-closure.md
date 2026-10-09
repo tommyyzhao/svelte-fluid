@@ -1,6 +1,6 @@
 # ADR 0108: dv2 engine contract closure
 
-**Status:** Accepted (scope/contract); owner lighting appearance approval pending
+**Status:** Accepted (scope/contract); lighting appearance approved 2026-10-09 (lead, under owner-delegated decision; Bead 9yj)
 **Date:** 2026-10-07
 
 ## Context
