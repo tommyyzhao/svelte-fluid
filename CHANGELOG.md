@@ -1,5 +1,151 @@
 # Changelog
 
+## 1.0.0-rc.0
+
+### Major Changes
+
+- [`a170f39`](https://github.com/tommyyzhao/svelte-fluid/commit/a170f39c5ea3386ef6c272ef4e60916aa072662d) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Seven interface primitives are now exported (ADR-0090, 0091/0092, 0094, 0096, 0097). Each is a real native element with a decorative WebGL2 surface. They share one WebGL2 context per page (ADR-0088/0093), so they do not count against the browser's context cap. Without WebGL2 each falls back to a plain, fully styled native control. All honour `prefers-reduced-motion`.
+
+  - `InkPaper`: a `div` of paper that takes watercolour from pointer, touch and pen strokes. Props `paper`, `pigments`, `brush`, `seed`; `data-ink-resist` keeps a child dry, `data-ink-wick` blooms pigment on focus.
+  - `LiquidButton`: a native `<button>` with a lit liquid surface that ripples on press.
+  - `LiquidSegmented`: a native radio group whose selected option sits on a liquid lens that sloshes across on change.
+  - `LiquidDropZone`: a native file picker and drop target with a meniscus along its edge; `accept`, `multiple`, `onfiles`, `announce`.
+  - `LiquidCaustics`: caustic light over live content where the user acts; label and body text keep 4.5:1.
+  - `LiquidToggle`: a native checkbox `role="switch"` with the existing height-field liquid lens sliding between Off and On. Replaces the removed `FoilSwitch` and its exclusive metal renderer.
+  - `EnamelText`: display text in glazed enamel, placed inside your own heading (`<h2><EnamelText text="Harbour" /></h2>`). A press dents the relief and it relaxes; the text stays a selectable native `<span>`. Props `text`, `tone`, `color`; glyph pixels keep 3:1 (large) / 4.5:1 contrast.
+
+  New types: `InkPaperProps`, `InkBrush`, `LiquidButtonProps`, `LiquidSegmentedProps`, `LiquidSegmentedOption`, `LiquidDropZoneProps`, `LiquidCausticsProps`, `LiquidToggleProps`, `EnamelTextProps`, `LiquidTone`. See `/docs/components`.
+
+  Breaking: removes `FoilSwitch`/`FoilSwitchProps`; use `LiquidToggle`/`LiquidToggleProps`. Native checkbox semantics replace the button switch. No metal renderer remains.
+
+- [`287e0bd`](https://github.com/tommyyzhao/svelte-fluid/commit/287e0bd0cb6009e623bb0cddacbef2241a5b15ff) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Remove the internal WebGL types from the public API so every root-exported declaration is GL-type-neutral, and remove the deprecated `ToroidalTempest` alias.
+
+  **Removed** from the `svelte-fluid` root: the types `FBO`, `DoubleFBO`, `ExtInfo` and `ResolvedConfig`. They exposed WebGL handles (`WebGLTexture`, `WebGLFramebuffer`) and the engine's internal SCREAMING_CASE config; they were marked `@deprecated` in 0.8 and no public API returned or accepted them. **Replacement: none.**
+
+  **Migration:** most consumers need no change. Only code that imported these four names (type-only) must drop the import; if you need a config shape, use `FluidConfig` (the camelCase input type, unchanged) and `FluidHandle`.
+
+  **Also removed:** the `ToroidalTempest` component and `ToroidalTempestProps` type (aliases deprecated since 0.4.0). Use `Toroidal` and `ToroidalProps`; they are the same component and type.
+
+  **Also removed:** `FlowSource.samples`, a deprecated hint ignored by the analytic source renderer. Delete the property from source objects; no replacement or runtime change is needed.
+
+  **Signature changes:** `isWebGLAvailable(attributes?)` now takes `{ failIfMajorPerformanceCaveat?: boolean }` instead of `WebGLContextAttributes`. This is wider-compatible for existing callers that passed only that field; a caller that passed a full `WebGLContextAttributes` object literal with other keys now gets an excess-property error (pass only `failIfMajorPerformanceCaveat`). `WebGLUnavailableError`, `WebGLUnavailableReason` and `GetContextOptions` are unchanged and now live in a GL-free module. No runtime behaviour changes.
+
+  `bun run prepack` now compiles a strict consumer against `dist/` and fails if any declaration names a `WebGL*`, `GPU*`, `FBO`, `DoubleFBO`, `ExtInfo`, `ProgramWrap` or `ResolvedConfig` identifier.
+
+### Minor Changes
+
+- [`54055cd`](https://github.com/tommyyzhao/svelte-fluid/commit/54055cdec62a49976eb06a4026706d259e93902e) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Accessibility defaults.
+
+  - `prefers-reduced-motion` is now honoured by every component: `<Fluid>` holds a
+    still frame, `FluidReveal` drops its cover so the content shows in full, and
+    `FluidStick` / `FluidDistortion` skip auto-animation.
+  - The `<canvas>` is now `aria-hidden="true"` by default because it is
+    decorative. Supplying `aria-label`, `aria-labelledby` or `role` restores
+    exposure. **Behaviour change:** consumers who relied on an unlabelled canvas
+    being exposed to assistive technology must now label it.
+  - `FluidText` and `FluidStick` wrappers expose `role="img"` with an
+    `aria-label`; `FluidDistortion` forwards `posterAlt`.
+  - Component prop types now live in `engine/types.ts` and are still exported
+    from the package root and each component.
+
+- [`5b6206e`](https://github.com/tommyyzhao/svelte-fluid/commit/5b6206ef562d5259c3109435d60c9f1c16f15678) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Display pipeline correctness fixes and opt-in tone mapping (ADR-0081).
+
+  - **Presets look unchanged by default.** Bloom spread, crispness and saturation match 0.8.0.
+  - New `toneMapping?: 'none' | 'neutral' | 'agx'` prop, default `'none'` (the 0.8.0 per-channel clip). `'neutral'` (Khronos PBR Neutral) and `'agx'` are opt-in and roll bright dye and bloom off smoothly instead of clipping to white. It is hot-updatable and recompiles only the display program.
+  - `backColor` is now exact: dark backgrounds are no longer lifted about 11/255 by gamma-encoded dither noise.
+  - Banding is reduced: every output mode (opaque, transparent, reveal, distortion) is now blue-noise dithered, not just bloom.
+  - Bloom suppresses single-pixel fireflies (Karis average on the first downsample) at unchanged cost.
+  - Transparent, reveal and distortion output is strictly premultiplied, so there is no light fringe over page content.
+
+- [`befc547`](https://github.com/tommyyzhao/svelte-fluid/commit/befc547259ad66f37f979d3201076fa104ffd56b) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Lighting from independently deposited thickness (ADR-0100 supersedes ADR-0087's geometry claim).
+
+  - `shading` now uses the same thickness-derived unit normal as specular/refraction. Pigment RGB, including black, does not determine height. The passive thin layer is not a calibrated free-surface solve. Shaded presets intentionally differ from 0.8.0; no parity or RGB-proxy mode is retained.
+  - New opt-in `specular` (0–1): a Fresnel highlight from a studio key light.
+  - New opt-in `refraction` (0–1): refracts the distortion image, or the fluid under `glass`.
+  - Both default to 0, are hot-updatable, and allocate no extra textures.
+
+- [`c2c5a13`](https://github.com/tommyyzhao/svelte-fluid/commit/c2c5a1340360763d3a1b2f2b400df1c16ff08804) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Replace RGB-derived surface geometry with independent deposited thickness in the existing dye alpha channel. Equal splats, including black pigment, have equal geometry regardless of hue or HDR brightness. Thickness is passively transported and removed with dye, not a calibrated free-surface solve. No additional framebuffer or render pass, public prop or backend selector.
+
+  Shaded appearances intentionally change; exact 0.8.0 shaded parity is not retained. Internal `readField('dye')` RGBA alpha now reports thickness in canvas-height units, not padding or display opacity (a breaking internal-test assumption for the 1.0 transition). Public premultiplied output coverage still derives from pigment/display RGB. Height-exposing optics cannot incorrectly settle solely because RGB is black; arbitrary amplified optics conservatively retain their idle limitation.
+
+- [`32b94e7`](https://github.com/tommyyzhao/svelte-fluid/commit/32b94e759f95c695ab642d9e4a1bea94d084aab3) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Rendering now uses the native device pixel ratio by default (`maxPixelRatio` default `2` → `null`).
+
+  - DPR 3 screens (most phones, some laptops) now get crisp edges instead of an upscaled DPR 2 canvas. DPR 1 and 2 screens are unaffected.
+  - Cost: measured on an M1 Max, every preset stays under 2 ms per frame at a full 1440×900 viewport on DPR 3 (worst is GasFlare at 1.76 ms). See `dev-docs/benchmarks/gpu-budget.md`.
+  - To keep the old behaviour, pass `maxPixelRatio={2}` to `<Fluid>` or to any wrapper or preset. This is worth doing for full-bleed backgrounds on low-end integrated GPUs.
+  - An invalid cap (`0`, a negative number or `NaN`) now falls back to native DPR, the new default, instead of 2.
+  - Mounted Fluid canvases follow DPR changes at unchanged fractional CSS dimensions through rearmed resolution media queries; explicit caps remain respected. Without resolution notifications, DPR updates remain CSS-resize-driven; this does not expand legacy browser support or change the reduced-motion listener requirements.
+
+- [`cbb604f`](https://github.com/tommyyzhao/svelte-fluid/commit/cbb604f940312a63818de0bcded70ab9b0d36801) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Pointer Events input (ADR 0083).
+
+  - The engine uses Pointer Events instead of mouse/touch events: pen works
+    natively, each touch is tracked per `pointerId`, and fast strokes use
+    coalesced events (bounded per frame).
+  - A drag that starts on the canvas keeps splatting after leaving it, until
+    release (pointer capture).
+  - Pen pressure modestly scales splat force (0.5x-1.5x); mouse/touch unchanged.
+    `splatOnHover` works for mouse and pen, never touch.
+  - **Behaviour change:** `touch-action: none` is no longer set by the component
+    stylesheet. The engine applies it only while the canvas owns pointer input
+    (`pointerInput` true and `pointerTarget: 'canvas'`). Decorative canvases
+    (`pointerInput={false}`) and window-target instances such as
+    `FluidBackground` no longer block touch scrolling. Set your own
+    `touch-action` if you need different behaviour on an interactive canvas.
+
+- [`d525bc8`](https://github.com/tommyyzhao/svelte-fluid/commit/d525bc885522dbbfaf3b497f0b31aa7be1aa7aa6) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Add opt-in hot `maxFps` presentation control (default `0`, present every frame; set `60` to halve presentation work on high-refresh displays). Simulation, input, automatic splats and wrapper animations keep their existing RAF cadence; only rendering and presentation are capped on faster displays. Paused invalidations, lifecycle first frames, explicit renders and the final settle image bypass the cap.
+
+- [`900e472`](https://github.com/tommyyzhao/svelte-fluid/commit/900e4723d2bc2076b320c10db17158d54414f20c) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Reduced-motion still frame and visible frame failures.
+
+  - Under `prefers-reduced-motion: reduce` every component now advances the
+    opening scene a fixed 60 steps, renders one finished frame and stays still
+    (no animation loop, no pointer response) instead of freezing raw splats. The
+    preference is followed live in both directions.
+  - A frame that throws at runtime now calls `onError` once and shows the
+    existing fallback with the new `WebGLUnavailableReason` `'render-failed'`; it
+    is not retried. `fallback` snippets that switch on `reason` should handle it.
+
+- [`db2f437`](https://github.com/tommyyzhao/svelte-fluid/commit/db2f437289b0b30fe64cb997ea3638aaff8bf9da) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - A visible `<Fluid>` whose fluid has settled stops rendering until the next input.
+
+- [`2b3e079`](https://github.com/tommyyzhao/svelte-fluid/commit/2b3e079867ce0e4acf712ccb6952da2168e14b09) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Pages with many fluid instances no longer lose WebGL contexts: beyond 8 live instances, new ones share one context.
+
+  - The first 8 live WebGL2 instances on a page keep their own context and render exactly as before.
+  - Each further instance renders on one shared hidden context with a shared compiled-program cache, and presents to its own canvas. Output is pixel-identical, including transparent and reveal. Measured on an M1 Max: shared instances construct in about 7 ms instead of about 30 ms, and 24 visible instances all stay live (8 were lost before).
+  - A shared instance costs about 0.45 ms more GPU per frame at DPR 2 (0.7 ms at DPR 3) to present. A context loss on the shared context pauses all shared instances at once, and they restore automatically.
+  - WebGL1 browsers and `requireHardwareAcceleration` always keep a context per canvas.
+
+- [`ae7de67`](https://github.com/tommyyzhao/svelte-fluid/commit/ae7de6725620b5d8dee9191c845e131b825e77d2) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - WCAG contrast floor and FluidText halo.
+
+  Text masks use an outline halo by default; other displays retain the floor.
+
+  - New `minContrast` / `contrastColor` config: the display pass lifts or darkens
+    any pixel whose contrast against the reference colour is below the ratio.
+    Off by default, so the 0.8.0 look is unchanged. Pixels already passing are
+    untouched; without a `contrastColor` the correction does nothing.
+  - `FluidText` now defaults to `minContrast={4.5}` (AA for all text sizes) against the
+    page colour (measured via a 1x1 canvas: oklch/lab/alpha safe; gradients need `contrastColor`), using a ~1.5 CSS px SDF halo (WCAG border technique). Interior dye stays
+    unchanged, WebGL1 included (halo from the coverage mask). Pass `minContrast={1}` to restore the previous output, or `3` for
+    large text. **Behaviour change**: a thin outline around `FluidText` letterforms.
+  - `FluidBackground` accepts `minContrast`; the reference is the content's text
+    colour unless `contrastColor` is set.
+  - Docs describe the guarantee and what stays with the consumer (FluidReveal
+    cover, glass reflections, text colour changes at runtime).
+
+### Patch Changes
+
+- [`e325e9a`](https://github.com/tommyyzhao/svelte-fluid/commit/e325e9a4817b40556bfd8631364a5d569d194070) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Agent docs (`/llms-full.txt`, `/SKILL.md`) now include a complete typed prop reference generated from the public types, per-component accepted props, typed handle patterns for TypeScript and strict JavaScript, and structured config types. Measured on the ADR 0107 E3 eval: held-out integration pass rate rose from 33% to 67% (Haiku) and 61% to 100% (Sonnet).
+
+- [`6bfdfcf`](https://github.com/tommyyzhao/svelte-fluid/commit/6bfdfcfda902409b455bdaeeb929e9e2392be134) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Stop stationary deposited layers only when an inert solver and exactly zero velocity prove identity transport. Preserve raw-field validity, conservative unproven-mode exclusions, staged float/byte probes and input/config wake behavior.
+
+- [`8cdf74f`](https://github.com/tommyyzhao/svelte-fluid/commit/8cdf74fa474ba89b6cc334033b14995f04579568) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Crisper mask edges at high DPR (ADR-0084).
+
+  - Container shapes, SVG/text masks and obstructions now anti-alias over about one device pixel at any pixel ratio. Before, the soft edge was a fixed fraction of the canvas and grew to 4–18 px at DPR 3.
+  - SVG path, text and obstruction masks get their edges from a GPU jump-flood signed distance field (WebGL2). WebGL1 keeps the previous bilinear mask edge.
+  - No API or prop changes. Physics, spawning and glass are unchanged.
+
+- [`afd0336`](https://github.com/tommyyzhao/svelte-fluid/commit/afd033679e027f24f1be5d87c9ac4b7efffa69c5) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - `Karman` preset GPU cost cut from ~4-11 ms to under 2 ms per frame (M1 Max, DPR 1-3). It now runs one 1/60 s solver step per frame instead of two 1/120 s substeps; outlet clearing, wall friction and the pressure-gradient drive are retuned so the inflow speed, streak brightness and vortex street look the same.
+
+- [`1ee0a91`](https://github.com/tommyyzhao/svelte-fluid/commit/1ee0a91751baead3bba696b447b8c6c7e00d801f) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Fix: opening random splats in small container shapes (e.g. a circle on a wide canvas) are no longer occasionally dropped, so a masked scene no longer sometimes opens empty for certain seeds.
+
 ## 0.8.0
 
 ### Minor Changes
