@@ -8,7 +8,7 @@ import { dyeVisibilityGain, isQuiet, isQuietFlags } from '../settle.js';
 import { createFBO, disposeFBO } from '../gl-utils.js';
 import type { FBO } from '../internal-types.js';
 import { DYE_HEIGHT_CEILING } from '../shaders.js';
-import { softwareGL } from './renderer.js';
+import { glDeadline, softwareGL } from './renderer.js';
 
 /* ADR 0099: a decayed visible engine stops scheduling frames until input. */
 
@@ -154,7 +154,7 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 			p.renderCore(target);
 			expect(read(target)).toEqual(before);
 			p.autoStart = true; p.deterministicMode = false; e.resume();
-			await until(() => e.isSettled, 10_000);
+			await until(() => e.isSettled, glDeadline(10_000));
 			expect(e.settleCheckStats.checks).toBe(3);
 			expect(activeFrameSubscribers()).toBe(0);
 			expect(await rafCount(250)).toBe(0);
@@ -168,12 +168,12 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 				wake();
 				expect(e.isSettled).toBe(false);
 				expect(activeFrameSubscribers()).toBe(1);
-				await until(() => e.isSettled, 10_000);
+				await until(() => e.isSettled, glDeadline(10_000));
 				expect(activeFrameSubscribers()).toBe(0);
 			}
 			console.info(`[idle fixed point ${mode}] retained thickness, exact transport/display, three probes, zero subscribers/RAF, splat/config wake`);
 		} finally { disposeFBO(gl, target); disposeFBO(gl, dyeTarget); }
-	}, 40_000);
+	}, glDeadline(40_000));
 
 	it('colored HDR fixed point retains the visible shared canvas on rectangular power-of-two grids with projection', async () => {
 		_setContextTier('shared');
@@ -203,7 +203,7 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 				expect(e.readField('velocity').data.every((v) => v === 0)).toBe(true);
 				expect(e.readField('pressure').data.every((v) => v === 0)).toBe(true);
 				p.autoStart = true; p.deterministicMode = false; e.resume();
-				await until(() => e.isSettled, 10_000);
+				await until(() => e.isSettled, glDeadline(10_000));
 				await e.presented();
 				const capture = document.createElement('canvas'); capture.width = 256; capture.height = 128;
 				const context = capture.getContext('2d')!;
@@ -221,7 +221,7 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 				e.dispose();
 			}
 		} finally { _setContextTier('auto'); }
-	}, 30_000);
+	}, glDeadline(30_000));
 
 	it.each([false, true])('inert proof rejects moving/forced/masked/unproven scenes (byte=%s)', async (bytes) => {
 		for (const patch of [
@@ -282,7 +282,7 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 	it('default engine settles to zero frame subscribers, then renders no rAF, wake + re-settle', async () => {
 		const e = engine({ densityDissipation: 4 });
 		expect(activeFrameSubscribers()).toBeGreaterThanOrEqual(1);
-		const settleMs = await until(() => activeFrameSubscribers() === 0, 20_000);
+		const settleMs = await until(() => activeFrameSubscribers() === 0, glDeadline(20_000));
 		console.info(`[idle] time-to-settle (densityDissipation 4): ${(settleMs / 1000).toFixed(2)} s`);
 		expect(e.isSettled).toBe(true);
 		expect(await rafCount(2000)).toBe(0);
@@ -290,13 +290,13 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		e.splat(0.5, 0.5, 300, 0, { r: 1, g: 0.5, b: 0.2 });
 		expect(e.isSettled).toBe(false);
 		expect(activeFrameSubscribers()).toBeGreaterThanOrEqual(1);
-		await until(() => activeFrameSubscribers() === 0, 20_000);
+		await until(() => activeFrameSubscribers() === 0, glDeadline(20_000));
 		expect(e.isSettled).toBe(true);
 		const stats = e.settleCheckStats;
 		console.info(
 			`[idle] check cost: ${(stats.totalMs / stats.checks).toFixed(3)} ms per check, ${(stats.totalMs / stats.checks / 30).toFixed(4)} ms/frame (${stats.checks} checks)`
 		);
-	}, 60_000);
+	}, glDeadline(60_000));
 
 	it.each(['webgl1', 'webgl2-byte'] as const)('%s fallback settles, preserves final image, wakes and re-settles', async (mode) => {
 		const canvas = document.createElement('canvas');
@@ -310,7 +310,7 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		p.autoStart = true;
 		p.deterministicMode = false;
 		e.resume();
-		await until(() => e.isSettled, 20_000);
+		await until(() => e.isSettled, glDeadline(20_000));
 		expect(activeFrameSubscribers()).toBe(0);
 		expect(isQuietFlags(p.settleBytes)).toBe(true);
 		// Render once into a retained target: default drawing buffers need not persist.
@@ -333,11 +333,11 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		} finally { disposeFBO(gl, target); }
 		e.splat(0.5, 0.5, -300, 400, { r: 2, g: 0.5, b: 0.2 });
 		expect(e.isSettled).toBe(false);
-		await until(() => e.isSettled, 20_000);
+		await until(() => e.isSettled, glDeadline(20_000));
 		expect(activeFrameSubscribers()).toBe(0);
 		const stats = e.settleCheckStats;
 		console.info(`[idle ${mode}] CPU stage ${(stats.stageMs / stats.checks).toFixed(3)} ms/check, readback ${(stats.readbackMs / stats.checks).toFixed(3)} ms/check; not GPU certification`);
-	}, 60_000);
+	}, glDeadline(60_000));
 
 	it.each(['webgl1', 'webgl2-byte'] as const)('%s delayed image/dither readiness wakes empty special renderers and re-settles', async (mode) => {
 		const NativeImage = window.Image;
@@ -371,7 +371,7 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 				p.autoStart = true; p.deterministicMode = false; e.resume();
 				await until(() => pending.every((entry) => entry.ready), 5000);
 				expect(pending).toHaveLength(special === 'distortion' ? 2 : 1);
-				await until(() => e.isSettled, 10_000);
+				await until(() => e.isSettled, glDeadline(10_000));
 				expect(p.ditheringTexture.width).toBe(1);
 				// Decode real images normally; defer only delivery of readiness callbacks.
 				for (const entry of pending) {
@@ -379,7 +379,7 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 					entry.release();
 					expect(e.isSettled).toBe(false);
 					expect(activeFrameSubscribers()).toBe(1);
-					await until(() => e.isSettled, 10_000);
+					await until(() => e.isSettled, glDeadline(10_000));
 					expect(activeFrameSubscribers()).toBe(0);
 				}
 				expect(p.ditheringTexture.width).toBe(64);
@@ -401,7 +401,7 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 				e.dispose();
 			}
 		} finally { vi.unstubAllGlobals(); }
-	}, 60_000);
+	}, glDeadline(60_000));
 
 	it.each(['webgl1', 'webgl2-byte'] as const)('%s flags equal issue-time signed velocity/HDR dye maxima across odd edges', async (mode) => {
 		const canvas = document.createElement('canvas');
@@ -507,11 +507,11 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 			e.dispose();
 			sibling.setConfig({ densityDissipation: 100 });
 			other.autoStart = true; other.deterministicMode = false; sibling.resume();
-			await until(() => sibling.isSettled, 10_000);
+			await until(() => sibling.isSettled, glDeadline(10_000));
 			expect(other.failed).toBe(false);
 			expect(activeFrameSubscribers()).toBe(0);
 		} finally { _setContextTier('auto'); }
-	}, 20_000);
+	}, glDeadline(20_000));
 
 	it.each(['distortion', 'reveal'] as const)('%s amplifies sub-epsilon dye; only exact zero may settle', async (mode) => {
 		for (const bytes of [false, true]) {
@@ -595,7 +595,7 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 			const e = engine({ initialSplatCount: 0, autoSplatRate: 0, flow: { visualization: { colorBy } } });
 			const p = e as unknown as { solverMayContainContent: boolean; canReadSettleFloat(): boolean };
 			if (bytes) p.canReadSettleFloat = () => false;
-			await until(() => e.isSettled, 10_000);
+			await until(() => e.isSettled, glDeadline(10_000));
 			expect(p.solverMayContainContent).toBe(false);
 			for (const field of ['velocity', 'pressure', 'dye', ...(colorBy === 'scalar' ? ['scalar'] as const : [])] as const) {
 				const data = e.readField(field, field === 'scalar' ? { components: 3 } : {}).data;
@@ -613,7 +613,7 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 			console.info(`[idle empty ${colorBy} ${bytes ? 'byte' : 'float'}] raw fields zero, quiet callbacks ${callbacks}, black splat woke; nonempty flow remains active`);
 			e.dispose();
 		}
-	});
+	}, glDeadline(60_000));
 
 	it('nonempty non-dye flow visualization is explicitly unsupported by dye-only quiet proof', () => {
 		const e = engine({ initialSplatCount: 0, flow: { visualization: { colorBy: 'speed' } } }, false);
@@ -625,21 +625,22 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		expect(e.isSettled).toBe(false);
 	});
 
+	// The title is the hardware deadline; software GL scales the clamped-clock wait.
 	it('default densityDissipation settles within 20 s', async () => {
 		engine();
-		const settleMs = await until(() => activeFrameSubscribers() === 0, 20_000);
+		const settleMs = await until(() => activeFrameSubscribers() === 0, glDeadline(20_000));
 		console.info(`[idle] time-to-settle (default config): ${(settleMs / 1000).toFixed(2)} s`);
-	}, 30_000);
+	}, glDeadline(30_000));
 
 	it('a pointermove on the canvas wakes a settled engine (hover splat)', async () => {
 		const canvas = document.createElement('canvas');
 		const e = engine({ densityDissipation: 4, pointerInput: true }, true, canvas);
-		await until(() => activeFrameSubscribers() === 0, 20_000);
+		await until(() => activeFrameSubscribers() === 0, glDeadline(20_000));
 		expect(e.isSettled).toBe(true);
 		canvas.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, pointerType: 'mouse', clientX: 40, clientY: 40, bubbles: true }));
 		expect(activeFrameSubscribers()).toBeGreaterThanOrEqual(1);
 		expect(e.isSettled).toBe(false);
-	}, 40_000);
+	}, glDeadline(40_000));
 
 	it('autoSplatRate > 0 never settles', async () => {
 		const e = engine({ autoSplatRate: 2, densityDissipation: 4 });
@@ -650,13 +651,13 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 
 	it('explicit pause clears settled; setConfig wakes', async () => {
 		const e = engine({ densityDissipation: 4 });
-		await until(() => activeFrameSubscribers() === 0, 20_000);
+		await until(() => activeFrameSubscribers() === 0, glDeadline(20_000));
 		e.setConfig({ curl: 5 });
 		expect(activeFrameSubscribers()).toBeGreaterThanOrEqual(1);
 		e.pause();
 		expect(e.isSettled).toBe(false);
 		expect(activeFrameSubscribers()).toBe(0);
-	}, 40_000);
+	}, glDeadline(40_000));
 
 	it('wake parity: settled+splat vs never-stopped engine, same moment', async () => {
 		// Same seed, both live. A settles (loop stopped) while B is kept alive by
@@ -672,7 +673,7 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		} satisfies FluidConfig;
 		const a = engine(cfg);
 		const b = engine({ ...cfg, autoSplatRate: 1e-9 });
-		await until(() => a.isSettled, 20_000);
+		await until(() => a.isSettled, glDeadline(20_000));
 		if (softwareGL) for (const e of [a, b]) {
 			(e as unknown as { calcDeltaTime(): number }).calcDeltaTime = () => 1 / 60;
 		}
@@ -686,7 +687,7 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 		const diff = maxAbsDiff(a.readField('dye').data, b.readField('dye').data);
 		console.info(`[idle] wake parity max |dye diff| = ${diff.toExponential(3)}`);
 		expect(diff).toBeLessThan(0.02);
-	}, 60_000);
+	}, glDeadline(60_000));
 
 	it.each(['own', 'shared'] as const)('staged GPU snapshot equals issue-time maxima while fields evolve (%s tier)', async (tier) => {
 		_setContextTier(tier);
