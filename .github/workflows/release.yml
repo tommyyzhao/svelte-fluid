@@ -23,7 +23,8 @@ jobs:
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # verify:release runs node, check, the SwiftShader browser suite (~25 min) and build.
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
