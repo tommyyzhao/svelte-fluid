@@ -415,7 +415,7 @@ if (options['self-check']) {
 	let transient = 0;
 	persistRowSync(`${batchTemp}/retry.json`, { status: 'FAILED' }, (path, data) => { if (!transient++) throw new Error('transient write'); writeFileSync(path, data); });
 	assert.equal(transient, 2); assert.equal(JSON.parse(await readFile(`${batchTemp}/retry.json`, 'utf8')).status, 'FAILED');
-	const watchdogWorker = spawn(process.execPath, [process.argv[1], '--label', 'watchdog-self-check', '--headed', '--attempt-worker', '{}'], { env: { ...process.env, ENERGY_WATCHDOG_SELF_CHECK: '1' }, stdio: 'inherit' });
+	const watchdogWorker = spawn(process.execPath, [process.argv[1], '--label', 'watchdog-self-check', '--headed', ...(engineSourceSha ? ['--engine-sha', engineSourceSha] : []), '--attempt-worker', '{}'], { env: { ...process.env, ENERGY_WATCHDOG_SELF_CHECK: '1' }, stdio: 'inherit' });
 	assert.equal(await new Promise((resolve) => watchdogWorker.once('exit', resolve)), 0);
 	const exitCase = { preset: 'FrameFluid', w: 1024, h: 640, dpr: 2, seed: 23, arm: 'baseline' };
 	assert.equal(invocationExit([{ ...exitCase, run: 1, status: 'FAILED' }, { ...exitCase, run: 3, status: 'OK' }], false, [exitCase], 3, 1), 0);
