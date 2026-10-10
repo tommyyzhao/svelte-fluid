@@ -314,3 +314,11 @@ identify the split. Commit this amendment before implementing the liveness
 fix; commit the fix separately after self-check, tests and Svelte checks under
 the load/free-lock gates. Further captures require independent review and the
 lead's explicit review OK. Default `maxFps` remains 0.
+
+Implementation note (lead rule, 2026-10-10): each attempt samples lock freedom
+and five-minute load average every 5 seconds. Five continuous minutes means
+all samples show the lock free and load below 15. The gate exits cleanly after
+85 minutes without writing a slot row or touching another owner's lock.
+After acquiring its own lock, the harness rechecks load once; load at or above
+15 causes owner-checked release and a fresh wait. These environment gates sit
+outside the frozen measurement block.
