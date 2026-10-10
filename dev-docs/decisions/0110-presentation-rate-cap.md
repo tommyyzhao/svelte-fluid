@@ -149,7 +149,7 @@ that is not displayed-image certification at equal wall time. Default adoption
 still needs full held-out E1, held-out E2 and owner motion review. These
 measurements do not authorize adoption. **Default remains 0**.
 
-### Outcome draft — paired held-out completion (2026-10-10)
+### Outcome — paired held-out completion (2026-10-10)
 
 All 96 held-out originals attempted; 22 retry/rerun rows, 83/96 resolved clean
 slots, 7/16 complete paired scenes. Registered A6 ratio-of-scene-arm-median
@@ -172,5 +172,9 @@ Compact rows/hashes, missing-slot causes, lead annotations and sensitivity:
 `energy-eval.md`. Two successful blind lead-applied reruns preserve their
 operator-aborted FAILED originals; byte-copy provenance is explicit.
 No held-out equal-wall-time E2 quality pass or owner motion approval exists.
-This outcome draft supports opt-in measurement only, not default adoption.
-**Default remains 0.**
+This outcome supports opt-in documentation only, not default adoption.
+**Default remains 0** (lead decision under owner delegation, 2026-10-09, Bead
+v73): a 60 Hz cap halves presented motion cadence on 120 Hz displays, and the
+held-out E2 and owner motion review a default change would need do not exist.
+The configuration docs cite the held-out range instead of the earlier
+"roughly halving" estimate.
