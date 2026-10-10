@@ -55,6 +55,14 @@ const execAsync = promisify(execFile);
 const ROOT = process.cwd(), PORT = process.argv.includes('--headed') ? 5202 : 5201, URL = `http://127.0.0.1:${PORT}`;
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const XCODE = { ...process.env, DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer' };
+const systemTmp = realpathSync(execFileSync('getconf', ['DARWIN_USER_TEMP_DIR'], { encoding: 'utf8' }).trim());
+async function watchdogSize(before) {
+	const names = (await readdir(systemTmp)).filter((name) => /^instruments.*\.ktrace$/.test(name) && !before.has(name));
+	return Math.max(0, ...await Promise.all(names.map((name) => bytes(`${systemTmp}/${name}`))));
+}
+function invocationExit(rows, gateExpired, cases, start, runs) {
+	return gateExpired ? 75 : rows.some((r) => cases.some((c) => key(c) === key(r)) && r.run >= start && r.run < start + runs && r.status !== 'OK') ? 1 : 0;
+}
 const EXPORT_LIMIT_MS = 90000, LOCK = '/tmp/svelte-fluid-gpu.lock';
 const TRAIN = ['(default)', 'LavaLamp', 'Plasma', 'InkInWater', 'Aurora', 'CircularFluid', 'SvgPathFluid', 'Toroidal', 'GasFlare', 'Venturi', 'Karman'];
 const TEST = ['FrozenSwirl', 'AnnularFluid', 'FrameFluid', 'TeslaValve'];
@@ -407,6 +415,11 @@ if (options['self-check']) {
 	let transient = 0;
 	persistRowSync(`${batchTemp}/retry.json`, { status: 'FAILED' }, (path, data) => { if (!transient++) throw new Error('transient write'); writeFileSync(path, data); });
 	assert.equal(transient, 2); assert.equal(JSON.parse(await readFile(`${batchTemp}/retry.json`, 'utf8')).status, 'FAILED');
+	const watchdogWorker = spawn(process.execPath, [process.argv[1], '--label', 'watchdog-self-check', '--headed', '--attempt-worker', '{}'], { env: { ...process.env, ENERGY_WATCHDOG_SELF_CHECK: '1' }, stdio: 'inherit' });
+	assert.equal(await new Promise((resolve) => watchdogWorker.once('exit', resolve)), 0);
+	const exitCase = { preset: 'FrameFluid', w: 1024, h: 640, dpr: 2, seed: 23, arm: 'baseline' };
+	assert.equal(invocationExit([{ ...exitCase, run: 1, status: 'FAILED' }, { ...exitCase, run: 3, status: 'OK' }], false, [exitCase], 3, 1), 0);
+	assert.equal(invocationExit([], true, [exitCase], 3, 1), 75);
 	const quietState = { scanning: Bun.sleep(2000), quiet: false };
 	const quietStart = Date.now(); let quietAck = false, quietSpawns = 0;
 	const quietPromise = enterQuiet(quietState, () => { quietAck = true; });
@@ -752,12 +765,10 @@ async function captureWorker(c, run) {
 		sizeWatch = setInterval(async () => {
 			if (checkingSize || signal.aborted) return; checkingSize = true;
 			try {
-				const globalTmp = systemTmp;
-				const names = (await readdir(globalTmp)).filter((name) => /^instruments.*\.ktrace$/.test(name) && !scratchBefore.has(name));
-				const sizes = await Promise.all(names.map((name) => bytes(`${globalTmp}/${name}`)));
-				const largest = Math.max(0, ...sizes);
+				const largest = await watchdogSize(scratchBefore);
 				if (largest > 10 * 1024 ** 3) { abortWith(controller, new Error(`Trace size watchdog: ${largest} bytes exceeds 10 GiB`)); cleanup(); }
-			} finally { checkingSize = false; }
+			} catch (error) { row.watchdogErrors = (row.watchdogErrors ?? 0) + 1; row.watchdogLastError = String(error); }
+			finally { checkingSize = false; }
 		}, 1000);
 		const notified = await Promise.race([notifier.exited.then(() => true), Bun.sleep(45000).then(() => false)]); notifier.kill(); notifier = null;
 		assert.ok(notified, 'Recorder tracing-started notification timeout'); await Bun.sleep(300); alive();
@@ -900,6 +911,10 @@ async function captureWorker(c, run) {
 	console.log(JSON.stringify({ name, status: row.status, error: row.error, active: row.windows?.active?.gpuBusyMsPerSecond, untouched: row.windows?.untouched?.gpuBusyMsPerSecond, traceBytes: row.traceBytes, traceDeleted: row.traceDeleted }));
 	return row;
 }
+if (process.env.ENERGY_WATCHDOG_SELF_CHECK === '1') {
+	assert.equal(await watchdogSize(new Set(await readdir(systemTmp))), 0);
+	process.exit(0);
+}
 if (options['attempt-worker']) {
 	const { c, run } = JSON.parse(options['attempt-worker']);
 	await captureWorker(c, run);
@@ -1002,7 +1017,6 @@ async function stopGroup(child, grace = 10000, escaped = new Map()) {
 	const residual = live();
 	assert.equal(residual.group.length + residual.escaped.length, 0, 'Owned attempt group survived bounded reap; lock preserved');
 }
-const systemTmp = realpathSync(execFileSync('getconf', ['DARWIN_USER_TEMP_DIR'], { encoding: 'utf8' }).trim());
 const unprovenScratch = new Set();
 async function capture(c, run) {
 	const name = `${fileKey(c)}-r${run}${c.infraRetry ? '-infra-retry' : ''}`;
@@ -1108,4 +1122,4 @@ try {
 	await writeFile(`${DIR}/cleanup.json`, JSON.stringify({ checkedPids: [...owned.keys()], remaining, lockReleased: !lockOwned }, null, 2));
 	console.log(JSON.stringify({ phase: 'cleanup', checkedPids: [...owned.keys()], remaining }));
 }
-process.exit(results.some((r) => r.status !== 'OK') ? 1 : 0);
+process.exit(invocationExit(results, gateExpired, cases, RUN_START, RUNS));
