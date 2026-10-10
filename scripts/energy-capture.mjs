@@ -323,7 +323,7 @@ if (options['self-check']) {
 	assert.ok(Array.isArray(tinyResult.residual.zombiePids));
 	assert.ok(tinyResult.reapMs >= 900 && tinyResult.reapMs < 5500);
 	await mkdir(tinyLock); await writeFile(`${tinyLock}/owner`, 'test-owner');
-	const signalCode = `const {spawn,execFileSync}=await import('node:child_process');const {writeFileSync,readFileSync,rmSync}=await import('node:fs');${census.toString()};${sameProcess.toString()};${groupRows.toString()};${reapGroupSync.toString()};${suspectHubsSync.toString()};${finalizeSupervisorSync.toString()};const child=spawn(process.execPath,['-e',"process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"],{detached:true,stdio:'ignore'});child.groupVerified=true;process.on('SIGTERM',()=>finalizeSupervisorSync({child,escaped:new Map(),rowPath:${JSON.stringify(tinyRow)},row:{}},${JSON.stringify(tinyLock)},'test-owner'));setTimeout(()=>process.kill(process.pid,'SIGTERM'),200);`;
+	const signalCode = `const {spawn,execFileSync}=await import('node:child_process');const {writeFileSync,readFileSync,rmSync}=await import('node:fs');${census.toString()};${sameProcess.toString()};${groupRows.toString()};${reapGroupSync.toString()};${suspectHubsSync.toString()};${finalizeSupervisorSync.toString()};const child=spawn(process.execPath,['-e',"process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"],{detached:true,stdio:'ignore'});child.groupVerified=true;process.on('SIGTERM',()=>finalizeSupervisorSync({child,escaped:new Map(),rowPath:${JSON.stringify(tinyRow)},row:{}},${JSON.stringify(tinyLock)},'test-owner',undefined,true));setTimeout(()=>process.kill(process.pid,'SIGTERM'),200);`;
 	const signaled = spawn(process.execPath, ['-e', signalCode], { stdio: 'ignore' });
 	assert.equal(await new Promise((resolve) => signaled.once('exit', resolve)), 1);
 	assert.equal(await Bun.file(`${tinyLock}/owner`).exists(), false);
@@ -331,7 +331,7 @@ if (options['self-check']) {
 	assert.equal(signalResult.lockPreserved, false); assert.deepEqual(signalResult.residualOwnedProcesses, []); assert.deepEqual(signalResult.escapedOwnedProcesses, []);
 	for (const suspect of [false, true]) {
 		await mkdir(tinyLock); await writeFile(`${tinyLock}/owner`, 'test-owner');
-		const failureCode = `const {spawn,execFileSync}=await import('node:child_process');const {writeFileSync,readFileSync,rmSync,symlinkSync}=await import('node:fs');${census.toString()};${sameProcess.toString()};${groupRows.toString()};${reapGroupSync.toString()};${suspectHubsSync.toString()};${finalizeSupervisorSync.toString()};const state={escaped:new Map(),rowPath:${JSON.stringify(tinyRow)},row:{},startedAt:Date.now()-1000};try{state.child=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{detached:true,stdio:'ignore'});await Bun.sleep(200);state.child.groupVerified=true;if(${suspect}){symlinkSync('/bin/sleep',${JSON.stringify(`${batchTemp}/DTServiceHub`)});spawn(${JSON.stringify(`${batchTemp}/DTServiceHub`)},['20'],{detached:true,stdio:'ignore'});process.kill(-state.child.pid,'SIGKILL');reapGroupSync(state.child,state.escaped);await Bun.sleep(200);JSON.parse('{');}throw new Error('after spawn');}finally{finalizeSupervisorSync(state,${JSON.stringify(tinyLock)},'test-owner');}`;
+		const failureCode = `const {spawn,execFileSync}=await import('node:child_process');const {writeFileSync,readFileSync,rmSync,symlinkSync}=await import('node:fs');${census.toString()};${sameProcess.toString()};${groupRows.toString()};${reapGroupSync.toString()};${suspectHubsSync.toString()};${finalizeSupervisorSync.toString()};const state={escaped:new Map(),rowPath:${JSON.stringify(tinyRow)},row:{},startedAt:Date.now()-1000};try{state.child=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{detached:true,stdio:'ignore'});await Bun.sleep(200);state.child.groupVerified=true;if(${suspect}){symlinkSync('/bin/sleep',${JSON.stringify(`${batchTemp}/DTServiceHub`)});spawn(${JSON.stringify(`${batchTemp}/DTServiceHub`)},['20'],{detached:true,stdio:'ignore'});process.kill(-state.child.pid,'SIGKILL');reapGroupSync(state.child,state.escaped);await Bun.sleep(200);JSON.parse('{');}throw new Error('after spawn');}finally{finalizeSupervisorSync(state,${JSON.stringify(tinyLock)},'test-owner');process.exit(1);}`;
 		const failed = spawn(process.execPath, ['-e', failureCode], { stdio: 'ignore' });
 		assert.equal(await new Promise((resolve) => failed.once('exit', resolve)), 1);
 		const failureRow = JSON.parse(await readFile(tinyRow, 'utf8'));
@@ -344,12 +344,23 @@ if (options['self-check']) {
 		}
 	}
 	await mkdir(tinyLock); await writeFile(`${tinyLock}/owner`, 'test-owner');
-	const zombieCode = `const {spawn,execFileSync}=await import('node:child_process');const {writeFileSync,readFileSync,rmSync}=await import('node:fs');${census.toString()};${sameProcess.toString()};${groupRows.toString()};${reapGroupSync.toString()};${suspectHubsSync.toString()};${finalizeSupervisorSync.toString()};${stopGroup.toString()};const assert=(await import('node:assert/strict')).default;const child=spawn(process.execPath,['-e','process.exit(0)'],{detached:true,stdio:'ignore'});Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,500);child.groupVerified=true;const live=reapGroupSync(child,new Map(),0);if(!live.zombiePids.includes(child.pid))process.exit(3);await stopGroup(child,100);finalizeSupervisorSync({child,escaped:new Map(),teardownError:'prior teardown failure',rowPath:${JSON.stringify(tinyRow)},row:{}},${JSON.stringify(tinyLock)},'test-owner');`;
+	const zombieCode = `const {spawn,execFileSync}=await import('node:child_process');const {writeFileSync,readFileSync,rmSync}=await import('node:fs');${census.toString()};${sameProcess.toString()};${groupRows.toString()};${reapGroupSync.toString()};${suspectHubsSync.toString()};${finalizeSupervisorSync.toString()};${stopGroup.toString()};const assert=(await import('node:assert/strict')).default;const child=spawn(process.execPath,['-e','process.exit(0)'],{detached:true,stdio:'ignore'});Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,500);child.groupVerified=true;const live=reapGroupSync(child,new Map(),0);if(!live.zombiePids.includes(child.pid))process.exit(3);await stopGroup(child,100);finalizeSupervisorSync({child,escaped:new Map(),teardownError:'prior teardown failure',rowPath:${JSON.stringify(tinyRow)},row:{}},${JSON.stringify(tinyLock)},'test-owner');process.exit(1);`;
 	const zombie = spawn(process.execPath, ['-e', zombieCode], { stdio: 'ignore' });
 	assert.equal(await new Promise((resolve) => zombie.once('exit', resolve)), 1);
 	const zombieRow = JSON.parse(await readFile(tinyRow, 'utf8'));
 	assert.equal(zombieRow.lockPreserved, false); assert.equal(zombieRow.probeError, undefined); assert.equal(zombieRow.teardownError, 'prior teardown failure');
 	assert.equal(await Bun.file(`${tinyLock}/owner`).exists(), false);
+	assert.equal(sameProcess({ command: 'owner', start: 'birth' }, undefined), false);
+	assert.equal(sameProcess(undefined, { command: 'owner', start: 'birth' }), false);
+	for (let slot = 1; slot <= 2; slot++) {
+		await mkdir(tinyLock); await writeFile(`${tinyLock}/owner`, 'test-owner');
+		const natural = { status: 'OK', windows: { active: { gpuBusyMsPerSecond: slot } } };
+		await writeFile(tinyRow, JSON.stringify(natural));
+		const kept = finalizeSupervisorSync({ escaped: new Map(), rowPath: tinyRow, row: {}, teardownError: 'proof owner disappeared' }, tinyLock, 'test-owner');
+		assert.equal(kept.status, 'OK'); assert.deepEqual(kept.windows, natural.windows); assert.equal(kept.teardownError, 'proof owner disappeared');
+		assert.equal(await Bun.file(`${tinyLock}/owner`).exists(), false);
+	}
+	assert.equal(supervisorRow({ status: 'OK' }, true, {}).error, 'attempt timeout (liveness)');
 	for (const code of ["process.on('SIGTERM',()=>{});setInterval(()=>{},1000)", "process.on('SIGTERM',()=>setTimeout(()=>process.exit(0),200));setInterval(()=>{},1000)"]) {
 		const group = spawn(process.execPath, ['-e', code], { detached: true, stdio: 'ignore' });
 		await Bun.sleep(200); group.groupVerified = groupSafe(group.pid); assert.equal(group.groupVerified, true); await stopGroup(group, 300); assert.equal(reapGroupSync(group, new Map(), 0).group.length, 0);
@@ -377,7 +388,7 @@ if (!options['attempt-worker'] && !options.resume && !options['summary-only']) f
 const save = () => writeFileSync(`${DIR}/summary.json`, JSON.stringify(summaries(results), null, 2));
 if (options['summary-only']) { save(); console.log(JSON.stringify(summaries(results).headline)); process.exit(0); }
 function census() { return execFileSync('ps', ['-axo', 'pid=,ppid=,lstart=,command='], { encoding: 'utf8', timeout: 1000, killSignal: 'SIGKILL' }).split('\n').map((l) => { const m = l.match(/^\s*(\d+)\s+(\d+)\s+(.{24})\s+(.*)$/); return m && { pid: +m[1], ppid: +m[2], start: m[3], command: m[4] }; }).filter(Boolean); }
-function sameProcess(a, b) { return !!a && a.command === b.command && a.start === b.start; }
+function sameProcess(a, b) { return !!a && !!b && a.command === b.command && a.start === b.start; }
 async function boundedExit(promise, signal) {
 	let timer;
 	try {
@@ -523,7 +534,7 @@ async function acquire() {
 let shuttingDown = false, supervisorState;
 for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(signal, () => {
 	if (shuttingDown) return; shuttingDown = true;
-	if (lockOwned) finalizeSupervisorSync(supervisorState ?? { rowPath: `${DIR}/interrupted.json`, row: {}, escaped: new Map() }, LOCK, ownerText);
+	if (lockOwned) finalizeSupervisorSync(supervisorState ?? { rowPath: `${DIR}/interrupted.json`, row: {}, escaped: new Map() }, LOCK, ownerText, undefined, true);
 	process.exit(1);
 });
 async function startServer() {
@@ -814,7 +825,7 @@ if (options['attempt-worker']) {
 }
 function groupRows(pgid) { return execFileSync('ps', ['-axo', 'pid=,pgid=,command='], { encoding: 'utf8', timeout: 1000, killSignal: 'SIGKILL' }).split('\n').filter((l) => Number(l.trim().split(/\s+/)[1]) === pgid); }
 function supervisorRow(workerRow, timedOut, fallback) {
-	return timedOut ? { ...fallback, status: 'FAILED', error: 'attempt timeout (liveness)' } : workerRow ?? { ...fallback, status: 'FAILED', error: 'Attempt worker exited without a row' };
+	return timedOut ? { ...fallback, status: 'FAILED', error: 'attempt timeout (liveness)' } : workerRow ?? { ...fallback, status: 'FAILED', error: 'worker row unreadable' };
 }
 function validGroup(pid, pgid, self) { return pgid === pid && pgid !== self; }
 function groupSafe(pid) {
@@ -846,7 +857,7 @@ function suspectHubsSync(since) {
 		return [{ pid: +m[1], command: m[5], start: m[4] }];
 	});
 }
-function finalizeSupervisorSync(state, lock, owner, completedRow) {
+function finalizeSupervisorSync(state, lock, owner, completedRow, emergency = false) {
 	let residual = { group: [], escaped: [], zombiePids: [] }, suspectUnowned = [], probeError;
 	try {
 		const live = reapGroupSync(state.child, state.escaped, 0);
@@ -857,10 +868,14 @@ function finalizeSupervisorSync(state, lock, owner, completedRow) {
 		if (state.startedAt) suspectUnowned = suspectHubsSync(state.xctraceBirth ?? state.startedAt);
 	} catch (error) { probeError = String(error); }
 	const lockPreserved = !!probeError || residual.group.length + residual.escaped.length + suspectUnowned.length > 0;
+	if (!completedRow && !emergency) {
+		try { completedRow = JSON.parse(readFileSync(state.rowPath, 'utf8')); }
+		catch { completedRow = { ...state.row, status: 'FAILED', error: 'worker row unreadable' }; }
+	}
 	const row = { ...(completedRow ?? { ...state.row, status: 'FAILED', error: 'attempt timeout (liveness)' }), residualOwnedProcesses: residual.group, escapedOwnedProcesses: residual.escaped, zombiePids: residual.zombiePids, suspectUnowned, probeError, teardownError: state.teardownError, lockPreserved };
 	writeFileSync(state.rowPath, JSON.stringify(row));
 	if (!lockPreserved && readFileSync(`${lock}/owner`, 'utf8') === owner) rmSync(lock, { recursive: true });
-	if (!completedRow || lockPreserved) process.exit(1);
+	if (emergency || lockPreserved) process.exit(1);
 	return row;
 }
 async function stopGroup(child, grace = 10000, escaped = new Map()) {
@@ -886,7 +901,7 @@ async function capture(c, run) {
 	const name = `${fileKey(c)}-r${run}${c.infraRetry ? '-infra-retry' : ''}`;
 	const rowPath = `${DIR}/${name}.json`;
 	supervisorState = { rowPath, row: { ...c, run, sha, engineSourceSha, harnessSha, engineFileHash, measurementLogicHash, browserMode, override: c.arm ? armOverride(c.arm) : override }, escaped: new Map(), startedAt: Date.now() - 1000 };
-	const hardDeadline = setTimeout(() => finalizeSupervisorSync(supervisorState, LOCK, ownerText), Math.max(0, lockedAt + 25 * 60000 - Date.now()));
+	const hardDeadline = setTimeout(() => finalizeSupervisorSync(supervisorState, LOCK, ownerText, undefined, true), Math.max(0, lockedAt + 25 * 60000 - Date.now()));
 	try {
 	const scratch = await mkdtemp(`${DIR}/${name}-owned-`);
 	const args = ['--label', options.label, '--split', c.split, '--cases', `${c.preset}@${c.w}x${c.h}:${c.dpr}:${c.seed}`, '--runs', '1', '--run-start', String(run), '--attempt-worker', JSON.stringify({ c, run })];
@@ -911,19 +926,23 @@ async function capture(c, run) {
 				if (/xctrace|DTServiceHub/.test(r.command)) {
 					const output = await execAsync('lsof', ['-n', '-p', String(r.pid), '-Fn'], { timeout: 1000, maxBuffer: 1 << 20 }).then((r) => r.stdout, () => '');
 					if (sameProcess(r, census().find((p) => p.pid === r.pid))) {
-						for (const line of output.split('\n')) if (/^n\/.*\/instruments[^/]*\.ktrace$/.test(line)) provenScratch.set(line.slice(1), r);
+						for (const line of output.split('\n')) if (/^n\/.*\/instruments[^/]*\.ktrace$/.test(line)) {
+							const path = line.slice(1), proof = { path, owner: r, provedAt: new Date().toISOString() };
+							provenScratch.set(path, proof);
+							writeFileSync(`${DIR}/${name}.scratch-proofs.json`, JSON.stringify([...provenScratch.values()], null, 2));
+						}
 					}
 				}
 			}
 		})().finally(() => { scanning = null; });
 		return scanning;
 	};
-	const monitor = setInterval(() => scan().catch((error) => { supervisorState.teardownError = String(error); finalizeSupervisorSync(supervisorState, LOCK, ownerText); }), 1000);
+	const monitor = setInterval(() => scan().catch((error) => { supervisorState.teardownError = String(error); }), 1000);
 	let deadline;
 	const timedOut = await Promise.race([exited.then(() => false), new Promise((resolve) => { deadline = setTimeout(() => resolve(true), Math.min(600000, Math.max(0, lockedAt + 25 * 60000 - Date.now()))); })]);
 	clearTimeout(deadline); clearInterval(monitor);
 	try { await scan(); await stopGroup(child, 10000, escaped); }
-	catch (error) { supervisorState.teardownError = String(error); finalizeSupervisorSync(supervisorState, LOCK, ownerText); }
+	catch (error) { supervisorState.teardownError = String(error); }
 	const fallback = { ...c, run, sha, engineSourceSha, harnessSha, engineFileHash, measurementLogicHash, browserMode, override: c.arm ? armOverride(c.arm) : override };
 	let workerRow;
 	try { workerRow = !timedOut && await Bun.file(rowPath).exists() ? JSON.parse(await readFile(rowPath, 'utf8')) : null; }
@@ -939,7 +958,13 @@ async function capture(c, run) {
 	const finalized = finalizeSupervisorSync(supervisorState, LOCK, ownerText, row);
 	lockOwned = false; lastReleasedAt = Date.now(); clearTimeout(hardDeadline); supervisorState = null;
 	return finalized;
-	} finally { if (supervisorState) finalizeSupervisorSync(supervisorState, LOCK, ownerText); }
+	} finally {
+		if (supervisorState) {
+			const finalized = finalizeSupervisorSync(supervisorState, LOCK, ownerText);
+			lockOwned = false; lastReleasedAt = Date.now(); clearTimeout(hardDeadline); supervisorState = null;
+			return finalized;
+		}
+	}
 }
 try {
 	for (let run = RUN_START; run < RUN_START + RUNS; run++) for (const c of orderedCases(run)) {
