@@ -238,6 +238,20 @@ if (options['self-check']) {
 	controller.abort(new Error('attempt timeout (liveness)'));
 	await assert.rejects(pending, /attempt timeout \(liveness\)/);
 	assert.throws(() => guarded.evaluate(), /attempt timeout \(liveness\)/);
+	const midWrite = new AbortController(), row = { status: 'OK', windows: { active: 1 } };
+	await Promise.resolve().then(() => midWrite.abort(new Error('Recorder finalisation timeout')));
+	livenessFailure(row, midWrite.signal);
+	assert.equal(row.status, 'FAILED'); assert.equal(row.error, 'attempt timeout (liveness)'); assert.deepEqual(row.windows, {});
+	row.status = 'PARTIAL'; row.error = 'GPU process exited during recording';
+	livenessFailure(row, midWrite.signal); assert.equal(row.status, 'FAILED'); assert.equal(row.error, 'attempt timeout (liveness)');
+	await assert.rejects(boundedExit(new Promise(() => {}), midWrite.signal), /Recorder finalisation timeout/);
+	const events = [];
+	await terminateAndRelease(() => events.push('term'), () => events.push('kill'), async () => events.push('release'), 1);
+	assert.deepEqual(events, ['term', 'kill', 'release']);
+	assert.equal(sameProcess({ command: 'Chrome', start: 'old' }, { command: 'Chrome', start: 'new' }), false);
+	let releases = 0;
+	const releaseOnce = singleFlight(async () => { releases++; });
+	await Promise.all([releaseOnce(), releaseOnce()]); assert.equal(releases, 1);
 	console.log('Energy self-check passed: slicing, overlap union, ns/ms/s, median, R3 noise floor, frozen matrix, diagnostic motion pair, invalid-readback rejection, stalled CDP abort'); process.exit(0);
 }
 await mkdir(DIR, { recursive: true });
@@ -256,7 +270,24 @@ if (!options.resume && !options['summary-only']) for (let run = RUN_START; run <
 }
 const save = () => writeFileSync(`${DIR}/summary.json`, JSON.stringify(summaries(results), null, 2));
 if (options['summary-only']) { save(); console.log(JSON.stringify(summaries(results).headline)); process.exit(0); }
-const census = () => execFileSync('ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' }).split('\n').map((l) => { const m = l.match(/^\s*(\d+)\s+(\d+)\s+(.*)$/); return m && { pid: +m[1], ppid: +m[2], command: m[3] }; }).filter(Boolean);
+const census = () => execFileSync('ps', ['-axo', 'pid=,ppid=,lstart=,command='], { encoding: 'utf8' }).split('\n').map((l) => { const m = l.match(/^\s*(\d+)\s+(\d+)\s+(.{24})\s+(.*)$/); return m && { pid: +m[1], ppid: +m[2], start: m[3], command: m[4] }; }).filter(Boolean);
+function sameProcess(a, b) { return !!a && a.command === b.command && a.start === b.start; }
+async function boundedExit(promise, signal) {
+	let timer;
+	try {
+		return await abortRace(Promise.race([promise, new Promise((_, reject) => {
+			timer = setTimeout(() => reject(new Error('attempt timeout (liveness)')), 10000);
+		})]), signal);
+	} finally { clearTimeout(timer); }
+}
+function livenessFailure(row, signal) {
+	if (!signal.aborted) return;
+	row.status = 'FAILED'; row.error = 'attempt timeout (liveness)';
+	row.windows = {}; delete row.hashes; delete row.snapshot; delete row.encoders;
+}
+async function terminateAndRelease(term, kill, releaseLock, grace = 10000) {
+	term(); await Bun.sleep(grace); kill(); await Bun.sleep(Math.min(grace, 1000)); await releaseLock();
+}
 // Abort CDP waits without changing the frozen measurement statements.
 function abortRace(promise, signal) {
 	if (signal.aborted) return Promise.reject(signal.reason);
@@ -283,25 +314,51 @@ function abortableCDP(value, signal, cache = new WeakMap()) {
 	return proxy;
 }
 const owned = new Map(); let browser, chrome, profile, server, recording, notifier, lockOwned = false, lastReleasedAt = 0, lockedAt = 0;
-let holdTimer, activeController, holdExpired = false;
+let holdTimer, activeController, holdExpired = false, emergencyRelease;
+function trackedProcess(child) {
+	remember();
+	child.exited.then(() => owned.delete(child.pid));
+	return new Proxy(child, { get(target, key) {
+		if (key === 'kill') return (signal) => {
+			const current = census().find((r) => r.pid === target.pid);
+			if (current && sameProcess(owned.get(target.pid), current)) target.kill(signal);
+		};
+		return Reflect.get(target, key, target);
+	} });
+}
+function killOwned() {
+	for (const r of census()) if (sameProcess(owned.get(r.pid), r)) {
+		try { process.kill(r.pid, 'SIGKILL'); } catch (e) { if (e.code !== 'ESRCH') throw e; }
+	}
+}
 const ownerText = JSON.stringify({ lane, purpose: `${browserMode} energy ${options.label} ${options.split}`, start: new Date().toISOString(), worktree: ROOT, sha, pid: process.pid });
 function remember() {
 	const rows = census(), ids = new Set([process.pid]);
+	for (const [pid, identity] of owned) if (!rows.some((r) => r.pid === pid && sameProcess(identity, r))) owned.delete(pid);
 	for (let changed = true; changed;) { changed = false; for (const r of rows) if (ids.has(r.ppid) && !ids.has(r.pid)) { ids.add(r.pid); changed = true; } }
-	for (const r of rows) if (r.pid !== process.pid && ids.has(r.pid)) owned.set(r.pid, r.command);
+	for (const r of rows) if (r.pid !== process.pid && ids.has(r.pid)) if (!owned.has(r.pid)) owned.set(r.pid, r);
 }
 function cleanup() {
 	remember();
-	for (const r of census().reverse()) if (owned.get(r.pid) === r.command) { try { process.kill(r.pid, 'SIGTERM'); } catch (e) { if (e.code !== 'ESRCH') throw e; } }
+	for (const r of census().reverse()) if (sameProcess(owned.get(r.pid), r)) { try { process.kill(r.pid, 'SIGTERM'); } catch (e) { if (e.code !== 'ESRCH') throw e; } }
 	browser = null; server = null; recording = null; notifier = null;
 }
-async function release() {
-	if (!lockOwned) return;
-	assert.equal(await readFile(`${LOCK}/owner`, 'utf8'), ownerText, 'GPU lock ownership changed');
-	clearTimeout(holdTimer);
-	await rm(LOCK, { recursive: true }); lockOwned = false; lastReleasedAt = Date.now();
-	console.log(JSON.stringify({ phase: 'disk accounting', energyEvalBytes: await bytes('/tmp/energy-eval') }));
-	console.log(JSON.stringify({ phase: 'GPU lock released', pid: process.pid }));
+function singleFlight(action) {
+	let promise;
+	return () => promise ??= Promise.resolve().then(action);
+}
+let releasePromise;
+function release() {
+	if (releasePromise) return releasePromise;
+	if (!lockOwned) return Promise.resolve();
+	releasePromise = singleFlight(async () => {
+		assert.equal(await readFile(`${LOCK}/owner`, 'utf8'), ownerText, 'GPU lock ownership changed');
+		clearTimeout(holdTimer);
+		await rm(LOCK, { recursive: true }); lockOwned = false; lastReleasedAt = Date.now();
+		console.log(JSON.stringify({ phase: 'disk accounting', energyEvalBytes: await bytes('/tmp/energy-eval') }));
+		console.log(JSON.stringify({ phase: 'GPU lock released', pid: process.pid }));
+	})();
+	return releasePromise;
 }
 async function acquire() {
 	if (holdExpired) throw new Error('GPU hold cap reached (liveness)');
@@ -320,12 +377,13 @@ async function acquire() {
 	console.log(execFileSync('df', ['-h', '/'], { encoding: 'utf8' }));
 	while (!lockOwned) {
 		try {
-			await mkdir(LOCK); lockOwned = true; lockedAt = Date.now();
+			await mkdir(LOCK); releasePromise = null; emergencyRelease = null; lockOwned = true; lockedAt = Date.now();
 			await writeFile(`${LOCK}/owner`, ownerText); await writeFile(`${LOCK}/acquired-at`, new Date(lockedAt).toISOString());
 			holdTimer = setTimeout(() => {
 				holdExpired = true;
 				activeController?.abort(new Error('attempt timeout (liveness)'));
-				cleanup();
+				emergencyRelease = terminateAndRelease(cleanup, killOwned, release);
+				emergencyRelease.catch((error) => { console.error(error); process.exitCode = 1; });
 			}, 25 * 60000);
 		}
 		catch (e) { if (e.code !== 'EEXIST') throw e; console.log(JSON.stringify({ phase: 'waiting for GPU lock' })); await Bun.sleep(30000); }
@@ -338,7 +396,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, async () => {
 });
 async function startServer() {
 	if (server) return;
-	server = Bun.spawn(['bun', 'run', 'dev', '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'], { cwd: sourceRoot, stdout: 'ignore', stderr: 'inherit' }); remember();
+	server = Bun.spawn(['bun', 'run', 'dev', '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'], { cwd: sourceRoot, stdout: 'ignore', stderr: 'inherit' }); server = trackedProcess(server);
 	for (let i = 0; i < 150; i++) {
 		if (await fetch(URL, { signal: AbortSignal.timeout(1000) }).then((r) => r.ok, () => false)) return;
 		if (server.exitCode !== null) throw new Error('Owned dev server exited');
@@ -410,13 +468,17 @@ async function capture(c, run) {
 	const traceTmp = `${DIR}/${name}-tmp`;
 	await mkdir(traceTmp);
 	const progress = (p) => { phase = p; writeFileSync(`${DIR}/${name}.progress.json`, JSON.stringify({ ...row, phase, windows, states })); console.log(JSON.stringify({ name, phase })); };
-	const controller = new AbortController(), deadline = setTimeout(() => { controller.abort(new Error('attempt timeout (liveness)')); cleanup(); }, 600000);
+	const controller = new AbortController(), deadline = setTimeout(() => {
+		controller.abort(new Error('attempt timeout (liveness)'));
+		emergencyRelease ??= terminateAndRelease(cleanup, killOwned, release);
+		emergencyRelease.catch((error) => { console.error(error); process.exitCode = 1; });
+	}, 600000);
 	activeController = controller;
 	const signal = controller.signal;
 	try {
 		await startServer(); signal.throwIfAborted();
 		profile = await mkdtemp('/tmp/svelte-fluid-energy-chrome-');
-		chrome = Bun.spawn([CHROME, ...(options.headed ? [] : ['--headless=new']), `--user-data-dir=${profile}`, '--remote-debugging-port=0', '--no-first-run', '--no-default-browser-check', 'about:blank'], { stdout: 'ignore', stderr: 'ignore' }); remember();
+		chrome = Bun.spawn([CHROME, ...(options.headed ? [] : ['--headless=new']), `--user-data-dir=${profile}`, '--remote-debugging-port=0', '--no-first-run', '--no-default-browser-check', 'about:blank'], { stdout: 'ignore', stderr: 'ignore' }); chrome = trackedProcess(chrome);
 		let endpoint;
 		for (let i = 0; i < 100; i++) {
 			signal.throwIfAborted();
@@ -444,9 +506,9 @@ async function capture(c, run) {
 		};
 		progress('recorder startup');
 		const note = `svelte-fluid.energy.E1.${process.pid}.${name}`;
-		notifier = Bun.spawn(['/usr/bin/notifyutil', '-1', note], { stdout: 'ignore' });
+		notifier = trackedProcess(Bun.spawn(['/usr/bin/notifyutil', '-1', note], { stdout: 'ignore' }));
 		scratchBefore = new Set(await scratchNames());
-		recording = Bun.spawn(['env', `DEVELOPER_DIR=${XCODE.DEVELOPER_DIR}`, 'xcrun', 'xctrace', 'record', '--template', 'Metal System Trace', '--attach', String(gpuPid), '--time-limit', '110s', '--no-prompt', '--notify-tracing-started', note, '--output', trace], { env: { ...XCODE, TMPDIR: traceTmp }, stdout: 'pipe', stderr: 'pipe' }); remember();
+		recording = Bun.spawn(['env', `DEVELOPER_DIR=${XCODE.DEVELOPER_DIR}`, 'xcrun', 'xctrace', 'record', '--template', 'Metal System Trace', '--attach', String(gpuPid), '--time-limit', '110s', '--no-prompt', '--notify-tracing-started', note, '--output', trace], { env: { ...XCODE, TMPDIR: traceTmp }, stdout: 'pipe', stderr: 'pipe' }); recording = trackedProcess(recording);
 		let checkingSize = false;
 		sizeWatch = setInterval(async () => {
 			if (checkingSize || signal.aborted) return; checkingSize = true;
@@ -518,13 +580,13 @@ async function capture(c, run) {
 		}
 		progress('browser cleanup');
 		const closeSession = await browser.newBrowserCDPSession(); await closeSession.send('Browser.close').catch(() => {});
-		await chrome.exited; chrome = null; await browser.close(); browser = null;
+		await boundedExit(chrome.exited, signal); chrome = null; await browser.close(); browser = null;
 		await rm(profile, { recursive: true }); profile = null; Bun.gc(true);
 		progress('trace export');
 		const input = `${DIR}/${name}.analysis-input.json`, output = `${DIR}/${name}.analysis.json`;
 		await writeFile(input, JSON.stringify({ trace, gpuPid, windows }));
 		await execAsync(process.execPath, [process.argv[1], '--analyse-worker', input, output], { timeout: 210000, signal, maxBuffer: 1 << 20 });
-		Object.assign(row, JSON.parse(await readFile(output, 'utf8')));
+		Object.assign(row, JSON.parse(await readFile(output, 'utf8'))); signal.throwIfAborted();
 		if (options.headed) {
 			assert.match(row.adapter, /ANGLE Metal Renderer: Apple M1 Max/, 'Expected Apple M1 Max Metal renderer');
 			for (const name of ['active', 'untouched', 'offscreen', 'control']) assert.ok(row.windows[name].rafHz >= 114 && row.windows[name].rafHz <= 126, `${name}: incorrect visibility/refresh; RAF ${row.windows[name].rafHz} Hz, expected approximately 120 Hz`);
@@ -535,17 +597,18 @@ async function capture(c, run) {
 		if (options['per-encoder-export']) {
 			assert.match(row.adapter, /ANGLE Metal Renderer: Apple M1 Max/, 'Expected Apple M1 Max Metal renderer');
 			progress('per-encoder export');
-			const { exportEncoders } = await import('./encoder-attribution.mjs');
-			row.encoders = await exportEncoders({ trace, gpuPid, windows }, `${DIR}/${name}.encoders.json`, signal);
+			const { exportEncoders } = await import('./encoder-attribution.mjs'); signal.throwIfAborted();
+			row.encoders = await exportEncoders({ trace, gpuPid, windows }, `${DIR}/${name}.encoders.json`, signal); signal.throwIfAborted();
 		}
-		row.traceBytes = await bytes(trace);
+		row.traceBytes = await bytes(trace); signal.throwIfAborted();
 		row.status = 'OK';
-		await writeFile(`${DIR}/${name}.json`, JSON.stringify(row, null, 2));
-		await rm(trace, { recursive: true }); row.traceDeleted = true;
-		await rm(input); await rm(output);
+		await writeFile(`${DIR}/${name}.json`, JSON.stringify(row, null, 2)); signal.throwIfAborted();
+		await rm(trace, { recursive: true }); row.traceDeleted = true; signal.throwIfAborted();
+		await rm(input); signal.throwIfAborted(); await rm(output); signal.throwIfAborted();
 	} catch (error) {
 		row.status = 'FAILED';
 		row.error = String(controller.signal.reason?.message ?? error.message ?? error); row.phase = phase; row.windows = windows; row.traceDeleted = false;
+		livenessFailure(row, signal);
 		row.browserErrors = page?.__energyErrors ?? [];
 		if (recording && !stopped && !signal.aborted) { try { recording.kill('SIGINT'); await Promise.race([recording.exited, Bun.sleep(180000)]); } catch {} }
 		// Per-window control failure: preserve already-completed correctly-visible windows.
@@ -558,20 +621,16 @@ async function capture(c, run) {
 				row.status = 'PARTIAL'; row.incompleteWindows = ['hidden', 'control'];
 			} catch (partialError) { row.partialParseError = String(partialError.message); }
 		}
-		row.traceBytes = await bytes(trace);
+		row.traceBytes = await bytes(trace); livenessFailure(row, signal);
 		await writeFile(`${DIR}/${name}.parse-failure.json`, JSON.stringify({ error: row.error, traceBytes: row.traceBytes, windows, gpuPid }, null, 2));
 		await rm(trace, { recursive: true, force: true }); row.traceDeleted = true;
 		cleanup();
 	} finally {
-		clearTimeout(deadline); clearInterval(sizeWatch);
-		activeController = null;
+		clearInterval(sizeWatch);
 		if (signal.aborted) {
-			cleanup();
-			await Bun.sleep(1000);
-			for (const r of census()) if (owned.get(r.pid) === r.command) {
-				try { process.kill(r.pid, 'SIGKILL'); } catch (e) { if (e.code !== 'ESRCH') throw e; }
-			}
+			cleanup(); await Bun.sleep(1000); killOwned();
 		}
+		if (emergencyRelease) await emergencyRelease;
 		row.scratchDeleted = [];
 		for (const name of await scratchNew()) {
 			const path = `${tmpdir()}/${name}`, s = await stat(path);
@@ -583,12 +642,19 @@ async function capture(c, run) {
 		await rm(traceTmp, { recursive: true, force: true });
 		row.traceTmpDeleted = true;
 		if (browser) { await browser.close().catch(() => {}); browser = null; }
-		if (chrome) { chrome.kill(); await chrome.exited; chrome = null; }
+		if (chrome) { chrome.kill(); await boundedExit(chrome.exited, signal).catch(() => killOwned()); chrome = null; }
 		if (profile) { await rm(profile, { recursive: true }); profile = null; }
 		if (notifier) { notifier.kill(); notifier = null; }
 	}
+	livenessFailure(row, signal);
 	row.endedAt = new Date().toISOString(); row.loadAverageEnd = loadavg();
 	await writeFile(`${DIR}/${name}.json`, JSON.stringify(row, null, 2));
+	if (signal.aborted) {
+		livenessFailure(row, signal);
+		await writeFile(`${DIR}/${name}.json`, JSON.stringify(row, null, 2));
+		if (emergencyRelease) await emergencyRelease; else await release();
+	}
+	clearTimeout(deadline); activeController = null;
 	console.log(JSON.stringify({ name, status: row.status, error: row.error, active: row.windows?.active?.gpuBusyMsPerSecond, untouched: row.windows?.untouched?.gpuBusyMsPerSecond, traceBytes: row.traceBytes, traceDeleted: row.traceDeleted }));
 	return row;
 }
@@ -614,7 +680,7 @@ try {
 	}
 } finally {
 	save(); cleanup(); await release();
-	const remaining = census().filter((r) => owned.get(r.pid) === r.command);
+	const remaining = census().filter((r) => sameProcess(owned.get(r.pid), r));
 	await writeFile(`${DIR}/cleanup.json`, JSON.stringify({ checkedPids: [...owned.keys()], remaining, lockReleased: !lockOwned }, null, 2));
 	console.log(JSON.stringify({ phase: 'cleanup', checkedPids: [...owned.keys()], remaining }));
 }
