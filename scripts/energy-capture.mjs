@@ -5,7 +5,7 @@
 // --runs 3 --run-start 1 --override '{"pressureIterations":26}' (or ENERGY_CAPTURE_OVERRIDE).
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
-import { execFile, execFileSync } from 'node:child_process';
+import { execFile, execFileSync, spawn } from 'node:child_process';
 import { mkdir, readFile, writeFile, rm, readdir, stat, mkdtemp } from 'node:fs/promises';
 import { writeFileSync } from 'node:fs';
 import { parseArgs, promisify } from 'node:util';
@@ -127,7 +127,7 @@ if (process.argv[2] === '--analyse-worker') {
 const { values: options } = parseArgs({ options: {
 	label: { type: 'string', default: 'baseline' }, split: { type: 'string', default: 'all' }, subset: { type: 'string' }, cases: { type: 'string' }, 'source-root': { type: 'string' }, 'engine-sha': { type: 'string' },
 	runs: { type: 'string', default: '3' }, 'run-start': { type: 'string', default: '1' }, override: { type: 'string' },
-	'paired-max-fps': { type: 'boolean' }, headed: { type: 'boolean' }, 'self-check': { type: 'boolean' }, 'per-encoder-export': { type: 'boolean' }, 'summary-only': { type: 'boolean' }, resume: { type: 'boolean' }, help: { type: 'boolean' }
+	'paired-max-fps': { type: 'boolean' }, headed: { type: 'boolean' }, 'self-check': { type: 'boolean' }, 'per-encoder-export': { type: 'boolean' }, 'summary-only': { type: 'boolean' }, 'attempt-worker': { type: 'string' }, resume: { type: 'boolean' }, help: { type: 'boolean' }
 } });
 if (options.help) { console.log('bun scripts/energy-capture.mjs --label NAME [--split train|test|all] [--subset ID,...] [--cases ID@WxH:DPR:seed,...] [--runs 3] [--run-start 1] [--override JSON] [--per-encoder-export] [--resume] | --self-check | --summary-only'); process.exit(0); }
 assert.match(options.label, /^[A-Za-z0-9_-]+$/, 'Invalid label');
@@ -282,6 +282,10 @@ if (options['self-check']) {
 	assert.equal(await Bun.file(`${tempLock}/owner`).exists(), false);
 	assert.equal(await readFile(siblingFile, 'utf8'), 'sibling');
 	await rm(temp, { recursive: true });
+	for (const code of ["process.on('SIGTERM',()=>{});setInterval(()=>{},1000)", "process.on('SIGTERM',()=>setTimeout(()=>process.exit(0),200));setInterval(()=>{},1000)"]) {
+		const group = spawn(process.execPath, ['-e', code], { detached: true, stdio: 'ignore' });
+		await Bun.sleep(200); await stopGroup(group, 300); assert.equal(groupRows(group.pid).length, 0);
+	}
 	console.log('Energy self-check passed: slicing, overlap union, ns/ms/s, median, R3 noise floor, frozen matrix, diagnostic motion pair, invalid-readback rejection, stalled CDP abort'); process.exit(0);
 }
 await mkdir(DIR, { recursive: true });
@@ -300,7 +304,7 @@ if (!options.resume && !options['summary-only']) for (let run = RUN_START; run <
 }
 const save = () => writeFileSync(`${DIR}/summary.json`, JSON.stringify(summaries(results), null, 2));
 if (options['summary-only']) { save(); console.log(JSON.stringify(summaries(results).headline)); process.exit(0); }
-const census = () => execFileSync('ps', ['-axo', 'pid=,ppid=,lstart=,command='], { encoding: 'utf8' }).split('\n').map((l) => { const m = l.match(/^\s*(\d+)\s+(\d+)\s+(.{24})\s+(.*)$/); return m && { pid: +m[1], ppid: +m[2], start: m[3], command: m[4] }; }).filter(Boolean);
+function census() { return execFileSync('ps', ['-axo', 'pid=,ppid=,lstart=,command='], { encoding: 'utf8' }).split('\n').map((l) => { const m = l.match(/^\s*(\d+)\s+(\d+)\s+(.{24})\s+(.*)$/); return m && { pid: +m[1], ppid: +m[2], start: m[3], command: m[4] }; }).filter(Boolean); }
 function sameProcess(a, b) { return !!a && a.command === b.command && a.start === b.start; }
 async function boundedExit(promise, signal) {
 	let timer;
@@ -414,7 +418,7 @@ function release() {
 		await ownerCheckedRelease(LOCK, ownerText).catch((error) => { console.error(error); throw error; });
 		clearTimeout(holdTimer);
 		lockOwned = false; lastReleasedAt = Date.now();
-		console.log(JSON.stringify({ phase: 'disk accounting', energyEvalBytes: await bytes('/tmp/energy-eval') }));
+		console.log(JSON.stringify({ phase: 'disk accounting', energyEvalBytes: await boundedFS(bytes('/tmp/energy-eval')).catch(() => null) }));
 		console.log(JSON.stringify({ phase: 'GPU lock released', pid: process.pid }));
 	})();
 	return releasePromise;
@@ -438,12 +442,7 @@ async function acquire() {
 		try {
 			await mkdir(LOCK); releasePromise = null; emergencyRelease = null; lockOwned = true; lockedAt = Date.now();
 			await writeFile(`${LOCK}/owner`, ownerText); await writeFile(`${LOCK}/acquired-at`, new Date(lockedAt).toISOString());
-			holdTimer = setTimeout(() => {
-				holdExpired = true;
-				if (activeController) abortWith(activeController, livenessReason());
-				emergencyRelease = terminateAndRelease(cleanup, killOwned, emergencyCleanupRelease, 10000, remainingOwned, preserveResidual);
-				emergencyRelease.catch((error) => { console.error(error); process.exitCode = 1; });
-			}, 25 * 60000);
+			// Each supervised attempt races the remaining hard hold budget.
 		}
 		catch (e) { if (e.code !== 'EEXIST') throw e; console.log(JSON.stringify({ phase: 'waiting for GPU lock' })); await Bun.sleep(30000); }
 	}
@@ -515,7 +514,7 @@ async function bytes(path) {
 	try { const s = await stat(path); return s.isDirectory() ? (await Promise.all((await readdir(path)).map((f) => bytes(`${path}/${f}`)))).reduce((a, b) => a + b, 0) : s.size; }
 	catch (e) { if (e.code === 'ENOENT') return 0; throw e; }
 }
-async function capture(c, run) {
+async function captureWorker(c, run) {
 	if (options['paired-max-fps']) override = armOverride(c.arm);
 	const name = `${fileKey(c)}-r${run}${c.infraRetry ? '-infra-retry' : ''}`, trace = `${DIR}/${name}.trace`, windows = {}, states = {};
 	const disk = execFileSync('df', ['-k', DIR], { encoding: 'utf8' }).trim().split('\n').at(-1).trim().split(/\s+/);
@@ -525,12 +524,8 @@ async function capture(c, run) {
 	const scratchNames = async () => (await readdir(tmpdir())).filter((name) => /^instruments.*\.ktrace$/.test(name));
 	const ownedScratch = new Set();
 	const scratchNew = async () => {
-		if (scratchBefore && lockOwned && await readFile(`${LOCK}/owner`, 'utf8').catch(() => '') === ownerText) {
-			const names = await scratchNames();
-			if (lockOwned && await readFile(`${LOCK}/owner`, 'utf8').catch(() => '') === ownerText) {
-				for (const name of names) if (!scratchBefore.has(name)) ownedScratch.add(name);
-			}
-		}
+		// Worker TMPDIR is an exclusive supervisor-created attempt directory.
+		for (const name of await scratchNames()) ownedScratch.add(name);
 		return [...ownedScratch];
 	};
 	const cleanScratch = singleFlight(async () => {
@@ -588,13 +583,15 @@ async function capture(c, run) {
 		progress('recorder startup');
 		const note = `svelte-fluid.energy.E1.${process.pid}.${name}`;
 		notifier = trackedProcess(Bun.spawn(['/usr/bin/notifyutil', '-1', note], { stdout: 'ignore' }));
-		scratchBefore = new Set(await scratchNames());
+		scratchBefore = new Set(await readdir(execFileSync('getconf', ['DARWIN_USER_TEMP_DIR'], { encoding: 'utf8' }).trim()));
 		recording = Bun.spawn(['env', `DEVELOPER_DIR=${XCODE.DEVELOPER_DIR}`, 'xcrun', 'xctrace', 'record', '--template', 'Metal System Trace', '--attach', String(gpuPid), '--time-limit', '110s', '--no-prompt', '--notify-tracing-started', note, '--output', trace], { env: { ...XCODE, TMPDIR: traceTmp }, stdout: 'pipe', stderr: 'pipe' }); recording = trackedProcess(recording);
 		let checkingSize = false;
 		sizeWatch = setInterval(async () => {
 			if (checkingSize || signal.aborted) return; checkingSize = true;
 			try {
-				const sizes = await Promise.all((await scratchNew()).map((name) => bytes(`${tmpdir()}/${name}`)));
+				const globalTmp = execFileSync('getconf', ['DARWIN_USER_TEMP_DIR'], { encoding: 'utf8' }).trim();
+				const names = (await readdir(globalTmp)).filter((name) => /^instruments.*\.ktrace$/.test(name) && !scratchBefore.has(name));
+				const sizes = await Promise.all(names.map((name) => bytes(`${globalTmp}/${name}`)));
 				const largest = Math.max(0, ...sizes);
 				if (largest > 10 * 1024 ** 3) { abortWith(controller, new Error(`Trace size watchdog: ${largest} bytes exceeds 10 GiB`)); cleanup(); }
 			} finally { checkingSize = false; }
@@ -735,6 +732,74 @@ async function capture(c, run) {
 	}
 	clearTimeout(deadline); activeController = null; activePersistFailure = null; activeScratchCleanup = null;
 	console.log(JSON.stringify({ name, status: row.status, error: row.error, active: row.windows?.active?.gpuBusyMsPerSecond, untouched: row.windows?.untouched?.gpuBusyMsPerSecond, traceBytes: row.traceBytes, traceDeleted: row.traceDeleted }));
+	return row;
+}
+if (options['attempt-worker']) {
+	const { c, run } = JSON.parse(options['attempt-worker']);
+	await captureWorker(c, run);
+	cleanup(); process.exit(0);
+}
+function groupRows(pgid) { return execFileSync('ps', ['-axo', 'pid=,pgid=,command='], { encoding: 'utf8' }).split('\n').filter((l) => Number(l.trim().split(/\s+/)[1]) === pgid); }
+async function stopGroup(child, grace = 10000, escaped = new Map()) {
+	const liveEscaped = () => census().filter((r) => sameProcess(escaped.get(r.pid), r));
+	const signalEscaped = (s) => { for (const r of liveEscaped()) { try { process.kill(r.pid, s); } catch (e) { if (e.code !== 'ESRCH') throw e; } } };
+	const signal = (s) => { if (groupRows(child.pid).length) { try { process.kill(-child.pid, s); } catch (e) { if (e.code !== 'ESRCH') throw e; } } };
+	signal('SIGTERM'); signalEscaped('SIGTERM');
+	const until = Date.now() + grace;
+	while ((groupRows(child.pid).length || liveEscaped().length) && Date.now() < until) await Bun.sleep(100);
+	signal('SIGKILL'); signalEscaped('SIGKILL');
+	const reapUntil = Date.now() + grace;
+	while ((groupRows(child.pid).length || liveEscaped().length) && Date.now() < reapUntil) await Bun.sleep(100);
+	assert.equal(groupRows(child.pid).length + liveEscaped().length, 0, 'Owned attempt group survived bounded reap; lock preserved');
+}
+const systemTmp = execFileSync('getconf', ['DARWIN_USER_TEMP_DIR'], { encoding: 'utf8' }).trim();
+const unprovenScratch = new Set();
+async function capture(c, run) {
+	const name = `${fileKey(c)}-r${run}${c.infraRetry ? '-infra-retry' : ''}`;
+	const scratch = await mkdtemp(`${DIR}/${name}-owned-`), rowPath = `${DIR}/${name}.json`;
+	const args = process.argv.slice(2);
+	args.push('--attempt-worker', JSON.stringify({ c, run }));
+	const child = spawn(process.execPath, [process.argv[1], ...args], { cwd: ROOT, detached: true, env: { ...process.env, TMPDIR: scratch }, stdio: 'inherit' });
+	const exited = new Promise((resolve) => { child.once('exit', resolve); child.once('error', resolve); });
+	const escaped = new Map(), provenScratch = new Set(), outsideBefore = new Set(await readdir(systemTmp));
+	let scanning = false;
+	const scan = async () => {
+		if (scanning) return; scanning = true;
+		try {
+			const rows = census(), ids = new Set([child.pid]);
+			for (let changed = true; changed;) { changed = false; for (const r of rows) if (r.ppid !== 1 && ids.has(r.ppid) && !ids.has(r.pid)) { ids.add(r.pid); changed = true; } }
+			for (const r of rows.filter((r) => ids.has(r.pid))) {
+				if (/DTServiceHub/.test(r.command)) escaped.set(r.pid, r);
+				if (/xctrace|DTServiceHub/.test(r.command)) {
+					const output = await execAsync('lsof', ['-n', '-p', String(r.pid), '-Fn'], { timeout: 1000, maxBuffer: 1 << 20 }).then((r) => r.stdout, () => '');
+					for (const line of output.split('\n')) if (/^n\/.*\/instruments[^/]*\.ktrace$/.test(line)) provenScratch.add(line.slice(1));
+				}
+			}
+		} finally { scanning = false; }
+	};
+	const monitor = setInterval(scan, 1000);
+	let deadline;
+	const timedOut = await Promise.race([exited.then(() => false), new Promise((resolve) => { deadline = setTimeout(() => resolve(true), Math.min(600000, Math.max(0, lockedAt + 25 * 60000 - Date.now()))); })]);
+	clearTimeout(deadline); clearInterval(monitor);
+	await scan();
+	try { await stopGroup(child, 10000, escaped); }
+	catch (error) {
+		const row = { ...c, run, status: 'FAILED', error: 'attempt timeout (liveness)', residualOwnedProcesses: groupRows(child.pid), lockPreserved: true, sha, engineSourceSha, harnessSha, engineFileHash, measurementLogicHash, browserMode, override: c.arm ? armOverride(c.arm) : override };
+		writeFileSync(rowPath, JSON.stringify(row, null, 2)); process.exit(1);
+	}
+	let row;
+	if (await Bun.file(rowPath).exists()) row = JSON.parse(await readFile(rowPath, 'utf8'));
+	else {
+		row = { ...c, run, status: 'FAILED', error: timedOut ? 'attempt timeout (liveness)' : 'Attempt worker exited without a row', sha, engineSourceSha, harnessSha, engineFileHash, measurementLogicHash, browserMode, override: c.arm ? armOverride(c.arm) : override };
+		writeFileSync(rowPath, JSON.stringify(row, null, 2));
+	}
+	for (const path of provenScratch) await boundedFS(rm(path, { force: true }));
+	row.unprovenScratch = (await readdir(systemTmp)).filter((name) => /^instruments.*\.ktrace$/.test(name) && !outsideBefore.has(name) && !provenScratch.has(`${systemTmp}/${name}`)).map((name) => `${systemTmp}/${name}`);
+	for (const path of row.unprovenScratch) unprovenScratch.add(path);
+	await writeFile(rowPath, JSON.stringify(row, null, 2));
+	await writeFile(`${DIR}/unproven-scratch.json`, JSON.stringify([...unprovenScratch], null, 2));
+	await boundedFS(rm(scratch, { recursive: true }));
+	await release();
 	return row;
 }
 try {
