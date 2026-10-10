@@ -313,11 +313,15 @@ if (options['self-check']) {
 	assert.equal(census().some((r) => sameProcess(escapedIdentity, r)), false);
 	const tinyLock = `${batchTemp}/tiny-lock`, tinyRow = `${batchTemp}/tiny-row.json`;
 	await mkdir(tinyLock); await writeFile(`${tinyLock}/owner`, 'test-owner');
-	const hardCode = `const {spawn}=await import('node:child_process');const fs=await import('node:fs');const p=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{detached:true,stdio:'ignore'});setTimeout(()=>{process.kill(-p.pid,'SIGKILL');fs.writeFileSync(${JSON.stringify(tinyRow)},JSON.stringify({status:'FAILED',error:'attempt timeout (liveness)'}));if(fs.readFileSync(${JSON.stringify(`${tinyLock}/owner`)},'utf8')==='test-owner')fs.rmSync(${JSON.stringify(tinyLock)},{recursive:true});process.exit(1);},200);`;
+	const hardCode = `const {spawn,execFileSync}=await import('node:child_process');const fs=await import('node:fs');${census.toString()};${sameProcess.toString()};${groupRows.toString()};${reapGroupSync.toString()};const p=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{detached:true,stdio:'ignore'});const escaped=spawn(process.execPath,['-e',"process.on('SIGTERM',()=>{});setTimeout(()=>process.exit(0),1200)"],{detached:true,stdio:'ignore'});setTimeout(()=>{const identity=census().find(r=>r.pid===escaped.pid);if(!identity)process.exit(2);process.kill(-p.pid,'SIGKILL');/* Slow KILL simulation: escaped dummy exits through its independent sleep wrapper. */const start=Date.now();const residual=reapGroupSync(p,new Map([[escaped.pid,identity]]));const lockPreserved=residual.group.length+residual.escaped.length>0;fs.writeFileSync(${JSON.stringify(tinyRow)},JSON.stringify({status:'FAILED',error:'attempt timeout (liveness)',residual,lockPreserved,reapMs:Date.now()-start}));if(!lockPreserved&&fs.readFileSync(${JSON.stringify(`${tinyLock}/owner`)},'utf8')==='test-owner')fs.rmSync(${JSON.stringify(tinyLock)},{recursive:true});process.exit(1);},200);`;
 	const tiny = spawn(process.execPath, ['-e', hardCode], { stdio: 'ignore' });
 	const tinyExit = await new Promise((resolve) => tiny.once('exit', resolve));
 	assert.equal(tinyExit, 1); assert.equal(await Bun.file(`${tinyLock}/owner`).exists(), false);
-	assert.equal(JSON.parse(await readFile(tinyRow, 'utf8')).status, 'FAILED');
+	const tinyResult = JSON.parse(await readFile(tinyRow, 'utf8'));
+	assert.equal(tinyResult.status, 'FAILED'); assert.equal(tinyResult.lockPreserved, false);
+	assert.deepEqual(tinyResult.residual.group, []); assert.deepEqual(tinyResult.residual.escaped, []);
+	assert.ok(Array.isArray(tinyResult.residual.zombiePids));
+	assert.ok(tinyResult.reapMs >= 900 && tinyResult.reapMs < 5500);
 	await rm(batchTemp, { recursive: true });
 	for (const code of ["process.on('SIGTERM',()=>{});setInterval(()=>{},1000)", "process.on('SIGTERM',()=>setTimeout(()=>process.exit(0),200));setInterval(()=>{},1000)"]) {
 		const group = spawn(process.execPath, ['-e', code], { detached: true, stdio: 'ignore' });
@@ -785,6 +789,23 @@ function groupSafe(pid) {
 	const self = Number(execFileSync('ps', ['-p', String(process.pid), '-o', 'pgid='], { encoding: 'utf8' }).trim());
 	return validGroup(pid, pgid, self);
 }
+function reapGroupSync(child, escaped, grace = 5000) {
+	const until = Date.now() + grace;
+	const sleep = new Int32Array(new SharedArrayBuffer(4));
+	let residual;
+	const zombiePids = new Set();
+	do {
+		// Sync polling blocks child exit callbacks; zombies cannot execute or retain the GPU lock.
+		const states = new Map(execFileSync('ps', ['-axo', 'pid=,stat='], { encoding: 'utf8', timeout: 1000 }).split('\n').map((line) => { const [pid, stat] = line.trim().split(/\s+/); return [Number(pid), stat]; }));
+		const group = child ? groupRows(child.pid) : [], identities = census().filter((r) => sameProcess(escaped.get(r.pid), r));
+		for (const pid of [...group.map((line) => Number(line.trim().split(/\s+/)[0])), ...identities.map((r) => r.pid)]) if (states.get(pid)?.startsWith('Z')) zombiePids.add(pid);
+		residual = { group: group.filter((line) => !states.get(Number(line.trim().split(/\s+/)[0]))?.startsWith('Z')), escaped: identities.filter((r) => !states.get(r.pid)?.startsWith('Z')), zombiePids: [...zombiePids] };
+		if (!residual.group.length && !residual.escaped.length) break;
+		if (Date.now() >= until) break;
+		Atomics.wait(sleep, 0, 0, Math.min(100, until - Date.now()));
+	} while (true);
+	return residual;
+}
 async function stopGroup(child, grace = 10000, escaped = new Map()) {
 	assert.equal(child.groupVerified, true, 'Unverified process group; negative signal prohibited');
 	const liveEscaped = () => census().filter((r) => sameProcess(escaped.get(r.pid), r));
@@ -807,10 +828,10 @@ async function capture(c, run) {
 	const hardDeadline = setTimeout(() => {
 		if (currentChild?.groupVerified) { try { process.kill(-currentChild.pid, 'SIGKILL'); } catch (e) { if (e.code !== 'ESRCH') console.error(e); } }
 		for (const r of census()) if (sameProcess(currentEscaped.get(r.pid), r)) { try { process.kill(r.pid, 'SIGKILL'); } catch {} }
-		writeFileSync(rowPath, JSON.stringify({ ...c, run, status: 'FAILED', error: 'attempt timeout (liveness)', sha, engineSourceSha, harnessSha, engineFileHash, measurementLogicHash, browserMode, override: c.arm ? armOverride(c.arm) : override }));
-		if (!currentChild || !groupRows(currentChild.pid).length) {
-			if (readFileSync(`${LOCK}/owner`, 'utf8') === ownerText) { rmSync(LOCK, { recursive: true }); lockOwned = false; }
-		}
+		const residual = reapGroupSync(currentChild, currentEscaped);
+		const lockPreserved = residual.group.length + residual.escaped.length > 0;
+		writeFileSync(rowPath, JSON.stringify({ ...c, run, status: 'FAILED', error: 'attempt timeout (liveness)', residualOwnedProcesses: residual.group, escapedOwnedProcesses: residual.escaped, zombiePids: residual.zombiePids, lockPreserved, sha, engineSourceSha, harnessSha, engineFileHash, measurementLogicHash, browserMode, override: c.arm ? armOverride(c.arm) : override }));
+		if (!lockPreserved && readFileSync(`${LOCK}/owner`, 'utf8') === ownerText) { rmSync(LOCK, { recursive: true }); lockOwned = false; }
 		process.exit(1);
 	}, Math.max(0, lockedAt + 25 * 60000 - Date.now()));
 	const scratch = await mkdtemp(`${DIR}/${name}-owned-`);
