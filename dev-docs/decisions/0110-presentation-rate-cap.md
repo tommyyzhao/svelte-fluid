@@ -127,17 +127,50 @@ retries: 126 resolved clean slots, 18/22 complete scenes. Six missing slots
 and four incomplete scenes remain descriptive, never silently replayed.
 
 Train active Amendment 5 secondary: **18/18 complete scenes pass**. Amendment 6
-(`a3d2dee`) primary: median paired saving **40.1514%**, median baseline active
-noise **2.81076%**, twice noise **5.62152%**, ≥5% floor: **PASS**. Active arm
-headlines **205.3913 → 116.8297 GPU-ms/s**. Untouched nonzero complete-scene
+(`a3d2dee`) primary: registered ratio-of-scene-arm-median headline saving
+**43.1184815%**, from **205.3912554 → 116.8296649 GPU-ms/s**. Median baseline
+active noise **2.81076%**, twice noise **5.62152%**, ≥5% floor: threshold
+**PASS on the 18/22 complete-pair subset**, not a full-matrix pass. Median
+per-scene paired saving **40.1514%** is secondary/descriptive; independent
+audit corrected the initial checkpoint's primary label before held-out verdict. Untouched nonzero complete-scene
 paired saving **39.2635%**, own measured noise **3.53698%** descriptive; the
 registered active-noise rule is not replaced by an untouched threshold.
 Default/Toroidal untouched windows preserve 0/0 rest without a relative ratio.
 All clean RAF probes approximately 120 Hz, genuine hidden RAF 0. One hidden
-window is nonzero but within its blank-control floor; not called exact zero.
+window exceeds the registered `max(idle) ≤ max(control)` floor: 0.0645543
+versus 0.0477459 GPU-ms/s. A post-hoc control-spread relaxation was withdrawn;
+whole-process GPU attribution is not engine-submission accounting.
 
 Full tables, missing slots, load/CI/wrapper incidents and verified cleanup:
 `dev-docs/benchmarks/energy-eval.md`, “120 Hz paired maxFps evaluation”. Train
 results committed before held-out. Lead accepted train A6 go; held-out decision
-still pending. Amendment 5 uses existing byte-equality hardware evidence for E2
-stills; motion review still belongs to the owner. **Default remains 0**.
+is reported below. Amendment 5 cites equal-clock byte-equality hardware evidence;
+that is not displayed-image certification at equal wall time. Default adoption
+still needs full held-out E1, held-out E2 and owner motion review. These
+measurements do not authorize adoption. **Default remains 0**.
+
+### Outcome draft — paired held-out completion (2026-10-10)
+
+All 96 held-out originals attempted; 22 retry/rerun rows, 83/96 resolved clean
+slots, 7/16 complete paired scenes. Registered A6 ratio-of-scene-arm-median
+headline: **15.6764%** saving (167.8875845 / 141.568812 GPU-ms/s), versus
+**11.5884%** twice median baseline active noise; ≥5% floor also met.
+**PASS on the complete subset, incomplete as a full-matrix certification.**
+Blind lead-rerun exclusion sensitivity: 6/16 complete scenes, **21.8538%**
+saving versus **8.6144%** twice noise; PASS, verdict unchanged.
+
+A5 secondary passes 6/7 scenes; TeslaValve DPR1 seed11 fails its own noise
+bar. Complete-scene matched-run active savings **12.3880%–35.4736%**, median
+**22.1601%**. Complete R3 arm groups satisfy frozen max(idle) ≤ max(control);
+incomplete groups remain unclassified, including two individual nonzero idle
+windows. Clean refresh gates pass. Recorded quiet-ack timeouts/watchdog errors
+are zero, with the separately disclosed inactive-watchdog FrameFluid DPR2
+seed23 R3 pair (maximum parsed trace 582,384,902 bytes, below 10 GiB).
+
+Compact rows/hashes, missing-slot causes, lead annotations and sensitivity:
+`dev-docs/benchmarks/max-fps-120hz-summary.json` and the held-out section of
+`energy-eval.md`. Two successful blind lead-applied reruns preserve their
+operator-aborted FAILED originals; byte-copy provenance is explicit.
+No held-out equal-wall-time E2 quality pass or owner motion approval exists.
+This outcome draft supports opt-in measurement only, not default adoption.
+**Default remains 0.**
