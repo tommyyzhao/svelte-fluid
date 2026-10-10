@@ -7,7 +7,35 @@ import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { execFile, execFileSync, spawn } from 'node:child_process';
 import { mkdir, readFile, writeFile, rm, readdir, stat, mkdtemp } from 'node:fs/promises';
-import { writeFileSync, readFileSync, rmSync, realpathSync, existsSync } from 'node:fs';
+import { writeFileSync, readFileSync, rmSync, realpathSync, existsSync, lstatSync } from 'node:fs';
+const directChildAlive = (child) => child.exitCode === null && (child.signalCode ?? null) === null;
+async function enterQuiet(state, ack) {
+	state.quiet = true;
+	await state.scanning?.catch((error) => { state.teardownError = String(error); });
+	ack();
+}
+async function quietWorker(row) {
+	if (!process.send) return;
+	let timer, listener;
+	try {
+		await new Promise((resolve) => {
+			listener = (message) => { if (message === 'quiet-ack') resolve(); };
+			process.on('message', listener);
+			timer = setTimeout(() => { row.quietAckTimeout = true; resolve(); }, 10000);
+			process.send('quiet');
+		});
+	} finally { clearTimeout(timer); process.off('message', listener); }
+}
+function deleteProvenScratch(proof) {
+	if (realpathSync(proof.lsofPath) !== proof.path) return false;
+	const current = lstatSync(proof.lsofPath);
+	if (current.dev !== proof.dev || current.ino !== proof.ino) return false;
+	rmSync(proof.lsofPath); return true;
+}
+async function postAcquireLoad(load, release) {
+	if (load < 15) return true;
+	await release(); return false;
+}
 const inMeasuredWindow = (window, now = Date.now()) => !!window && now >= window.start && now < window.end;
 function informationalProbe(state, probe, window) {
 	if (inMeasuredWindow(window)) return undefined;
@@ -333,7 +361,7 @@ if (options['self-check']) {
 	assert.ok(Array.isArray(tinyResult.residual.zombiePids));
 	assert.ok(tinyResult.reapMs >= 900 && tinyResult.reapMs < 5500);
 	await mkdir(tinyLock); await writeFile(`${tinyLock}/owner`, 'test-owner');
-	const signalCode = `const {spawn,execFileSync}=await import('node:child_process');const {writeFileSync,readFileSync,rmSync,existsSync}=await import('node:fs');${census.toString()};${sameProcess.toString()};${groupRows.toString()};${reapGroupSync.toString()};${suspectHubsSync.toString()};${persistRowSync.toString()};${finalizeSupervisorSync.toString()};const child=spawn(process.execPath,['-e',"process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"],{detached:true,stdio:'ignore'});child.groupVerified=true;process.on('SIGTERM',()=>finalizeSupervisorSync({child,escaped:new Map(),rowPath:${JSON.stringify(tinyRow)},row:{}},${JSON.stringify(tinyLock)},'test-owner',undefined,true));setTimeout(()=>process.kill(process.pid,'SIGTERM'),200);`;
+	const signalCode = `const {spawn,execFileSync}=await import('node:child_process');const {writeFileSync,readFileSync,rmSync,existsSync}=await import('node:fs');${census.toString()};${sameProcess.toString()};${groupRows.toString()};${reapGroupSync.toString()};${suspectHubsSync.toString()};${persistRowSync.toString()};${deleteProvenScratch.toString()};${finalizeSupervisorSync.toString()};const child=spawn(process.execPath,['-e',"process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"],{detached:true,stdio:'ignore'});child.groupVerified=true;process.on('SIGTERM',()=>finalizeSupervisorSync({child,escaped:new Map(),rowPath:${JSON.stringify(tinyRow)},row:{}},${JSON.stringify(tinyLock)},'test-owner',undefined,true));setTimeout(()=>process.kill(process.pid,'SIGTERM'),200);`;
 	const signaled = spawn(process.execPath, ['-e', signalCode], { stdio: 'ignore' });
 	assert.equal(await new Promise((resolve) => signaled.once('exit', resolve)), 1);
 	assert.equal(await Bun.file(`${tinyLock}/owner`).exists(), false);
@@ -341,7 +369,7 @@ if (options['self-check']) {
 	assert.equal(signalResult.lockPreserved, false); assert.deepEqual(signalResult.residualOwnedProcesses, []); assert.deepEqual(signalResult.escapedOwnedProcesses, []);
 	for (const suspect of [false, true]) {
 		await mkdir(tinyLock); await writeFile(`${tinyLock}/owner`, 'test-owner');
-		const failureCode = `const {spawn,execFileSync}=await import('node:child_process');const {writeFileSync,readFileSync,rmSync,symlinkSync,existsSync}=await import('node:fs');${census.toString()};${sameProcess.toString()};${groupRows.toString()};${reapGroupSync.toString()};${suspectHubsSync.toString()};${persistRowSync.toString()};${finalizeSupervisorSync.toString()};const state={escaped:new Map(),rowPath:${JSON.stringify(tinyRow)},row:{},startedAt:Date.now()-1000};try{state.child=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{detached:true,stdio:'ignore'});await Bun.sleep(200);state.child.groupVerified=true;if(${suspect}){symlinkSync('/bin/sleep',${JSON.stringify(`${batchTemp}/DTServiceHub`)});spawn(${JSON.stringify(`${batchTemp}/DTServiceHub`)},['20'],{detached:true,stdio:'ignore'});process.kill(-state.child.pid,'SIGKILL');reapGroupSync(state.child,state.escaped);await Bun.sleep(200);JSON.parse('{');}throw new Error('after spawn');}finally{finalizeSupervisorSync(state,${JSON.stringify(tinyLock)},'test-owner');process.exit(1);}`;
+		const failureCode = `const {spawn,execFileSync}=await import('node:child_process');const {writeFileSync,readFileSync,rmSync,symlinkSync,existsSync}=await import('node:fs');${census.toString()};${sameProcess.toString()};${groupRows.toString()};${reapGroupSync.toString()};${suspectHubsSync.toString()};${persistRowSync.toString()};${deleteProvenScratch.toString()};${finalizeSupervisorSync.toString()};const state={escaped:new Map(),rowPath:${JSON.stringify(tinyRow)},row:{},startedAt:Date.now()-1000};try{state.child=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{detached:true,stdio:'ignore'});await Bun.sleep(200);state.child.groupVerified=true;if(${suspect}){symlinkSync('/bin/sleep',${JSON.stringify(`${batchTemp}/DTServiceHub`)});spawn(${JSON.stringify(`${batchTemp}/DTServiceHub`)},['20'],{detached:true,stdio:'ignore'});process.kill(-state.child.pid,'SIGKILL');reapGroupSync(state.child,state.escaped);await Bun.sleep(200);JSON.parse('{');}throw new Error('after spawn');}finally{finalizeSupervisorSync(state,${JSON.stringify(tinyLock)},'test-owner');process.exit(1);}`;
 		const failed = spawn(process.execPath, ['-e', failureCode], { stdio: 'ignore' });
 		assert.equal(await new Promise((resolve) => failed.once('exit', resolve)), 1);
 		const failureRow = JSON.parse(await readFile(tinyRow, 'utf8'));
@@ -354,7 +382,7 @@ if (options['self-check']) {
 		}
 	}
 	await mkdir(tinyLock); await writeFile(`${tinyLock}/owner`, 'test-owner');
-	const zombieCode = `const {spawn,execFileSync}=await import('node:child_process');const {writeFileSync,readFileSync,rmSync,existsSync}=await import('node:fs');${census.toString()};${sameProcess.toString()};${groupRows.toString()};${reapGroupSync.toString()};${suspectHubsSync.toString()};${persistRowSync.toString()};${finalizeSupervisorSync.toString()};${stopGroup.toString()};const assert=(await import('node:assert/strict')).default;const child=spawn(process.execPath,['-e','process.exit(0)'],{detached:true,stdio:'ignore'});Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,500);child.groupVerified=true;const live=reapGroupSync(child,new Map(),0);if(!live.zombiePids.includes(child.pid))process.exit(3);await stopGroup(child,100);finalizeSupervisorSync({child,escaped:new Map(),teardownError:'prior teardown failure',rowPath:${JSON.stringify(tinyRow)},row:{}},${JSON.stringify(tinyLock)},'test-owner');process.exit(1);`;
+	const zombieCode = `const {spawn,execFileSync}=await import('node:child_process');const {writeFileSync,readFileSync,rmSync,existsSync}=await import('node:fs');${census.toString()};${sameProcess.toString()};${groupRows.toString()};${reapGroupSync.toString()};${suspectHubsSync.toString()};${persistRowSync.toString()};${deleteProvenScratch.toString()};${finalizeSupervisorSync.toString()};${stopGroup.toString()};const assert=(await import('node:assert/strict')).default;const child=spawn(process.execPath,['-e','process.exit(0)'],{detached:true,stdio:'ignore'});Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,500);child.groupVerified=true;const live=reapGroupSync(child,new Map(),0);if(!live.zombiePids.includes(child.pid))process.exit(3);await stopGroup(child,100);finalizeSupervisorSync({child,escaped:new Map(),teardownError:'prior teardown failure',rowPath:${JSON.stringify(tinyRow)},row:{}},${JSON.stringify(tinyLock)},'test-owner');process.exit(1);`;
 	const zombie = spawn(process.execPath, ['-e', zombieCode], { stdio: 'ignore' });
 	assert.equal(await new Promise((resolve) => zombie.once('exit', resolve)), 1);
 	const zombieRow = JSON.parse(await readFile(tinyRow, 'utf8'));
@@ -379,6 +407,20 @@ if (options['self-check']) {
 	let transient = 0;
 	persistRowSync(`${batchTemp}/retry.json`, { status: 'FAILED' }, (path, data) => { if (!transient++) throw new Error('transient write'); writeFileSync(path, data); });
 	assert.equal(transient, 2); assert.equal(JSON.parse(await readFile(`${batchTemp}/retry.json`, 'utf8')).status, 'FAILED');
+	const quietState = { scanning: Bun.sleep(2000), quiet: false };
+	const quietStart = Date.now(); let quietAck = false, quietSpawns = 0;
+	const quietPromise = enterQuiet(quietState, () => { quietAck = true; });
+	assert.equal(quietState.quiet, true); assert.equal(quietAck, false);
+	if (!quietState.quiet) quietSpawns++;
+	await quietPromise; assert.ok(Date.now() - quietStart >= 1900); assert.equal(quietAck, true); assert.equal(quietSpawns, 0);
+	assert.equal(directChildAlive({ exitCode: null, signalCode: null }), true);
+	assert.equal(directChildAlive({ exitCode: 0, signalCode: null }), false);
+	let gateReleased = false;
+	assert.equal(await postAcquireLoad(15, async () => { gateReleased = true; }), false); assert.equal(gateReleased, true);
+	const trustPath = `${batchTemp}/trust.ktrace`; await writeFile(trustPath, 'keep');
+	const trust = lstatSync(trustPath);
+	assert.equal(deleteProvenScratch({ lsofPath: trustPath, path: realpathSync(trustPath), dev: trust.dev, ino: trust.ino + 1 }), false);
+	assert.equal(await Bun.file(trustPath).exists(), true);
 	const probeRow = { status: 'OK' };
 	informationalProbe(probeRow, () => { throw new Error('spawnSync ps ETIMEDOUT'); });
 	assert.equal(probeRow.status, 'OK'); assert.match(probeRow.teardownError, /ps ETIMEDOUT/);
@@ -529,7 +571,7 @@ function singleFlight(action) {
 	let promise;
 	return () => promise ??= Promise.resolve().then(action);
 }
-let releasePromise;
+let releasePromise, gateExpired = false;
 function release() {
 	assert.ok(!supervisorState, 'Active supervisor must verify ownership before release');
 	if (releasePromise) return releasePromise;
@@ -546,24 +588,24 @@ function release() {
 async function acquire() {
 	if (holdExpired) throw new Error('GPU hold cap reached (liveness)');
 	if (lockOwned) return;
-	{
-		const gate = { freeSince: Date.now(), lowSince: Date.now() };
-		while (true) {
-			const locked = existsSync(LOCK), load = loadavg()[1];
-			if (gateReady(gate, locked, load)) break;
-			console.log(JSON.stringify({ phase: 'attempt free/load gate', locked, load5: load }));
-			await Bun.sleep(60000);
+	const end = Date.now() + 85 * 60000;
+	const gate = { freeSince: Date.now(), lowSince: Date.now() };
+	while (Date.now() < end) {
+		const locked = existsSync(LOCK), load = loadavg()[1];
+		if (gateReady(gate, locked, load)) {
+			try {
+				await mkdir(LOCK); releasePromise = null; emergencyRelease = null; lockOwned = true; lockedAt = Date.now();
+				await writeFile(`${LOCK}/owner`, ownerText); await writeFile(`${LOCK}/acquired-at`, new Date(lockedAt).toISOString());
+				if (await postAcquireLoad(loadavg()[1], release)) return;
+			} catch (error) { if (error.code !== 'EEXIST') throw error; }
+			gate.freeSince = gate.lowSince = Date.now();
 		}
+		console.log(JSON.stringify({ phase: 'attempt free/load gate', locked, load5: load }));
+		await Bun.sleep(Math.min(5000, end - Date.now()));
 	}
-	console.log(execFileSync('df', ['-h', '/'], { encoding: 'utf8' }));
-	while (!lockOwned) {
-		try {
-			await mkdir(LOCK); releasePromise = null; emergencyRelease = null; lockOwned = true; lockedAt = Date.now();
-			await writeFile(`${LOCK}/owner`, ownerText); await writeFile(`${LOCK}/acquired-at`, new Date(lockedAt).toISOString());
-			// Each supervised attempt races the remaining hard hold budget.
-		}
-		catch (e) { if (e.code !== 'EEXIST') throw e; console.log(JSON.stringify({ phase: 'waiting for GPU lock' })); await Bun.sleep(30000); return acquire(); }
-	}
+	gateExpired = true;
+	console.log(JSON.stringify({ phase: 'attempt gate timeout; no row, lock untouched' }));
+	return false;
 }
 let shuttingDown = false, supervisorState;
 for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(signal, () => {
@@ -693,18 +735,11 @@ async function captureWorker(c, run) {
 		page = await pageFor(context, c.dpr); await page.bringToFront();
 		for (let i = 0; i < 40; i++) { gpuPid = census().find((r) => r.ppid === chromePid && r.command.includes('--type=gpu-process'))?.pid; if (gpuPid) break; await Bun.sleep(100); }
 		assert.ok(gpuPid, 'Owned Chrome GPU PID unavailable'); row.gpuPid = gpuPid;
-		let measuredWindow;
 		const alive = () => {
 			signal.throwIfAborted();
-			if (inMeasuredWindow(measuredWindow)) return;
-			const rows = informationalProbe(row, census, measuredWindow);
-			if (rows) assert.ok(rows.some((r) => r.pid === gpuPid), 'GPU process exited during recording');
+			assert.ok(directChildAlive(chrome), 'Owned Chrome exited during recording');
 		};
 		const waitUntil = async (epochMs) => {
-			if (measuredWindow?.end !== epochMs) {
-				measuredWindow = { start: epochMs, end: epochMs + 10000 };
-				writeFileSync(`${DIR}/${name}.window.json`, JSON.stringify(measuredWindow));
-			}
 			while (Date.now() < epochMs) { alive(); await Bun.sleep(Math.min(500, epochMs - Date.now())); }
 			alive();
 		};
@@ -726,6 +761,7 @@ async function captureWorker(c, run) {
 		}, 1000);
 		const notified = await Promise.race([notifier.exited.then(() => true), Bun.sleep(45000).then(() => false)]); notifier.kill(); notifier = null;
 		assert.ok(notified, 'Recorder tracing-started notification timeout'); await Bun.sleep(300); alive();
+		await quietWorker(row);
 		progress('mount'); Object.assign(row, await page.evaluate((c) => window.__energy.mount(c), { ...c, override }));
 		assert.deepEqual(row.cssActual, [c.w, c.h]); assert.equal(row.dprActual, c.dpr);
 		assert.deepEqual(row.backing, [c.w * c.dpr, c.h * c.dpr]); assert.ok(!/SwiftShader|Software/i.test(row.adapter), 'Hardware adapter required');
@@ -773,6 +809,7 @@ async function captureWorker(c, run) {
 		assert.ok(snapshot.visibility.filter((v) => v.at >= windows.active.start && v.at < windows.untouched.end).every((v) => v.state === 'visible'), 'Foreground visibility lost during visible windows');
 		assert.ok(snapshot.visibility.filter((v) => v.at >= windows.hidden.start && v.at < windows.hidden.end).every((v) => v.state === 'hidden'), 'Background visibility lost during hidden window');
 		// Diagnostic run is separate; field readbacks never enter the energy trace.
+		process.send?.('resume');
 		if (run === 1) {
 			const continuous = hasContinuousDriver(row.config, 40);
 			if (!continuous) {
@@ -812,6 +849,7 @@ async function captureWorker(c, run) {
 		await rm(trace, { recursive: true }); row.traceDeleted = true; signal.throwIfAborted();
 		await rm(input); signal.throwIfAborted(); await rm(output); signal.throwIfAborted();
 	} catch (error) {
+		process.send?.('resume');
 		row.status = 'FAILED';
 		row.error = String(abortReason(signal)?.message ?? error.message ?? error); row.phase = phase; row.windows = windows; row.traceDeleted = false;
 		livenessFailure(row, signal);
@@ -922,16 +960,21 @@ function finalizeSupervisorSync(state, lock, owner, completedRow, emergency = fa
 	} catch (error) { probeError = String(error); }
 	const lockPreserved = !!probeError || residual.group.length + residual.escaped.length + suspectUnowned.length > 0;
 	const cleanupResidual = [], scratchDeleted = [];
-	for (const path of state.provenScratch?.keys() ?? []) {
+	const unprovenPaths = [];
+	for (const proof of state.provenScratch?.values() ?? []) {
+		const path = proof.lsofPath;
 		if (lockPreserved || state.stopFailed) cleanupResidual.push(path);
-		else { try { if (existsSync(path)) { rmSync(path); scratchDeleted.push(path); } } catch { cleanupResidual.push(path); } }
+		else {
+			try { if (deleteProvenScratch(proof)) scratchDeleted.push(path); else { cleanupResidual.push(path); unprovenPaths.push(path); } }
+			catch (error) { if (error.code !== 'ENOENT') { cleanupResidual.push(path); unprovenPaths.push(path); } }
+		}
 	}
 	if (state.timedOut) completedRow = { ...state.row, status: 'FAILED', error: 'attempt timeout (liveness)' };
 	if (!completedRow && !emergency) {
 		try { completedRow = JSON.parse(readFileSync(state.rowPath, 'utf8')); }
 		catch { completedRow = { ...state.row, status: 'FAILED', error: 'worker row unreadable' }; }
 	}
-	const row = { ...(completedRow ?? { ...state.row, status: 'FAILED', error: 'attempt timeout (liveness)' }), residualOwnedProcesses: residual.group, escapedOwnedProcesses: residual.escaped, zombiePids: residual.zombiePids, suspectUnowned, probeError, teardownError: state.teardownError ?? completedRow?.teardownError, cleanupResidual, scratchDeleted, lockPreserved };
+	const row = { ...(completedRow ?? { ...state.row, status: 'FAILED', error: 'attempt timeout (liveness)' }), residualOwnedProcesses: residual.group, escapedOwnedProcesses: residual.escaped, zombiePids: residual.zombiePids, suspectUnowned, probeError, teardownError: state.teardownError ?? completedRow?.teardownError, cleanupResidual, scratchDeleted, unprovenScratch: [...new Set([...(completedRow?.unprovenScratch ?? []), ...unprovenPaths])], lockPreserved };
 	try { persistRowSync(state.rowPath, row); }
 	catch (error) {
 		row.lockPreserved = true; row.persistError = 'row persist failed';
@@ -971,7 +1014,11 @@ async function capture(c, run) {
 	const args = ['--label', options.label, '--split', c.split, '--cases', `${c.preset}@${c.w}x${c.h}:${c.dpr}:${c.seed}`, '--runs', '1', '--run-start', String(run), '--attempt-worker', JSON.stringify({ c, run })];
 	for (const flag of ['headed', 'paired-max-fps', 'per-encoder-export']) if (options[flag]) args.push(`--${flag}`);
 	for (const flag of ['source-root', 'engine-sha', 'override']) if (options[flag]) args.push(`--${flag}`, options[flag]);
-	const child = spawn(process.execPath, [process.argv[1], ...args], { cwd: ROOT, detached: true, env: process.env, stdio: 'inherit' });
+	const child = spawn(process.execPath, [process.argv[1], ...args], { cwd: ROOT, detached: true, env: process.env, stdio: ['inherit', 'inherit', 'inherit', 'ipc'] });
+	child.on('message', (message) => {
+		if (message === 'quiet') enterQuiet(supervisorState, () => { if (child.connected) child.send('quiet-ack'); }).catch((error) => { supervisorState.teardownError = String(error); });
+		else if (message === 'resume') supervisorState.quiet = false;
+	});
 	supervisorState.child = child;
 	child.groupVerified = groupSafe(child.pid);
 	if (!child.groupVerified) { child.kill('SIGKILL'); throw new Error('Attempt process group guard failed; exact child stopped'); }
@@ -980,9 +1027,7 @@ async function capture(c, run) {
 	supervisorState.escaped = escaped; supervisorState.provenScratch = provenScratch;
 	let scanning;
 	const scan = () => {
-		let window;
-		try { window = JSON.parse(readFileSync(`${DIR}/${name}.window.json`, 'utf8')); } catch (error) { if (error.code !== 'ENOENT') { supervisorState.teardownError = String(error); return Promise.resolve(); } }
-		if (inMeasuredWindow(window)) return Promise.resolve();
+		if (supervisorState.quiet) return Promise.resolve();
 		if (scanning) return scanning;
 		scanning = (async () => {
 			const rows = census(), ids = new Set([child.pid]);
@@ -991,19 +1036,21 @@ async function capture(c, run) {
 				if (/DTServiceHub/.test(r.command)) escaped.set(r.pid, r);
 				if (/xctrace/.test(r.command)) supervisorState.xctraceBirth ??= Date.parse(r.start);
 				if (/xctrace|DTServiceHub/.test(r.command)) {
-					const paused = () => { try { return inMeasuredWindow(JSON.parse(readFileSync(`${DIR}/${name}.window.json`, 'utf8'))); } catch { return false; } };
+					const paused = () => supervisorState.quiet;
 					if (paused()) break;
 					const output = await execAsync('lsof', ['-n', '-p', String(r.pid), '-Fn'], { timeout: 5000, maxBuffer: 1 << 20 }).then((r) => r.stdout, (error) => { supervisorState.teardownError = String(error); return ''; });
 					if (paused()) break;
 					if (sameProcess(r, census().find((p) => p.pid === r.pid))) {
 						for (const line of output.split('\n')) if (/^n\/.*\/instruments[^/]*\.ktrace$/.test(line)) {
-							const path = realpathSync(line.slice(1)), proof = { path, owner: r, provedAt: new Date().toISOString() };
+							const lsofPath = line.slice(1), path = realpathSync(lsofPath), identity = lstatSync(lsofPath);
+							const proof = { lsofPath, path, dev: identity.dev, ino: identity.ino, size: identity.size, owner: r, provedAt: new Date().toISOString() };
 							persistProof(provenScratch, path, proof, `${DIR}/${name}.scratch-proofs.json`);
 						}
 					}
 				}
 			}
-		})().finally(() => { scanning = null; });
+		})().finally(() => { scanning = null; supervisorState.scanning = null; });
+		supervisorState.scanning = scanning;
 		return scanning;
 	};
 	const monitor = setInterval(() => scan().catch((error) => { supervisorState.teardownError = String(error); }), 1000);
@@ -1039,7 +1086,7 @@ try {
 		if (options.resume && results.some((r) => key(r) === key(c) && r.run === run)) continue;
 		// Reserve the full 10-minute attempt ceiling before the 25-minute batch limit.
 		if (lockOwned && Date.now() - lockedAt >= 15 * 60000) await release();
-		await acquire();
+		if (gateExpired || await acquire() === false) break;
 		const r = await capture(c, run); results.push(r); save();
 		if (holdExpired) throw new Error('GPU hold cap reached (liveness)');
 		if (r.status !== 'OK') { await release(); await Bun.sleep(60000); }
@@ -1048,7 +1095,7 @@ try {
 	for (const failed of results.filter((r) => (['Recorder tracing-started notification timeout', 'Recorder finalisation timeout', 'Outer background task ceiling interrupted recorder finalisation'].includes(r.error) || /missing execution coverage|GPU process exited|No space left on device|ENOSPC|Trace size watchdog|incorrect visibility|visibility changed/.test(r.error ?? '')) && !r.infraRetry && cases.some((c) => key(c) === key(r)) && r.run >= RUN_START && r.run < RUN_START + RUNS)) {
 		if (results.some((r) => key(r) === key(failed) && r.run === failed.run && r.infraRetry)) continue;
 		if (lockOwned && Date.now() - lockedAt >= 15 * 60000) await release();
-		await acquire();
+		if (gateExpired || await acquire() === false) break;
 		const retry = await capture({ ...cases.find((c) => key(c) === key(failed)), infraRetry: true }, failed.run);
 		results.push(retry); save();
 		if (holdExpired) throw new Error('GPU hold cap reached (liveness)');
