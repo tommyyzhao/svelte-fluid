@@ -231,7 +231,14 @@ if (options['self-check']) {
 	assert.equal(scope.motion.samples[0].maxPerFrameDyeChange, 0.25);
 	scope.at = 31000; scope.sample(e); assert.equal(scope.motion.samples.length, 1);
 	scope.at = 32001; e.gl.getError = () => 1282; scope.sample(e); assert.equal(scope.motion.errors.length, 1);
-	console.log('Energy self-check passed: slicing, overlap union, ns/ms/s, median, R3 noise floor, frozen matrix, diagnostic motion pair, invalid-readback rejection'); process.exit(0);
+	const controller = new AbortController();
+	class PendingCDP { evaluate() { return new Promise(() => {}); } pages() { return [this]; } }
+	const guarded = abortableCDP(new PendingCDP(), controller.signal);
+	const pending = guarded.pages()[0].evaluate();
+	controller.abort(new Error('attempt timeout (liveness)'));
+	await assert.rejects(pending, /attempt timeout \(liveness\)/);
+	assert.throws(() => guarded.evaluate(), /attempt timeout \(liveness\)/);
+	console.log('Energy self-check passed: slicing, overlap union, ns/ms/s, median, R3 noise floor, frozen matrix, diagnostic motion pair, invalid-readback rejection, stalled CDP abort'); process.exit(0);
 }
 await mkdir(DIR, { recursive: true });
 const results = [];
@@ -250,7 +257,33 @@ if (!options.resume && !options['summary-only']) for (let run = RUN_START; run <
 const save = () => writeFileSync(`${DIR}/summary.json`, JSON.stringify(summaries(results), null, 2));
 if (options['summary-only']) { save(); console.log(JSON.stringify(summaries(results).headline)); process.exit(0); }
 const census = () => execFileSync('ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' }).split('\n').map((l) => { const m = l.match(/^\s*(\d+)\s+(\d+)\s+(.*)$/); return m && { pid: +m[1], ppid: +m[2], command: m[3] }; }).filter(Boolean);
+// Abort CDP waits without changing the frozen measurement statements.
+function abortRace(promise, signal) {
+	if (signal.aborted) return Promise.reject(signal.reason);
+	return new Promise((resolve, reject) => {
+		const abort = () => reject(signal.reason);
+		signal.addEventListener('abort', abort, { once: true });
+		Promise.resolve(promise).then(resolve, reject).finally(() => signal.removeEventListener('abort', abort));
+	});
+}
+function abortableCDP(value, signal, cache = new WeakMap()) {
+	if (Array.isArray(value)) return value.map((v) => abortableCDP(v, signal, cache));
+	if (!value || typeof value !== 'object' || Object.getPrototypeOf(value) === Object.prototype) return value;
+	if (cache.has(value)) return cache.get(value);
+	const proxy = new Proxy(value, { get(target, key) {
+		const member = Reflect.get(target, key, target);
+		if (typeof member !== 'function') return member;
+		return (...args) => {
+			signal.throwIfAborted();
+			const result = member.apply(target, args);
+			return result?.then ? abortRace(result, signal).then((v) => abortableCDP(v, signal, cache)) : abortableCDP(result, signal, cache);
+		};
+	} });
+	cache.set(value, proxy);
+	return proxy;
+}
 const owned = new Map(); let browser, chrome, profile, server, recording, notifier, lockOwned = false, lastReleasedAt = 0, lockedAt = 0;
+let holdTimer, activeController, holdExpired = false;
 const ownerText = JSON.stringify({ lane, purpose: `${browserMode} energy ${options.label} ${options.split}`, start: new Date().toISOString(), worktree: ROOT, sha, pid: process.pid });
 function remember() {
 	const rows = census(), ids = new Set([process.pid]);
@@ -265,11 +298,13 @@ function cleanup() {
 async function release() {
 	if (!lockOwned) return;
 	assert.equal(await readFile(`${LOCK}/owner`, 'utf8'), ownerText, 'GPU lock ownership changed');
+	clearTimeout(holdTimer);
 	await rm(LOCK, { recursive: true }); lockOwned = false; lastReleasedAt = Date.now();
 	console.log(JSON.stringify({ phase: 'disk accounting', energyEvalBytes: await bytes('/tmp/energy-eval') }));
 	console.log(JSON.stringify({ phase: 'GPU lock released', pid: process.pid }));
 }
 async function acquire() {
+	if (holdExpired) throw new Error('GPU hold cap reached (liveness)');
 	if (lockOwned) return;
 	if (lastReleasedAt && process.env.ENERGY_CAPTURE_SOLO !== '1') {
 		await Bun.sleep(Math.max(0, lastReleasedAt + 180000 - Date.now()));
@@ -284,7 +319,15 @@ async function acquire() {
 	}
 	console.log(execFileSync('df', ['-h', '/'], { encoding: 'utf8' }));
 	while (!lockOwned) {
-		try { await mkdir(LOCK); lockOwned = true; lockedAt = Date.now(); await writeFile(`${LOCK}/owner`, ownerText); await writeFile(`${LOCK}/acquired-at`, new Date(lockedAt).toISOString()); }
+		try {
+			await mkdir(LOCK); lockOwned = true; lockedAt = Date.now();
+			await writeFile(`${LOCK}/owner`, ownerText); await writeFile(`${LOCK}/acquired-at`, new Date(lockedAt).toISOString());
+			holdTimer = setTimeout(() => {
+				holdExpired = true;
+				activeController?.abort(new Error('attempt timeout (liveness)'));
+				cleanup();
+			}, 25 * 60000);
+		}
 		catch (e) { if (e.code !== 'EEXIST') throw e; console.log(JSON.stringify({ phase: 'waiting for GPU lock' })); await Bun.sleep(30000); }
 	}
 }
@@ -367,7 +410,8 @@ async function capture(c, run) {
 	const traceTmp = `${DIR}/${name}-tmp`;
 	await mkdir(traceTmp);
 	const progress = (p) => { phase = p; writeFileSync(`${DIR}/${name}.progress.json`, JSON.stringify({ ...row, phase, windows, states })); console.log(JSON.stringify({ name, phase })); };
-	const controller = new AbortController(), deadline = setTimeout(() => { controller.abort(new Error(`Attempt timeout in ${phase}`)); cleanup(); }, 600000);
+	const controller = new AbortController(), deadline = setTimeout(() => { controller.abort(new Error('attempt timeout (liveness)')); cleanup(); }, 600000);
+	activeController = controller;
 	const signal = controller.signal;
 	try {
 		await startServer(); signal.throwIfAborted();
@@ -382,11 +426,11 @@ async function capture(c, run) {
 		assert.ok(endpoint, 'Owned Chrome CDP endpoint unavailable');
 		// Bun's WebSocket avoids Playwright's Node transport handshake on this machine.
 		const socket = new WebSocket(endpoint);
-		await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject; });
+		await abortRace(new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject; }), signal);
 		const transport = { send(message) { socket.send(JSON.stringify(message)); }, close() { socket.close(); } };
 		socket.onmessage = (event) => transport.onmessage?.(JSON.parse(event.data));
 		socket.onclose = () => transport.onclose?.();
-		browser = await chromium.connectOverCDP(transport, { noDefaults: true, timeout: 30000 });
+		browser = abortableCDP(await abortRace(chromium.connectOverCDP(transport, { noDefaults: true, timeout: 30000 }), signal), signal);
 		const chromePid = chrome.pid;
 		const context = browser.contexts()[0];
 		for (const blank of context.pages()) await blank.close();
@@ -503,7 +547,7 @@ async function capture(c, run) {
 		row.status = 'FAILED';
 		row.error = String(controller.signal.reason?.message ?? error.message ?? error); row.phase = phase; row.windows = windows; row.traceDeleted = false;
 		row.browserErrors = page?.__energyErrors ?? [];
-		if (recording && !stopped) { try { recording.kill('SIGINT'); await Promise.race([recording.exited, Bun.sleep(180000)]); } catch {} }
+		if (recording && !stopped && !signal.aborted) { try { recording.kill('SIGINT'); await Promise.race([recording.exited, Bun.sleep(180000)]); } catch {} }
 		// Per-window control failure: preserve already-completed correctly-visible windows.
 		if (c.infraRetry && /hidden: incorrect visibility|hidden: visibility changed/.test(row.error) && windows.active && windows.untouched) {
 			try {
@@ -520,6 +564,14 @@ async function capture(c, run) {
 		cleanup();
 	} finally {
 		clearTimeout(deadline); clearInterval(sizeWatch);
+		activeController = null;
+		if (signal.aborted) {
+			cleanup();
+			await Bun.sleep(1000);
+			for (const r of census()) if (owned.get(r.pid) === r.command) {
+				try { process.kill(r.pid, 'SIGKILL'); } catch (e) { if (e.code !== 'ESRCH') throw e; }
+			}
+		}
 		row.scratchDeleted = [];
 		for (const name of await scratchNew()) {
 			const path = `${tmpdir()}/${name}`, s = await stat(path);
@@ -547,6 +599,7 @@ try {
 		if (lockOwned && Date.now() - lockedAt >= 15 * 60000) await release();
 		await acquire();
 		const r = await capture(c, run); results.push(r); save();
+		if (holdExpired) throw new Error('GPU hold cap reached (liveness)');
 		if (r.status !== 'OK') { await release(); await Bun.sleep(60000); }
 	}
 	// Exactly one end-of-run retry for recorder infrastructure timeout, never a clean metric.
@@ -556,6 +609,7 @@ try {
 		await acquire();
 		const retry = await capture({ ...cases.find((c) => key(c) === key(failed)), infraRetry: true }, failed.run);
 		results.push(retry); save();
+		if (holdExpired) throw new Error('GPU hold cap reached (liveness)');
 		if (retry.status !== 'OK') await release();
 	}
 } finally {
