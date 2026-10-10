@@ -344,17 +344,20 @@ if (options['self-check']) {
 		}
 	}
 	await mkdir(tinyLock); await writeFile(`${tinyLock}/owner`, 'test-owner');
-	const zombieCode = `const {spawn,execFileSync}=await import('node:child_process');const {writeFileSync,readFileSync,rmSync}=await import('node:fs');${census.toString()};${sameProcess.toString()};${groupRows.toString()};${reapGroupSync.toString()};${suspectHubsSync.toString()};${finalizeSupervisorSync.toString()};const child=spawn(process.execPath,['-e','process.exit(0)'],{detached:true,stdio:'ignore'});Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,500);child.groupVerified=true;const live=reapGroupSync(child,new Map(),0);if(!live.zombiePids.includes(child.pid))process.exit(3);finalizeSupervisorSync({child,escaped:new Map(),rowPath:${JSON.stringify(tinyRow)},row:{}},${JSON.stringify(tinyLock)},'test-owner');`;
+	const zombieCode = `const {spawn,execFileSync}=await import('node:child_process');const {writeFileSync,readFileSync,rmSync}=await import('node:fs');${census.toString()};${sameProcess.toString()};${groupRows.toString()};${reapGroupSync.toString()};${suspectHubsSync.toString()};${finalizeSupervisorSync.toString()};${stopGroup.toString()};const assert=(await import('node:assert/strict')).default;const child=spawn(process.execPath,['-e','process.exit(0)'],{detached:true,stdio:'ignore'});Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,500);child.groupVerified=true;const live=reapGroupSync(child,new Map(),0);if(!live.zombiePids.includes(child.pid))process.exit(3);await stopGroup(child,100);finalizeSupervisorSync({child,escaped:new Map(),teardownError:'prior teardown failure',rowPath:${JSON.stringify(tinyRow)},row:{}},${JSON.stringify(tinyLock)},'test-owner');`;
 	const zombie = spawn(process.execPath, ['-e', zombieCode], { stdio: 'ignore' });
 	assert.equal(await new Promise((resolve) => zombie.once('exit', resolve)), 1);
 	const zombieRow = JSON.parse(await readFile(tinyRow, 'utf8'));
-	assert.equal(zombieRow.lockPreserved, false); assert.equal(zombieRow.probeError, undefined); assert.ok(zombieRow.zombiePids.length);
+	assert.equal(zombieRow.lockPreserved, false); assert.equal(zombieRow.probeError, undefined); assert.equal(zombieRow.teardownError, 'prior teardown failure');
 	assert.equal(await Bun.file(`${tinyLock}/owner`).exists(), false);
-	await rm(batchTemp, { recursive: true });
 	for (const code of ["process.on('SIGTERM',()=>{});setInterval(()=>{},1000)", "process.on('SIGTERM',()=>setTimeout(()=>process.exit(0),200));setInterval(()=>{},1000)"]) {
 		const group = spawn(process.execPath, ['-e', code], { detached: true, stdio: 'ignore' });
-		await Bun.sleep(200); group.groupVerified = groupSafe(group.pid); assert.equal(group.groupVerified, true); await stopGroup(group, 300); assert.equal(groupRows(group.pid).length, 0);
+		await Bun.sleep(200); group.groupVerified = groupSafe(group.pid); assert.equal(group.groupVerified, true); await stopGroup(group, 300); assert.equal(reapGroupSync(group, new Map(), 0).group.length, 0);
+		await mkdir(tinyLock); await writeFile(`${tinyLock}/owner`, 'test-owner');
+		const released = finalizeSupervisorSync({ child: group, escaped: new Map(), rowPath: tinyRow, row: {} }, tinyLock, 'test-owner', { status: 'OK' });
+		assert.equal(released.lockPreserved, false); assert.equal(released.probeError, undefined); assert.equal(await Bun.file(`${tinyLock}/owner`).exists(), false);
 	}
+	await rm(batchTemp, { recursive: true, force: true });
 	console.log('Energy self-check passed: slicing, overlap union, ns/ms/s, median, R3 noise floor, frozen matrix, diagnostic motion pair, invalid-readback rejection, stalled CDP abort'); process.exit(0);
 }
 await mkdir(DIR, { recursive: true });
@@ -844,7 +847,7 @@ function suspectHubsSync(since) {
 	});
 }
 function finalizeSupervisorSync(state, lock, owner, completedRow) {
-	let residual = { group: [], escaped: [], zombiePids: [] }, suspectUnowned = [], probeError = state.probeError;
+	let residual = { group: [], escaped: [], zombiePids: [] }, suspectUnowned = [], probeError;
 	try {
 		const live = reapGroupSync(state.child, state.escaped, 0);
 		if (state.child) { try { if (state.child.groupVerified) { if (live.group.length) process.kill(-state.child.pid, 'SIGKILL'); } else state.child.kill('SIGKILL'); } catch (e) { if (e.code !== 'ESRCH') throw e; } }
@@ -854,7 +857,7 @@ function finalizeSupervisorSync(state, lock, owner, completedRow) {
 		if (state.startedAt) suspectUnowned = suspectHubsSync(state.xctraceBirth ?? state.startedAt);
 	} catch (error) { probeError = String(error); }
 	const lockPreserved = !!probeError || residual.group.length + residual.escaped.length + suspectUnowned.length > 0;
-	const row = { ...(completedRow ?? { ...state.row, status: 'FAILED', error: 'attempt timeout (liveness)' }), residualOwnedProcesses: residual.group, escapedOwnedProcesses: residual.escaped, zombiePids: residual.zombiePids, suspectUnowned, probeError, lockPreserved };
+	const row = { ...(completedRow ?? { ...state.row, status: 'FAILED', error: 'attempt timeout (liveness)' }), residualOwnedProcesses: residual.group, escapedOwnedProcesses: residual.escaped, zombiePids: residual.zombiePids, suspectUnowned, probeError, teardownError: state.teardownError, lockPreserved };
 	writeFileSync(state.rowPath, JSON.stringify(row));
 	if (!lockPreserved && readFileSync(`${lock}/owner`, 'utf8') === owner) rmSync(lock, { recursive: true });
 	if (!completedRow || lockPreserved) process.exit(1);
@@ -862,16 +865,20 @@ function finalizeSupervisorSync(state, lock, owner, completedRow) {
 }
 async function stopGroup(child, grace = 10000, escaped = new Map()) {
 	assert.equal(child.groupVerified, true, 'Unverified process group; negative signal prohibited');
-	const liveEscaped = () => census().filter((r) => sameProcess(escaped.get(r.pid), r));
-	const signalEscaped = (s) => { for (const r of liveEscaped()) { try { process.kill(r.pid, s); } catch (e) { if (e.code !== 'ESRCH') throw e; } } };
-	const signal = (s) => { if (groupRows(child.pid).length) { try { process.kill(-child.pid, s); } catch (e) { if (e.code !== 'ESRCH') throw e; } } };
-	signal('SIGTERM'); signalEscaped('SIGTERM');
-	const until = Date.now() + grace;
-	while ((groupRows(child.pid).length || liveEscaped().length) && Date.now() < until) await Bun.sleep(100);
-	signal('SIGKILL'); signalEscaped('SIGKILL');
-	const reapUntil = Date.now() + grace;
-	while ((groupRows(child.pid).length || liveEscaped().length) && Date.now() < reapUntil) await Bun.sleep(100);
-	assert.equal(groupRows(child.pid).length + liveEscaped().length, 0, 'Owned attempt group survived bounded reap; lock preserved');
+	const live = () => reapGroupSync(child, escaped, 0);
+	const signal = (s) => {
+		const residual = live();
+		if (residual.group.length) { try { process.kill(-child.pid, s); } catch (e) { if (e.code !== 'ESRCH') throw e; } }
+		for (const r of residual.escaped) { try { process.kill(r.pid, s); } catch (e) { if (e.code !== 'ESRCH') throw e; } }
+	};
+	const wait = async () => {
+		const until = Date.now() + grace;
+		while (Date.now() < until) { const residual = live(); if (!residual.group.length && !residual.escaped.length) return; await Bun.sleep(100); }
+	};
+	signal('SIGTERM'); await wait();
+	signal('SIGKILL'); await wait();
+	const residual = live();
+	assert.equal(residual.group.length + residual.escaped.length, 0, 'Owned attempt group survived bounded reap; lock preserved');
 }
 const systemTmp = execFileSync('getconf', ['DARWIN_USER_TEMP_DIR'], { encoding: 'utf8' }).trim();
 const unprovenScratch = new Set();
@@ -911,12 +918,12 @@ async function capture(c, run) {
 		})().finally(() => { scanning = null; });
 		return scanning;
 	};
-	const monitor = setInterval(() => scan().catch((error) => { supervisorState.probeError = String(error); finalizeSupervisorSync(supervisorState, LOCK, ownerText); }), 1000);
+	const monitor = setInterval(() => scan().catch((error) => { supervisorState.teardownError = String(error); finalizeSupervisorSync(supervisorState, LOCK, ownerText); }), 1000);
 	let deadline;
 	const timedOut = await Promise.race([exited.then(() => false), new Promise((resolve) => { deadline = setTimeout(() => resolve(true), Math.min(600000, Math.max(0, lockedAt + 25 * 60000 - Date.now()))); })]);
 	clearTimeout(deadline); clearInterval(monitor);
 	try { await scan(); await stopGroup(child, 10000, escaped); }
-	catch (error) { supervisorState.probeError = String(error); finalizeSupervisorSync(supervisorState, LOCK, ownerText); }
+	catch (error) { supervisorState.teardownError = String(error); finalizeSupervisorSync(supervisorState, LOCK, ownerText); }
 	const fallback = { ...c, run, sha, engineSourceSha, harnessSha, engineFileHash, measurementLogicHash, browserMode, override: c.arm ? armOverride(c.arm) : override };
 	let workerRow;
 	try { workerRow = !timedOut && await Bun.file(rowPath).exists() ? JSON.parse(await readFile(rowPath, 'utf8')) : null; }
