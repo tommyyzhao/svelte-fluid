@@ -329,6 +329,27 @@ if (options['self-check']) {
 	assert.equal(await Bun.file(`${tinyLock}/owner`).exists(), false);
 	const signalResult = JSON.parse(await readFile(tinyRow, 'utf8'));
 	assert.equal(signalResult.lockPreserved, false); assert.deepEqual(signalResult.residualOwnedProcesses, []); assert.deepEqual(signalResult.escapedOwnedProcesses, []);
+	for (const suspect of [false, true]) {
+		await mkdir(tinyLock); await writeFile(`${tinyLock}/owner`, 'test-owner');
+		const failureCode = `const {spawn,execFileSync}=await import('node:child_process');const {writeFileSync,readFileSync,rmSync,symlinkSync}=await import('node:fs');${census.toString()};${sameProcess.toString()};${groupRows.toString()};${reapGroupSync.toString()};${suspectHubsSync.toString()};${finalizeSupervisorSync.toString()};const state={escaped:new Map(),rowPath:${JSON.stringify(tinyRow)},row:{},startedAt:Date.now()-1000};try{state.child=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{detached:true,stdio:'ignore'});await Bun.sleep(200);state.child.groupVerified=true;if(${suspect}){symlinkSync('/bin/sleep',${JSON.stringify(`${batchTemp}/DTServiceHub`)});spawn(${JSON.stringify(`${batchTemp}/DTServiceHub`)},['20'],{detached:true,stdio:'ignore'});process.kill(-state.child.pid,'SIGKILL');reapGroupSync(state.child,state.escaped);await Bun.sleep(200);JSON.parse('{');}throw new Error('after spawn');}finally{finalizeSupervisorSync(state,${JSON.stringify(tinyLock)},'test-owner');}`;
+		const failed = spawn(process.execPath, ['-e', failureCode], { stdio: 'ignore' });
+		assert.equal(await new Promise((resolve) => failed.once('exit', resolve)), 1);
+		const failureRow = JSON.parse(await readFile(tinyRow, 'utf8'));
+		assert.deepEqual(failureRow.residualOwnedProcesses, []);
+		assert.equal(failureRow.lockPreserved, suspect); assert.equal(await Bun.file(`${tinyLock}/owner`).exists(), suspect);
+		if (suspect) {
+			assert.equal(failureRow.suspectUnowned.length, 1);
+			for (const identity of failureRow.suspectUnowned) if (sameProcess(identity, census().find((r) => r.pid === identity.pid))) process.kill(identity.pid, 'SIGKILL');
+			await ownerCheckedRelease(tinyLock, 'test-owner');
+		}
+	}
+	await mkdir(tinyLock); await writeFile(`${tinyLock}/owner`, 'test-owner');
+	const zombieCode = `const {spawn,execFileSync}=await import('node:child_process');const {writeFileSync,readFileSync,rmSync}=await import('node:fs');${census.toString()};${sameProcess.toString()};${groupRows.toString()};${reapGroupSync.toString()};${suspectHubsSync.toString()};${finalizeSupervisorSync.toString()};const child=spawn(process.execPath,['-e','process.exit(0)'],{detached:true,stdio:'ignore'});Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,500);child.groupVerified=true;const live=reapGroupSync(child,new Map(),0);if(!live.zombiePids.includes(child.pid))process.exit(3);finalizeSupervisorSync({child,escaped:new Map(),rowPath:${JSON.stringify(tinyRow)},row:{}},${JSON.stringify(tinyLock)},'test-owner');`;
+	const zombie = spawn(process.execPath, ['-e', zombieCode], { stdio: 'ignore' });
+	assert.equal(await new Promise((resolve) => zombie.once('exit', resolve)), 1);
+	const zombieRow = JSON.parse(await readFile(tinyRow, 'utf8'));
+	assert.equal(zombieRow.lockPreserved, false); assert.equal(zombieRow.probeError, undefined); assert.ok(zombieRow.zombiePids.length);
+	assert.equal(await Bun.file(`${tinyLock}/owner`).exists(), false);
 	await rm(batchTemp, { recursive: true });
 	for (const code of ["process.on('SIGTERM',()=>{});setInterval(()=>{},1000)", "process.on('SIGTERM',()=>setTimeout(()=>process.exit(0),200));setInterval(()=>{},1000)"]) {
 		const group = spawn(process.execPath, ['-e', code], { detached: true, stdio: 'ignore' });
@@ -460,6 +481,7 @@ function singleFlight(action) {
 }
 let releasePromise;
 function release() {
+	assert.ok(!supervisorState, 'Active supervisor must verify ownership before release');
 	if (releasePromise) return releasePromise;
 	if (!lockOwned) return Promise.resolve();
 	releasePromise = singleFlight(async () => {
@@ -821,18 +843,22 @@ function suspectHubsSync(since) {
 		return [{ pid: +m[1], command: m[5], start: m[4] }];
 	});
 }
-function finalizeSupervisorSync(state, lock, owner) {
+function finalizeSupervisorSync(state, lock, owner, completedRow) {
 	let residual = { group: [], escaped: [], zombiePids: [] }, suspectUnowned = [], probeError = state.probeError;
 	try {
-		if (state.child?.groupVerified) { try { process.kill(-state.child.pid, 'SIGKILL'); } catch (e) { if (e.code !== 'ESRCH') throw e; } }
-		for (const r of census()) if (sameProcess(state.escaped.get(r.pid), r)) { try { process.kill(r.pid, 'SIGKILL'); } catch (e) { if (e.code !== 'ESRCH') throw e; } }
+		const live = reapGroupSync(state.child, state.escaped, 0);
+		if (state.child) { try { if (state.child.groupVerified) { if (live.group.length) process.kill(-state.child.pid, 'SIGKILL'); } else state.child.kill('SIGKILL'); } catch (e) { if (e.code !== 'ESRCH') throw e; } }
+		for (const r of live.escaped) { try { process.kill(r.pid, 'SIGKILL'); } catch (e) { if (e.code !== 'ESRCH') throw e; } }
 		residual = reapGroupSync(state.child, state.escaped);
+		residual.zombiePids = [...new Set([...live.zombiePids, ...residual.zombiePids])];
 		if (state.startedAt) suspectUnowned = suspectHubsSync(state.xctraceBirth ?? state.startedAt);
 	} catch (error) { probeError = String(error); }
 	const lockPreserved = !!probeError || residual.group.length + residual.escaped.length + suspectUnowned.length > 0;
-	writeFileSync(state.rowPath, JSON.stringify({ ...state.row, status: 'FAILED', error: 'attempt timeout (liveness)', residualOwnedProcesses: residual.group, escapedOwnedProcesses: residual.escaped, zombiePids: residual.zombiePids, suspectUnowned, probeError, lockPreserved }));
+	const row = { ...(completedRow ?? { ...state.row, status: 'FAILED', error: 'attempt timeout (liveness)' }), residualOwnedProcesses: residual.group, escapedOwnedProcesses: residual.escaped, zombiePids: residual.zombiePids, suspectUnowned, probeError, lockPreserved };
+	writeFileSync(state.rowPath, JSON.stringify(row));
 	if (!lockPreserved && readFileSync(`${lock}/owner`, 'utf8') === owner) rmSync(lock, { recursive: true });
-	process.exit(1);
+	if (!completedRow || lockPreserved) process.exit(1);
+	return row;
 }
 async function stopGroup(child, grace = 10000, escaped = new Map()) {
 	assert.equal(child.groupVerified, true, 'Unverified process group; negative signal prohibited');
@@ -854,6 +880,7 @@ async function capture(c, run) {
 	const rowPath = `${DIR}/${name}.json`;
 	supervisorState = { rowPath, row: { ...c, run, sha, engineSourceSha, harnessSha, engineFileHash, measurementLogicHash, browserMode, override: c.arm ? armOverride(c.arm) : override }, escaped: new Map(), startedAt: Date.now() - 1000 };
 	const hardDeadline = setTimeout(() => finalizeSupervisorSync(supervisorState, LOCK, ownerText), Math.max(0, lockedAt + 25 * 60000 - Date.now()));
+	try {
 	const scratch = await mkdtemp(`${DIR}/${name}-owned-`);
 	const args = ['--label', options.label, '--split', c.split, '--cases', `${c.preset}@${c.w}x${c.h}:${c.dpr}:${c.seed}`, '--runs', '1', '--run-start', String(run), '--attempt-worker', JSON.stringify({ c, run })];
 	for (const flag of ['headed', 'paired-max-fps', 'per-encoder-export']) if (options[flag]) args.push(`--${flag}`);
@@ -891,7 +918,9 @@ async function capture(c, run) {
 	try { await scan(); await stopGroup(child, 10000, escaped); }
 	catch (error) { supervisorState.probeError = String(error); finalizeSupervisorSync(supervisorState, LOCK, ownerText); }
 	const fallback = { ...c, run, sha, engineSourceSha, harnessSha, engineFileHash, measurementLogicHash, browserMode, override: c.arm ? armOverride(c.arm) : override };
-	const workerRow = !timedOut && await Bun.file(rowPath).exists() ? JSON.parse(await readFile(rowPath, 'utf8')) : null;
+	let workerRow;
+	try { workerRow = !timedOut && await Bun.file(rowPath).exists() ? JSON.parse(await readFile(rowPath, 'utf8')) : null; }
+	catch { workerRow = { ...fallback, status: 'FAILED', error: 'worker row unreadable' }; }
 	const row = supervisorRow(workerRow, timedOut, fallback);
 	writeFileSync(rowPath, JSON.stringify(row, null, 2));
 	for (const path of provenScratch.keys()) await boundedFS(rm(path, { force: true }));
@@ -900,12 +929,10 @@ async function capture(c, run) {
 	await writeFile(rowPath, JSON.stringify(row, null, 2));
 	await writeFile(`${DIR}/unproven-scratch.json`, JSON.stringify([...unprovenScratch], null, 2));
 	await boundedFS(rm(scratch, { recursive: true }));
-	try {
-		row.suspectUnowned = suspectHubsSync(supervisorState.xctraceBirth ?? supervisorState.startedAt);
-		if (row.suspectUnowned.length) { row.lockPreserved = true; writeFileSync(rowPath, JSON.stringify(row, null, 2)); process.exit(1); }
-	} catch (error) { row.probeError = String(error); row.lockPreserved = true; writeFileSync(rowPath, JSON.stringify(row, null, 2)); process.exit(1); }
-	await release(); clearTimeout(hardDeadline); supervisorState = null;
-	return row;
+	const finalized = finalizeSupervisorSync(supervisorState, LOCK, ownerText, row);
+	lockOwned = false; lastReleasedAt = Date.now(); clearTimeout(hardDeadline); supervisorState = null;
+	return finalized;
+	} finally { if (supervisorState) finalizeSupervisorSync(supervisorState, LOCK, ownerText); }
 }
 try {
 	for (let run = RUN_START; run < RUN_START + RUNS; run++) for (const c of orderedCases(run)) {
@@ -928,6 +955,7 @@ try {
 		if (retry.status !== 'OK') await release();
 	}
 } finally {
+	if (supervisorState) finalizeSupervisorSync(supervisorState, LOCK, ownerText);
 	save(); cleanup(); if (!remainingOwned().length) await release();
 	const remaining = census().filter((r) => sameProcess(owned.get(r.pid), r));
 	await writeFile(`${DIR}/cleanup.json`, JSON.stringify({ checkedPids: [...owned.keys()], remaining, lockReleased: !lockOwned }, null, 2));
