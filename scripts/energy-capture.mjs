@@ -7,7 +7,7 @@ import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { execFile, execFileSync, spawn } from 'node:child_process';
 import { mkdir, readFile, writeFile, rm, readdir, stat, mkdtemp } from 'node:fs/promises';
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { parseArgs, promisify } from 'node:util';
 import { createHash } from 'node:crypto';
 import { runInNewContext } from 'node:vm';
@@ -282,9 +282,46 @@ if (options['self-check']) {
 	assert.equal(await Bun.file(`${tempLock}/owner`).exists(), false);
 	assert.equal(await readFile(siblingFile, 'utf8'), 'sibling');
 	await rm(temp, { recursive: true });
+	assert.deepEqual(supervisorRow({ status: 'OK', windows: { active: 1 } }, true, {}), { status: 'FAILED', error: 'attempt timeout (liveness)' });
+	assert.equal(validGroup(10, 10, 10), false); assert.equal(validGroup(10, 11, 12), false);
+	const batchTemp = await mkdtemp(`${tmpdir()}/energy-supervisor-check-`);
+	for (let slot = 1; slot <= 2; slot++) {
+		const out = `${batchTemp}/${slot}.json`;
+		const worker = spawn(process.execPath, ['-e', `await Bun.write(${JSON.stringify(out)}, JSON.stringify({status:'OK'}))`], { detached: true, env: process.env, stdio: 'ignore' });
+		await new Promise((resolve) => worker.once('exit', resolve));
+		assert.equal(JSON.parse(await readFile(out, 'utf8')).status, 'OK');
+	}
+	const hangingPath = `${batchTemp}/hang.json`;
+	const hanging = spawn(process.execPath, ['-e', `await Bun.write(${JSON.stringify(hangingPath)},JSON.stringify({status:'OK',windows:{active:1}}));setInterval(()=>{},1000)`], { detached: true, stdio: 'ignore' });
+	await Bun.sleep(200); hanging.groupVerified = groupSafe(hanging.pid);
+	await stopGroup(hanging, 100);
+	const overridden = supervisorRow(JSON.parse(await readFile(hangingPath, 'utf8')), true, {});
+	await writeFile(hangingPath, JSON.stringify(overridden));
+	assert.equal(JSON.parse(await readFile(hangingPath, 'utf8')).status, 'FAILED');
+	const escapedPath = `${batchTemp}/escaped.pid`;
+	const forkCode = `const {spawn}=await import('node:child_process');const p=spawn(process.execPath,['-e',"setInterval(()=>{},1000)"],{detached:true,stdio:'ignore'});await Bun.write(${JSON.stringify(escapedPath)},String(p.pid));setTimeout(()=>process.exit(0),700);`;
+	const fork = spawn(process.execPath, ['-e', forkCode], { detached: true, stdio: 'ignore' });
+	await Bun.sleep(200);
+	const escapedPid = Number(await readFile(escapedPath, 'utf8'));
+	const escapedIdentity = census().find((r) => r.pid === escapedPid && r.ppid === fork.pid);
+	assert.ok(escapedIdentity);
+	await Bun.sleep(800);
+	assert.equal(census().find((r) => r.pid === escapedPid)?.ppid, 1);
+	const escapedGroup = spawn(process.execPath, ['-e', 'setInterval(()=>{},1000)'], { detached: true, stdio: 'ignore' });
+	await Bun.sleep(100); escapedGroup.groupVerified = groupSafe(escapedGroup.pid);
+	await stopGroup(escapedGroup, 100, new Map([[escapedPid, escapedIdentity]]));
+	assert.equal(census().some((r) => sameProcess(escapedIdentity, r)), false);
+	const tinyLock = `${batchTemp}/tiny-lock`, tinyRow = `${batchTemp}/tiny-row.json`;
+	await mkdir(tinyLock); await writeFile(`${tinyLock}/owner`, 'test-owner');
+	const hardCode = `const {spawn}=await import('node:child_process');const fs=await import('node:fs');const p=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{detached:true,stdio:'ignore'});setTimeout(()=>{process.kill(-p.pid,'SIGKILL');fs.writeFileSync(${JSON.stringify(tinyRow)},JSON.stringify({status:'FAILED',error:'attempt timeout (liveness)'}));if(fs.readFileSync(${JSON.stringify(`${tinyLock}/owner`)},'utf8')==='test-owner')fs.rmSync(${JSON.stringify(tinyLock)},{recursive:true});process.exit(1);},200);`;
+	const tiny = spawn(process.execPath, ['-e', hardCode], { stdio: 'ignore' });
+	const tinyExit = await new Promise((resolve) => tiny.once('exit', resolve));
+	assert.equal(tinyExit, 1); assert.equal(await Bun.file(`${tinyLock}/owner`).exists(), false);
+	assert.equal(JSON.parse(await readFile(tinyRow, 'utf8')).status, 'FAILED');
+	await rm(batchTemp, { recursive: true });
 	for (const code of ["process.on('SIGTERM',()=>{});setInterval(()=>{},1000)", "process.on('SIGTERM',()=>setTimeout(()=>process.exit(0),200));setInterval(()=>{},1000)"]) {
 		const group = spawn(process.execPath, ['-e', code], { detached: true, stdio: 'ignore' });
-		await Bun.sleep(200); await stopGroup(group, 300); assert.equal(groupRows(group.pid).length, 0);
+		await Bun.sleep(200); group.groupVerified = groupSafe(group.pid); assert.equal(group.groupVerified, true); await stopGroup(group, 300); assert.equal(groupRows(group.pid).length, 0);
 	}
 	console.log('Energy self-check passed: slicing, overlap union, ns/ms/s, median, R3 noise floor, frozen matrix, diagnostic motion pair, invalid-readback rejection, stalled CDP abort'); process.exit(0);
 }
@@ -299,7 +336,7 @@ if (options.resume || options['summary-only']) for (const f of await readdir(DIR
 	assert.deepEqual(row.override, options['paired-max-fps'] ? armOverride(row.arm) : override, 'Cannot mix candidate overrides');
 	results.push(row);
 }
-if (!options.resume && !options['summary-only']) for (let run = RUN_START; run < RUN_START + RUNS; run++) for (const c of cases) {
+if (!options['attempt-worker'] && !options.resume && !options['summary-only']) for (let run = RUN_START; run < RUN_START + RUNS; run++) for (const c of cases) {
 	assert.ok(!await Bun.file(`${DIR}/${fileKey(c)}-r${run}.json`).exists(), 'Existing results: use another --label or --resume');
 }
 const save = () => writeFileSync(`${DIR}/summary.json`, JSON.stringify(summaries(results), null, 2));
@@ -524,8 +561,7 @@ async function captureWorker(c, run) {
 	const scratchNames = async () => (await readdir(tmpdir())).filter((name) => /^instruments.*\.ktrace$/.test(name));
 	const ownedScratch = new Set();
 	const scratchNew = async () => {
-		// Worker TMPDIR is an exclusive supervisor-created attempt directory.
-		for (const name of await scratchNames()) ownedScratch.add(name);
+		// Global scratch ownership is established only by the supervisor's lsof census.
 		return [...ownedScratch];
 	};
 	const cleanScratch = singleFlight(async () => {
@@ -740,7 +776,17 @@ if (options['attempt-worker']) {
 	cleanup(); process.exit(0);
 }
 function groupRows(pgid) { return execFileSync('ps', ['-axo', 'pid=,pgid=,command='], { encoding: 'utf8' }).split('\n').filter((l) => Number(l.trim().split(/\s+/)[1]) === pgid); }
+function supervisorRow(workerRow, timedOut, fallback) {
+	return timedOut ? { ...fallback, status: 'FAILED', error: 'attempt timeout (liveness)' } : workerRow ?? { ...fallback, status: 'FAILED', error: 'Attempt worker exited without a row' };
+}
+function validGroup(pid, pgid, self) { return pgid === pid && pgid !== self; }
+function groupSafe(pid) {
+	const pgid = Number(execFileSync('ps', ['-p', String(pid), '-o', 'pgid='], { encoding: 'utf8' }).trim());
+	const self = Number(execFileSync('ps', ['-p', String(process.pid), '-o', 'pgid='], { encoding: 'utf8' }).trim());
+	return validGroup(pid, pgid, self);
+}
 async function stopGroup(child, grace = 10000, escaped = new Map()) {
+	assert.equal(child.groupVerified, true, 'Unverified process group; negative signal prohibited');
 	const liveEscaped = () => census().filter((r) => sameProcess(escaped.get(r.pid), r));
 	const signalEscaped = (s) => { for (const r of liveEscaped()) { try { process.kill(r.pid, s); } catch (e) { if (e.code !== 'ESRCH') throw e; } } };
 	const signal = (s) => { if (groupRows(child.pid).length) { try { process.kill(-child.pid, s); } catch (e) { if (e.code !== 'ESRCH') throw e; } } };
@@ -756,26 +802,45 @@ const systemTmp = execFileSync('getconf', ['DARWIN_USER_TEMP_DIR'], { encoding: 
 const unprovenScratch = new Set();
 async function capture(c, run) {
 	const name = `${fileKey(c)}-r${run}${c.infraRetry ? '-infra-retry' : ''}`;
-	const scratch = await mkdtemp(`${DIR}/${name}-owned-`), rowPath = `${DIR}/${name}.json`;
-	const args = process.argv.slice(2);
-	args.push('--attempt-worker', JSON.stringify({ c, run }));
-	const child = spawn(process.execPath, [process.argv[1], ...args], { cwd: ROOT, detached: true, env: { ...process.env, TMPDIR: scratch }, stdio: 'inherit' });
+	const rowPath = `${DIR}/${name}.json`;
+	let currentChild, currentEscaped = new Map();
+	const hardDeadline = setTimeout(() => {
+		if (currentChild?.groupVerified) { try { process.kill(-currentChild.pid, 'SIGKILL'); } catch (e) { if (e.code !== 'ESRCH') console.error(e); } }
+		for (const r of census()) if (sameProcess(currentEscaped.get(r.pid), r)) { try { process.kill(r.pid, 'SIGKILL'); } catch {} }
+		writeFileSync(rowPath, JSON.stringify({ ...c, run, status: 'FAILED', error: 'attempt timeout (liveness)', sha, engineSourceSha, harnessSha, engineFileHash, measurementLogicHash, browserMode, override: c.arm ? armOverride(c.arm) : override }));
+		if (!currentChild || !groupRows(currentChild.pid).length) {
+			if (readFileSync(`${LOCK}/owner`, 'utf8') === ownerText) { rmSync(LOCK, { recursive: true }); lockOwned = false; }
+		}
+		process.exit(1);
+	}, Math.max(0, lockedAt + 25 * 60000 - Date.now()));
+	const scratch = await mkdtemp(`${DIR}/${name}-owned-`);
+	const args = ['--label', options.label, '--split', c.split, '--cases', `${c.preset}@${c.w}x${c.h}:${c.dpr}:${c.seed}`, '--runs', '1', '--run-start', String(run), '--attempt-worker', JSON.stringify({ c, run })];
+	for (const flag of ['headed', 'paired-max-fps', 'per-encoder-export']) if (options[flag]) args.push(`--${flag}`);
+	for (const flag of ['source-root', 'engine-sha', 'override']) if (options[flag]) args.push(`--${flag}`, options[flag]);
+	const child = spawn(process.execPath, [process.argv[1], ...args], { cwd: ROOT, detached: true, env: process.env, stdio: 'inherit' });
+	currentChild = child;
+	child.groupVerified = groupSafe(child.pid);
+	if (!child.groupVerified) { child.kill('SIGKILL'); throw new Error('Attempt process group guard failed; exact child stopped'); }
 	const exited = new Promise((resolve) => { child.once('exit', resolve); child.once('error', resolve); });
-	const escaped = new Map(), provenScratch = new Set(), outsideBefore = new Set(await readdir(systemTmp));
-	let scanning = false;
-	const scan = async () => {
-		if (scanning) return; scanning = true;
-		try {
+	const escaped = new Map(), provenScratch = new Map(), outsideBefore = new Set(await readdir(systemTmp));
+	currentEscaped = escaped;
+	let scanning;
+	const scan = () => {
+		if (scanning) return scanning;
+		scanning = (async () => {
 			const rows = census(), ids = new Set([child.pid]);
 			for (let changed = true; changed;) { changed = false; for (const r of rows) if (r.ppid !== 1 && ids.has(r.ppid) && !ids.has(r.pid)) { ids.add(r.pid); changed = true; } }
 			for (const r of rows.filter((r) => ids.has(r.pid))) {
 				if (/DTServiceHub/.test(r.command)) escaped.set(r.pid, r);
 				if (/xctrace|DTServiceHub/.test(r.command)) {
 					const output = await execAsync('lsof', ['-n', '-p', String(r.pid), '-Fn'], { timeout: 1000, maxBuffer: 1 << 20 }).then((r) => r.stdout, () => '');
-					for (const line of output.split('\n')) if (/^n\/.*\/instruments[^/]*\.ktrace$/.test(line)) provenScratch.add(line.slice(1));
+					if (sameProcess(r, census().find((p) => p.pid === r.pid))) {
+						for (const line of output.split('\n')) if (/^n\/.*\/instruments[^/]*\.ktrace$/.test(line)) provenScratch.set(line.slice(1), r);
+					}
 				}
 			}
-		} finally { scanning = false; }
+		})().finally(() => { scanning = null; });
+		return scanning;
 	};
 	const monitor = setInterval(scan, 1000);
 	let deadline;
@@ -784,22 +849,23 @@ async function capture(c, run) {
 	await scan();
 	try { await stopGroup(child, 10000, escaped); }
 	catch (error) {
-		const row = { ...c, run, status: 'FAILED', error: 'attempt timeout (liveness)', residualOwnedProcesses: groupRows(child.pid), lockPreserved: true, sha, engineSourceSha, harnessSha, engineFileHash, measurementLogicHash, browserMode, override: c.arm ? armOverride(c.arm) : override };
+		const row = { ...c, run, status: 'FAILED', error: 'attempt timeout (liveness)', residualOwnedProcesses: groupRows(child.pid), escapedOwnedProcesses: [...escaped.values()], lockPreserved: true, sha, engineSourceSha, harnessSha, engineFileHash, measurementLogicHash, browserMode, override: c.arm ? armOverride(c.arm) : override };
 		writeFileSync(rowPath, JSON.stringify(row, null, 2)); process.exit(1);
 	}
-	let row;
-	if (await Bun.file(rowPath).exists()) row = JSON.parse(await readFile(rowPath, 'utf8'));
-	else {
-		row = { ...c, run, status: 'FAILED', error: timedOut ? 'attempt timeout (liveness)' : 'Attempt worker exited without a row', sha, engineSourceSha, harnessSha, engineFileHash, measurementLogicHash, browserMode, override: c.arm ? armOverride(c.arm) : override };
-		writeFileSync(rowPath, JSON.stringify(row, null, 2));
+	const fallback = { ...c, run, sha, engineSourceSha, harnessSha, engineFileHash, measurementLogicHash, browserMode, override: c.arm ? armOverride(c.arm) : override };
+	const workerRow = !timedOut && await Bun.file(rowPath).exists() ? JSON.parse(await readFile(rowPath, 'utf8')) : null;
+	const row = supervisorRow(workerRow, timedOut, fallback);
+	writeFileSync(rowPath, JSON.stringify(row, null, 2));
+	for (const [path, identity] of provenScratch) {
+		if (sameProcess(identity, census().find((r) => r.pid === identity.pid))) await boundedFS(rm(path, { force: true }));
+		else provenScratch.delete(path);
 	}
-	for (const path of provenScratch) await boundedFS(rm(path, { force: true }));
 	row.unprovenScratch = (await readdir(systemTmp)).filter((name) => /^instruments.*\.ktrace$/.test(name) && !outsideBefore.has(name) && !provenScratch.has(`${systemTmp}/${name}`)).map((name) => `${systemTmp}/${name}`);
 	for (const path of row.unprovenScratch) unprovenScratch.add(path);
 	await writeFile(rowPath, JSON.stringify(row, null, 2));
 	await writeFile(`${DIR}/unproven-scratch.json`, JSON.stringify([...unprovenScratch], null, 2));
 	await boundedFS(rm(scratch, { recursive: true }));
-	await release();
+	await release(); clearTimeout(hardDeadline);
 	return row;
 }
 try {
