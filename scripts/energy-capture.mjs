@@ -201,6 +201,9 @@ function summaries(rows) {
 		}
 	};
 }
+// Bun 1.3.11 GC drops unreferenced AbortSignal.reason
+// ponytail: retain per-invocation abort entries; prune after shared finalization if this becomes long-lived.
+const abortReasons = new Map(), abortControllers = new Map();
 if (options['self-check']) {
 	assert.equal(union([[0, 3], [1, 2], [2, 5], [7, 8]]), 6);
 	assert.deepEqual(slice([[-2, 2], [1, 4], [4, 9], [10, 11]], 0, 8), [[0, 2], [1, 4], [4, 8]]);
@@ -235,16 +238,23 @@ if (options['self-check']) {
 	class PendingCDP { evaluate() { return new Promise(() => {}); } pages() { return [this]; } }
 	const guarded = abortableCDP(new PendingCDP(), controller.signal);
 	const pending = guarded.pages()[0].evaluate();
-	controller.abort(new Error('attempt timeout (liveness)'));
+	abortWith(controller, livenessReason());
 	await assert.rejects(pending, /attempt timeout \(liveness\)/);
 	assert.throws(() => guarded.evaluate(), /attempt timeout \(liveness\)/);
 	const midWrite = new AbortController(), row = { status: 'OK', windows: { active: 1 } };
-	await Promise.resolve().then(() => midWrite.abort(new Error('Recorder finalisation timeout')));
+	await Promise.resolve().then(() => abortWith(midWrite, livenessReason()));
 	livenessFailure(row, midWrite.signal);
 	assert.equal(row.status, 'FAILED'); assert.equal(row.error, 'attempt timeout (liveness)'); assert.deepEqual(row.windows, {});
 	row.status = 'PARTIAL'; row.error = 'GPU process exited during recording';
 	livenessFailure(row, midWrite.signal); assert.equal(row.status, 'FAILED'); assert.equal(row.error, 'attempt timeout (liveness)');
-	await assert.rejects(boundedExit(new Promise(() => {}), midWrite.signal), /Recorder finalisation timeout/);
+	await assert.rejects(boundedExit(new Promise(() => {}), midWrite.signal), /attempt timeout \(liveness\)/);
+	const watchdog = new AbortController(), watchdogRow = { status: 'FAILED', error: 'Trace size watchdog: 11 bytes exceeds 10 GiB' };
+	abortWith(watchdog, new Error(watchdogRow.error)); Bun.gc(true);
+	abortWith(watchdog, livenessReason());
+	livenessFailure(watchdogRow, watchdog.signal);
+	assert.equal(abortReason(watchdog.signal).message, watchdogRow.error);
+	assert.match(watchdogRow.error, /Trace size watchdog/); assert.equal(watchdogRow.status, 'FAILED');
+	assert.doesNotMatch(row.error, /Trace size watchdog|missing execution coverage|GPU process exited|ENOSPC|incorrect visibility|visibility changed/);
 	const events = [];
 	await terminateAndRelease(() => events.push('term'), () => events.push('kill'), async () => events.push('release'), 1);
 	assert.deepEqual(events, ['term', 'kill', 'release']);
@@ -252,6 +262,26 @@ if (options['self-check']) {
 	let releases = 0;
 	const releaseOnce = singleFlight(async () => { releases++; });
 	await Promise.all([releaseOnce(), releaseOnce()]); assert.equal(releases, 1);
+	const temp = await mkdtemp(`${tmpdir()}/energy-liveness-check-`), tempLock = `${temp}/lock`;
+	await mkdir(tempLock); await writeFile(`${tempLock}/owner`, 'sibling');
+	await assert.rejects(ownerCheckedRelease(tempLock, 'ours'), /ownership changed/);
+	assert.equal(await readFile(`${tempLock}/owner`, 'utf8'), 'sibling');
+	await writeFile(`${tempLock}/owner`, 'ours');
+	const dummy = Bun.spawn([process.execPath, '-e', "process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"], { stdout: 'ignore', stderr: 'ignore' });
+	await Bun.sleep(200);
+	const failed = { status: 'OK', windows: { active: 1 } }, timerAbort = new AbortController(); abortWith(timerAbort, livenessReason());
+	const persisted = `${temp}/failed.json`, ownedFile = `${temp}/owned-scratch`, siblingFile = `${temp}/sibling-scratch`;
+	await writeFile(ownedFile, 'owned');
+	await terminateAndRelease(() => dummy.kill('SIGTERM'), () => dummy.kill('SIGKILL'), async () => {
+		Bun.gc(true); livenessFailure(failed, timerAbort.signal); await writeFile(persisted, JSON.stringify(failed));
+		await boundedFS(new Promise(() => {}), 1).catch(() => {});
+		await rm(ownedFile); await ownerCheckedRelease(tempLock, 'ours'); await writeFile(siblingFile, 'sibling');
+	}, 1000, () => { try { process.kill(dummy.pid, 0); return [dummy.pid]; } catch { return []; } });
+	await dummy.exited;
+	assert.equal(JSON.parse(await readFile(persisted, 'utf8')).status, 'FAILED');
+	assert.equal(await Bun.file(`${tempLock}/owner`).exists(), false);
+	assert.equal(await readFile(siblingFile, 'utf8'), 'sibling');
+	await rm(temp, { recursive: true });
 	console.log('Energy self-check passed: slicing, overlap union, ns/ms/s, median, R3 noise floor, frozen matrix, diagnostic motion pair, invalid-readback rejection, stalled CDP abort'); process.exit(0);
 }
 await mkdir(DIR, { recursive: true });
@@ -276,23 +306,41 @@ async function boundedExit(promise, signal) {
 	let timer;
 	try {
 		return await abortRace(Promise.race([promise, new Promise((_, reject) => {
-			timer = setTimeout(() => reject(new Error('attempt timeout (liveness)')), 10000);
+			timer = setTimeout(() => reject(livenessReason()), 10000);
 		})]), signal);
 	} finally { clearTimeout(timer); }
 }
+function abortWith(controller, reason) {
+	if (controller.signal.aborted) return;
+	abortReasons.set(controller, reason); abortControllers.set(controller.signal, controller);
+	controller.abort(reason);
+}
+function abortReason(signal) { return abortReasons.get(abortControllers.get(signal)); }
+function livenessReason() { return Object.assign(new Error('attempt timeout (liveness)'), { liveness: true }); }
 function livenessFailure(row, signal) {
-	if (!signal.aborted) return;
+	if (!signal.aborted || !abortReason(signal)?.liveness) return;
 	row.status = 'FAILED'; row.error = 'attempt timeout (liveness)';
 	row.windows = {}; delete row.hashes; delete row.snapshot; delete row.encoders;
 }
-async function terminateAndRelease(term, kill, releaseLock, grace = 10000) {
-	term(); await Bun.sleep(grace); kill(); await Bun.sleep(Math.min(grace, 1000)); await releaseLock();
+async function terminateAndRelease(term, kill, releaseLock, grace = 10000, remaining = () => [], residual = () => {}) {
+	term(); await Bun.sleep(grace); kill();
+	const until = Date.now() + grace;
+	let live = remaining();
+	while (live.length && Date.now() < until) { await Bun.sleep(Math.min(100, grace)); live = remaining(); }
+	if (live.length) { residual(live); console.error(JSON.stringify({ phase: 'owned reap timeout; lock preserved', remaining: live })); throw new Error('Owned reap timeout; lock preserved'); }
+	await releaseLock();
+}
+async function boundedFS(promise, timeout = 10000) {
+	let timer;
+	try { return await Promise.race([promise, new Promise((_, reject) => {
+		timer = setTimeout(() => reject(new Error('Lock filesystem timeout; ownership unresolved')), timeout);
+	})]); } finally { clearTimeout(timer); }
 }
 // Abort CDP waits without changing the frozen measurement statements.
 function abortRace(promise, signal) {
-	if (signal.aborted) return Promise.reject(signal.reason);
+	if (signal.aborted) return Promise.reject(abortReason(signal));
 	return new Promise((resolve, reject) => {
-		const abort = () => reject(signal.reason);
+		const abort = () => reject(abortReason(signal));
 		signal.addEventListener('abort', abort, { once: true });
 		Promise.resolve(promise).then(resolve, reject).finally(() => signal.removeEventListener('abort', abort));
 	});
@@ -314,7 +362,14 @@ function abortableCDP(value, signal, cache = new WeakMap()) {
 	return proxy;
 }
 const owned = new Map(); let browser, chrome, profile, server, recording, notifier, lockOwned = false, lastReleasedAt = 0, lockedAt = 0;
-let holdTimer, activeController, holdExpired = false, emergencyRelease;
+let holdTimer, activeController, holdExpired = false, emergencyRelease, activeScratchCleanup, activePersistFailure, activeResidual;
+function preserveResidual(live) { holdExpired = true; activeResidual?.(live); }
+const remainingOwned = () => census().filter((r) => sameProcess(owned.get(r.pid), r));
+async function emergencyCleanupRelease() {
+	activePersistFailure?.();
+	if (activeScratchCleanup) await boundedFS(activeScratchCleanup()).catch((error) => console.error(error));
+	await release();
+}
 function trackedProcess(child) {
 	remember();
 	child.exited.then(() => owned.delete(child.pid));
@@ -343,6 +398,10 @@ function cleanup() {
 	for (const r of census().reverse()) if (sameProcess(owned.get(r.pid), r)) { try { process.kill(r.pid, 'SIGTERM'); } catch (e) { if (e.code !== 'ESRCH') throw e; } }
 	browser = null; server = null; recording = null; notifier = null;
 }
+async function ownerCheckedRelease(lock, owner) {
+	assert.equal(await boundedFS(readFile(`${lock}/owner`, 'utf8')), owner, 'GPU lock ownership changed');
+	await boundedFS(rm(lock, { recursive: true }));
+}
 function singleFlight(action) {
 	let promise;
 	return () => promise ??= Promise.resolve().then(action);
@@ -352,9 +411,9 @@ function release() {
 	if (releasePromise) return releasePromise;
 	if (!lockOwned) return Promise.resolve();
 	releasePromise = singleFlight(async () => {
-		assert.equal(await readFile(`${LOCK}/owner`, 'utf8'), ownerText, 'GPU lock ownership changed');
+		await ownerCheckedRelease(LOCK, ownerText).catch((error) => { console.error(error); throw error; });
 		clearTimeout(holdTimer);
-		await rm(LOCK, { recursive: true }); lockOwned = false; lastReleasedAt = Date.now();
+		lockOwned = false; lastReleasedAt = Date.now();
 		console.log(JSON.stringify({ phase: 'disk accounting', energyEvalBytes: await bytes('/tmp/energy-eval') }));
 		console.log(JSON.stringify({ phase: 'GPU lock released', pid: process.pid }));
 	})();
@@ -381,8 +440,8 @@ async function acquire() {
 			await writeFile(`${LOCK}/owner`, ownerText); await writeFile(`${LOCK}/acquired-at`, new Date(lockedAt).toISOString());
 			holdTimer = setTimeout(() => {
 				holdExpired = true;
-				activeController?.abort(new Error('attempt timeout (liveness)'));
-				emergencyRelease = terminateAndRelease(cleanup, killOwned, release);
+				if (activeController) abortWith(activeController, livenessReason());
+				emergencyRelease = terminateAndRelease(cleanup, killOwned, emergencyCleanupRelease, 10000, remainingOwned, preserveResidual);
 				emergencyRelease.catch((error) => { console.error(error); process.exitCode = 1; });
 			}, 25 * 60000);
 		}
@@ -464,17 +523,39 @@ async function capture(c, run) {
 	const row = { ...c, run, sha, harnessSha, engineSourceSha, engineFileHash, measurementLogicHash, browserMode, override, trace, loadAverage: loadavg(), uptime: execFileSync('uptime', { encoding: 'utf8' }).trim(), recorderStartTimeoutSeconds: 45, startedAt: new Date().toISOString(), status: 'FAILED' };
 	let gpuPid, phase = 'browser launch', stopped = false, sizeWatch, scratchBefore, page;
 	const scratchNames = async () => (await readdir(tmpdir())).filter((name) => /^instruments.*\.ktrace$/.test(name));
-	const scratchNew = async () => scratchBefore ? (await scratchNames()).filter((name) => !scratchBefore.has(name)) : [];
+	const ownedScratch = new Set();
+	const scratchNew = async () => {
+		if (scratchBefore && lockOwned && await readFile(`${LOCK}/owner`, 'utf8').catch(() => '') === ownerText) {
+			const names = await scratchNames();
+			if (lockOwned && await readFile(`${LOCK}/owner`, 'utf8').catch(() => '') === ownerText) {
+				for (const name of names) if (!scratchBefore.has(name)) ownedScratch.add(name);
+			}
+		}
+		return [...ownedScratch];
+	};
+	const cleanScratch = singleFlight(async () => {
+		for (const name of ownedScratch) {
+			const path = `${tmpdir()}/${name}`, s = await stat(path).catch((e) => { if (e.code !== 'ENOENT') throw e; });
+			if (!s) continue;
+			assert.equal(s.uid, process.getuid(), 'Foreign scratch owner'); await rm(path);
+		}
+	});
+	activeScratchCleanup = cleanScratch;
 	const traceTmp = `${DIR}/${name}-tmp`;
 	await mkdir(traceTmp);
 	const progress = (p) => { phase = p; writeFileSync(`${DIR}/${name}.progress.json`, JSON.stringify({ ...row, phase, windows, states })); console.log(JSON.stringify({ name, phase })); };
 	const controller = new AbortController(), deadline = setTimeout(() => {
-		controller.abort(new Error('attempt timeout (liveness)'));
-		emergencyRelease ??= terminateAndRelease(cleanup, killOwned, release);
+		abortWith(controller, livenessReason());
+		emergencyRelease ??= terminateAndRelease(cleanup, killOwned, emergencyCleanupRelease, 10000, remainingOwned, preserveResidual);
 		emergencyRelease.catch((error) => { console.error(error); process.exitCode = 1; });
 	}, 600000);
 	activeController = controller;
 	const signal = controller.signal;
+	activeResidual = (live) => { row.residualOwnedProcesses = live; row.lockPreserved = true; activePersistFailure(); };
+	activePersistFailure = () => {
+		livenessFailure(row, signal);
+		if (abortReason(signal)?.liveness) writeFileSync(`${DIR}/${name}.json`, JSON.stringify(row, null, 2));
+	};
 	try {
 		await startServer(); signal.throwIfAborted();
 		profile = await mkdtemp('/tmp/svelte-fluid-energy-chrome-');
@@ -515,7 +596,7 @@ async function capture(c, run) {
 			try {
 				const sizes = await Promise.all((await scratchNew()).map((name) => bytes(`${tmpdir()}/${name}`)));
 				const largest = Math.max(0, ...sizes);
-				if (largest > 10 * 1024 ** 3) { controller.abort(new Error(`Trace size watchdog: ${largest} bytes exceeds 10 GiB`)); cleanup(); }
+				if (largest > 10 * 1024 ** 3) { abortWith(controller, new Error(`Trace size watchdog: ${largest} bytes exceeds 10 GiB`)); cleanup(); }
 			} finally { checkingSize = false; }
 		}, 1000);
 		const notified = await Promise.race([notifier.exited.then(() => true), Bun.sleep(45000).then(() => false)]); notifier.kill(); notifier = null;
@@ -607,7 +688,7 @@ async function capture(c, run) {
 		await rm(input); signal.throwIfAborted(); await rm(output); signal.throwIfAborted();
 	} catch (error) {
 		row.status = 'FAILED';
-		row.error = String(controller.signal.reason?.message ?? error.message ?? error); row.phase = phase; row.windows = windows; row.traceDeleted = false;
+		row.error = String(abortReason(signal)?.message ?? error.message ?? error); row.phase = phase; row.windows = windows; row.traceDeleted = false;
 		livenessFailure(row, signal);
 		row.browserErrors = page?.__energyErrors ?? [];
 		if (recording && !stopped && !signal.aborted) { try { recording.kill('SIGINT'); await Promise.race([recording.exited, Bun.sleep(180000)]); } catch {} }
@@ -627,16 +708,14 @@ async function capture(c, run) {
 		cleanup();
 	} finally {
 		clearInterval(sizeWatch);
+		activePersistFailure?.();
 		if (signal.aborted) {
 			cleanup(); await Bun.sleep(1000); killOwned();
 		}
+		await scratchNew();
+		row.scratchDeleted = [...ownedScratch];
+		await cleanScratch();
 		if (emergencyRelease) await emergencyRelease;
-		row.scratchDeleted = [];
-		for (const name of await scratchNew()) {
-			const path = `${tmpdir()}/${name}`, s = await stat(path);
-			assert.equal(s.uid, process.getuid(), 'Foreign scratch owner');
-			row.scratchDeleted.push({ name, bytes: s.size }); await rm(path);
-		}
 		row.traceTmpBytes = await bytes(traceTmp);
 		row.traceTmpFiles = await readdir(traceTmp).catch(() => []);
 		await rm(traceTmp, { recursive: true, force: true });
@@ -654,7 +733,7 @@ async function capture(c, run) {
 		await writeFile(`${DIR}/${name}.json`, JSON.stringify(row, null, 2));
 		if (emergencyRelease) await emergencyRelease; else await release();
 	}
-	clearTimeout(deadline); activeController = null;
+	clearTimeout(deadline); activeController = null; activePersistFailure = null; activeScratchCleanup = null;
 	console.log(JSON.stringify({ name, status: row.status, error: row.error, active: row.windows?.active?.gpuBusyMsPerSecond, untouched: row.windows?.untouched?.gpuBusyMsPerSecond, traceBytes: row.traceBytes, traceDeleted: row.traceDeleted }));
 	return row;
 }
@@ -679,7 +758,7 @@ try {
 		if (retry.status !== 'OK') await release();
 	}
 } finally {
-	save(); cleanup(); await release();
+	save(); cleanup(); if (!remainingOwned().length) await release();
 	const remaining = census().filter((r) => sameProcess(owned.get(r.pid), r));
 	await writeFile(`${DIR}/cleanup.json`, JSON.stringify({ checkedPids: [...owned.keys()], remaining, lockReleased: !lockOwned }, null, 2));
 	console.log(JSON.stringify({ phase: 'cleanup', checkedPids: [...owned.keys()], remaining }));
