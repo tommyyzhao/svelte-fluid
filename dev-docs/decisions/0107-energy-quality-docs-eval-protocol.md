@@ -261,6 +261,49 @@ noise cannot certify a pass. Approval replaces only the visual gate, not E1.
 Round 6 fixes one candidate value (512), with no tuning. Its single held-out
 keep/revert decision may run immediately after a passing TRAIN result.
 
+## Amendment 5: 120 Hz headed paired condition for presentation-cadence candidates (owner-approved 2026-10-08)
+
+**Pre-registered before capture:** the owner approved headed browser runs for
+this 120 Hz measurement on 2026-10-08 and said "go". This exception applies
+only to lane `E1-120hz`; Amendment 3's headless condition remains separate.
+Amendment 4 is registered independently by the spatial-candidate lane.
+
+Use installed hardware Chrome, ordinary flags, direct launch and CDP
+`noDefaults:true`, genuine hidden tabs, ANGLE Metal Apple M1 Max. Native
+ProMotion RAF must be approximately 120 Hz in every slot: the independent RAF
+probe in active, untouched, offscreen and blank-control windows must be
+114–126 Hz (±5%); hidden RAF remains 0. A failed refresh check is an
+infrastructure failure under the existing visibility/refresh gate, not a
+candidate loss. Preserve the original; allow exactly one end-of-run retry.
+
+Engine source is local main `9984ca1`; public prop overrides compare
+`{"maxFps":0}` with `{"maxFps":60}`. For each frozen scene and independent
+browser run, measure the two arms back to back: baseline then candidate on
+R1/R3, candidate then baseline on R2. R=3 per arm. Train precedes held out.
+Fresh pairs eliminate days of drift; the historical headed baseline is not
+reused for this decision. All frozen splits, sizes, DPRs, seeds, windows,
+blank controls, parser/metric, closed retry list, 0-GPU rules and keep rule
+remain unchanged: saving must exceed twice that scene's baseline-arm R3
+active noise and be at least 5%. Report each window's paired saving as the
+median of its three matched-run relative savings; report arm median GPU-ms/s
+and split headlines separately. Missing pairs cannot establish a keep.
+
+E2 stills are no-worse by construction: `maxFps` gates presentation only,
+not solver updates, forcing, RNG, filtering or spatial resolution. ADR 0110
+Verification records byte-identical velocity/dye readbacks after 120 equal
+synthetic 120 Hz updates on own/shared, normal/profiled paths (9/9 hardware
+checks), with 120 solver updates and 60/120 render submissions. Still-frame
+statistics/judging need not re-test identical solver fields. Temporal
+smoothness remains the owner's motion review at `/examples/bench/max-fps`;
+this evaluation does not authorize changing default `maxFps=0`.
+
+Exclusive atomic-mkdir GPU lock: owner lane `E1-120hz`, purpose, start,
+worktree and PID, plus acquired-at. Hold ≤25 minutes per batch. Yield after
+release until the other lane has acquired and released or five continuously
+free minutes; never SOLO with both lanes. No tests/builds during captures.
+Retain free-space guard, raw watchdog and ktrace diff cleanup; delete raw
+traces after parse. Never touch foreign locks or Chrome processes.
+
 ## Amendment 6: E1 keep-rule unit (lead, 2026-10-08, before any round 6 or 120 Hz candidate result)
 
 **Written before any candidate result reached the lead.** Rounds 6 (dye default
@@ -285,3 +328,41 @@ Decision:
    neither block nor count towards the primary headline.
 4. Each lane's own amendment text stands as written. Reports give both verdicts.
    The owner sees both.
+
+## Amendment 7 — held-out liveness only (lead decision, 2026-10-09)
+
+Pre-registered after the FrameFluid hang, before further held-out data. This
+is the lead's liveness-only decision, not owner approval for adoption or a
+change to successful measurements. FrameFluid DPR1 seed11 baseline R2 stalled
+in `offscreen`; PID 12260 held the lock from 02:30:35Z until operator SIGTERM
+at approximately 03:50Z on 2026-10-10 (78 minutes at discovery). No exception
+was emitted. Its preserved reason is `Unclassified liveness hang in offscreen;
+pending page/CDP call did not settle; stopped PID 12260 after 78-minute hold`.
+It is missing and unclassified, with no retry. Only its owned raw trace and
+empty temporary directory were removed after PID exit and owner-checked release.
+
+Every awaited page/CDP operation inside a capture must race the existing
+per-slot abort signal. A wall deadline terminates exactly the owned
+Chrome/xctrace/Vite process tree, records the slot FAILED as
+`attempt timeout (liveness)`, completes cleanup and releases the lock. The
+25-minute hold cap becomes a hard timer: stop the invocation after cleanup
+and release, rather than checking elapsed hold only between slots. Liveness
+timeouts are **not retryable**; they remain missing under the unchanged closed
+retry list. A bounded cleanup must not await the same stalled CDP transport.
+
+Measured windows, parser, RAF/control gates, metrics, retry list and thresholds
+are unchanged. All slots captured before this amendment used the old harness;
+their successful measurements remain valid because this fix does not change
+the measurement path. Preserve per-row harness SHA and measurement hash to
+identify the split. Commit this amendment before implementing the liveness
+fix; commit the fix separately after self-check, tests and Svelte checks under
+the load/free-lock gates. Further captures require independent review and the
+lead's explicit review OK. Default `maxFps` remains 0.
+
+Implementation note (lead rule, 2026-10-10): each attempt samples lock freedom
+and five-minute load average every 5 seconds. Five continuous minutes means
+all samples show the lock free and load below 15. The gate exits cleanly after
+85 minutes without writing a slot row or touching another owner's lock.
+After acquiring its own lock, the harness rechecks load once; load at or above
+15 causes owner-checked release and a fresh wait. These environment gates sit
+outside the frozen measurement block.
