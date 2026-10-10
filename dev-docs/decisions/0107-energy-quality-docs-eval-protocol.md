@@ -284,3 +284,33 @@ release until the other lane has acquired and released or five continuously
 free minutes; never SOLO with both lanes. No tests/builds during captures.
 Retain free-space guard, raw watchdog and ktrace diff cleanup; delete raw
 traces after parse. Never touch foreign locks or Chrome processes.
+
+## Amendment 7 — held-out liveness only (lead decision, 2026-10-09)
+
+Pre-registered after the FrameFluid hang, before further held-out data. This
+is the lead's liveness-only decision, not owner approval for adoption or a
+change to successful measurements. FrameFluid DPR1 seed11 baseline R2 stalled
+in `offscreen`; PID 12260 held the lock from 02:30:35Z until operator SIGTERM
+at approximately 03:50Z on 2026-10-10 (78 minutes at discovery). No exception
+was emitted. Its preserved reason is `Unclassified liveness hang in offscreen;
+pending page/CDP call did not settle; stopped PID 12260 after 78-minute hold`.
+It is missing and unclassified, with no retry. Only its owned raw trace and
+empty temporary directory were removed after PID exit and owner-checked release.
+
+Every awaited page/CDP operation inside a capture must race the existing
+per-slot abort signal. A wall deadline terminates exactly the owned
+Chrome/xctrace/Vite process tree, records the slot FAILED as
+`attempt timeout (liveness)`, completes cleanup and releases the lock. The
+25-minute hold cap becomes a hard timer: stop the invocation after cleanup
+and release, rather than checking elapsed hold only between slots. Liveness
+timeouts are **not retryable**; they remain missing under the unchanged closed
+retry list. A bounded cleanup must not await the same stalled CDP transport.
+
+Measured windows, parser, RAF/control gates, metrics, retry list and thresholds
+are unchanged. All slots captured before this amendment used the old harness;
+their successful measurements remain valid because this fix does not change
+the measurement path. Preserve per-row harness SHA and measurement hash to
+identify the split. Commit this amendment before implementing the liveness
+fix; commit the fix separately after self-check, tests and Svelte checks under
+the load/free-lock gates. Further captures require independent review and the
+lead's explicit review OK. Default `maxFps` remains 0.
