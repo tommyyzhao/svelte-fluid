@@ -1,6 +1,6 @@
 {
 	"name": "svelte-fluid",
-	"version": "1.0.0-rc.0",
+	"version": "1.0.0",
 	"description": "WebGL fluid simulation for Svelte 5: interactive backgrounds, splash cursor, text and shape masks, reveals and image distortion. Zero dependencies.",
 	"license": "MIT",
 	"author": "Tommy Zhao (https://github.com/tommyyzhao)",
