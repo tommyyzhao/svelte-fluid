@@ -152,12 +152,16 @@ measurements do not authorize adoption. **Default remains 0**.
 ### Outcome — paired held-out completion (2026-10-10)
 
 All 96 held-out originals attempted; 22 retry/rerun rows, 83/96 resolved clean
-slots, 7/16 complete paired scenes. Registered A6 ratio-of-scene-arm-median
-headline: **15.6764%** saving (167.8875845 / 141.568812 GPU-ms/s), versus
-**11.5884%** twice median baseline active noise; ≥5% floor also met.
-**PASS on the complete subset, incomplete as a full-matrix certification.**
-Blind lead-rerun exclusion sensitivity: 6/16 complete scenes, **21.8538%**
-saving versus **8.6144%** twice noise; PASS, verdict unchanged.
+slots, 7/16 complete paired scenes.
+
+**Verdict: held-out INCOMPLETE; the saving is unproven.**
+- Coverage is too thin to certify the held-out split (7/16, or 6/16 without lead reruns).
+- Two lead-applied reruns sit outside the registered retry list. They widened it, which
+  the protocol forbids.
+
+Descriptive subset arithmetic only, not a pass: A6 headline **15.6764%**
+(167.8875845 / 141.568812 GPU-ms/s) against a **11.5884%** bar; excluding the lead
+reruns, 21.8538% against 8.6144%.
 
 A5 secondary passes 6/7 scenes; TeslaValve DPR1 seed11 fails its own noise
 bar. Complete-scene matched-run active savings **12.3880%–35.4736%**, median
@@ -172,9 +176,9 @@ Compact rows/hashes, missing-slot causes, lead annotations and sensitivity:
 `energy-eval.md`. Two successful blind lead-applied reruns preserve their
 operator-aborted FAILED originals; byte-copy provenance is explicit.
 No held-out equal-wall-time E2 quality pass or owner motion approval exists.
-This outcome supports opt-in documentation only, not default adoption.
 **Default remains 0** (lead decision under owner delegation, 2026-10-09, Bead
 v73): a 60 Hz cap halves presented motion cadence on 120 Hz displays, and the
 held-out E2 and owner motion review a default change would need do not exist.
-The configuration docs cite the held-out range instead of the earlier
-"roughly halving" estimate.
+Because the energy saving is unproven, the configuration docs no longer claim
+one. They now describe only the mechanism: half the presented frames. The
+earlier "roughly halving GPU work" claim is removed.

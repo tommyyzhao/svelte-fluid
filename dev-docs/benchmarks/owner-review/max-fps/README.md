@@ -1,8 +1,9 @@
 # maxFps — owner motion review packet
 
 **Decided 2026-10-10 (lead, owner-delegated; Bead v73 closed): default stays 0
-(opt-in).** Held-out E1 completed: A6 PASS on 7/16 complete scenes, measured
-saving 12–35% (median 22%). See "Final evidence" below. This packet stays as the
+(opt-in).** Held-out E1 is **INCOMPLETE**: only 7/16 scenes completed, and two
+reruns fell outside the registered retry list. The energy saving is unproven. See
+"Final evidence" below. This packet stays as the
 review path should the owner ever want to reconsider a default-on cap.
 
 **On your 120 Hz display, is maxFps=60 visually indistinguishable or acceptable as the default?**
@@ -72,13 +73,15 @@ supported on MacOS yet`), where this cap has no cadence effect. Agents cannot
 Owner-approved headed 120 Hz paired run (ADR 0107 Amendments 5–7):
 
 - TRAIN A6: **43.12%** headline saving (paired secondary 40.15%), PASS.
-- Held-out A6: **15.68%** vs **11.59%** bar on 7/16 complete scenes, PASS on
-  the complete subset; sensitivity excluding two lead-applied reruns, 21.85% vs
-  8.61% on 6/16, also PASS. A5 per-scene 6/7. Matched-run savings
-  **12.39–35.47%**, median **22.16%**.
+- Held-out: **INCOMPLETE, not certified.** 7/16 scenes are complete, and two
+  lead-applied reruns widened the retry list. The descriptive subset arithmetic
+  is 15.68% against an 11.59% bar, with matched-run savings of 12–35%. It is not a
+  verdict.
 - Details: [ADR 0110 Outcome](../../../decisions/0110-presentation-rate-cap.md),
   `../../max-fps-120hz-summary.json`, held-out section of `../../energy-eval.md`.
 
 Default remains **0 (opt-in)**. A default change would still need a **held-out
 E2 pass** and **owner motion approval**; neither exists, and the lead decision
-(v73) is to document `maxFps={60}` as an opt-in battery lever instead.
+(v73) is to document `maxFps={60}` as an opt-in control. Its energy effect is
+unproven: a certified claim would need a fresh held-out registration with full
+coverage and no reruns outside the retry list.

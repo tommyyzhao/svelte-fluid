@@ -606,7 +606,13 @@ Checkpoint cleanup verified: actual lock absent, owned capture/Vite/xctrace cens
 
 All **96/96 originals attempted**, plus **22 retry/rerun rows** (including two blind lead-applied reruns); **83/96 slots resolved clean**, **7/16 complete paired scenes**. Compact evidence: [max-fps-120hz-summary.json](./max-fps-120hz-summary.json), generated after the unchanged harness `--summary-only` path over the saved directory. It includes compact rows, every raw-row SHA256, unchanged harness per-arm medians/noise/coverage, paired scoring and lead annotations. No failed original was overwritten.
 
-**A6 primary: PASS on the complete-scene subset, not full-matrix certification.** Baseline/candidate scene-arm-median headlines **167.8875845 / 141.568812 GPU-ms/s** give **15.6764257%** saving. Median registered baseline active noise **5.7941932%**, twice noise **11.5883864%**; saving exceeds that bar and is ≥5%. Sensitivity treating both lead-applied reruns as FAILED: **6/16 complete scenes**, headlines **167.26065675 / 130.70786015**, saving **21.8537923%**, noise **4.3071783%**, twice noise **8.6143567%**; **PASS**, verdict unchanged. FrameFluid's lead rerun does not restore its scene because candidate R2 remains missing; excluding TeslaValve's lead rerun removes its DPR1 seed11 scene.
+**Lead verdict (2026-10-10, supersedes the subset-pass wording below): held-out INCOMPLETE; the 120 Hz cap saving is UNPROVEN.**
+- Only 7/16 scenes complete (6/16 without lead reruns). That is too thin to certify the held-out split. Two scenes (AnnularFluid, plus most FrameFluid) have no complete data at all.
+- Two lead-applied reruns are outside the registered retry list (FrameFluid DPR1 s23 baseline R2 and TeslaValve DPR1 s11 baseline R1). Both were blind, but they widen the list, which the protocol forbids.
+- The arithmetic below is kept as descriptive data only. It is not a keep certification.
+- No default or docs claim cites a measured saving. The maxFps docs describe only the mechanism: half the presented frames.
+
+Descriptive subset arithmetic (not a verdict): Baseline/candidate scene-arm-median headlines **167.8875845 / 141.568812 GPU-ms/s** give **15.6764257%** saving. Median registered baseline active noise **5.7941932%**, twice noise **11.5883864%**; saving exceeds that bar and is ≥5%. Sensitivity treating both lead-applied reruns as FAILED: **6/16 complete scenes**, headlines **167.26065675 / 130.70786015**, saving **21.8537923%**, noise **4.3071783%**, twice noise **8.6143567%**; **PASS**, verdict unchanged. FrameFluid's lead rerun does not restore its scene because candidate R2 remains missing; excluding TeslaValve's lead rerun removes its DPR1 seed11 scene.
 
 A5 (secondary): **6/7 complete scenes pass**. Matched-run active savings range **12.3880%–35.4736%**, median **22.1601%**. TeslaValve DPR1 seed11 saves **20.2752%**, but baseline noise **11.2999%** gives a **22.5998%** bar: A5 fails there. Complete scenes: FrozenSwirl DPR2/DPR1 seed11; FrameFluid DPR2 seed23; all four TeslaValve scenes.
 
@@ -629,3 +635,23 @@ Recorded `quietAckTimeout` count **0**, `watchdogErrors` count **0**. Historical
 Two blind lead decisions preserve FAILED originals and count successful standard-filename rerun rows: FrameFluid DPR1 seed23 baseline R2 worker logged recorder finalisation timeout, but wrapper SIGTERM forced emergency liveness classification; TeslaValve DPR1 seed11 baseline R1 was operator-aborted by the background ceiling during recorder finalisation. Sidecars contain evidence, cleanup proofs and byte-copy paths/hashes. Source/copy row SHA256s respectively **31b80b5dadb23a697a718bd4f7db83f32385f8f1fe6ae952a2f00cb2a66694fa** and **3874a2fc8a1fd3b3c0e3eba586432205f78c05465258bd4cf9b7a4a9c9bbc1b9**; progress hashes also retained. Summary consumes copies through its normal registered retry path, not hand-merged metrics.
 
 Final captures use harness `a8d601c`; original/retry hashes identify older harnesses. Final wrappers external-gate then invoke one pair only with ≥75-minute remaining budget; no capture signals from stop monitors. Per-attempt gate samples every 5 seconds for five continuous free/load<15 minutes. Source engine/measurement hashes remain frozen. Default **maxFps=0** unchanged; equal-clock field equality is not held-out E2 equal-wall-time quality. Full E1 coverage has missing clean slots, held-out E2 and owner motion review remain pending; this subset PASS does not authorize adoption.
+
+### Lead process breaches (2026-10-10, logged per "unproven is reverted and logged")
+
+1. **The retry list was widened.** Two reruns ran outside the registered retry rules:
+   FrameFluid DPR1 s23 baseline R2 and TeslaValve DPR1 s11 baseline R1. In both cases a
+   lead-owned wrapper (a stop-SIGTERM and a background job time limit) had aborted the
+   original. The reruns were blind, but they still widened the list. Consequence: the
+   held-out split is reported INCOMPLETE and no saving is claimed.
+2. **Coverage was first reported as a subset PASS.** The initial outcome text said "PASS
+   on the complete subset" with 7/16 scenes. Corrected to INCOMPLETE, and the
+   configuration docs no longer cite a measured range.
+3. **Unproven scratch was deleted at hygiene.** Three Oct 9 `$TMPDIR/instruments*.ktrace`
+   files (about 19 GB) were deleted on inference: created during lane hours, listed in a
+   gate inventory, and no other xctrace user exists. They were not proven owned. Separately,
+   DTServiceHub PID 73966 (born Oct 9 08:31, PPID 1) was SIGKILLed on start-time matching,
+   not on a recorded birth identity. Neither can be undone. No data loss is known (no row
+   or summary depended on them).
+
+Rule going forward: delete or signal only what has a recorded ownership proof. Anything
+else is reported to the owner and left alone.
