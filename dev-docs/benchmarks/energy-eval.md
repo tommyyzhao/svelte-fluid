@@ -547,3 +547,85 @@ Bounded headless 120 Hz investigation:
 - Official [headless screen configuration](https://chromium.googlesource.com/chromium/src/+/main/components/headless/screen_info/README.md) and [parser](https://raw.githubusercontent.com/chromium/chromium/main/components/headless/screen_info/headless_screen_info.cc) expose size/DPR/origin/orientation/work area, **no refresh-rate parameter**. No supported virtual-refresh alternative found. Unpaced `--disable-frame-rate-limit` / `--disable-gpu-vsync` were not used.
 
 **Environment ceiling:** E1 can measure genuine hardware **60 Hz headless**, not native 120 Hz on this Mac. No synthetic RAF/visibility/lifecycle workaround. Captures stopped for replanning. Headless smoke evidence `/tmp/energy-eval/{headless-baseline-smoke2,headless-candidate-smoke}/`; capability probes `/tmp/e1-beginframe-probe{,2,3}.log`.
+
+## 120 Hz paired maxFps evaluation — 2026-10-09
+
+Owner-approved headed exception: ADR 0107 Amendment 5, committed **9678d33** before capture; harness **d9563ce**, engine source **9984ca1**, frozen measurement hash `24c277a4f8bfed880b03a371513a229b0a26f9d45765d0240516b9851bb0cef9`. Installed ordinary hardware Chrome, ANGLE Metal Apple M1 Max. Public overrides only: baseline `maxFps=0`, candidate `maxFps=60`. Independent browser R3 per arm; baseline/candidate R1/R3, candidate/baseline R2. Historical headed measurements are not decision baselines. No engine/default change.
+
+### Train checkpoint, committed before held-out
+
+All 132 originals attempted; 18 registered infrastructure retries; **126/132 resolved clean slots**, **18/22 complete scenes**. Incomplete scenes remain descriptive, excluded from split decisions. Values below are arm median GPU-ms/s, matched-run median relative saving, baseline active R3 `(max−min)/median` noise. `—` means unavailable, not zero; zero/zero untouched windows have no relative saving. Partial-scene medians use available clean runs only.
+
+| Preset / CSS | Clean / 6 | Active baseline | Active candidate | Paired saving | Active noise | A5 active | Untouched baseline | Untouched candidate | Paired saving |
+|---|---:|---:|---:|---:|---:|---|---:|---:|---:|
+| default / 1440×900 | 6 | 84.542 | 54.707 | 30.44% | 10.67% | pass | 0 | 0 | — |
+| default / 800×500 | 6 | 71.566 | 41.724 | 41.70% | 6.60% | pass | 0 | 0 | — |
+| LavaLamp / 1440×900 | 6 | 210.025 | 116.209 | 44.67% | 3.23% | pass | 207.917 | 120.689 | 41.95% |
+| LavaLamp / 800×500 | 6 | 129.546 | 90.040 | 30.50% | 6.88% | pass | 126.895 | 94.619 | 25.19% |
+| Plasma / 1440×900 | 6 | 233.625 | 118.948 | 49.09% | 2.29% | pass | 231.189 | 117.538 | 48.80% |
+| Plasma / 800×500 | 6 | 188.416 | 99.502 | 47.32% | 3.75% | pass | 188.120 | 100.230 | 46.56% |
+| InkInWater / 1440×900 | 4 | 172.857 | 99.279 | 44.84% | — | incomplete | 169.197 | 97.338 | 44.23% |
+| InkInWater / 800×500 | 5 | 134.722 | 76.790 | 42.48% | 3.52% | incomplete | 132.412 | 81.927 | 38.38% |
+| Aurora / 1440×900 | 6 | 226.950 | 123.766 | 45.71% | 1.33% | pass | 225.939 | 123.152 | 45.73% |
+| Aurora / 800×500 | 5 | 185.903 | 106.686 | 42.83% | — | incomplete | 185.268 | 104.466 | 43.70% |
+| CircularFluid / 1440×900 | 6 | 202.693 | 112.045 | 44.72% | 0.75% | pass | 201.807 | 113.516 | 43.06% |
+| CircularFluid / 800×500 | 4 | 151.299 | 95.375 | 37.38% | — | incomplete | 151.485 | 94.911 | 38.05% |
+| SvgPathFluid / 1440×900 | 6 | 206.911 | 112.410 | 45.56% | 3.75% | pass | 204.096 | 112.160 | 45.45% |
+| SvgPathFluid / 800×500 | 6 | 148.469 | 90.933 | 38.43% | 1.08% | pass | 149.439 | 90.013 | 40.03% |
+| Toroidal / 1440×900 | 6 | 254.942 | 139.553 | 45.46% | 0.76% | pass | 0 | 0 | — |
+| Toroidal / 800×500 | 6 | 203.871 | 117.451 | 42.10% | 2.91% | pass | 0 | 0 | — |
+| GasFlare / 1440×900 | 6 | 290.669 | 181.085 | 36.88% | 4.16% | pass | 291.883 | 184.338 | 37.19% |
+| GasFlare / 800×500 | 6 | 220.399 | 149.950 | 31.96% | 1.31% | pass | 221.976 | 152.187 | 31.44% |
+| Venturi / 1440×900 | 6 | 192.598 | 118.527 | 38.60% | 2.71% | pass | 192.279 | 118.257 | 38.50% |
+| Venturi / 800×500 | 6 | 130.993 | 94.721 | 27.69% | 1.33% | pass | 132.135 | 96.290 | 27.48% |
+| Karman / 1440×900 | 6 | 365.733 | 276.618 | 24.37% | 1.88% | pass | 364.913 | 273.997 | 24.91% |
+| Karman / 800×500 | 6 | 341.367 | 264.715 | 23.07% | 10.54% | pass | 338.574 | 259.649 | 22.00% |
+
+**Train A5 active:** all **18/18 complete scenes pass**. Amendment 5 says “saving must exceed twice that scene's baseline-arm R3 active noise and be at least 5%” and “Report each window's paired saving as the median of its three matched-run relative savings”. Its registered noise is active, not a newly selected untouched noise threshold.
+
+**Train A6 primary active:** Amendment 6 (`a3d2dee`) says “for each split, the headline-median saving over scenes with registered R3 noise must exceed 2× that split's median registered per-scene noise, and be ≥ 5%”. Registered complete-pair-subset headline saving `100 × (1 − median_scene(candidate R3 median) / median_scene(baseline R3 median))` is **43.1184815%**, from active arm headlines **205.3912554 → 116.8296649 GPU-ms/s**. Median active noise **2.81076%**, twice noise **5.62152%**: active split threshold **PASS on 18/22 complete scenes**, not a full-matrix pass. Median of per-scene matched-run savings **40.1514%** is secondary/descriptive, not the A6 primary. Initial checkpoint mislabelled that statistic; independent protocol audit corrected the formula before held-out verdict. Both statistics beat the train threshold; original go scheduling does not authorize a default change.
+
+Untouched is additionally reported: 14 complete nonzero scenes, paired headline **39.2635%**, arm headlines **206.0066 → 117.8976 GPU-ms/s**, own measured R3 noise median **3.53698%**, descriptive only (not a substituted registered noise). Against the registered active-noise rule, all 14 nonzero complete scenes also pass; four complete zero/zero scenes preserve rest, without a relative percentage. This is not a new untouched keep threshold.
+
+Missing slots (no further retries): InkInWater large baseline R2 (finalisation timeout, retry exhausted), large baseline R3 (`Invalid url for WebSocket ws://127.0.0.1:undefined`, unclassified); InkInWater small candidate R1 (finalisation timeout, retry exhausted); Aurora small baseline R1 (finalisation timeout, retry exhausted); CircularFluid small candidate R2 and baseline R3 (`control: window outside trace`, unclassified). Preserve original/retry failures, never infer clean metrics.
+
+### Refresh, idle floor, incidents and lifecycle
+
+All clean rows use Apple M1 Max Metal. Independent RAF ranges: active **119.7–120.1 Hz**, untouched **119.4–120.6**, offscreen **119.6–120.2**, blank control **119.3–120.3**, genuine hidden **0**. Offscreen/hidden engine and presentation rates are 0. All offscreen owned GPU windows are exactly 0; hidden is 0 except default-large baseline R1 **0.0645543 ms/s**. Its control is **0.0477459**, also that scene/arm's R3 control maximum (controls 0.0477459/0/0). Frozen harness rule is `max(idle) ≤ max(control)`: hidden is **above the registered floor by 0.0168084 ms/s**, not idle by that rule. The initial checkpoint followed the lead's post-hoc “control + control spread” instruction; independent audit found no registration, the lead withdrew it, and this classification reverts to the frozen rule. Trace attribution measures the whole owned Chrome GPU process, not engine submissions; zero engine ticks/presentations is separate evidence, not a replacement idle metric. Blank controls otherwise 0 except default-small candidate R3 **0.0961455** and InkInWater-small baseline R1 retry **0.1042415**; their hidden/offscreen windows are 0. Control noise never becomes fluid work or changes the metric.
+
+- External pre-invocation gate: five continuously free lock minutes and five-minute system load <15, 60-second logged samples; no changes inside capture windows. Frozen guards, ≤25-minute batches, inter-lane turns/five-free-minute fallback, one closed-list retry, raw watchdog and ktrace diff cleanup retained. Foreign load often reached 40–58 on ten cores; no foreign resources touched. A failed blank-control refresh (29.9 Hz while scene windows were 120) received its one registered retry; rule never relaxed for ProMotion downclock.
+- CI CPU incident 2026-10-08 22:36:54–22:37:10Z overlapped InkInWater-small candidate R1 active window. Original flagged contaminated/excluded; finalisation failed, its independently eligible sole retry also failed. No included sensitivity metric exists. A later lead test incident 2026-10-09 05:50:08–05:50:14Z occurred during CircularFluid-large baseline R3 finalisation, after control ended 05:49:25Z; no measured overlap.
+- Toroidal wrapper incident: stopping wrapper `be4g17ly2` did not stop child harness PID98195. Eight originals saved 09:28–10:03Z are valid: frozen `await acquire()` precedes each capture; release/reacquisition logs partition the holds, and measured windows precede CI-idle's 10:10–10:16Z hold and follow CI-shard's 09:20:51Z release. Child interrupted large-baseline R3 finalisation; preserved parse-failure is exactly `GPU process exited during recording`, a closed-list retry reason. Recovered FAILED original from progress/parse-failure without any parsed metric; its sole registered retry succeeded. Residual empty exact-slot `-tmp` removed only after UID, slot provenance and PID exit checks. Original never replayed. Thereafter record child PIDs before wrapper stop, verify exact exits afterward.
+- External top-five CPU evidence was absent for the first eight Toroidal rows: monitor incorrectly read `owner.json` rather than actual `owner`. Per-row load averages remain. Corrected capture-only monitor records process-level load on resume/subsequent presets, performs no CPU census during peer holds, exits with capture PID; every task bounded below two hours. No frozen harness edit or retry expansion.
+
+Amendment 7 implementation notes: unrecorded live same-UID DTServiceHub processes born inside the attempt window are refuse-only `suspectUnowned` residuals (never signalled); bounded probe failure preserves the lock. Accepted last-resort residual: synchronous local-APFS `writeFileSync`/`rmSync` calls are not time-bounded. The two-slot stand-in self-check is accepted; the first real held-out FrameFluid slot remains the integration gate, with its row and lock state checked before continuing.
+
+Checkpoint cleanup verified: actual lock absent, owned capture/Vite/xctrace census empty, harness `cleanup.json` remaining `[]`; no raw `.trace`, `.ktrace` or traceTmp leftovers. Owned monitors completed/stopped with exact PID checks. Evidence `/tmp/energy-eval/e1-120hz-paired/` retains per-slot originals, retries, progress, parser failures and `load.log`. No push/merge, foreign lock/process cleanup or default change. Held-out had not started at the train checkpoint; final held-out follow-up is below.
+
+### Held-out completion (2026-10-10)
+
+All **96/96 originals attempted**, plus **22 retry/rerun rows** (including two blind lead-applied reruns); **83/96 slots resolved clean**, **7/16 complete paired scenes**. Compact evidence: [max-fps-120hz-summary.json](./max-fps-120hz-summary.json), generated after the unchanged harness `--summary-only` path over the saved directory. It includes compact rows, every raw-row SHA256, unchanged harness per-arm medians/noise/coverage, paired scoring and lead annotations. No failed original was overwritten.
+
+**A6 primary: PASS on the complete-scene subset, not full-matrix certification.** Baseline/candidate scene-arm-median headlines **167.8875845 / 141.568812 GPU-ms/s** give **15.6764257%** saving. Median registered baseline active noise **5.7941932%**, twice noise **11.5883864%**; saving exceeds that bar and is ≥5%. Sensitivity treating both lead-applied reruns as FAILED: **6/16 complete scenes**, headlines **167.26065675 / 130.70786015**, saving **21.8537923%**, noise **4.3071783%**, twice noise **8.6143567%**; **PASS**, verdict unchanged. FrameFluid's lead rerun does not restore its scene because candidate R2 remains missing; excluding TeslaValve's lead rerun removes its DPR1 seed11 scene.
+
+A5 (secondary): **6/7 complete scenes pass**. Matched-run active savings range **12.3880%–35.4736%**, median **22.1601%**. TeslaValve DPR1 seed11 saves **20.2752%**, but baseline noise **11.2999%** gives a **22.5998%** bar: A5 fails there. Complete scenes: FrozenSwirl DPR2/DPR1 seed11; FrameFluid DPR2 seed23; all four TeslaValve scenes.
+
+| Incomplete scene | Missing clean matched slots / cause |
+|---|---|
+| FrozenSwirl DPR2 seed23 | baseline R2, candidate R1; registered retries exhausted (watchdog/finalisation) |
+| FrozenSwirl DPR1 seed23 | baseline/candidate R2; registered retries exhausted (watchdog) |
+| AnnularFluid DPR2 seed11 | baseline R3; finalisation retry exhausted |
+| AnnularFluid DPR2 seed23 | candidate R1; finalisation retry exhausted |
+| AnnularFluid DPR1 seed11 | candidate R1; finalisation original, analysis retry failure |
+| AnnularFluid DPR1 seed23 | baseline R1 finalisation retry exhausted; candidate R2 `about:blank` timeout, non-retryable |
+| FrameFluid DPR2 seed11 | baseline R3 worker `ps ETIMEDOUT`; candidate R3 `about:blank` timeout, non-retryable; second arm also violated load gate |
+| FrameFluid DPR1 seed11 | baseline R2 unclassified 78-minute offscreen hang, no retry |
+| FrameFluid DPR1 seed23 | candidate R2 harness teardown defect, all frozen windows completed, mislabelled liveness; persisted FAILED, non-retryable |
+
+Idle classification uses only frozen **max(idle) ≤ max(control)**, no spread relaxation. All complete held-out arm R3 groups pass; incomplete groups cannot establish an R3 idle verdict. Two clean rows in incomplete groups have nonzero idle versus their own zero control (AnnularFluid DPR2 seed11 baseline R2 hidden; FrozenSwirl DPR1 seed23 candidate R3 offscreen); report these, never silently call every held-out idle window zero. Clean RAF ranges: active **118.7–120.1**, untouched **119.2–120.1**, offscreen **119.7–120.2**, control **119.6–120.2 Hz**, hidden **0**. All clean rows pass registered refresh gates.
+
+Recorded `quietAckTimeout` count **0**, `watchdogErrors` count **0**. Historical missing counters do not prove zero errors: **watchdog inactive (TDZ ReferenceError) for FrameFluid DPR2 s23 R3 pair; trace sizes 582,384,902 / 455,869,689 bytes, maximum 582,384,902 bytes, under the 10 GiB limit**. Lead accepted both persisted OK rows; frozen windows/RAF/control completed unchanged. IPC quiet-ack timeout fails open with informational reporting; no such timeout observed.
+
+Two blind lead decisions preserve FAILED originals and count successful standard-filename rerun rows: FrameFluid DPR1 seed23 baseline R2 worker logged recorder finalisation timeout, but wrapper SIGTERM forced emergency liveness classification; TeslaValve DPR1 seed11 baseline R1 was operator-aborted by the background ceiling during recorder finalisation. Sidecars contain evidence, cleanup proofs and byte-copy paths/hashes. Source/copy row SHA256s respectively **31b80b5dadb23a697a718bd4f7db83f32385f8f1fe6ae952a2f00cb2a66694fa** and **3874a2fc8a1fd3b3c0e3eba586432205f78c05465258bd4cf9b7a4a9c9bbc1b9**; progress hashes also retained. Summary consumes copies through its normal registered retry path, not hand-merged metrics.
+
+Final captures use harness `a8d601c`; original/retry hashes identify older harnesses. Final wrappers external-gate then invoke one pair only with ≥75-minute remaining budget; no capture signals from stop monitors. Per-attempt gate samples every 5 seconds for five continuous free/load<15 minutes. Source engine/measurement hashes remain frozen. Default **maxFps=0** unchanged; equal-clock field equality is not held-out E2 equal-wall-time quality. Full E1 coverage has missing clean slots, held-out E2 and owner motion review remain pending; this subset PASS does not authorize adoption.
