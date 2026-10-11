@@ -461,11 +461,11 @@ interface FlowGridField {LB}
 
 <p>
 	For advanced users who need framework-agnostic fluid simulation, the <code>FluidEngine</code>
-	class is available as a direct import. It is the WebGL engine that powers the
+	class is exported from the package root. It is the WebGL engine that powers the
 	<code>&lt;Fluid&gt;</code> component, but it has no Svelte dependency.
 </p>
 
-<pre><code>import {LB} FluidEngine {RB} from 'svelte-fluid/engine/FluidEngine';</code></pre>
+<pre><code>import {LB} FluidEngine {RB} from 'svelte-fluid';</code></pre>
 
 <p>
 	The engine is constructed with a <code>canvas</code> element and a <code>config</code> object
