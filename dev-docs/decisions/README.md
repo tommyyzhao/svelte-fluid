@@ -106,6 +106,16 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0110](./0110-presentation-rate-cap.md) | Presentation-only rate cap; preserve every solver frame | Accepted as opt-in (default 0); default-on not adopted |
 | [0111](./0111-component-excellence-eval.md) | Pre-registered E4 component excellence, installability, accessibility and bundle cost | Accepted |
 | [0113](./0113-half-dye-default.md) | Owner-approved generic half dye default; E1 Round 6 incomplete, archived | Rejected |
+| [0114](./0114-thermal-salt-emission.md) | Opt-in thermal transport, no-slip walls and linear flame-salt emission | Accepted |
+| [0115](./0115-substep-submission-and-pressure-crossover.md) | Measured substep submission and pressure-pair crossover | Accepted |
+| [0116](./0116-svg-channel-glass-cover.md) | SDF-shaped glass cover for SVG channels | Accepted |
+| [0117](./0117-transmitted-dye-and-paper-valve.md) | Transmitted dye and the paper Tesla-valve study | Accepted (optics); experimental (paper-flow reproduction) |
+| [0118](./0118-staggered-conservative-flow.md) | Conservative staggered-flow preflight | Experimental — not adopted |
+| [0119](./0119-paper-mac-plenums.md) | Route-local paper MAC flow with reservoir plenums | Experimental — Re50/200 flow accepted; paper reproduction fails; Re400 ships under exceptions with limits |
+| [0120](./0120-paper-tracers.md) | Route-local passive paper dye tracers | Experimental — opt-in visualisation; sampling-limited in mixed regions |
+| [0121](./0121-flow-disturbance-force.md) | Opt-in flow disturbance force | Accepted |
+| [0122](./0122-flow-outlet-relax.md) | Flux-preserving flow outlet relaxation | Accepted |
+| [0123](./0123-flow-tracers.md) | Opt-in passive flow tracers | Accepted |
 
 ADRs 0067-0078 exist only on the private R&D branch (`rd/webgpu-replacement`); the numbering gap here is intentional.
 

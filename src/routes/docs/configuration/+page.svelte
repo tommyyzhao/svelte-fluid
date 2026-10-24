@@ -70,7 +70,8 @@
 				<td>
 					Velocity advection scheme. <code>'maccormack'</code> can keep flow/structured
 					scenes crisper, but can look angular or cubey on diffuse decorative dye. Dye and
-					scalars stay semi-Lagrangian, and devices without linear filtering fall back to
+					nonthermal scalars stay semi-Lagrangian; opt-in thermal scalars and emission/absorption
+					concentration RGB receive a bounded, boundary-aware correction (thickness stays first-order). Devices without linear filtering fall back to
 					<code>'semilagrangian'</code>. Construct-only.
 				</td>
 			</tr>
@@ -603,6 +604,7 @@
 <!-- ================================================================ -->
 <h2>Glass</h2>
 <p>Simulates a glass vessel effect with refraction and specular highlights. Requires a <code>containerShape</code>.</p>
+<p>On WebGL2 with a mask distance field, <code>svgPath</code> gets a channel-shaped glass cover: a flat center, beveled interior edges, chromatic refraction, and fixed upper-left skylight reflections visible even over dark fluid. Refraction stays inside the path; exterior walls remain uncovered. <code>glassThickness</code> sets bevel width as a fraction of mask height. This is display-only; it does not change fluid fields. Analytic shapes retain their existing vessel/rim models; WebGL1 or devices without a mask distance field retain the narrow coverage-mask rim.</p>
 
 <table>
 	<thead>
@@ -865,10 +867,68 @@
 <p>
 	Use <code>sources</code> for steady inlet lines/points/rects, <code>outlets</code> for edge sponge/drain zones,
 		<code>scalarFields</code> for temperature/ink-like quantities, and <code>forces</code> for gravity,
-		pressure-gradient body forces, or scalar-coupled buoyancy. <code>prescribed.kind: 'grid'</code> allows custom uploaded
+		pressure-gradient body forces, scalar-coupled buoyancy, or opt-in seeded <code>disturbance</code> rig noise. <code>prescribed.kind: 'grid'</code> allows custom uploaded
 	flow fields. In <code>mode: 'prescribed'</code>, velocity remains prescribed and ignores
 	source velocity and forces; use <code>'hybrid'</code> to add live velocity before projection.
 	Uploaded grid fields should be immutable or carry a bumped <code>version</code> when reused.
+</p>
+
+<h3>Flux-preserving velocity outlets (opt-in)</h3>
+<p>
+	With <code>clearVelocity: true</code>, an outlet defaults to <code>velocity: 'damp'</code>:
+	the legacy fixed-factor drain removes normal flux (39.5% section-flux spread in the controlled
+	open channel). Choose <code>velocity: 'relax'</code> to relax normal velocity toward its
+	mask-weighted fluid-section mean and tangential velocity toward zero. <code>relaxRate</code>
+	is finite and positive, per simulation second (default 10). Both options are inactive when
+	<code>clearVelocity</code> is false; dye/scalar clearing and preset defaults are unchanged.
+	Effective relax presence owns optional reduction targets (Bucket C); rate, extent and edge
+	updates allocate/link nothing (Bucket A). See <a href="{base}/docs/api">FlowOutlet API</a>
+	for interval/solid-mask semantics and conservation limits.
+</p>
+
+<h3>Disturbance force (opt-in)</h3>
+<p>
+	<code>flow.forces</code> accepts <code>kind: 'disturbance'</code> with nonnegative finite
+	<code>acceleration</code> in velocity units per second (texels/s², like <code>pressureGradient.vector</code>),
+	positive finite <code>correlationTime</code> in simulation seconds and <code>scale</code> in canvas-height units.
+	Optional <code>region</code> is a positive UV rectangle inside [0, 1] (default whole domain),
+	cos²-tapered at its edges; optional integer <code>seed</code> is 0–65535 (default 704).
+	These are Bucket A values after first presence compiles the optional program; no FBO is allocated.
+	Zero acceleration is a skipped pass. This is rig noise, not turbulence: measure inlet velocity RMS/U
+	just downstream, subtract zero-noise baseline variance in quadrature, then calibrate acceleration
+	(e.g. toward 1% U). See <a href="{base}/docs/api">FlowForce API</a>.
+</p>
+
+<h3>Passive tracers (opt-in)</h3>
+<p>
+	<code>flow.tracers</code> requires <code>flow.visualization.absorption</code>; visualization only,
+	not concentration. Supply 1–3 UV source segments with species 0, 1 or 2. Defaults:
+	<code>capacity: 262144</code> particles, <code>rate: 2048</code> particles per simulation second
+	shared across sources, <code>sigma: 0.75</code> dye texels (minimum 0.25, maximum 4/3). Presence/capacity are
+	Bucket C; rate/sigma/sources are allocation-free Bucket A. Velocity/grid dye stay unchanged.
+	Unsupported RGBA32F state or RGBA16F additive blending disables tracers with one warning,
+	retaining grid absorption. See <a href="{base}/docs/api">FlowConfig tracers API</a> for validation and limits.
+</p>
+
+<h3>Transmitted dye (opt-in)</h3>
+<p>
+	<code>flow.visualization.absorption</code> takes <code>absorbance: [RGB, RGB, RGB]</code>
+	and optional <code>backlight: RGB</code> (linear white by default). Dye RGB then stores
+	three species concentrations, not colours. Each absorbance vector gives that species'
+	RGB optical depth per unit concentration. Linear transmission is
+	<code>backlight × exp(−Σ concentration × absorbance)</code>, encoded to sRGB once.
+	Overlapping dyes darken subtractively. All coefficients must be finite and nonnegative;
+	invalid values or simultaneous <code>emission</code> throw <code>RangeError</code>.
+</p>
+<p>
+	Absorption ignores bloom, sunrays, shading, specular and tone mapping; reveal/distortion
+	still take precedence. Presence selects a display keyword (Bucket B) and concentration
+	storage/scratch transition; coefficient/backlight changes are hot uniforms (Bucket A).
+	RGB concentration uses the bounded MacCormack path when selected, with float storage
+	where supported; alpha remains first-order thickness. Use opaque white for a backlit
+	image; <code>mix-blend-mode: multiply</code> over a white geometry backdrop preserves walls.
+	Three-band coefficients approximate spectra; this is not a spectral dye measurement.
+	See <a href="{base}/docs/api">FlowVisualization API</a>.
 </p>
 
 <!-- ================================================================ -->
