@@ -11,7 +11,7 @@ const pages = import.meta.glob<{ default: Component }>(['./docs/**/+page.svelte'
 // Dropping or adding an example must be a deliberate edit here.
 const EXPECTED: Record<string, number> = {
 	'./docs/+page.svelte': 5,
-	'./docs/api/+page.svelte': 15,
+	'./docs/api/+page.svelte': 16,
 	'./docs/components/+page.svelte': 14,
 	'./docs/configuration/+page.svelte': 0,
 	'./docs/presets/+page.svelte': 1,

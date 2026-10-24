@@ -340,6 +340,13 @@ export const displayShaderSource = `
 #endif
 #endif
 
+#ifdef ABSORPTION
+    uniform vec3 uAbsorbance0;
+    uniform vec3 uAbsorbance1;
+    uniform vec3 uAbsorbance2;
+    uniform vec3 uBacklight;
+#endif
+
 #ifdef FLOW_VISUALIZATION
     uniform sampler2D uFlowPrimary;
     uniform sampler2D uFlowVelocity;
@@ -507,7 +514,11 @@ ${DYE_GEOMETRY_GLSL}
         // did (encoded, added to display-referred dye, inside the coverage that
         // reveal/distortion read). A linear-light add was tried and rejected: it
         // flattened wisp/gap contrast into haze on every bloom preset (ADR-0081).
+    #ifdef EMISSION
+        c += bloom;
+    #else
         c += linearToSrgb(bloom);
+    #endif
     #endif
 
         float a = max(c.r, max(c.g, c.b));
@@ -733,7 +744,20 @@ ${DYE_GEOMETRY_GLSL}
         // pixels composite as see-through instead of brightening the page.
         gl_FragColor = vec4(clamp(color + ditherNoise(), 0.0, 1.0) * alpha, alpha);
     #else
-    #if defined(TONE_MAP_NEUTRAL) || defined(TONE_MAP_AGX)
+    #ifdef ABSORPTION
+        // Concentrations are not colours: combine optical depths in linear light.
+        vec3 concentration = max(dye.rgb, vec3(0.0));
+        vec3 tau = concentration.r * uAbsorbance0 + concentration.g * uAbsorbance1 + concentration.b * uAbsorbance2;
+        vec3 display = clamp(linearToSrgb(uBacklight * exp(-tau)), 0.0, 1.0) * cmask;
+        float outAlpha = cmask;
+        if (uCompositeBackground > 0.5) {
+            display += uBackColor * (1.0 - outAlpha);
+            outAlpha = 1.0;
+        }
+    #else
+    #ifdef EMISSION
+        vec3 display = clamp(linearToSrgb(toneMap(max(c, vec3(0.0)))), 0.0, 1.0);
+    #elif defined(TONE_MAP_NEUTRAL) || defined(TONE_MAP_AGX)
         // Display-referred dye + glow: decode once, tone-map, encode once.
         vec3 display = clamp(linearToSrgb(toneMap(dyeToLinear(c))), 0.0, 1.0);
     #else
@@ -752,6 +776,7 @@ ${DYE_GEOMETRY_GLSL}
             outAlpha = 1.0;
         }
         outAlpha = min(outAlpha, 1.0);
+    #endif
     #ifdef CONTRAST_FLOOR
         {
             // Pixels whose composite over the reference misses minContrast become
@@ -831,6 +856,11 @@ export const glassShaderSource = `
     uniform float uGlassChromatic;
     uniform vec2 uLightScreenPos;
     uniform float uTransparent;
+    uniform sampler2D uGlassSdf;
+    uniform float uGlassHasSdf;
+    uniform vec2 uGlassSdfTexel;
+    uniform float uGlassMaskHeight;
+    uniform float uGlassPixelWidth;
 
     // Container shape uniforms (shared with display shader)
     uniform int uContainerShapeType;
@@ -910,6 +940,18 @@ export const glassShaderSource = `
         return texture2D(uScene, clamp(uv + shift, 0.0, 1.0));
     }
 
+    float glassSdf(vec2 uv) {
+        return texture2D(uGlassSdf, vec2(uv.x, 1.0 - uv.y)).r;
+    }
+
+    vec2 glassUv(vec3 normal, float eta, float thickness) {
+        vec3 transmitted = refract(vec3(0.0, 0.0, -1.0), normal, eta);
+        vec2 uv = vUv + transmitted.xy * thickness * uGlassSdfTexel;
+        // Refraction must never import the SVG's white walls into the channel.
+        if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0))) || glassSdf(uv) > 0.0) return vUv;
+        return uv;
+    }
+
     void main () {
         vec4 scene = layerScene(vUv);
 
@@ -922,6 +964,52 @@ export const glassShaderSource = `
                 gl_FragColor = uTransparent > 0.5 ? vec4(0.0) : scene;
                 return;
             }
+        }
+
+        if (uContainerShapeType == 4 && uGlassHasSdf > 0.5) {
+            float sdf = glassSdf(vUv);
+            if (sdf >= 0.0) {
+                gl_FragColor = uTransparent > 0.5 ? vec4(0.0) : scene;
+                return;
+            }
+            float d = -sdf;
+            float w = max(uGlassThickness * uGlassMaskHeight, 0.001);
+            float t = max(1.0 - d / w, 0.0);
+            float h = sqrt(max(1.0 - t * t, 0.0001));
+            // Physical slab height is w*h, so its circular bevel has slope t/h.
+            float hPrime = t / h;
+            vec2 gradD = -0.5 * vec2(
+                glassSdf(vUv + vec2(uGlassSdfTexel.x, 0.0)) - glassSdf(vUv - vec2(uGlassSdfTexel.x, 0.0)),
+                glassSdf(vUv + vec2(0.0, uGlassSdfTexel.y)) - glassSdf(vUv - vec2(0.0, uGlassSdfTexel.y))
+            );
+            vec3 N = normalize(vec3(-hPrime * gradD, 1.0));
+            float eta = 1.0 / (1.0 + uGlassRefraction);
+            float spread = uGlassChromatic * 0.04;
+            // A half-bevel-radius optical slab avoids excessive boundary compression.
+            float thickness = 0.5 * w;
+            vec3 refracted = vec3(
+                layerScene(glassUv(N, min(eta * (1.0 + spread), 1.0), thickness)).r,
+                layerScene(glassUv(N, eta, thickness)).g,
+                layerScene(glassUv(N, eta * (1.0 - spread), thickness)).b
+            );
+            float fresnel = uGlassReflectivity + (1.0 - uGlassReflectivity) * pow(1.0 - N.z, 5.0);
+            vec3 light = normalize(vec3(-0.45, 0.65, 0.8));
+            vec3 halfLight = normalize(light + vec3(0.0, 0.0, 1.0));
+            // External skylight keeps the covering visible even above cold, dark fluid.
+            float softbox = 1.0 - smoothstep(-0.5, 1.2, vUv.x - vUv.y);
+            float sky = 0.65 + 1.0 * softbox;
+            vec3 environment = vec3(0.86, 0.93, 1.0) * sky;
+            float specular = pow(max(dot(N, halfLight), 0.0), 24.0) * fresnel * 8.0;
+            float edge = exp(-d / max(uGlassPixelWidth * 0.7, 0.001));
+            float edgeLight = 0.12 + 0.22 * max(dot(normalize(vec3(-gradD, 0.2)), light), 0.0);
+            vec3 color = refracted * (1.0 - fresnel) + environment * fresnel + vec3(specular + edge * edgeLight);
+            // Fade entirely inside the SDF: no glass band on the white SVG walls.
+            float cover = smoothstep(0.0, max(uGlassPixelWidth, 0.001), d);
+            float alpha = uTransparent > 0.5 ? cover : scene.a;
+            gl_FragColor = uTransparent > 0.5
+                ? vec4(clamp(color, 0.0, 1.0) * alpha, alpha)
+                : vec4(clamp(mix(scene.rgb, color, cover), 0.0, 1.0), alpha);
+            return;
         }
 
         vec3 lightDir = normalize(vec3(2.0 * (uLightScreenPos.x - 0.5), 2.0 * (uLightScreenPos.y - 0.5), 0.6));
@@ -1233,6 +1321,9 @@ export const flowSourceShader = `
     uniform vec4 uRect[MAX_FLOW_SOURCE_BATCH];
     uniform vec3 uColor[MAX_FLOW_SOURCE_BATCH];
     uniform float uDose[MAX_FLOW_SOURCE_BATCH];
+    uniform float uInflow[MAX_FLOW_SOURCE_BATCH];
+    uniform float uRate[MAX_FLOW_SOURCE_BATCH];
+    uniform vec3 uChannels[MAX_FLOW_SOURCE_BATCH];
     uniform float uRadius[MAX_FLOW_SOURCE_BATCH];
     uniform sampler2D uStickyMask;
     uniform float uStickyAmplify;
@@ -1250,6 +1341,7 @@ export const flowSourceShader = `
     void main () {
         vec3 splat = vec3(0.0);
         float dose = 0.0;
+        vec4 base = texture2D(uTarget, vUv);
 
         for (int i = 0; i < MAX_FLOW_SOURCE_BATCH; i++) {
             if (i >= uCount) break;
@@ -1276,13 +1368,20 @@ export const flowSourceShader = `
             }
 
             float amount = exp(-d2 / max(uRadius[i], 0.000001)) * profileWeight(uProfile[i], t);
-            splat += amount * uColor[i];
+            if (uInflow[i] > 0.5) {
+                float sticky = texture2D(uStickyMask, vec2(vUv.x, 1.0 - vUv.y)).r;
+                base.rgb += splat * (1.0 + sticky * uStickyAmplify);
+                splat = vec3(0.0);
+                float weight = 1.0 - exp(-uRate[i] * amount);
+                base.rgb = mix(base.rgb, uColor[i], weight * uChannels[i]);
+            } else {
+                splat += amount * uColor[i];
+            }
             dose += amount * uDose[i];
         }
 
         float stickyVal = texture2D(uStickyMask, vec2(vUv.x, 1.0 - vUv.y)).r;
         float amplify = 1.0 + stickyVal * uStickyAmplify;
-        vec4 base = texture2D(uTarget, vUv);
         float thickness = dose > 0.0 ? clamp(base.a + dose * amplify, 0.0, ${DYE_HEIGHT_CEILING}) : base.a;
         gl_FragColor = vec4(clamp(base.rgb + splat * amplify, -1000.0, 1000.0), thickness);
     }
@@ -1328,6 +1427,81 @@ export const flowOutletShader = `
     }
 `;
 
+// Store mean + scaled occupancy: sparse low velocities must not underflow with the weights.
+export const flowOutletReduceShader = `
+    precision highp float;
+    precision highp sampler2D;
+    varying vec2 vUv;
+    uniform sampler2D uTarget;
+    uniform sampler2D uSolidMask;
+    uniform float uHasSolidMask;
+    uniform vec2 uSourceSize;
+    uniform int uAxis;
+    uniform int uFirst;
+    uniform float uFrom;
+    uniform float uTo;
+
+    void main () {
+        bool horizontal = uAxis == 0;
+        float section = horizontal ? gl_FragCoord.x : gl_FragCoord.y;
+        float group = horizontal ? gl_FragCoord.y : gl_FragCoord.x;
+        float length = horizontal ? uSourceSize.y : uSourceSize.x;
+        vec2 sum = vec2(0.0);
+        for (int i = 0; i < 8; i++) {
+            float cell = floor(group) * 8.0 + float(i) + 0.5;
+            if (cell >= length) continue;
+            vec2 uv = horizontal ? vec2(section, cell) / uSourceSize : vec2(cell, section) / uSourceSize;
+            vec2 pair;
+            if (uFirst == 1) {
+                float along = horizontal ? uv.y : uv.x;
+                float solid = uHasSolidMask > 0.5 ? step(0.5, texture2D(uSolidMask, vec2(uv.x, 1.0 - uv.y)).r) : 0.0;
+                float fluid = (1.0 - solid) * step(uFrom, along) * step(along, uTo);
+                vec2 velocity = texture2D(uTarget, uv).xy;
+                pair = vec2(horizontal ? velocity.x : velocity.y, fluid);
+            } else pair = texture2D(uTarget, uv).xy;
+            sum += vec2(pair.x * pair.y, pair.y);
+        }
+        gl_FragColor = vec4(sum.y > 0.0 ? sum.x / sum.y : 0.0, sum.y * 0.125, 0.0, 1.0);
+    }
+`;
+
+export const flowOutletRelaxShader = `
+    precision highp float;
+    precision highp sampler2D;
+    varying vec2 vUv;
+    uniform sampler2D uTarget;
+    uniform sampler2D uMean;
+    uniform sampler2D uSolidMask;
+    uniform float uHasSolidMask;
+    uniform int uEdge;
+    uniform float uFrom;
+    uniform float uTo;
+    uniform float uWidth;
+    uniform float uRate;
+    uniform float dt;
+
+    void main () {
+        vec4 value = texture2D(uTarget, vUv);
+        float solid = uHasSolidMask > 0.5 ? step(0.5, texture2D(uSolidMask, vec2(vUv.x, 1.0 - vUv.y)).r) : 0.0;
+        if (solid > 0.5) { gl_FragColor = value; return; }
+        float along = uEdge < 2 ? vUv.y : vUv.x;
+        float width = max(uWidth, 0.0001);
+        float normal = 1.0;
+        if (uEdge == 0) normal = 1.0 - smoothstep(0.0, width, vUv.x);
+        else if (uEdge == 1) normal = smoothstep(1.0 - width, 1.0, vUv.x);
+        else if (uEdge == 2) normal = smoothstep(1.0 - width, 1.0, vUv.y);
+        else normal = 1.0 - smoothstep(0.0, width, vUv.y);
+        float gate = step(uFrom, along) * step(along, uTo) * normal;
+        if (gate <= 0.0) { gl_FragColor = value; return; }
+        vec2 sum = texture2D(uMean, uEdge < 2 ? vec2(vUv.x, 0.5) : vec2(0.5, vUv.y)).xy;
+        float mean = sum.y > 0.0 ? sum.x : 0.0;
+        float a = exp(-dt * uRate * gate * gate);
+        if (uEdge < 2) value.xy = vec2(mean + (value.x - mean) * a, value.y * a);
+        else value.xy = vec2(value.x * a, mean + (value.y - mean) * a);
+        gl_FragColor = value;
+    }
+`;
+
 export const flowForceShader = `
     precision highp float;
     precision highp sampler2D;
@@ -1355,6 +1529,50 @@ export const flowForceShader = `
             float scalar = channel(texture2D(uScalar, vUv), uScalarChannel);
             velocity += normalize(uBuoyancyDirection + vec2(0.00001)) * (scalar - uBuoyancyAmbient) * uBuoyancyStrength * dt;
         }
+        gl_FragColor = vec4(clamp(velocity, -1000.0, 1000.0), 0.0, 1.0);
+    }
+`;
+
+// Calibrated rig noise (ADR 0121), not a turbulence model.
+export const flowDisturbanceShader = `
+    precision highp float;
+    precision highp sampler2D;
+
+    varying vec2 vUv;
+    uniform sampler2D uVelocity;
+    uniform float dt;
+    uniform float uNoiseTime;
+    uniform float uNoiseTau;
+    uniform float uNoiseScale;
+    uniform float uNoiseAcceleration;
+    uniform float uSeed;
+    uniform float uAspect;
+    uniform vec4 uRegion;
+
+    float random(vec3 p) {
+        return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123) * 2.0 - 1.0;
+    }
+    vec2 noise(vec2 p, float t) {
+        vec2 b = floor(p), f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        float a = mix(mix(random(vec3(b, t)), random(vec3(b + vec2(1, 0), t)), f.x), mix(random(vec3(b + vec2(0, 1), t)), random(vec3(b + vec2(1, 1), t)), f.x), f.y);
+        float c = mix(mix(random(vec3(b, t + 193.0)), random(vec3(b + vec2(1, 0), t + 193.0)), f.x), mix(random(vec3(b + vec2(0, 1), t + 193.0)), random(vec3(b + vec2(1, 1), t + 193.0)), f.x), f.y);
+        return vec2(a, c) * 2.12;
+    }
+    void main () {
+        vec2 velocity = texture2D(uVelocity, vUv).xy;
+        vec2 r = abs((vUv - uRegion.xy) / uRegion.zw * 2.0 - 1.0);
+        if (r.x >= 1.0 || r.y >= 1.0) {
+            gl_FragColor = vec4(velocity, 0.0, 1.0);
+            return;
+        }
+        vec2 taper = cos(r * 1.57079632679);
+        float envelope = taper.x * taper.x * taper.y * taper.y;
+        float t = uNoiseTime / uNoiseTau, b = floor(t), f = fract(t);
+        f = f * f * (3.0 - 2.0 * f);
+        vec2 p = vUv * vec2(uAspect, 1.0) / uNoiseScale;
+        vec2 kick = mix(noise(p, b + uSeed), noise(p, b + uSeed + 1.0), f);
+        velocity += kick * envelope * uNoiseAcceleration * dt;
         gl_FragColor = vec4(clamp(velocity, -1000.0, 1000.0), 0.0, 1.0);
     }
 `;
@@ -1473,6 +1691,224 @@ const inlineMaskGLSL = `
             mask *= (obstruct > 0.5 ? 0.0 : 1.0);
         }
         return mask;
+    }
+`;
+
+// Thermal passes classify faces at their own grid, never the velocity-grid neighbor map.
+const thermalBoundaryGLSL = `
+    uniform sampler2D uSolidMask;
+    uniform float uHasSolidMask;
+    uniform vec4 uOpenEdges;
+    uniform vec2 texelSize;
+    float solidAt(vec2 uv) {
+        if (uHasSolidMask < 0.5) return 0.0;
+        return step(0.5, texture2D(uSolidMask, vec2(uv.x, 1.0 - uv.y)).r);
+    }
+    float inside(vec2 uv) {
+        return step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
+    }
+    float closedFace(vec2 uv) {
+        if (uv.x < 0.0) return 1.0 - uOpenEdges.x;
+        if (uv.x > 1.0) return 1.0 - uOpenEdges.y;
+        if (uv.y > 1.0) return 1.0 - uOpenEdges.z;
+        if (uv.y < 0.0) return 1.0 - uOpenEdges.w;
+        return solidAt(uv);
+    }
+`;
+
+// Keep full-float scalar copies out of the legacy mediump copy path.
+export const thermalCopyShader = copyShader.replaceAll('mediump', 'highp');
+
+export const thermalAdvectionShader = `
+    precision highp float;
+    precision highp sampler2D;
+    varying vec2 vUv;
+    uniform sampler2D uVelocity;
+    uniform sampler2D uSource;
+    uniform vec2 uVelocityTexel;
+    uniform vec4 uThermalChannels;
+    uniform sampler2D uPhiHat;
+    uniform float uCorrection;
+    uniform float uHeightCeiling;
+    uniform vec4 dissipationVector;
+    uniform float dt;
+${thermalBoundaryGLSL}
+${inlineMaskGLSL}
+    vec4 thermalBilerp(sampler2D source, vec2 uv, vec2 size) {
+        vec2 st = uv / size - 0.5;
+        vec2 base = (floor(st) + 0.5) * size;
+        vec2 f = fract(st);
+        return mix(mix(texture2D(source,base),texture2D(source,base+vec2(size.x,0.0)),f.x),mix(texture2D(source,base+vec2(0.0,size.y)),texture2D(source,base+size),f.x),f.y);
+    }
+    float donorWeight(vec2 uv, vec2 departure) {
+        if (inside(uv) < 0.5 || solidAt(uv) > 0.5) return 0.0;
+        // Diagonal interpolation must not cut across a one-cell wall corner.
+        if (solidAt(mix(uv, departure, 0.5)) > 0.5) return 0.0;
+        return 1.0;
+    }
+    void main () {
+    #ifdef MANUAL_FILTERING
+        vec2 coord = vUv - dt * thermalBilerp(uVelocity, vUv, uVelocityTexel).xy * uVelocityTexel;
+        vec4 source = thermalBilerp(uSource, coord, texelSize);
+    #else
+        vec2 coord = vUv - dt * texture2D(uVelocity, vUv).xy * uVelocityTexel;
+        vec4 source = texture2D(uSource, coord);
+    #endif
+        vec4 legacy = clamp(source / (vec4(1.0) + dt * dissipationVector), -1000.0, 1000.0) * inlineMaskValue(vUv);
+        if (uHeightCeiling > 0.0) legacy.a = clamp(legacy.a, 0.0, uHeightCeiling);
+        if (solidAt(vUv) > 0.5) {
+            gl_FragColor = mix(legacy, vec4(0.0), uThermalChannels);
+            return;
+        }
+        vec2 disp = coord - vUv;
+        float cells = ceil(max(abs(disp.x / texelSize.x), abs(disp.y / texelSize.y)) * 2.0);
+        // ponytail: at most 256 half-cell trace probes; cap departure, never tunnel.
+        // Upgrade to tiled characteristic tracing for CFL > 128 scalar cells.
+        float probes = min(cells, 256.0);
+        if (cells > 256.0) disp *= 256.0 / cells;
+        coord = vUv;
+        bool forwardClear = cells <= 256.0;
+        for (int i = 1; i <= 256; i++) {
+            if (float(i) > probes) break;
+            vec2 candidate = vUv + disp * (float(i) / max(probes, 1.0));
+            if (inside(candidate) < 0.5 || solidAt(candidate) > 0.5) { forwardClear = false; break; }
+            coord = candidate;
+        }
+        vec2 st = coord / texelSize - 0.5;
+        vec2 base = floor(st);
+        vec2 f = fract(st);
+        vec2 a = (base + vec2(0.5, 0.5)) * texelSize;
+        vec2 b = a + vec2(texelSize.x, 0.0);
+        vec2 c = a + vec2(0.0, texelSize.y);
+        vec2 d = a + texelSize;
+        vec4 w = vec4((1.0-f.x)*(1.0-f.y), f.x*(1.0-f.y), (1.0-f.x)*f.y, f.x*f.y);
+        w *= vec4(donorWeight(a,coord), donorWeight(b,coord), donorWeight(c,coord), donorWeight(d,coord));
+        float total = dot(w, vec4(1.0));
+        vec4 value = total > 0.000001 ? (w.x*texture2D(uSource,a) + w.y*texture2D(uSource,b) + w.z*texture2D(uSource,c) + w.w*texture2D(uSource,d))/total : texture2D(uSource,vUv);
+        if (uCorrection > 0.5) {
+            vec2 reverseCoord = vUv - disp;
+            vec2 rs = reverseCoord / texelSize - 0.5;
+            vec2 rb = floor(rs);
+            vec2 rf = fract(rs);
+            vec2 ra = (rb + vec2(0.5)) * texelSize;
+            vec2 rx = ra + vec2(texelSize.x,0.0);
+            vec2 ry = ra + vec2(0.0,texelSize.y);
+            vec2 rd = ra + texelSize;
+            bool clear = forwardClear && donorWeight(a,coord) > 0.5 && donorWeight(b,coord) > 0.5 && donorWeight(c,coord) > 0.5 && donorWeight(d,coord) > 0.5 && total > 0.99999 && donorWeight(ra,reverseCoord) > 0.5 && donorWeight(rx,reverseCoord) > 0.5 && donorWeight(ry,reverseCoord) > 0.5 && donorWeight(rd,reverseCoord) > 0.5;
+            float traceCells = ceil(max(abs(disp.x/texelSize.x),abs(disp.y/texelSize.y))*2.0);
+            for (int j = 1; j <= 256; j++) {
+                if (float(j) > traceCells) break;
+                vec2 probe = vUv - disp * float(j)/max(traceCells,1.0);
+                if (inside(probe) < 0.5 || solidAt(probe) > 0.5) clear = false;
+            }
+            vec4 phiHat = texture2D(uPhiHat,vUv);
+            vec4 phiBar = mix(mix(texture2D(uPhiHat,ra),texture2D(uPhiHat,rx),rf.x),mix(texture2D(uPhiHat,ry),texture2D(uPhiHat,rd),rf.x),rf.y);
+            vec4 corrected = phiHat + 0.5*(texture2D(uSource,vUv)-phiBar);
+            vec4 lo = min(min(texture2D(uSource,a),texture2D(uSource,b)),min(texture2D(uSource,c),texture2D(uSource,d)));
+            vec4 hi = max(max(texture2D(uSource,a),texture2D(uSource,b)),max(texture2D(uSource,c),texture2D(uSource,d)));
+            value = clear ? clamp(corrected,lo,hi) : phiHat;
+        }
+        value /= vec4(1.0) + dt * dissipationVector;
+        gl_FragColor = mix(legacy, value, uThermalChannels);
+    }
+`;
+
+export const scalarDiffusionShader = `
+    precision highp float;
+    precision highp sampler2D;
+    varying vec2 vUv;
+    uniform sampler2D uSource;
+    uniform sampler2D uRhs;
+    uniform vec4 uAlpha;
+    uniform vec4 uIsothermal;
+${thermalBoundaryGLSL}
+    void face(vec2 uv, inout vec4 sum, inout vec4 diagonal) {
+        float fluid = inside(uv) * (1.0 - solidAt(uv));
+        float wall = closedFace(uv);
+        sum += fluid * texture2D(uSource, uv);
+        diagonal += vec4(fluid) + 2.0 * wall * uIsothermal;
+    }
+    void main () {
+        vec4 rhs = texture2D(uRhs, vUv);
+        if (solidAt(vUv) > 0.5) { gl_FragColor = mix(rhs, vec4(0.0), step(vec4(0.0000000001), uAlpha)); return; }
+        vec4 sum = vec4(0.0);
+        vec4 diagonal = vec4(0.0);
+        face(vUv - vec2(texelSize.x,0.0),sum,diagonal);
+        face(vUv + vec2(texelSize.x,0.0),sum,diagonal);
+        face(vUv + vec2(0.0,texelSize.y),sum,diagonal);
+        face(vUv - vec2(0.0,texelSize.y),sum,diagonal);
+        gl_FragColor = (rhs + uAlpha * sum) / (vec4(1.0) + uAlpha * diagonal);
+    }
+`;
+
+export const scalarDiffusionExtractShader = `
+    precision highp float;
+    precision highp sampler2D;
+    varying vec2 vUv;
+    uniform sampler2D uSource;
+    uniform vec4 uChannel;
+    void main () {
+        gl_FragColor = vec4(dot(texture2D(uSource, vUv), uChannel), 0.0, 0.0, 1.0);
+    }
+`;
+
+export const scalarDiffusionMergeShader = `
+    precision highp float;
+    precision highp sampler2D;
+    varying vec2 vUv;
+    uniform sampler2D uSource;
+    uniform sampler2D uDiffused;
+    uniform vec4 uChannel;
+    void main () {
+        vec4 source = texture2D(uSource, vUv);
+        float value = texture2D(uDiffused, vUv).r;
+        gl_FragColor = mix(source, vec4(value), uChannel);
+    }
+`;
+
+export const scalarRadiationShader = `
+    precision highp float;
+    precision highp sampler2D;
+    varying vec2 vUv;
+    uniform sampler2D uSource;
+    uniform vec4 uCoolingDt;
+    uniform vec4 uTemperatureRatio;
+    void main () {
+        vec4 rhs = texture2D(uSource,vUv);
+        vec4 lo = vec4(0.0);
+        vec4 hi = max(rhs,vec4(0.0));
+        vec4 inverseR = 1.0 / uTemperatureRatio;
+        vec4 ambient4 = inverseR * inverseR * inverseR * inverseR;
+        // Bisection is monotone and bounded for arbitrarily stiff nonnegative loss.
+        for (int i = 0; i < 28; i++) {
+            vec4 mid = 0.5*(lo+hi);
+            vec4 t = inverseR + (vec4(1.0)-inverseR)*mid;
+            vec4 t2 = t*t;
+            vec4 residual = mid + uCoolingDt*(t2*t2-ambient4)/max(vec4(1.0)-ambient4,vec4(0.000001)) - max(rhs,vec4(0.0));
+            vec4 positive = step(vec4(0.0),residual);
+            hi = mix(hi,mid,positive);
+            lo = mix(mid,lo,positive);
+        }
+        gl_FragColor = mix(rhs,0.5*(lo+hi),step(vec4(0.0000000001),uCoolingDt));
+    }
+`;
+
+export const emissionShader = `
+    precision highp float;
+    precision highp sampler2D;
+    varying vec2 vUv;
+    uniform sampler2D uDye;
+    uniform sampler2D uScalar;
+    uniform vec3 uChannel;
+    uniform float uIntensity;
+    uniform float uExcitation;
+    uniform float uTemperatureRatio;
+    void main () {
+        vec4 dye = texture2D(uDye,vUv);
+        float theta = max(0.0,dot(texture2D(uScalar,vUv).rgb,uChannel));
+        float temperature = (1.0 + (uTemperatureRatio-1.0)*theta)/uTemperatureRatio;
+        float excitation = exp(clamp(-uExcitation*(1.0/temperature-1.0),-80.0,11.0));
+        gl_FragColor = vec4(min(max(dye.rgb,vec3(0.0))*uIntensity*excitation,vec3(65504.0)),dye.a);
     }
 `;
 
@@ -1804,6 +2240,8 @@ export const viscosityShader = `
     uniform sampler2D uSolidNeighbors;
     uniform float uHasSolidMask;
     uniform float uAlpha;
+    uniform float uNoSlip;
+    uniform vec4 uOpenEdges;
 ${inlineMaskGLSL}
     float solidAt(vec2 uv) {
         if (uHasSolidMask < 0.5) return 0.0;
@@ -1827,12 +2265,64 @@ ${inlineMaskGLSL}
         }
         vec2 C = texture2D(uVelocity, vUv).xy;
         vec2 source = texture2D(uSource, vUv).xy;
+        if (uNoSlip > 0.5) {
+            vec4 wall = nb;
+            vec4 outside = vec4(vL.x < 0.0 ? 1.0 : 0.0, vR.x > 1.0 ? 1.0 : 0.0, vT.y > 1.0 ? 1.0 : 0.0, vB.y < 0.0 ? 1.0 : 0.0);
+            wall = max(wall * (vec4(1.0) - outside), outside * (vec4(1.0) - uOpenEdges));
+            vec4 fluid = (vec4(1.0) - outside) * (vec4(1.0) - nb);
+            vec2 sum = fluid.x * texture2D(uVelocity,vL).xy + fluid.y * texture2D(uVelocity,vR).xy + fluid.z * texture2D(uVelocity,vT).xy + fluid.w * texture2D(uVelocity,vB).xy;
+            float diagonal = dot(fluid + 2.0 * wall, vec4(1.0));
+            vec2 velocity = (source + uAlpha * sum) / (1.0 + uAlpha * diagonal);
+            gl_FragColor = vec4(clamp(velocity,-1000.0,1000.0),0.0,1.0);
+            return;
+        }
         vec2 L = neighborVelocity(vL, nb.x, C);
         vec2 R = neighborVelocity(vR, nb.y, C);
         vec2 T = neighborVelocity(vT, nb.z, C);
         vec2 B = neighborVelocity(vB, nb.w, C);
         vec2 velocity = (source + uAlpha * (L + R + T + B)) / (1.0 + 4.0 * uAlpha);
         gl_FragColor = vec4(clamp(velocity, -1000.0, 1000.0), 0.0, 1.0) * im;
+    }
+`;
+
+export const viscosityJacobi2Shader = `
+    precision highp float;
+    precision highp sampler2D;
+    varying vec2 vUv;
+    uniform vec2 texelSize;
+    uniform sampler2D uVelocity;
+    uniform sampler2D uSource;
+    uniform sampler2D uSolidMask;
+    uniform sampler2D uSolidNeighbors;
+    uniform float uHasSolidMask;
+    uniform float uAlpha;
+    uniform vec4 uOpenEdges;
+    float solidAt(vec2 uv) {
+        return uHasSolidMask < 0.5 ? 0.0 : texture2D(uSolidMask, vec2(clamp(uv.x,0.0,1.0),1.0-clamp(uv.y,0.0,1.0))).r;
+    }
+    vec2 center(vec2 uv) { return clamp(uv,0.5*texelSize,vec2(1.0)-0.5*texelSize); }
+    vec4 neighbors(vec2 uv) {
+        return uHasSolidMask < 0.5 ? vec4(0.0) : texture2D(uSolidNeighbors,uv);
+    }
+    void faces(vec2 uv, out vec4 fluid, out vec4 wall) {
+        vec4 nb = neighbors(uv);
+        vec4 outside = vec4(uv.x-texelSize.x<0.0?1.0:0.0,uv.x+texelSize.x>1.0?1.0:0.0,uv.y+texelSize.y>1.0?1.0:0.0,uv.y-texelSize.y<0.0?1.0:0.0);
+        wall = max(nb*(vec4(1.0)-outside),outside*(vec4(1.0)-uOpenEdges));
+        fluid = (vec4(1.0)-outside)*(vec4(1.0)-nb);
+    }
+    vec2 inner(vec2 uv) {
+        uv = center(uv);
+        if (solidAt(uv)>0.5) return vec2(0.0);
+        vec4 fluid,wall; faces(uv,fluid,wall);
+        vec2 sum = fluid.x*texture2D(uVelocity,uv-vec2(texelSize.x,0.0)).xy + fluid.y*texture2D(uVelocity,uv+vec2(texelSize.x,0.0)).xy + fluid.z*texture2D(uVelocity,uv+vec2(0.0,texelSize.y)).xy + fluid.w*texture2D(uVelocity,uv-vec2(0.0,texelSize.y)).xy;
+        return clamp((texture2D(uSource,uv).xy+uAlpha*sum)/(1.0+uAlpha*dot(fluid+2.0*wall,vec4(1.0))),-1000.0,1000.0);
+    }
+    void main () {
+        if (solidAt(vUv)>0.5) { gl_FragColor=vec4(0.0,0.0,0.0,1.0); return; }
+        vec4 fluid,wall; faces(vUv,fluid,wall);
+        vec2 sum = fluid.x*inner(vUv-vec2(texelSize.x,0.0)) + fluid.y*inner(vUv+vec2(texelSize.x,0.0)) + fluid.z*inner(vUv+vec2(0.0,texelSize.y)) + fluid.w*inner(vUv-vec2(0.0,texelSize.y));
+        vec2 velocity = (texture2D(uSource,vUv).xy+uAlpha*sum)/(1.0+uAlpha*dot(fluid+2.0*wall,vec4(1.0)));
+        gl_FragColor=vec4(clamp(velocity,-1000.0,1000.0),0.0,1.0);
     }
 `;
 
@@ -2163,6 +2653,141 @@ export const applyMaskShader = `
         }
 
         gl_FragColor = val * mask;
+    }
+`;
+
+// Internal MAC preflight only; legacy program selection never compiles these (ADR 0118).
+const staggeredCommon = `
+    precision highp float;
+    precision highp sampler2D;
+    varying vec2 vUv;
+    uniform sampler2D uFaces;
+    uniform sampler2D uPressure;
+    uniform sampler2D uDivergence;
+    uniform sampler2D uApertures;
+    uniform sampler2D uCells;
+    uniform vec2 uSize;
+    vec2 upack(vec2 q) { return vec2(q.x < 0.5 ? uSize.x : q.x - 1.0, q.y); }
+    vec2 vpack(vec2 q) { return vec2(q.x, q.y < 0.5 ? uSize.y : q.y - 1.0); }
+    vec2 uvface(vec2 q) { return (q + 0.5) / (uSize + 1.0); }
+    float apertureU(vec2 q) { return texture2D(uApertures, uvface(upack(q))).r; }
+    float apertureV(vec2 q) { return texture2D(uApertures, uvface(vpack(q))).g; }
+    float faceU(sampler2D s, vec2 q) { return texture2D(s, uvface(upack(q))).r; }
+    float faceV(sampler2D s, vec2 q) { return texture2D(s, uvface(vpack(q))).g; }
+    float p(vec2 q) { return texture2D(uPressure, (q + 0.5) / uSize).r; }
+    float fluid(vec2 q) { return texture2D(uCells, (q + 0.5) / uSize).r; }
+    vec4 openings(vec2 q) { return vec4(apertureU(q), apertureU(q + vec2(1,0)), apertureV(q), apertureV(q + vec2(0,1))); }
+    vec4 interior(vec2 q) { return vec4(q.x > 0.0 ? 1.0 : 0.0, q.x < uSize.x - 1.0 ? 1.0 : 0.0, q.y > 0.0 ? 1.0 : 0.0, q.y < uSize.y - 1.0 ? 1.0 : 0.0); }
+    float jacobi(vec2 q) {
+        vec4 a = openings(q), inside = interior(q);
+        float sum = dot(a * inside, vec4(p(q-vec2(1,0)),p(q+vec2(1,0)),p(q-vec2(0,1)),p(q+vec2(0,1))));
+        float diagonal = dot(a, 2.0 - inside);
+        return fluid(q) * (sum - texture2D(uDivergence,(q+0.5)/uSize).r) / max(diagonal,1.0);
+    }
+`;
+
+export const staggeredDivergenceShader = staggeredCommon + `
+    void main() {
+        vec2 q=floor(vUv*uSize);
+        float d=faceU(uFaces,q+vec2(1,0))-faceU(uFaces,q)+faceV(uFaces,q+vec2(0,1))-faceV(uFaces,q);
+        gl_FragColor=vec4(d*fluid(q),0,0,1);
+    }
+`;
+export const staggeredPressureShader = staggeredCommon + `
+    void main() { gl_FragColor=vec4(jacobi(floor(vUv*uSize)),0,0,1); }
+`;
+export const staggeredPressureJacobi2Shader = staggeredCommon + `
+    void main() {
+        vec2 q=floor(vUv*uSize);
+        vec4 a=openings(q), inside=interior(q);
+        float sum=dot(a*inside,vec4(jacobi(q-vec2(1,0)),jacobi(q+vec2(1,0)),jacobi(q-vec2(0,1)),jacobi(q+vec2(0,1))));
+        gl_FragColor=vec4(fluid(q)*(sum-texture2D(uDivergence,vUv).r)/max(dot(a,2.0-inside),1.0),0,0,1);
+    }
+`;
+export const staggeredGradientShader = staggeredCommon + `
+    void main() {
+        vec2 i=floor(vUv*(uSize+1.0));
+        vec2 qu=vec2(i.x>uSize.x-0.5?0.0:i.x+1.0,i.y);
+        vec2 qv=vec2(i.x,i.y>uSize.y-0.5?0.0:i.y+1.0);
+        float gx=qu.x<0.5?2.0*p(qu):qu.x>uSize.x-0.5?-2.0*p(qu-vec2(1,0)):p(qu)-p(qu-vec2(1,0));
+        float gy=qv.y<0.5?2.0*p(qv):qv.y>uSize.y-0.5?-2.0*p(qv-vec2(0,1)):p(qv)-p(qv-vec2(0,1));
+        gl_FragColor=vec4((texture2D(uFaces,vUv).rg-vec2(gx,gy))*texture2D(uApertures,vUv).rg,0,1);
+    }
+`;
+export const staggeredForceShader = staggeredCommon + `
+    uniform vec2 uImpulse;
+    void main() { gl_FragColor=vec4((texture2D(uFaces,vUv).rg+uImpulse)*texture2D(uApertures,vUv).rg,0,1); }
+`;
+
+const staggeredSampling = `
+    float componentAt(sampler2D s, vec2 q, int c) {
+        vec2 limit=c==0?vec2(uSize.x,uSize.y-1.0):vec2(uSize.x-1.0,uSize.y);
+        q=clamp(q,vec2(0),limit);
+        return c==0?faceU(s,q):faceV(s,q);
+    }
+    float sampleComponent(sampler2D s, vec2 position, int c) {
+        vec2 q=position-(c==0?vec2(0,0.5):vec2(0.5,0)), base=floor(q), f=fract(q);
+        return mix(mix(componentAt(s,base,c),componentAt(s,base+vec2(1,0),c),f.x),mix(componentAt(s,base+vec2(0,1),c),componentAt(s,base+vec2(1,1),c),f.x),f.y);
+    }
+    vec2 sampleVelocity(vec2 position) { return vec2(sampleComponent(uFaces,position,0),sampleComponent(uFaces,position,1)); }
+`;
+export const staggeredAdvectionShader = staggeredCommon + staggeredSampling + `
+    uniform sampler2D uPhiHat;
+    uniform float dt;
+    uniform float uCorrection;
+    uniform float dissipation;
+    uniform float uWallSafe;
+    float traceOpen(vec2 a,vec2 b) {
+        if(uWallSafe<0.5) return 1.0;
+        float steps=ceil(2.0*length(b-a));
+        if(steps>32.0) return 0.0;
+        for(int k=1;k<=32;k++) {
+            if(float(k)>steps) break;
+            vec2 q=clamp(floor(mix(a,b,float(k)/max(steps,1.0))),vec2(0),uSize-1.0);
+            if(fluid(q)<0.5) return 0.0;
+        }
+        return 1.0;
+    }
+    float advect(vec2 position, int c) {
+        vec2 departure=position-dt*sampleVelocity(position);
+        float forward=sampleComponent(uFaces,departure,c)*traceOpen(position,departure);
+        if(uCorrection<0.5) return forward;
+        vec2 arrival=position+dt*sampleVelocity(position);
+        if(traceOpen(position,departure)*traceOpen(position,arrival)<0.5) return forward;
+        float corrected=sampleComponent(uPhiHat,position,c)+0.5*(sampleComponent(uFaces,position,c)-sampleComponent(uPhiHat,arrival,c));
+        vec2 base=floor(departure-(c==0?vec2(0,0.5):vec2(0.5,0)));
+        vec4 stencil=vec4(componentAt(uFaces,base,c),componentAt(uFaces,base+vec2(1,0),c),componentAt(uFaces,base+vec2(0,1),c),componentAt(uFaces,base+vec2(1,1),c));
+        return clamp(corrected,min(min(stencil.x,stencil.y),min(stencil.z,stencil.w)),max(max(stencil.x,stencil.y),max(stencil.z,stencil.w)))/(1.0+dissipation*dt);
+    }
+    void main() {
+        vec2 i=floor(vUv*(uSize+1.0));
+        vec2 pu=vec2(i.x>uSize.x-0.5?0.0:i.x+1.0,i.y+0.5);
+        vec2 pv=vec2(i.x+0.5,i.y>uSize.y-0.5?0.0:i.y+1.0);
+        gl_FragColor=vec4(vec2(advect(pu,0),advect(pv,1))*texture2D(uApertures,vUv).rg,0,1);
+    }
+`;
+export const staggeredViscosityShader = staggeredCommon + staggeredSampling + `
+    uniform sampler2D uRhs;
+    uniform float uAlpha;
+    float aperture(vec2 q,int c) { return c==0?apertureU(q):apertureV(q); }
+    float neighbor(vec2 q,vec2 offset,int c,float center) {
+        vec2 n=q+offset;
+        vec2 limit=c==0?vec2(uSize.x,uSize.y-1.0):vec2(uSize.x-1.0,uSize.y);
+        bool tangential=c==0?abs(offset.y)>0.5:abs(offset.x)>0.5;
+        if(any(lessThan(n,vec2(0)))||any(greaterThan(n,limit))) return tangential?-center:center;
+        if(aperture(n,c)<0.5) return tangential?-center:0.0;
+        return componentAt(uFaces,n,c);
+    }
+    float diffuse(vec2 q,int c) {
+        float center=componentAt(uFaces,q,c);
+        float sum=neighbor(q,vec2(-1,0),c,center)+neighbor(q,vec2(1,0),c,center)+neighbor(q,vec2(0,-1),c,center)+neighbor(q,vec2(0,1),c,center);
+        return (componentAt(uRhs,q,c)+uAlpha*sum)/(1.0+4.0*uAlpha);
+    }
+    void main() {
+        vec2 i=floor(vUv*(uSize+1.0));
+        vec2 qu=vec2(i.x>uSize.x-0.5?0.0:i.x+1.0,i.y);
+        vec2 qv=vec2(i.x,i.y>uSize.y-0.5?0.0:i.y+1.0);
+        gl_FragColor=vec4(vec2(diffuse(qu,0),diffuse(qv,1))*texture2D(uApertures,vUv).rg,0,1);
     }
 `;
 
