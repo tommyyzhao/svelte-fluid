@@ -136,12 +136,14 @@ See the [recipe](https://svelte-fluid.dev/docs/recipes/splash-cursor).
 ## Browser compatibility
 
 - **WebGL 1** (with linear filtering) and **WebGL 2** both work
-- Tested on Chrome 120+, Firefox 121+, Safari 17+
-- **Mobile:** works on iOS Safari 16+ and Chrome Android, with `lazy={true}`
+- **Compatibility targets:** Chrome 120+, Firefox 121+, Safari 17+
+- **Mobile targets:** iOS Safari 16+ and Chrome Android, with `lazy={true}`
   strongly recommended on dense pages
 - **Linear filtering fallback:** when `OES_texture_float_linear` is unavailable,
   the engine drops shading, bloom, sunrays and clamps `dyeResolution` ≤ 512 —
   see `FluidEngine.initContext()`
+
+These compatibility targets are broader than the current verification evidence; see [browser coverage and release checks](dev-docs/release/browser-coverage.md).
 
 ## Components
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import page from './+page.svelte?raw';
 import { TESLA_VALVE_CONFIG } from '$lib/presets/registry.js';
 import { jetFlow } from './jet-pulse.js';
 import { viscosityAlpha } from '$lib/engine/FluidEngine.js';
@@ -359,12 +360,12 @@ describe('Tesla valve test tunings', () => {
 		});
 		expect(tuning.description).toContain('2D');
 		expect(tuning.description).toContain('199.73');
-		expect(tuning.description).toContain('0.47 physical s/wall s');
+		expect(tuning.description).toContain('0.47 simulated seconds per real second');
 		expect(tuning.description).toContain('fails');
-		expect(tuning.description).toContain('laminar throughout');
-		expect(tuning.description).toContain('1.5× grid shows no dye mixing');
-		expect(tuning.description).toContain('numerical dye diffusion');
-		expect(getTuning('paper-forward').description).toContain('Di 1.08 vs 1.59');
+		expect(tuning.description).toContain('flow stays smooth throughout');
+		expect(tuning.description).toContain('1.5× finer grid shows no dye mixing');
+		expect(tuning.description).toContain('dye spreading caused by the calculation');
+		expect(getTuning('paper-forward').description).toContain('1.08 vs the paper’s 1.59');
 		expect(getTuning('paper-forward').mac).toEqual({
 			direction: 1,
 			force: 2.027521901389229,
@@ -384,32 +385,32 @@ describe('Tesla valve test tunings', () => {
 			noiseAcceleration: 0.0064
 		});
 		expect(low.prerollSeconds).toBe(40);
-		expect(low.description).toContain('≈ 1.50 physical s/wall s (≈ ceiling)');
+		expect(low.description).toContain('≈ 1.50 simulated seconds per real second (≈ the speed limit for these settings)');
 		expect(low.description).not.toContain('1.52');
 		expect(low.description).toContain('0.77%');
 		expect(low.description).toContain('fails');
 		const high = getTuning('paper-reverse-re400');
 		expect(high.mac).toMatchObject({ force: 7.3, dt: .005, pressureSweeps: 128, targetRe: 400 });
-		expect(high.description).toContain('Dye onset is NOT resolution-converged');
-		expect(high.description).toContain('1.5× St 0.90 vs 1× 0.93');
-		expect(high.description).toContain('half-window scatter 0.35 Hz exceeds the shift');
-		expect(high.description).toContain('frequency grid-convergence is unresolved');
-		expect(high.description).toContain('MAC St 0.92 vs 0.835, ~9% gap');
-		expect(high.description).toContain('Q 4.712 Hz, St 0.835');
+		expect(high.description).toContain('first dye-mixing location changes with grid size');
+		expect(high.description).toContain('1.5× grid St 0.90 vs 1× grid 0.93');
+		expect(high.description).toContain('variation between halves of the recording is 0.35 Hz');
+		expect(high.description).toContain('frequency comparison remains inconclusive');
+		expect(high.description).toContain('St 0.92 vs 0.835, a ~9% unexplained gap');
+		expect(high.description).toContain('flow-rate frequency 4.712 Hz; frequency relative to flow speed, St, 0.835');
 		expect(high.description).toContain('zero inlet disturbance');
 		expect(high.description).toContain(
-			'Unsteadiness persists for ≤1.5 flow-through times under exact projection, from an unsteady start (fine grid at Re 420)'
+			'Changing flow persists for ≤1.5 times the time for fluid to cross the valve with a more accurate pressure calculation, starting from already-changing flow (finer grid at Reynolds number 420)'
 		);
 		expect(high.description).not.toContain('within pre-registered tolerance');
 		expect(high.description).not.toContain('breakup confirmed');
 		expect(high.description).not.toContain('Basilisk St 0.84 differs');
 		expect(high.description).not.toContain('grid-robust');
 		expect(high.description).not.toContain('1.5× frequency untested');
-		expect(high.description).toContain('section-flux oscillation 6.02×');
-		expect(high.description).toContain('largely a projection-leak artifact');
-		expect(high.description).toContain('still decaying at 30 s (no settled exact value)');
-		expect(high.description).toContain('19.6×, 21.0× and 24.5× at units 1–3');
-		expect(high.description).toContain('downstream units 6–11 agree within 16%');
+		expect(high.description).toContain('changes in flow through a section by 6.02×');
+		expect(high.description).toContain('largely caused by error in the pressure calculation');
+		expect(high.description).toContain('still shrinking at 30 s (no settled comparison value)');
+		expect(high.description).toContain('19.6×, 21.0× and 24.5× at sections 1–3');
+		expect(high.description).toContain('downstream sections 6–11 agree within 16%');
 		expect(high.description).not.toContain('35×');
 		expect(high.description).not.toContain('up to ~6×');
 		expect(high.description).not.toContain('within 3.2%');
@@ -417,17 +418,26 @@ describe('Tesla valve test tunings', () => {
 		expect(high.description).not.toContain('12.5×');
 		expect(high.description).not.toContain('St 0.22 vs 0.11');
 		expect(high.description).toContain('3.5%');
-		expect(high.description).toContain('exact projection');
+		expect(high.description).toContain('more accurate pressure calculation');
 		expect(high.prerollSeconds).toBe(10);
 		expect(high.dyePrerollSeconds).toBe(3);
 		expect(high.stepsPerFrame).toBe(4);
-		expect(high.description).toContain('54.3 fps');
-		expect(high.description).toContain('≈ 0.19 physical s/wall s (≈ the 0.187 ceiling)');
-		expect(high.description).toContain('Dye reaches the breakup region ~15–20 s after loading');
+		expect(high.description).toContain('54.3 frames per second');
+		expect(high.description).toContain('≈ 0.19 simulated seconds per real second (≈ the 0.187 speed limit for these settings)');
+		expect(high.description).toContain('Dye reaches the region where threads break apart ~15–20 s after loading');
 		for (const { id, mac } of TUNINGS.filter(
 			({ id }) => !id.startsWith('paper-')
 		))
 			expect(mac, id).toBeUndefined();
+	});
+
+	it('explains laboratory limits and the same-flow pressure comparison in plain language', () => {
+		expect(page).toContain('laboratory-only 2D experiments, not validated real-world predictions');
+		expect(page).toContain('backward (reverse) pressure to the forward pressure needed for the same flow rate');
+		expect(page).toContain('Forward means left to right through the valve; backward means right to left');
+		expect(getTuning('paper-forward').label).toBe('Lower-speed experiment · forward');
+		expect(getTuning('paper-reverse-re400').label).toBe('Higher-speed experiment · backward');
+		expect(getTuning('paper-forward').description).toContain('pressure ratio for the same flow rate');
 	});
 
 	it('does not mutate the canonical registry', () => {

@@ -91,7 +91,7 @@
 				<td><code>viscosity</code></td>
 				<td><code>number</code></td>
 				<td><code>0</code></td>
-				<td>Dimensionless implicit velocity diffusion. Use small values for smoother browser-GPU CFD scenes.</td>
+				<td>Dimensionless implicit velocity-diffusion coefficient, not calibrated SI kinematic viscosity. Check iteration, timestep and grid convergence for your intended scene.</td>
 			</tr>
 			<tr>
 				<td><code>viscosityIterations</code></td>
@@ -626,7 +626,7 @@
 			<td><code>glassThickness</code></td>
 			<td><code>number</code></td>
 			<td><code>0.04</code></td>
-			<td>Wall thickness in UV units. Controls how wide the refraction band is at the boundary.</td>
+			<td>Display-only glass control: boundary refraction-band width for non-circle shapes, rim optics for circles, and bevel width relative to mask height for SVG covers. Does not define simulated fluid depth or physical vessel wall thickness.</td>
 		</tr>
 		<tr>
 			<td><code>glassRefraction</code></td>

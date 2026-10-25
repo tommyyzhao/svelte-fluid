@@ -12,7 +12,7 @@ const gentle = {
 	id: 'gentle',
 	label: 'Gentle',
 	description:
-		'Original: a softer through-flow with fewer, quieter inlet splats.',
+		'Original experiment: gentler flow with fewer, softer bursts at the inlet.',
 	config: {
 		...TESLA_VALVE_CONFIG,
 		flow: {
@@ -30,7 +30,7 @@ const cushioned = {
 	id: 'cushioned',
 	label: 'Cushioned',
 	description:
-		'Original: a mild drive with more velocity damping, viscosity, and wall friction.',
+		'Original experiment: a gentler push, thicker fluid, and more slowing throughout the flow and at walls.',
 	config: {
 		...TESLA_VALVE_CONFIG,
 		flow: {
@@ -51,7 +51,7 @@ const gentlePlus = {
 	id: 'gentle-plus',
 	label: 'Gentle plus',
 	description:
-		'Gentle with more inlet velocity: 95 instead of 65. All other settings unchanged.',
+		'Gentle with more inlet speed setting: 95 instead of 65. All other settings unchanged.',
 	config: { ...gentle.config, autoSplatVelocityX: 95 }
 };
 
@@ -59,7 +59,7 @@ const cushionedPlus = {
 	id: 'cushioned-plus',
 	label: 'Cushioned plus',
 	description:
-		'Cushioned with more inlet velocity: 75 instead of 45. All other settings unchanged.',
+		'Cushioned with more inlet speed setting: 75 instead of 45. All other settings unchanged.',
 	config: { ...cushioned.config, autoSplatVelocityX: 75 }
 };
 
@@ -72,7 +72,7 @@ const comparisons = [
 		id: 'gentle-inlet',
 		label: 'Gentle inlet',
 		description:
-			'Recommended: stronger continuous inlet from the first solver step, no random bursts.',
+			'Continuous-inlet experiment: stronger flow from the start, no random bursts.',
 		config: {
 			...gentlePlus.config,
 			autoSplatRate: 0,
@@ -101,7 +101,7 @@ const comparisons = [
 		id: 'cushioned-inlet',
 		label: 'Cushioned inlet',
 		description:
-			'Cushioned alternative: stronger continuous inlet from the first solver step, no random bursts.',
+			'More-slowed continuous-inlet experiment: stronger flow from the start, no random bursts.',
 		config: {
 			...cushionedPlus.config,
 			autoSplatRate: 0,
@@ -351,9 +351,9 @@ export function paperConfig(
 const papers = [
 	{
 		id: 'paper-forward',
-		label: 'Paper · forward · Re 200',
+		label: 'Lower-speed experiment · forward',
 		description:
-			'2D MAC · measured Re 199.23 · 0.47 physical s/wall s. Stability and forward filaments pass (94% corridor retention). Paper diodicity fails: matched-Re Di 1.08 vs 1.59. Patent trace: mean width 0.837 vs 0.9 cm, photo IoU 0.71.',
+			'2D flow model · measured Reynolds number 199.23 · 0.47 simulated seconds per real second. Flow stays steady; forward dye threads stay in their path (94% retained). The backward-to-forward pressure ratio for the same flow rate is 1.08 vs the paper’s 1.59 at matched Reynolds number, so this comparison fails. Patent outline: mean width 0.837 vs 0.9 cm; photo shape overlap score 0.71 (1 means identical).',
 		config: paperConfig(1),
 		mac: {
 			direction: 1,
@@ -369,9 +369,9 @@ const papers = [
 	},
 	{
 		id: 'paper-reverse',
-		label: 'Paper · reverse · Re 200',
+		label: 'Lower-speed experiment · backward',
 		description:
-			'2D MAC · measured Re 199.73 · 0.47 physical s/wall s. Paper mixing fails: laminar throughout; 1.5× grid shows no dye mixing. Apparent mixing at 1× is numerical dye diffusion. The paper’s 3D rig mixes from unit 3–4. Patent trace: mean width 0.837 vs 0.9 cm, photo IoU 0.71.' ,
+			'2D flow model · measured Reynolds number 199.73 · 0.47 simulated seconds per real second. The paper mixing comparison fails: flow stays smooth throughout; a 1.5× finer grid shows no dye mixing. Apparent mixing at 1× comes from dye spreading caused by the calculation. The paper’s 3D equipment mixes from section 3–4. Patent outline: mean width 0.837 vs 0.9 cm; photo shape overlap score 0.71 (1 means identical).',
 		config: paperConfig(-1),
 		mac: {
 			direction: -1,
@@ -387,9 +387,9 @@ const papers = [
 	},
 	{
 		id: 'paper-reverse-re50',
-		label: 'Paper · reverse · Re 50',
+		label: 'Slowest experiment · backward',
 		description:
-			'2D MAC · measured Re 50.06 · ≈ 1.50 physical s/wall s (≈ ceiling). Stable, steady; area onset unit 9 (later than Re 200). ε 0.77% fails the 1% ±20% disturbance target. Patent trace differs from the photo.',
+			'2D flow model · measured Reynolds number 50.06 · ≈ 1.50 simulated seconds per real second (≈ the speed limit for these settings). Stable, steady; dye first spreads across the channel at section 9 (later than at Reynolds number 200). The measured disturbance of 0.77% fails the 1% ±20% target. Patent outline differs from the photo.',
 		config: paperConfig(-1, 40),
 		prerollSeconds: 40,
 		mac: {
@@ -406,9 +406,9 @@ const papers = [
 	},
 	{
 		id: 'paper-reverse-re400',
-		label: 'Paper · reverse · Re 401 · breakup',
+		label: 'Higher-speed experiment · backward',
 		description:
-			'2D · measured Re 400.69 · 54.3 fps at load 9.7–26.7 · ≈ 0.19 physical s/wall s (≈ the 0.187 ceiling). Dye reaches the breakup region ~15–20 s after loading. Dye onset is NOT resolution-converged (unit 5–6 vs 8–10). Unsteadiness persists for ≤1.5 flow-through times under exact projection, from an unsteady start (fine grid at Re 420). An independent code (Basilisk, 23 cells/w̄) shows Re 400 shedding is self-excited with zero inlet disturbance (Q 4.712 Hz, St 0.835; late/early fundamental amplitude 1.19 over ~1 T). MAC St 0.92 vs 0.835, ~9% gap unexplained. Fine grid: 1.5× St 0.90 vs 1× 0.93; half-window scatter 0.35 Hz exceeds the shift, so frequency grid-convergence is unresolved. Iterative solve inflates section-flux oscillation 6.02×. The upstream fluctuations at units 1–4 in this variant are largely a projection-leak artifact: exact-projection units 1–4 are still decaying at 30 s (no settled exact value), and over the last third of the record the iterative solve exceeds exact by 19.6×, 21.0× and 24.5× at units 1–3 (4.8× at unit 4); downstream units 6–11 agree within 16% (unit 5 still decaying, 1.37×). Earlier frequency estimates were aliases (see ADR 0119). Iterative section-flux spread ≈3.5%. Paler and weaker than Fig. 4; the paper’s 3D rig mixes from unit 3–4 at Re 200.',
+			'2D flow model · measured Reynolds number 400.69 · 54.3 frames per second at machine load 9.7–26.7 · ≈ 0.19 simulated seconds per real second (≈ the 0.187 speed limit for these settings). Dye reaches the region where threads break apart ~15–20 s after loading. The first dye-mixing location changes with grid size (section 5–6 vs 8–10), so it is not yet reliable. Changing flow persists for ≤1.5 times the time for fluid to cross the valve with a more accurate pressure calculation, starting from already-changing flow (finer grid at Reynolds number 420). Independent software (Basilisk, 23 cells per mean channel width) shows repeating swirls at Reynolds number 400 with zero inlet disturbance (flow-rate frequency 4.712 Hz; frequency relative to flow speed, St, 0.835; late-to-early strength ratio of the main repeating motion 1.19 over ~1 crossing time). This 2D flow model gives St 0.92 vs 0.835, a ~9% unexplained gap. Finer-grid comparison: 1.5× grid St 0.90 vs 1× grid 0.93; variation between halves of the recording is 0.35 Hz, larger than the grid-related change, so the frequency comparison remains inconclusive. The repeated pressure calculation exaggerates changes in flow through a section by 6.02×. Upstream changes at sections 1–4 are largely caused by error in the pressure calculation: with the more accurate calculation they are still shrinking at 30 s (no settled comparison value). Over the last third of the recording, the repeated calculation exceeds the more accurate one by 19.6×, 21.0× and 24.5× at sections 1–3 (4.8× at section 4); downstream sections 6–11 agree within 16% (section 5 still shrinking, 1.37×). Earlier frequency estimates were wrong because sampling missed faster changes. Flow-rate variation across sections is ≈3.5% with the repeated pressure calculation. Dye looks paler and mixing weaker than Fig. 4; the paper’s 3D equipment mixes from section 3–4 at Reynolds number 200.',
 		config: paperConfig(-1, 400),
 		prerollSeconds: 10,
 		dyePrerollSeconds: 3,
@@ -444,7 +444,7 @@ export const TUNINGS: {
 				clockCap: 1 / 60
 			},
 			label: `${name === 'gentle' ? 'Gentle' : 'Cushioned'} jet`,
-			description: `Full-width inlet, pressure-like pulses every 1.2 seconds; ${peak} peak momentum.`,
+			description: `Full-width inlet, pulsing push every 1.2 seconds; peak push setting ${peak}.`,
 			config: {
 				...parent.config,
 				flow: {
@@ -475,8 +475,8 @@ export const TUNINGS: {
 		return {
 			...parent,
 			id,
-			label: `${parent.label} · tracers`,
-			description: `Passive dye tracers visualise the same simulated flow, not a concentration measurement. Finite sampling leaves dashed blue stretching gaps at forward Re 200 units 10–11 and salt-and-pepper speckle in the Re 400 mixed region (left-to-right units 1–7), unlike dense dark photographic dye. Four-step GPU median: ${sibling === 'paper-forward' ? '19.21 ms tracers / 16.49 ms grid' : sibling === 'paper-reverse' ? '17.74 ms tracers / 16.45 ms grid' : '18.37 ms tracers / 12.66 ms grid'} at machine load 36–43 (five-minute 78–84); not an fps pass. All sibling flow limitations remain.`,
+			label: `${parent.label} · moving dye dots`,
+			description: `Moving dye dots follow the same simulated flow, not measured dye concentrations. Too few dots leave dashed blue gaps at forward Reynolds number 200 sections 10–11 and speckles in the Reynolds number 400 mixed region (sections 1–7 counted left to right), unlike dense dark dye in photographs. Median graphics-processor time for four steps, dots versus grid-based dye: ${sibling === 'paper-forward' ? '19.21 ms / 16.49 ms' : sibling === 'paper-reverse' ? '17.74 ms / 16.45 ms' : '18.37 ms / 12.66 ms'} at machine load 36–43 (five-minute load 78–84); this does not establish acceptable playback speed. All limitations of the matching flow experiment still apply.`,
 			mac: { ...parent.mac, dye: 'tracers' as const }
 		};
 	})

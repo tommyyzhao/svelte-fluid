@@ -9,7 +9,7 @@
 		dyePrerollSeconds = 0
 	}: { options: MacOptions; stepsPerFrame?: number; prerollSeconds?: number; dyePrerollSeconds?: number } = $props();
 	let canvas: HTMLCanvasElement;
-	let message = $state('Developing flow…');
+	let message = $state('Preparing the flow experiment…');
 	let tracerFallback = $state<string | null>(null);
 
 	onMount(() => {
@@ -18,7 +18,8 @@
 			engine = new PaperMacEngine(canvas, options);
 			tracerFallback = engine.tracerFallback;
 		} catch (error) {
-			message = error instanceof Error ? error.message : String(error);
+			console.error(error);
+			message = 'This experiment could not start on this device.';
 			return;
 		}
 		let frame = 0, idle = 0, disposed = false, visible = false;
@@ -29,7 +30,7 @@
 		const speed = engine.options.targetRe * engine.options.nu / engine.geometry.hydraulicDiameter;
 		const stillSteps = Math.round(.25 * engine.geometry.valveWidth / speed / engine.options.dt);
 		const stillCaption = 'Still frame: motion paused by reduced-motion preference.';
-		if (motion.matches) message = 'Developing a still frame…';
+		if (motion.matches) message = 'Preparing a still image…';
 		const started = performance.now();
 		const stats = {
 			ready: false, step: 0, stepsPerFrame, dt: engine.options.dt,
@@ -43,7 +44,7 @@
 			disposed = true;
 			cancelAnimationFrame(frame);
 			if (idle && typeof cancelIdleCallback === 'function') cancelIdleCallback(idle);
-			message = 'GPU context lost — press Restart';
+			message = 'Graphics connection lost — press Restart';
 		};
 		canvas.addEventListener('webglcontextlost', onLost);
 		const resize = new ResizeObserver(() => {
@@ -56,8 +57,8 @@
 		const onMotion = () => {
 			if (motion.matches) {
 				stillReady = !developing && engine.stepCount >= fixedSteps + dyePrerollSteps + stillSteps;
-				message = stillReady ? stillCaption : 'Developing a still frame…';
-			} else message = developing ? 'Developing flow…' : '';
+				message = stillReady ? stillCaption : 'Preparing a still image…';
+			} else message = developing ? 'Preparing the flow experiment…' : '';
 		};
 		motion.addEventListener('change', onMotion);
 		const intersect = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; });
@@ -77,7 +78,7 @@
 						else engine.advance(Math.min(60, fixedSteps + dyePrerollSteps - engine.stepCount));
 						if (engine.stepCount >= fixedSteps + dyePrerollSteps) {
 							developing = false;
-							message = motion.matches ? 'Developing a still frame…' : '';
+							message = motion.matches ? 'Preparing a still image…' : '';
 							stats.ready = true;
 							stats.prerollWallSeconds = (performance.now() - started) / 1000;
 						}
@@ -85,7 +86,8 @@
 					stats.step = engine.stepCount;
 					stats.physicalSeconds = Math.max(0, engine.stepCount - fixedSteps - dyePrerollSteps) * engine.options.dt * engine.options.nu / (.0089 * engine.geometry.cellsPerCm ** 2);
 				} catch (error) {
-					message = error instanceof Error ? error.message : String(error);
+					console.error(error);
+					message = 'The flow experiment stopped because of a calculation or graphics error.';
 					disposed = true; engine.dispose();
 				}
 			}
@@ -106,9 +108,9 @@
 	});
 </script>
 
-<canvas bind:this={canvas} aria-label="Two-dimensional Tesla valve: blue and green passive dye filaments"></canvas>
+<canvas bind:this={canvas} aria-label="Laboratory-only 2D Tesla valve flow model with blue and green dye threads; not a validated real-world prediction"></canvas>
 {#if message}<p class:caption={message.startsWith('Still frame:')} role="status">{message}</p>{/if}
-{#if tracerFallback}<p class="caption" role="status">Tracer rendering unavailable; showing Eulerian dye. {tracerFallback}</p>{/if}
+{#if tracerFallback}<p class="caption" role="status">Moving dye dots unavailable; showing grid-based dye instead.</p>{/if}
 
 <style>
 	canvas { display: block; width: 100%; height: 100%; }

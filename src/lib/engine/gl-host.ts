@@ -41,8 +41,12 @@ export interface GlHost {
 	run(instance: GlHostInstance, fn: (gl: WebGL2RenderingContext) => void): boolean;
 	/**
 	 * Snapshot the drawing buffer for the instance's visible canvas. Call right
-	 * after run(); the snapshot is taken synchronously, and the promise
-	 * resolves once it is on screen.
+	 * after run(); the snapshot is taken synchronously. If snapshot creation and
+	 * transfer succeed, this frame displayed; a superseded snapshot means a newer
+	 * frame displayed. Loss/release cancels presentation. Snapshot rejection
+	 * fulfills without presentation (logging when current); transfer failure
+	 * rejects. Older completed frames may display while newer requests are pending;
+	 * no one-frame latency guarantee.
 	 */
 	present(instance: GlHostInstance): Promise<void>;
 }
@@ -56,6 +60,8 @@ interface Quad {
 interface Presenter {
 	ctx: ImageBitmapRenderingContext;
 	seq: number;
+	/** Pending requests cannot starve progress; loss invalidates pre-loss snapshots. */
+	presentedFloor: number;
 }
 
 function createSurface(): { surface: Surface; gl: WebGL2RenderingContext; ext: ExtInfo } {
@@ -179,18 +185,19 @@ class Host implements GlHost {
 		// Not transferToImageBitmap(): Chrome intermittently crashed the renderer
 		// on loseContext() while a transferred WebGL bitmap was displayed
 		// (ADR-0088). createImageBitmap snapshots the drawing buffer now and
-		// resolves later; a newer present or a release drops the stale bitmap.
+		// resolves later; only a newer successful transfer may supersede it.
 		const seq = ++presenter.seq;
 		// The sRGB, premultiplied snapshot needs no transform. Chrome's 'none'
 		// option forces another raster blit merely to strip its colour-space tag.
 		return createImageBitmap(this.surface).then(
 			(bitmap) => {
-				if (presenter.seq !== seq || this.instances.get(instance) !== presenter || this.gl.isContextLost()) {
+				if (seq <= presenter.presentedFloor || this.instances.get(instance) !== presenter || this.gl.isContextLost()) {
 					bitmap.close();
 					return;
 				}
 				try {
 					presenter.ctx.transferFromImageBitmap(bitmap);
+					presenter.presentedFloor = seq;
 				} finally {
 					bitmap.close();
 				}
@@ -206,7 +213,7 @@ class Host implements GlHost {
 		event.preventDefault();
 		this.programs.clear();
 		this.quad = null;
-		for (const presenter of this.instances.values()) presenter.seq++;
+		for (const presenter of this.instances.values()) presenter.presentedFloor = ++presenter.seq;
 		for (const instance of [...this.instances.keys()]) {
 			if (this.instances.has(instance)) notifyHost(() => instance.onContextLost?.(), 'onContextLost');
 		}
@@ -271,7 +278,7 @@ export function acquireGlHost(instance: GlHostInstance): GlHost {
 		}
 		throw new Error('svelte-fluid: canvas has no bitmaprenderer context (already used for another context type?)');
 	}
-	current.instances.set(instance, { ctx, seq: 0 });
+	current.instances.set(instance, { ctx, seq: 0, presentedFloor: 0 });
 	return current;
 }
 

@@ -132,7 +132,7 @@ Do not turn these candidates into claims that the accepted public features faile
 (2) retain the disclosed Re400 demo, hide it, or fund a newly gated accuracy/performance experiment;
 (3) fund obstruction-conservation redesign while preserving compatibility, versus retain the visual solver;
 (4) choose release timing/exposure after review. None authorizes automatic presets/default changes.
-Recommended baseline: keep features opt-in, keep honest laboratory labels, defer production 3D/default migrations.
+Owner follow-up: fund a bounded 3D investigation first, then return to library work. Keep the higher-speed experiment laboratory-only with plain-English presentation; develop obstruction-conservation changes separately and opt-in; follow normal review and broader device validation before release. No automatic preset/default migration. The 3D protocol must set finite resource limits and stop conditions before long runs; authorization is not a promise of full experimental reproduction. The subsequent [bounded screening](./2026-10-23-bounded-3d-screening.md) stopped after both permitted geometry repairs failed; no 3D flow solve ran, and the depth question remains unanswered.
 
 ## Preservation and hygiene
 

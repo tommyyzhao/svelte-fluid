@@ -4,6 +4,12 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, defineProject } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 
+const browser = process.env.VITEST_BROWSER_NAME ?? 'chromium';
+if (browser !== 'chromium' && browser !== 'firefox' && browser !== 'webkit') {
+	throw new Error('VITEST_BROWSER_NAME must be chromium, firefox, or webkit');
+}
+const chromePath = browser === 'chromium' ? process.env.VITEST_CHROME_PATH : undefined;
+
 const browserProject = defineProject({
 	extends: true,
 	test: {
@@ -19,7 +25,7 @@ const browserProject = defineProject({
 		],
 		env: {
 			// Explicit local Chrome remains a hardware gate, not a software skip run.
-			SVELTE_FLUID_HARDWARE_GATE: process.env.VITEST_CHROME_PATH ? '1' : '',
+			SVELTE_FLUID_HARDWARE_GATE: chromePath ? '1' : '',
 			SVELTE_FLUID_GPU_BENCH_OUT: process.env.SVELTE_FLUID_GPU_BENCH_OUT ?? '',
 			SVELTE_FLUID_GPU_BENCH_PRESETS: process.env.SVELTE_FLUID_GPU_BENCH_PRESETS ?? '',
 			SVELTE_FLUID_GPU_BENCH_TIER: process.env.SVELTE_FLUID_GPU_BENCH_TIER ?? '',
@@ -53,15 +59,15 @@ const browserProject = defineProject({
 			// and per-browser `instances` instead of a top-level `name`.
 			// VITEST_CHROME_PATH selects a hardware-capable installed Chrome.
 			provider: playwright(
-				process.env.VITEST_CHROME_PATH
+				chromePath
 					? {
-							launchOptions: { executablePath: process.env.VITEST_CHROME_PATH, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'] },
+							launchOptions: { executablePath: chromePath, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'] },
 							// Opt-in DPR for native-DPR captures and GPU benches.
 							...(process.env.SVELTE_FLUID_DPR ? { contextOptions: { deviceScaleFactor: Number(process.env.SVELTE_FLUID_DPR) } } : {})
 						}
 					: {}
 			),
-			instances: [{ browser: 'chromium' }],
+			instances: [{ browser }],
 			commands: {
 				async captureCanvasScreenshot(ctx: { page: any; frame: () => Promise<any> }, rect: { x: number; y: number; width: number; height: number; nativeSize?: boolean }) {
 					const frame = await ctx.frame();

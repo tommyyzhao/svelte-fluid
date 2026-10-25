@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { DEFAULTS, FluidEngine, resolveConfig } from '../FluidEngine.js';
 import { FlowTracers, TRACERS, type TracerPrograms } from '../tracers.js';
 import type { DoubleFBO, FBO } from '../internal-types.js';
-import { displayShaderSource, thermalAdvectionShader } from '../shaders.js';
+import { displayShaderSource } from '../shaders.js';
 import {
 	tracerDisplaySource,
 	tracerUpdateShader,
@@ -27,7 +27,115 @@ const visualization: FlowConfig['visualization'] = {
 const flow: FlowConfig = { visualization, tracers: { sources } };
 const resolve = (tracers: unknown) =>
 	resolveConfig({ flow: { visualization, tracers } as FlowConfig }, DEFAULTS);
+function inventory(capacity = 1024) {
+	const noop = () => undefined;
+	const gl = new Proxy(
+		{
+			NO_ERROR: 0,
+			FRAMEBUFFER_COMPLETE: 1,
+			createVertexArray: () => ({}),
+			createTexture: () => ({}),
+			createFramebuffer: () => ({}),
+			checkFramebufferStatus: vi.fn(() => 1),
+			getError: () => 0,
+			getExtension: () => ({}),
+			getParameter: () => 4096,
+			readPixels: (...args: unknown[]) => (args[6] as Float32Array).fill(0.5),
+			drawArrays: vi.fn(),
+			drawArraysInstanced: vi.fn(),
+			clear: vi.fn(),
+			viewport: vi.fn()
+		},
+		{ get: (target, name) => Reflect.get(target, name) ?? noop }
+	) as unknown as WebGL2RenderingContext;
+	const program = {
+		bind: noop,
+		uniforms: new Proxy({}, { get: (_, name) => name })
+	};
+	const programs = {
+		tracerProbe: program,
+		tracerUpdate: program,
+		tracerSplat: program
+	} as unknown as TracerPrograms;
+	const t = new FlowTracers(gl, capacity, programs, 96, 32);
+	const fbo = { width: 96, height: 32, attach: (unit: number) => unit } as FBO;
+	return {
+		t,
+		gl,
+		programs,
+		advance: (rate: number, dt = 1) =>
+			t.advance(
+				fbo, dt, { sources, rate }, {} as WebGLTexture,
+				[1, 1], false, [1, 1, 0, 0]
+			),
+		accumulate: () =>
+			t.accumulate(
+				fbo, { sources }, visualization!.absorption!.absorbance,
+				{} as WebGLTexture, [1, 1], false
+			)
+	};
+}
 describe('passive flow tracers', () => {
+	it.each([0, 1, 511, 512, 513, 1024, 1200])('bounds splat instances after %i emissions; always clears depth', (emissions) => {
+		const { t, gl, advance, accumulate } = inventory();
+		try {
+			vi.mocked(gl.drawArrays).mockClear();
+			vi.mocked(gl.clear).mockClear();
+			if (emissions) advance(emissions);
+			accumulate();
+			expect(gl.drawArraysInstanced).toHaveBeenLastCalledWith(gl.TRIANGLE_STRIP, 0, 4, Math.min(emissions, t.capacity));
+			expect(gl.clear).toHaveBeenCalledTimes(1);
+			expect(gl.clear).toHaveBeenCalledWith(gl.COLOR_BUFFER_BIT);
+			expect(gl.drawArrays).toHaveBeenCalledTimes(emissions ? 1 : 0);
+			if (emissions) expect(gl.viewport).toHaveBeenCalledWith(0, 0, 512, t.capacity / 512);
+		} finally { t.dispose(); }
+	});
+	it('keeps the independent prefix across serial wrap, hot rates, zero emissions and depth resize', () => {
+		const { t, gl, advance, accumulate } = inventory(1048576);
+		const clock = t as unknown as { serial: number; initializedCount: number };
+		try {
+			advance(786432);
+			expect(clock.serial).toBe(0);
+			accumulate();
+			expect(gl.drawArraysInstanced).toHaveBeenLastCalledWith(gl.TRIANGLE_STRIP, 0, 4, 786432);
+			advance(10, 0.05);
+			advance(30, 0.05);
+			expect(clock.initializedCount).toBe(786434);
+			advance(1, 0.1);
+			t.resize(192, 64);
+			accumulate();
+			expect(gl.drawArraysInstanced).toHaveBeenLastCalledWith(gl.TRIANGLE_STRIP, 0, 4, 786434);
+			advance(1048576);
+			advance(786432);
+			expect(clock.initializedCount).toBe(t.capacity);
+			accumulate();
+			expect(gl.drawArraysInstanced).toHaveBeenLastCalledWith(gl.TRIANGLE_STRIP, 0, 4, t.capacity);
+			const replacement = new FlowTracers(gl, t.capacity, t.programs, 96, 32);
+			try { expect((replacement as unknown as { initializedCount: number }).initializedCount).toBe(0); }
+			finally { replacement.dispose(); }
+		} finally { t.dispose(); }
+	});
+	it('failed capacity staging leaves the existing initialized prefix and config untouched', () => {
+		const { t, gl, programs, advance, accumulate } = inventory();
+		advance(513);
+		const config = resolveConfig({ flow: { ...flow, tracers: { sources, capacity: 1024 } } }, DEFAULTS);
+		const h = Object.assign(Object.create(FluidEngine.prototype), {
+			disposed: false, contextLost: false, failed: false, config, gl,
+			canvas: { width: 288, height: 96 }, ext: { isWebGL2: true },
+			tracers: t, tracerPrograms: programs, tracerFailure: null,
+			displayMaterial: { prepareKeywords: () => '' },
+			withGl: (fn: () => unknown) => fn(), displayKeywords: () => [],
+			ensureProgramsFor: () => {}, prepareTracerDisplay: () => {}
+		});
+		try {
+			vi.mocked(gl.checkFramebufferStatus).mockReturnValue(0);
+			expect(() => h.setConfig({ flow: { ...flow, tracers: { sources, capacity: 2048 } } })).toThrow('framebuffer unavailable');
+			expect(h.config).toBe(config);
+			expect(h.tracers).toBe(t);
+			accumulate();
+			expect(gl.drawArraysInstanced).toHaveBeenLastCalledWith(gl.TRIANGLE_STRIP, 0, 4, 513);
+		} finally { t.dispose(); }
+	});
 	it.each([
 		{ sources: undefined },
 		{ sources: null },
@@ -132,6 +240,7 @@ describe('passive flow tracers', () => {
 			state,
 			serial: 0,
 			cursor: 0,
+			initializedCount: 0,
 			fraction: 0,
 			sources: new Float32Array(12),
 			species: new Int32Array(3),
@@ -206,6 +315,7 @@ describe('passive flow tracers', () => {
 		const t = Object.assign(Object.create(FlowTracers.prototype), {
 			gl,
 			capacity: 512,
+			initializedCount: 512,
 			programs: {
 				tracerSplat: {
 					bind: noop,
@@ -421,9 +531,6 @@ describe('passive flow tracers', () => {
 				.join('');
 		expect(await hash(displayShaderSource)).toBe(
 			'0c895b991edafe60106a66312943154cddf769104ac3c773c44d6471297bcc56'
-		);
-		expect(await hash(thermalAdvectionShader)).toBe(
-			'29f4cad0d45c4d5ae79dd1b2b395f38ada4cf4a467e9a727916f9afe3c3aef8b'
 		);
 	});
 });

@@ -540,9 +540,11 @@ interface FlowGridField {LB}
 	Source <code>rate</code> is per second; <code>velocity</code> is simulation texels per second.
 </p>
 <p>
-	<code>diffusivity</code> defaults to 0 and uses the same dimensionless resolution convention
-	as <code>viscosity</code>; set <code>diffusivity = viscosity / Pr</code> for Prandtl number
-	<code>Pr</code>. Conduction uses implicit Jacobi iterations (default 40); check iteration
+	<code>diffusivity</code> defaults to 0 and uses the same model-relative, resolution-scaled
+	coefficient convention as <code>viscosity</code>, not calibrated SI units. For a model-relative
+	Prandtl ratio <code>Pr &gt; 0</code>, set <code>diffusivity = viscosity / Pr</code>. Velocity
+	and thermal solves apply this convention on their respective grids.
+	Conduction uses implicit Jacobi iterations (default 40); check iteration
 	doubling and timestep/grid refinement for your scene. <code>wall: 'isothermal'</code>
 	removes heat at ambient-zero walls; default <code>'insulated'</code> has zero wall heat flux.
 	Open canvas edges have zero diffusive flux. Thermal advection excludes solid donors/traces;
@@ -572,6 +574,31 @@ interface FlowGridField {LB}
 	Sources, colours and coefficients hot-update without reallocating targets or recompiling shaders;
 	presence/dimension changes own their optional resources. RGB salts share one excitation law;
 	this constant-density reduced thermal-emission model is not calibrated combustion CFD.
+</p>
+
+<h4>Reproduce the conduction measurement</h4>
+<p>
+	From a source checkout with development dependencies and the test browser installed, run the
+	<a href="https://github.com/tommyyzhao/svelte-fluid/blob/main/src/lib/engine/__benches__/thermal.browser.test.ts">existing thermal browser test</a>:
+</p>
+<pre><code>bun run test:browser src/lib/engine/__benches__/thermal.browser.test.ts -t "slab mode matches analytic conduction"</code></pre>
+<p>
+	This is a repository test, not a published-package example. It uses internal field upload,
+	transport and readback helpers; <code>readField</code> and <code>advance</code> are not public
+	<code>FluidHandle</code> methods, even though <code>FluidEngine</code> is exported.
+	The seed-704 fixture starts normalized excess temperature at <code>sin(πy)</code>, with
+	<code>diffusivity: 4</code>, isothermal top/bottom walls and open left/right edges.
+	It compares 16×16, 32×32 and 64×64 grids after ten <code>dt = 0.01</code> steps
+	(0.1 simulation seconds), solving each with 100 and 200 Jacobi iterations.
+</p>
+<p>
+	The console label <code>slab refinement RMS</code> reports each grid's <code>error</code>:
+	the 100-iteration RMS against <code>exp(−(4/128)π² × 0.1) × sin(πy)</code> at cell centres.
+	Its <code>doublingDelta</code> instead measures the maximum temperature difference between
+	100 and 200 iterations; that iteration-sensitivity check is not the analytic-profile RMS.
+	Existing gates are <code>doublingDelta &lt; 0.002</code> and <code>error &lt; 0.025</code>.
+	These are fixture regression tolerances, not physical-error guarantees. Roundoff limits refinement;
+	no convergence order, cross-device byte identity or calibrated CFD accuracy is promised.
 </p>
 
 <hr />
