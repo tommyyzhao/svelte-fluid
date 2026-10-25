@@ -16,7 +16,7 @@ it.each([
 		'stepsPerFrame'
 	] as const)
 		expect(tracer[key]).toEqual(parent[key]);
-	expect(tracer.description).toContain('not a concentration measurement');
+	expect(tracer.description).toContain('not measured dye concentrations');
 	expect(parent.mac?.dye).toBeUndefined();
 });
 
@@ -32,5 +32,5 @@ it('preserves every non-paper variant byte for byte', async () => {
 		[...new Uint8Array(digest)]
 			.map((byte) => byte.toString(16).padStart(2, '0'))
 			.join('')
-	).toBe('990783045bd65cb22ed1a6951ec931c0344de0c8a25d387641f46ec93047505e');
+	).toBe('0bc067af90db72e9d19aabdbe2a5ab14f23ecd9923f1cdfeeb21c784b0feb865');
 });

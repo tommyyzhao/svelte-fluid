@@ -28,7 +28,11 @@ export interface RGB {
 	b: number;
 }
 
-/** 2D vector in normalized flow space. `y` follows the fluid convention: positive is upward. */
+/**
+ * Two-component vector; units depend on the field. Positions use normalized UV;
+ * source velocity uses simulation texels/s, acceleration uses texels/s².
+ * Positive y is upward.
+ */
 export interface Vec2 {
 	x: number;
 	y: number;

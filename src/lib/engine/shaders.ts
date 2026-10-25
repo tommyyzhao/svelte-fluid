@@ -1740,11 +1740,68 @@ ${inlineMaskGLSL}
         vec2 f = fract(st);
         return mix(mix(texture2D(source,base),texture2D(source,base+vec2(size.x,0.0)),f.x),mix(texture2D(source,base+vec2(0.0,size.y)),texture2D(source,base+size),f.x),f.y);
     }
+    uniform vec2 uSolidMaskSize;
+    bool maskCellClear(float x, float y) {
+        if (x < 0.0 || y < 0.0 || x >= uSolidMaskSize.x || y >= uSolidMaskSize.y) return true;
+        return texture2D(uSolidMask, (vec2(x, y) + 0.5) / uSolidMaskSize).r < 0.5;
+    }
+    bool maskEndpointClear(float x, float y) {
+        float cx = min(floor(x), uSolidMaskSize.x - 1.0);
+        float cy = min(floor(y), uSolidMaskSize.y - 1.0);
+        bool edgeX = x == floor(x) && x > 0.0 && x < uSolidMaskSize.x;
+        bool edgeY = y == floor(y) && y > 0.0 && y < uSolidMaskSize.y;
+        if (!maskCellClear(cx, cy)) return false;
+        if (edgeX && !maskCellClear(cx - 1.0, cy)) return false;
+        if (edgeY && !maskCellClear(cx, cy - 1.0)) return false;
+        if (edgeX && edgeY && !maskCellClear(cx - 1.0, cy - 1.0)) return false;
+        return true;
+    }
+    bool segmentClear(vec2 a, vec2 b) {
+        if (inside(a) < 0.5 || inside(b) < 0.5) return false;
+        if (uHasSolidMask < 0.5) return true;
+        float x = a.x * uSolidMaskSize.x;
+        float y = (1.0 - a.y) * uSolidMaskSize.y;
+        float ex = b.x * uSolidMaskSize.x;
+        float ey = (1.0 - b.y) * uSolidMaskSize.y;
+        if (!maskEndpointClear(x, y) || !maskEndpointClear(ex, ey)) return false;
+        float cx = min(floor(x), uSolidMaskSize.x - 1.0);
+        float cy = min(floor(y), uSolidMaskSize.y - 1.0);
+        float endX = min(floor(ex), uSolidMaskSize.x - 1.0);
+        float endY = min(floor(ey), uSolidMaskSize.y - 1.0);
+        float dx = ex - x;
+        float dy = ey - y;
+        float sx = sign(dx);
+        float sy = sign(dy);
+        float deltaX = 1.0 / max(abs(dx), 0.00000000000000000001);
+        float deltaY = 1.0 / max(abs(dy), 0.00000000000000000001);
+        float tx = dx == 0.0 ? 2.0 : (dx > 0.0 ? cx + 1.0 - x : x - cx) * deltaX;
+        float ty = dy == 0.0 ? 2.0 : (dy > 0.0 ? cy + 1.0 - y : y - cy) * deltaY;
+        bool lineX = dx == 0.0 && x == floor(x) && x > 0.0 && x < uSolidMaskSize.x;
+        bool lineY = dy == 0.0 && y == floor(y) && y > 0.0 && y < uSolidMaskSize.y;
+        // ponytail: 256 mask-cell iterations, then reject. Tile long characteristics if measured necessary.
+        for (int i = 0; i < 256; i++) {
+            if (!maskCellClear(cx, cy)) return false;
+            if (lineX && !maskCellClear(cx - 1.0, cy)) return false;
+            if (lineY && !maskCellClear(cx, cy - 1.0)) return false;
+            if (cx == endX && cy == endY) return true;
+            // Near-corner contacts conservatively include both side cells.
+            if (abs(tx - ty) <= 0.000001) {
+                if (!maskCellClear(cx + sx, cy) || !maskCellClear(cx, cy + sy)) return false;
+                cx += sx;
+                cy += sy;
+            } else if (tx < ty) {
+                cx += sx;
+            } else {
+                cy += sy;
+            }
+            // Recompute from the original point: accumulated t increments can drift past a corner.
+            tx = dx == 0.0 ? 2.0 : (dx > 0.0 ? cx + 1.0 - x : x - cx) * deltaX;
+            ty = dy == 0.0 ? 2.0 : (dy > 0.0 ? cy + 1.0 - y : y - cy) * deltaY;
+        }
+        return false;
+    }
     float donorWeight(vec2 uv, vec2 departure) {
-        if (inside(uv) < 0.5 || solidAt(uv) > 0.5) return 0.0;
-        // Diagonal interpolation must not cut across a one-cell wall corner.
-        if (solidAt(mix(uv, departure, 0.5)) > 0.5) return 0.0;
-        return 1.0;
+        return segmentClear(departure, uv) ? 1.0 : 0.0;
     }
     void main () {
     #ifdef MANUAL_FILTERING
@@ -1762,17 +1819,24 @@ ${inlineMaskGLSL}
         }
         vec2 disp = coord - vUv;
         float cells = ceil(max(abs(disp.x / texelSize.x), abs(disp.y / texelSize.y)) * 2.0);
-        // ponytail: at most 256 half-cell trace probes; cap departure, never tunnel.
-        // Upgrade to tiled characteristic tracing for CFL > 128 scalar cells.
+        // Preserve the scalar-distance cap; collision safety uses the actual mask grid.
         float probes = min(cells, 256.0);
         if (cells > 256.0) disp *= 256.0 / cells;
         coord = vUv;
         bool forwardClear = cells <= 256.0;
-        for (int i = 1; i <= 256; i++) {
-            if (float(i) > probes) break;
-            vec2 candidate = vUv + disp * (float(i) / max(probes, 1.0));
-            if (inside(candidate) < 0.5 || solidAt(candidate) > 0.5) { forwardClear = false; break; }
-            coord = candidate;
+        bool reachable = true;
+        if (uHasSolidMask > 0.5) {
+            reachable = segmentClear(vUv, vUv + disp);
+            forwardClear = forwardClear && reachable;
+            if (reachable) coord = vUv + disp;
+        } else {
+            // Keep unmasked boundary truncation and floating-point evaluation unchanged.
+            for (int i = 1; i <= 256; i++) {
+                if (float(i) > probes) break;
+                vec2 candidate = vUv + disp * (float(i) / max(probes, 1.0));
+                if (inside(candidate) < 0.5 || solidAt(candidate) > 0.5) { forwardClear = false; break; }
+                coord = candidate;
+            }
         }
         vec2 st = coord / texelSize - 0.5;
         vec2 base = floor(st);
@@ -1782,9 +1846,15 @@ ${inlineMaskGLSL}
         vec2 c = a + vec2(0.0, texelSize.y);
         vec2 d = a + texelSize;
         vec4 w = vec4((1.0-f.x)*(1.0-f.y), f.x*(1.0-f.y), (1.0-f.x)*f.y, f.x*f.y);
-        w *= vec4(donorWeight(a,coord), donorWeight(b,coord), donorWeight(c,coord), donorWeight(d,coord));
+        vec4 donors = vec4(
+            w.x > 0.0 || uHasSolidMask < 0.5 ? donorWeight(a,coord) : 1.0,
+            w.y > 0.0 || uHasSolidMask < 0.5 ? donorWeight(b,coord) : 1.0,
+            w.z > 0.0 || uHasSolidMask < 0.5 ? donorWeight(c,coord) : 1.0,
+            w.w > 0.0 || uHasSolidMask < 0.5 ? donorWeight(d,coord) : 1.0);
+        w *= donors;
         float total = dot(w, vec4(1.0));
         vec4 value = total > 0.000001 ? (w.x*texture2D(uSource,a) + w.y*texture2D(uSource,b) + w.z*texture2D(uSource,c) + w.w*texture2D(uSource,d))/total : texture2D(uSource,vUv);
+        if (!reachable) value = texture2D(uSource,vUv);
         if (uCorrection > 0.5) {
             vec2 reverseCoord = vUv - disp;
             vec2 rs = reverseCoord / texelSize - 0.5;
@@ -1794,12 +1864,21 @@ ${inlineMaskGLSL}
             vec2 rx = ra + vec2(texelSize.x,0.0);
             vec2 ry = ra + vec2(0.0,texelSize.y);
             vec2 rd = ra + texelSize;
-            bool clear = forwardClear && donorWeight(a,coord) > 0.5 && donorWeight(b,coord) > 0.5 && donorWeight(c,coord) > 0.5 && donorWeight(d,coord) > 0.5 && total > 0.99999 && donorWeight(ra,reverseCoord) > 0.5 && donorWeight(rx,reverseCoord) > 0.5 && donorWeight(ry,reverseCoord) > 0.5 && donorWeight(rd,reverseCoord) > 0.5;
-            float traceCells = ceil(max(abs(disp.x/texelSize.x),abs(disp.y/texelSize.y))*2.0);
-            for (int j = 1; j <= 256; j++) {
-                if (float(j) > traceCells) break;
-                vec2 probe = vUv - disp * float(j)/max(traceCells,1.0);
-                if (inside(probe) < 0.5 || solidAt(probe) > 0.5) clear = false;
+            bool clear = forwardClear && all(greaterThan(donors,vec4(0.5))) && total > 0.99999;
+            if (uHasSolidMask > 0.5) {
+                clear = clear && segmentClear(vUv,reverseCoord);
+                if ((1.0-rf.x)*(1.0-rf.y) > 0.0) clear = clear && donorWeight(ra,reverseCoord) > 0.5;
+                if (rf.x*(1.0-rf.y) > 0.0) clear = clear && donorWeight(rx,reverseCoord) > 0.5;
+                if ((1.0-rf.x)*rf.y > 0.0) clear = clear && donorWeight(ry,reverseCoord) > 0.5;
+                if (rf.x*rf.y > 0.0) clear = clear && donorWeight(rd,reverseCoord) > 0.5;
+            } else {
+                clear = clear && donorWeight(ra,reverseCoord) > 0.5 && donorWeight(rx,reverseCoord) > 0.5 && donorWeight(ry,reverseCoord) > 0.5 && donorWeight(rd,reverseCoord) > 0.5;
+                float traceCells = ceil(max(abs(disp.x/texelSize.x),abs(disp.y/texelSize.y))*2.0);
+                for (int j = 1; j <= 256; j++) {
+                    if (float(j) > traceCells) break;
+                    vec2 probe = vUv - disp * float(j)/max(traceCells,1.0);
+                    if (inside(probe) < 0.5 || solidAt(probe) > 0.5) clear = false;
+                }
             }
             vec4 phiHat = texture2D(uPhiHat,vUv);
             vec4 phiBar = mix(mix(texture2D(uPhiHat,ra),texture2D(uPhiHat,rx),rf.x),mix(texture2D(uPhiHat,ry),texture2D(uPhiHat,rd),rf.x),rf.y);
@@ -2273,7 +2352,7 @@ ${inlineMaskGLSL}
             vec2 sum = fluid.x * texture2D(uVelocity,vL).xy + fluid.y * texture2D(uVelocity,vR).xy + fluid.z * texture2D(uVelocity,vT).xy + fluid.w * texture2D(uVelocity,vB).xy;
             float diagonal = dot(fluid + 2.0 * wall, vec4(1.0));
             vec2 velocity = (source + uAlpha * sum) / (1.0 + uAlpha * diagonal);
-            gl_FragColor = vec4(clamp(velocity,-1000.0,1000.0),0.0,1.0);
+            gl_FragColor = vec4(clamp(velocity,-1000.0,1000.0),0.0,1.0) * im;
             return;
         }
         vec2 L = neighborVelocity(vL, nb.x, C);
@@ -2297,6 +2376,7 @@ export const viscosityJacobi2Shader = `
     uniform float uHasSolidMask;
     uniform float uAlpha;
     uniform vec4 uOpenEdges;
+${inlineMaskGLSL}
     float solidAt(vec2 uv) {
         return uHasSolidMask < 0.5 ? 0.0 : texture2D(uSolidMask, vec2(clamp(uv.x,0.0,1.0),1.0-clamp(uv.y,0.0,1.0))).r;
     }
@@ -2318,11 +2398,12 @@ export const viscosityJacobi2Shader = `
         return clamp((texture2D(uSource,uv).xy+uAlpha*sum)/(1.0+uAlpha*dot(fluid+2.0*wall,vec4(1.0))),-1000.0,1000.0);
     }
     void main () {
-        if (solidAt(vUv)>0.5) { gl_FragColor=vec4(0.0,0.0,0.0,1.0); return; }
+        float im = inlineMaskValue(vUv);
+        if (solidAt(vUv)>0.5) { gl_FragColor=vec4(0.0,0.0,0.0,1.0) * im; return; }
         vec4 fluid,wall; faces(vUv,fluid,wall);
         vec2 sum = fluid.x*inner(vUv-vec2(texelSize.x,0.0)) + fluid.y*inner(vUv+vec2(texelSize.x,0.0)) + fluid.z*inner(vUv+vec2(0.0,texelSize.y)) + fluid.w*inner(vUv-vec2(0.0,texelSize.y));
         vec2 velocity = (texture2D(uSource,vUv).xy+uAlpha*sum)/(1.0+uAlpha*dot(fluid+2.0*wall,vec4(1.0)));
-        gl_FragColor=vec4(clamp(velocity,-1000.0,1000.0),0.0,1.0);
+        gl_FragColor=vec4(clamp(velocity,-1000.0,1000.0),0.0,1.0) * im;
     }
 `;
 

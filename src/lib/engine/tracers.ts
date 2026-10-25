@@ -64,6 +64,7 @@ export class FlowTracers {
 	depth!: FBO;
 	private serial = 0;
 	private cursor = 0;
+	private initializedCount = 0;
 	private fraction = 0;
 	private sources = new Float32Array(12);
 	private species = new Int32Array(3);
@@ -265,6 +266,11 @@ export class FlowTracers {
 		gl.viewport(0, 0, this.state.width, this.state.height);
 		gl.drawArrays(gl.TRIANGLES, 0, 3);
 		this.state.swap();
+		// The initialized prefix survives serial wrap and includes dead slots.
+		this.initializedCount = Math.min(
+			this.capacity,
+			this.initializedCount + count
+		);
 		this.serial = (this.serial + (total % 786432)) % 786432;
 		this.cursor = (this.cursor + (total % this.capacity)) % this.capacity;
 		gl.bindVertexArray(null);
@@ -294,7 +300,7 @@ export class FlowTracers {
 		gl.enable(gl.BLEND);
 		gl.blendEquation(gl.FUNC_ADD);
 		gl.blendFunc(gl.ONE, gl.ONE);
-		gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.capacity);
+		gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.initializedCount);
 		gl.disable(gl.BLEND);
 		gl.bindVertexArray(null);
 		gl.clearColor(0, 0, 0, 1);

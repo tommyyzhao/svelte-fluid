@@ -475,14 +475,27 @@ describe('review fixes (ADR-0093)', () => {
 		const probe = create({ dyeResolution: 64 }, true, 32, 32);
 		const max = probe.h.gl.getParameter(probe.h.gl.MAX_VIEWPORT_DIMS) as Int32Array;
 		const big = create({ dyeResolution: 64, simResolution: 16 }, true, 32, 32);
-		// initContext fits the canvas to MAX_VIEWPORT_DIMS, so the surface matches.
+		// WebGL permits a smaller actual buffer: https://registry.khronos.org/webgl/specs/1.0/#2.2
 		big.engine.resize(max[0] * 2, 8);
-		const h = big.h as unknown as { bufferWidth(): number };
+		const h = big.h as unknown as { bufferWidth(): number; bufferHeight(): number };
 		expect(big.canvas.width).toBeLessThanOrEqual(max[0]);
-		let inside = 0;
-		big.h.withGl(() => (inside = h.bufferWidth()));
-		expect(inside).toBe(big.h.gl.drawingBufferWidth);
-		expect(inside).toBe(big.canvas.width);
+		let observed = 0;
+		big.h.withGl(() => {
+			observed++;
+			const gl = big.h.gl;
+			const width = h.bufferWidth();
+			const height = h.bufferHeight();
+			expect(width).toBeGreaterThan(0);
+			expect(height).toBeGreaterThan(0);
+			expect(width).toBeLessThanOrEqual(big.canvas.width);
+			expect(height).toBeLessThanOrEqual(big.canvas.height);
+			expect(width).toBe(gl.drawingBufferWidth);
+			expect(height).toBe(gl.drawingBufferHeight);
+			expect(Array.from(gl.getParameter(gl.VIEWPORT))).toEqual([0, 0, width, height]);
+			expect(gl.isContextLost()).toBe(false);
+			expect(gl.getError()).toBe(gl.NO_ERROR);
+		});
+		expect(observed).toBe(1);
 	});
 
 	it('forced WebGL1 and a canvas already holding a context take the own tier', () => {

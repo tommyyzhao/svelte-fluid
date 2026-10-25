@@ -84,6 +84,7 @@ function h(e: FluidEngine) {
 		canvas: HTMLCanvasElement;
 		tracers: FlowTracers;
 		velocity: { read: FBO };
+		stickyFallbackTexture: WebGLTexture;
 		withGl<T>(f: () => T): T;
 		tracerFailure: string | null;
 	};
@@ -174,6 +175,66 @@ it('tracers leave velocity/grid dye byte-identical', () => {
 		);
 	expect(h(b).gl.getError()).toBe(0);
 });
+it('bounded splats match full-capacity state/depth/canvas bytes through warmup and overflow', () => {
+	const e = create(true);
+	e.advance(1, 0.01);
+	e.setConfig({ flow: { ...config.flow, tracers: { ...options, capacity: 1024 } } });
+	const t = h(e).tracers,
+		gl = h(e).gl,
+		draw = gl.drawArraysInstanced.bind(gl),
+		instances = vi.spyOn(gl, 'drawArraysInstanced');
+	const timings: Array<{
+		initialized: number;
+		boundedSubmissionMs: number;
+		capacitySubmissionMs: number;
+	}> = [];
+	let emitted = 0;
+	for (const count of [0, 1, 510, 1, 1, 511, 17]) {
+		if (count)
+			h(e).withGl(() =>
+				t.advance(
+					h(e).velocity.read,
+					1,
+					{ ...options, rate: count },
+					h(e).stickyFallbackTexture,
+					[1, 1],
+					false,
+					[1, 1, 0, 0]
+				)
+			);
+		emitted += count;
+		const initialized = Math.min(emitted, t.capacity),
+			state = bytes(read(e, t.state.read)).slice(),
+			write = bytes(read(e, t.state.write)).slice();
+		// renderOnce normally coalesces clean frames; compare both draws of this exact state.
+		(e as unknown as { renderDirty: boolean }).renderDirty = true;
+		instances.mockClear();
+		let start = performance.now();
+		const boundedCanvas = pixels(e),
+			boundedSubmissionMs = performance.now() - start;
+		expect(instances).toHaveBeenCalledExactlyOnceWith(
+			gl.TRIANGLE_STRIP, 0, 4, initialized
+		);
+		const boundedDepth = bytes(read(e, t.depth)).slice();
+		if (initialized) expect(boundedDepth.some((value) => value !== 0)).toBe(true);
+		instances.mockImplementation((mode, first, vertices) =>
+			draw(mode, first, vertices, t.capacity)
+		);
+		(e as unknown as { renderDirty: boolean }).renderDirty = true;
+		start = performance.now();
+		const capacityCanvas = pixels(e),
+			capacitySubmissionMs = performance.now() - start;
+		instances.mockImplementation(draw);
+		expect(bytes(read(e, t.state.read))).toEqual(state);
+		expect(bytes(read(e, t.state.write))).toEqual(write);
+		expect(bytes(read(e, t.depth))).toEqual(boundedDepth);
+		expect(capacityCanvas).toEqual(boundedCanvas);
+		expect(gl.getError()).toBe(0);
+		timings.push({ initialized, boundedSubmissionMs, capacitySubmissionMs });
+	}
+	// Wall-clock render/readback samples only; report, never gate or claim GPU speed.
+	console.log('TRACER_WARMUP_PARITY', JSON.stringify({ renderer, timings }));
+});
 it('uniform translation drift <.001 cell; splat mass error <3.5%', async () => {
 	const e = create(true);
 	e.advance(1, 0.01);
@@ -199,6 +260,7 @@ it('uniform translation drift <.001 cell; splat mass error <3.5%', async () => {
 			gl.FLOAT,
 			state
 		);
+		(t as unknown as { initializedCount: number }).initializedCount = 128;
 	});
 	// Isolate transport from injection without changing the pre-registered prescribed flow.
 	e.setConfig({
@@ -258,6 +320,7 @@ it('solid obstruction contains zero tracer optical depth', () => {
 			gl.FLOAT,
 			initial
 		);
+		(h(e).tracers as unknown as { initializedCount: number }).initializedCount = 1;
 	});
 	e.advance(100, 0.02);
 	pixels(e);
@@ -349,8 +412,11 @@ it('rate changes retain fractional emissions without bursts or gaps', () => {
 	expect(t.fraction).toBeCloseTo(0.5);
 });
 it('failed capacity/depth allocation preserves config, inventory and retry', () => {
-	const e = create(true),
-		gl = h(e).gl,
+	const e = create(true);
+	e.advance(1, 0.01);
+	const initialized = (h(e).tracers as unknown as { initializedCount: number }).initializedCount;
+	expect(initialized).toBeGreaterThan(0);
+	const gl = h(e).gl,
 		original = h(e).tracers;
 	const internals = e as unknown as { config: { FLOW: FlowConfig } },
 		old = internals.config.FLOW;
@@ -369,6 +435,7 @@ it('failed capacity/depth allocation preserves config, inventory and retry', () 
 	expect(() => e.resize(384, 96)).toThrow();
 	expect(h(e).canvas.width).toBe(288);
 	expect(h(e).tracers).toBe(original);
+	expect((h(e).tracers as unknown as { initializedCount: number }).initializedCount).toBe(initialized);
 	failure.mockImplementation(complete);
 	e.setConfig({
 		flow: { ...config.flow, tracers: { ...options, capacity: 1024 } }

@@ -116,6 +116,10 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0121](./0121-flow-disturbance-force.md) | Opt-in flow disturbance force | Accepted |
 | [0122](./0122-flow-outlet-relax.md) | Flux-preserving flow outlet relaxation | Accepted |
 | [0123](./0123-flow-tracers.md) | Opt-in passive flow tracers | Accepted |
+| [0124](./0124-tracer-warmup-splat-bound.md) | Bound tracer splats to the initialized prefix during warmup | Accepted |
+| [0125](./0125-no-slip-viscosity-final-mask.md) | Crop no-slip viscosity exactly once before projection | Accepted |
+| [0126](./0126-thermal-mask-supercover.md) | Conservative thermal mask-space segment traversal | Accepted |
+| [0127](./0127-shared-presentation-progress.md) | Shared presentation progress under overlapping snapshots | Accepted |
 
 ADRs 0067-0078 exist only on the private R&D branch (`rd/webgpu-replacement`); the numbering gap here is intentional.
 

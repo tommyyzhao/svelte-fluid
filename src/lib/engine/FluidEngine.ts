@@ -4886,6 +4886,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		p.bind();
 		this.bindInlineMaskUniforms(p.uniforms, 2, 3);
 		this.bindSolidMaskUniforms(p.uniforms, 4, 5);
+		gl.uniform2f(p.uniforms.uSolidMaskSize, this.solidMaskW || 1, this.solidMaskH || 1);
 		gl.uniform1i(p.uniforms.uVelocity, this.velocity.read.attach(0));
 		gl.uniform1i(p.uniforms.uSource, scalar.read.attach(1));
 		gl.uniform2f(p.uniforms.texelSize, scalar.texelSizeX, scalar.texelSizeY);
@@ -5172,7 +5173,13 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			gl.uniform1f(p.uniforms.uAlpha, viscosityAlpha(this.config.VISCOSITY, dt, this.velocity.width, this.velocity.height));
 			gl.uniform4f(p.uniforms.uOpenEdges, ...this.flowOpenEdges());
 			this.bindSolidMaskUniforms(p.uniforms, 2, 3);
+			const maskActive = this.bindInlineMaskUniforms(p.uniforms, 4, 5);
+			// Only the outermost final iterate is cropped, never inner solves or earlier pairs.
+			gl.uniform1f(p.uniforms.uApplyInlineMask, 0.0);
 			for (let i = 0; i < pairs; i++) {
+				if (i === pairs - 1 && pairs * 2 === iterations && maskActive) {
+					gl.uniform1f(p.uniforms.uApplyInlineMask, 1.0);
+				}
 				gl.uniform1i(p.uniforms.uVelocity, this.velocity.read.attach(0));
 				this.blit(this.velocity.write);
 				this.velocity.swap();

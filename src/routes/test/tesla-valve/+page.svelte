@@ -50,18 +50,20 @@
 </script>
 
 <svelte:head>
-	<title>Tesla valve tuning tests</title>
+	<title>Tesla valve laboratory experiments</title>
 	<meta name="robots" content="noindex, nofollow" />
-	<meta name="description" content="Pulsed fixed-nozzle Tesla valve jets alongside six earlier tuning comparisons." />
+	<meta name="description" content="Laboratory-only Tesla valve flow experiments, not validated real-world predictions." />
 </svelte:head>
 
 <main>
 	<div class="content">
-		<p class="eyebrow">Test route · not a preset change</p>
-		<h1>Tesla valve flow studies</h1>
-		<p>Paper variants study the adjacent blue/green filaments photographed by <a class="citation" href="https://www.nature.com/articles/s41467-021-23009-y">Nguyen et al. (2021), Figs. 3–4</a>: steady pressure, no-slip walls, transmitted backlight. Overlapping dyes darken by Beer–Lambert absorption. Carrier tint pre-fills the water; blue and green enter upstream. The forward and reverse Re 200 variants use a conservative staggered 2D solver with off-screen reservoirs; measured Re is 199.23 and 199.73 respectively. A seeded 1% ambient inlet disturbance represents rig noise, not artificial dye stirring. The patent trace has eleven units but differs from the photo (mean width 0.837 vs 0.9 cm; overlap 0.71). Reverse Re 50 is stable but its measured disturbance is only 0.77%. Reverse Re 401 unsteadiness persists for ≤1.5 flow-through times under exact projection, from an unsteady start (fine grid at Re 420); an independent code (Basilisk) shows shedding is self-excited with zero inlet disturbance. Its instantaneous flux balance and dye-onset convergence fail, frequency grid-convergence is unresolved (half-window scatter exceeds the fine-grid shift), the MAC–Basilisk gap (St 0.92 vs 0.835) remains unexplained, and its upstream fluctuations are largely a projection-leak artifact. Re 200 stays laminar even with 3.53% inlet disturbance; matched-Re diodicity is 1.08 versus the paper’s 1.59. These are 2D experiments, not accepted 3D paper reproductions. The three tracer variants visualise the same flows with passive GPU dye streaks and optical-depth splats, not concentration measurements; the Eulerian dye remains available for metrics.</p>
-		<p>Flame-salt jet injects hot copper blue-green, potassium lilac and sodium amber salts. Cold walls conduct heat away; temperature controls light, while salt remains in the flow. No artificial velocity, dye or temperature dissipation, vorticity confinement, wall-friction damping or outlet drain is used.</p>
-		<p>Only source momentum pulses; source rate stays constant. Salt colours cycle every six active seconds. The eight earlier variants keep their original physics and colours. White walls surround a black channel; the flame-salt variant places the fluid behind a valve-shaped glass cover with beveled edges and a faint skylight sheen. This constant-density, reduced thermal-emission model is not calibrated combustion CFD; RGB salts share one effective excitation law. Downstream arrival and the physical fade are measured separately.</p>
+		<p class="eyebrow">Laboratory only · not a preset change</p>
+		<h1>Tesla valve flow experiments</h1>
+		<p>These are laboratory-only 2D experiments, not validated real-world predictions or reproductions of a 3D experiment. Forward means left to right through the valve; backward means right to left. The research comparisons study the blue and green dye threads photographed by <a class="citation" href="https://www.nature.com/articles/s41467-021-23009-y">Nguyen et al. (2021), Figs. 3–4</a>. Pressure stays steady, fluid slows to zero at walls, and light shines through the dye. Overlapping dyes absorb more light and look darker. Tinted water fills the channel before blue and green dye enter.</p>
+		<p>The lower-speed forward and backward experiments use a 2D flow model with water-storage regions outside the picture. Reynolds number (Re) compares the effects of flow speed and viscosity; measured values are 199.23 and 199.73. A repeatable 1% inlet disturbance represents equipment noise, not added dye stirring. The patent outline has eleven repeated sections but differs from the photo (mean width 0.837 vs 0.9 cm; shape overlap score 0.71, where 1 means identical). The slower backward experiment at Re 50 is steady, but its disturbance measures only 0.77%. At Re 200, flow stays smooth even with 3.53% inlet disturbance. Diodicity compares the backward (reverse) pressure to the forward pressure needed for the same flow rate, not forward and backward flow rates: 1.08 here versus the paper’s 1.59 at matched Reynolds number.</p>
+		<p>The higher-speed backward experiment at Re 401 keeps changing for ≤1.5 times the time for fluid to cross the valve when checked with a more accurate pressure calculation, starting from already-changing flow (finer grid at Re 420). Independent software (Basilisk) finds repeating swirls even with zero inlet disturbance. However, flow entering and leaving does not balance at each instant, the first dye-mixing location changes with grid size, and the swirl-frequency comparison is inconclusive: variation between halves of the recording exceeds the change from a finer grid. The model and Basilisk disagree on the frequency relative to flow speed (St 0.92 vs 0.835); this remains unexplained. Upstream changes are largely caused by error in the pressure calculation. The three moving-dye-dot versions show these same flows, not measured dye concentrations; the grid-based dye calculation remains available for measurements.</p>
+		<p>The flame-salt jet adds hot copper blue-green, potassium lilac and sodium amber salts. Cold walls remove heat; temperature controls light while salt stays in the flow. No extra fading of speed, dye or temperature, added swirl, wall-friction braking or outlet braking is used.</p>
+		<p>Only the inlet push pulses; the amount added stays constant. Salt colours cycle every six active seconds. The eight earlier versions keep their original settings and colours. White walls surround a black channel; the flame-salt version adds a valve-shaped glass cover with beveled edges and a faint skylight sheen. This simplified model keeps density constant and approximates light from hot salts; it is not a calibrated combustion simulation. All three salt colours share one rule for brightness. Downstream arrival and cooling-related fading are measured separately.</p>
 		<nav aria-label="Tesla valve variants">
 			{#each previewTunings as variant (variant.id)}
 				<a
@@ -118,7 +120,7 @@
 				<p>Loading selected variant…</p>
 			{/if}
 		</div>
-		<p class="note">Fixed seed 704. Pointer input off. Restart repeats the selected setup. Reduced-motion preferences remain respected.</p>
+		<p class="note">Repeatable random pattern 704. Pointer movement does not change the flow. Restart repeats the selected setup. Reduced-motion preferences remain respected.</p>
 	</div>
 </main>
 

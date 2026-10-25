@@ -6,10 +6,11 @@ import { GAS_FLARE_CONFIG, KARMAN_CONFIG, TESLA_VALVE_CONFIG, VENTURI_CONFIG } f
 import { getTuning } from '../../../routes/test/tesla-valve/tunings.js';
 import { jetFlow } from '../../../routes/test/tesla-valve/jet-pulse.js';
 
-// Open-edge flux-conservation measurement (opt in: SVELTE_FLUID_GPU_BENCH=1).
-// Pre-registered rule: any scene with MEAN post-projection section-flux spread
-// > 2% => "SPONGE NEEDED". No retuning after the data. Post-projection =
-// velocity read right after step() (projectVelocity is its last velocity pass).
+// Open-edge section-spread diagnostic (opt in: SVELTE_FLUID_GPU_BENCH=1).
+// Five signed cell-center velocity sums, skipping binary solids: not a full
+// face-flux/density mass budget. Mean instantaneous relative spread > 2% is
+// diagnostic, not a sponge requirement or proof of a conservation failure.
+// Post-projection = velocity read right after step() (its last velocity pass).
 // Not driven: autoSplat* (lives in the RAF `simulateFrame`, not `advance()`); the
 // flux drivers under test (sources, pressureGradient) all run inside step().
 
@@ -48,8 +49,8 @@ const scenes: Scene[] = [
 	{ name: 'CHANNEL_OPEN_OUTLET_RELAX', config: cast({ ...channel(true), flow: { ...channel(true).flow, outlets: channel(true).flow!.outlets!.map((outlet) => ({ ...outlet, velocity: 'relax' })) } }), css: [800, 400], axis: 'x', range: [0.15, 0.85] },
 	{ name: 'VENTURI_RELAX', config: cast({ ...VENTURI_CONFIG, flow: { ...VENTURI_CONFIG.flow!, outlets: VENTURI_CONFIG.flow!.outlets!.map((outlet) => ({ ...outlet, velocity: 'relax' })) } }), css: [800, 400], axis: 'x', range: [0.15, 0.85] },
 	{ name: 'VENTURI_NO_OUTLET', config: cast({ ...VENTURI_CONFIG, flow: { ...VENTURI_CONFIG.flow!, outlets: [] } }), css: [800, 400], axis: 'x', range: [0.15, 0.85] },
-	// Diagnostics (not part of the pre-registered verdict): 8x Jacobi iterations,
-	// separates solver under-convergence from an open-edge leak.
+	// Sensitivity diagnostics: 8x Jacobi iterations alone cannot separate
+	// solver under-convergence from open-edge leakage or establish causation.
 	{ name: 'VENTURI_p8x', config: cast({ ...VENTURI_CONFIG, pressureIterations: 208 }), css: [800, 400], axis: 'x', range: [0.15, 0.85] },
 	{ name: 'TESLA_VALVE_p8x', config: cast({ ...TESLA_VALVE_CONFIG, pressureIterations: 208 }), css: [960, 202], axis: 'x', range: [0.15, 0.85] },
 	{
@@ -70,7 +71,7 @@ const SECTIONS = 5;
 const pct = (a: number[], p: number) => [...a].sort((x, y) => x - y)[Math.min(a.length - 1, Math.floor(p * a.length))];
 const mean = (a: number[]) => a.reduce((s, v) => s + v, 0) / a.length;
 
-describe('flow conservation (open-edge scenes)', () => {
+describe('flow conservation diagnostic (open-edge scenes)', () => {
 	for (const scene of scenes) {
 		it(`${scene.name}: post-projection section-flux spread`, { timeout: 900_000 }, async () => {
 			const canvas = document.createElement('canvas');
@@ -159,7 +160,8 @@ describe('flow conservation (open-edge scenes)', () => {
 					return out;
 				};
 
-				// Spin-up: mean section flux of successive 1.2 s windows changes < 1%.
+				// Established: one adjacent pair of global 1.2 s window means changes
+				// < 1% after >=3 windows; not per-section stationarity.
 				let prev = NaN, windows = 0, established = false, change = NaN;
 				while (windows < MAX_WINDOWS) {
 					const w = mean(run(WINDOW_SAMPLES).map((s) => s.m));
@@ -185,7 +187,14 @@ describe('flow conservation (open-edge scenes)', () => {
 					divOverU_mean: +mean(divs).toFixed(5),
 					divOverU_max: +Math.max(...divs).toFixed(5),
 					meanSpeedU: +mean(meas.map((s) => s.U)).toFixed(3),
-					exceeds2pct: mean(spreads) > 0.02
+					exceeds2pct: mean(spreads) > 0.02,
+					diagnosticScope: 'section spread only; not mass-conservation proof or a causal verdict',
+					steadyThroughflowDiagnosticEligible: established && !['GAS_FLARE', 'KARMAN'].includes(scene.name) && !scene.pulse,
+					steadyThroughflowIneligibilityReasons: [
+						...(!established ? ['global-window criterion not established; no steady throughflow verdict'] : []),
+						...(['GAS_FLARE', 'KARMAN'].includes(scene.name) ? ['transverse open-boundary flow unaccounted'] : []),
+						...(scene.pulse ? ['pulsed drive is not steady; scalar/dye sources are not volume injection; pulsing alone does not excuse incompressible slab imbalance'] : [])
+					]
 				};
 				console.log('FLOWCONS', JSON.stringify(result));
 				await (commands as unknown as { writeBenchJson(p: string, d: string): Promise<void> }).writeBenchJson(
@@ -193,7 +202,11 @@ describe('flow conservation (open-edge scenes)', () => {
 					JSON.stringify(result, null, 1)
 				);
 				expect(Number.isFinite(result.meanSpread)).toBe(true);
-				if (scene.name === 'CHANNEL_OPEN_OUTLET_RELAX') expect(mean(spreads)).toBeLessThanOrEqual(0.02);
+				expect(result.steadyThroughflowDiagnosticEligible).toBe(result.steadyThroughflowIneligibilityReasons.length === 0);
+				if (scene.name === 'CHANNEL_OPEN_OUTLET_RELAX') {
+					expect(established).toBe(true);
+					expect(mean(spreads)).toBeLessThanOrEqual(0.02);
+				}
 			} finally {
 				engine.dispose();
 				canvas.remove();
