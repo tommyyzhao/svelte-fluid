@@ -679,6 +679,32 @@ export interface FluidEngineOptions {
 const STILL_STEPS = 60;
 const STILL_DT = 1 / 60;
 
+const VELOCITY_SNAPSHOT_VERTEX = `#version 300 es
+in vec2 aPosition;
+void main() { gl_Position = vec4(aPosition, 0.0, 1.0); }`;
+const VELOCITY_SNAPSHOT_FRAGMENT = `#version 300 es
+precision highp float;
+precision highp sampler2D;
+uniform sampler2D source;
+uniform vec2 outputSize;
+out vec4 result;
+void main() {
+	vec2 n = vec2(textureSize(source, 0));
+	vec2 lo = floor(gl_FragCoord.xy) * n / outputSize;
+	vec2 hi = (floor(gl_FragCoord.xy) + 1.0) * n / outputSize;
+	vec2 sum = vec2(0.0);
+	// Exact area/box average of piecewise-constant texels, including fractional edges.
+	// Explicit texelFetch avoids hardware linear-filter and extension dependence.
+	for (int y = int(floor(lo.y)); y < int(ceil(hi.y)); y++) {
+		for (int x = int(floor(lo.x)); x < int(ceil(hi.x)); x++) {
+			vec2 w = max(vec2(0.0), min(hi, vec2(x + 1, y + 1)) - max(lo, vec2(x, y)));
+			sum += texelFetch(source, clamp(ivec2(x, y), ivec2(0), ivec2(n) - 1), 0).xy * w.x * w.y;
+		}
+	}
+	// Advection traces dt * velocity * simTexelSize: normalize each axis separately.
+	result = vec4(sum / ((hi.x - lo.x) * (hi.y - lo.y)) / n, 0.0, 0.0);
+}`;
+
 export class FluidEngine implements FluidHandle {
 	// --- Owned references ---
 	private canvas: HTMLCanvasElement;
@@ -805,6 +831,16 @@ export class FluidEngine implements FluidHandle {
 	private settleDyeChain: FBO[] = [];
 	/** Async probe readback: 2 RGBA float pixels (velocity max, dye max). */
 	private settlePbo: WebGLBuffer | null = null;
+	private velocitySnapshotTarget: FBO | null = null;
+	private velocitySnapshotProgram: ProgramWrap | null = null;
+	private velocitySnapshotEpoch = 0;
+	private velocitySnapshotSequence = 0;
+	private velocitySnapshotSlots: {
+		buffer: WebGLBuffer;
+		sync: WebGLSync | null;
+		tick: number;
+		sequence: number;
+	}[] = [];
 	private settleProbe: { sync: WebGLSync | null; epoch: number; velocityLevel: number; dyeLevel: number; bytes: boolean; inert: boolean; ready?: boolean } | null = null;
 	/** Changed fields or eligibility invalidate any probe already in flight. */
 	private settleEpoch = 0;
@@ -1261,6 +1297,7 @@ export class FluidEngine implements FluidHandle {
 		if (oldWidth === nextWidth && oldHeight === nextHeight) return false;
 
 		this.cancelSettleProbe();
+		this.invalidateVelocitySnapshots();
 		this.canvas.width = nextWidth;
 		this.canvas.height = nextHeight;
 		this.presentationGate.reset();
@@ -1333,6 +1370,195 @@ export class FluidEngine implements FluidHandle {
 		const result = this.withGl(() => this.readFieldInner(field, options));
 		if (!result) throw new Error('svelte-fluid: cannot readField while context is unavailable');
 		return result;
+	}
+
+	/**
+	 * @internal Queue a nonblocking velocity snapshot; false when unavailable or all 3 slots are busy.
+	 * Vectors are signed normalized-domain units/s (x right, y up), interleaved xy,
+	 * row-major BOTTOM row first. Exact area/box average, not point/linear sampling.
+	 */
+	queueVelocitySnapshot(tick: number, width: number, height: number): boolean {
+		if (this.disposed || this.contextLost || this.failed) return false;
+		if (
+			!Number.isSafeInteger(tick) ||
+			tick < 0 ||
+			!Number.isInteger(width) ||
+			width < 1 ||
+			width > 96 ||
+			!Number.isInteger(height) ||
+			height < 1 ||
+			height > 60
+		)
+			throw new RangeError(
+				'svelte-fluid: snapshot needs a nonnegative integer tick and size 1..96 by 1..60'
+			);
+		return (
+			this.withGl(() => {
+				if (!this.canReadSettleFloat()) return false;
+				const gl = this.gl as WebGL2RenderingContext;
+				if (this.velocitySnapshotSlots.length === 3 && this.velocitySnapshotSlots.every((v) => v.sync)) return false;
+				const target = this.velocitySnapshotTarget;
+				if (!target || target.width !== width || target.height !== height) {
+					this.invalidateVelocitySnapshots(true);
+					this.velocitySnapshotTarget = createFBO(
+						gl,
+						width,
+						height,
+						gl.RGBA32F,
+						gl.RGBA,
+						gl.FLOAT,
+						gl.NEAREST
+					);
+					if (
+						gl.checkFramebufferStatus(gl.FRAMEBUFFER) !==
+						gl.FRAMEBUFFER_COMPLETE
+					) {
+						this.invalidateVelocitySnapshots(true);
+						return false;
+					}
+				}
+				let slot = this.velocitySnapshotSlots.find((v) => !v.sync);
+				if (!slot && this.velocitySnapshotSlots.length === 3) return false;
+				if (!slot) {
+					const buffer = gl.createBuffer();
+					if (!buffer)
+						throw new Error(
+							'svelte-fluid: velocity snapshot PBO allocation failed'
+						);
+					slot = { buffer, sync: null, tick: 0, sequence: 0 };
+					this.velocitySnapshotSlots.push(slot);
+				}
+				if (!this.velocitySnapshotProgram) {
+					if (this.host)
+						this.velocitySnapshotProgram = this.host.program(
+							'fluid:velocitySnapshot',
+							VELOCITY_SNAPSHOT_VERTEX,
+							VELOCITY_SNAPSHOT_FRAGMENT
+						);
+					else {
+						const vs = compileShader(
+							gl,
+							gl.VERTEX_SHADER,
+							VELOCITY_SNAPSHOT_VERTEX
+						);
+						let fs: WebGLShader | null = null;
+						try {
+							fs = compileShader(
+								gl,
+								gl.FRAGMENT_SHADER,
+								VELOCITY_SNAPSHOT_FRAGMENT
+							);
+							this.velocitySnapshotProgram = makeProgram(gl, vs, fs);
+						} finally {
+							gl.deleteShader(vs);
+							if (fs) gl.deleteShader(fs);
+						}
+					}
+				}
+				const p = this.velocitySnapshotProgram;
+				gl.disable(gl.BLEND);
+				gl.disable(gl.SCISSOR_TEST);
+				gl.colorMask(true, true, true, true);
+				p.bind();
+				gl.uniform1i(p.uniforms.source, this.velocity.read.attach(0));
+				gl.uniform2f(p.uniforms.outputSize, width, height);
+				this.blit(this.velocitySnapshotTarget!);
+				try {
+					gl.bindBuffer(gl.PIXEL_PACK_BUFFER, slot.buffer);
+					gl.bufferData(
+						gl.PIXEL_PACK_BUFFER,
+						width * height * 16,
+						gl.STREAM_READ
+					);
+					gl.readBuffer(gl.COLOR_ATTACHMENT0);
+					gl.readPixels(0, 0, width, height, gl.RGBA, gl.FLOAT, 0);
+					slot.sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+					if (!slot.sync)
+						throw new Error(
+							'svelte-fluid: velocity snapshot fence allocation failed'
+						);
+					slot.tick = tick;
+					slot.sequence = this.velocitySnapshotSequence++;
+					gl.flush();
+				} finally {
+					gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+					gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+				}
+				return true;
+			}) ?? false
+		);
+	}
+
+	/** @internal Oldest completed snapshot; zero-wait polling, null until a fence signals. See queueVelocitySnapshot for units/row order. */
+	pollVelocitySnapshot(): {
+		tick: number;
+		epoch: number;
+		width: number;
+		height: number;
+		data: Float32Array;
+	} | null {
+		if (
+			this.disposed ||
+			this.contextLost ||
+			this.failed ||
+			!this.velocitySnapshotTarget
+		)
+			return null;
+		return (
+			this.withGl(() => {
+				const gl = this.gl as WebGL2RenderingContext;
+				const slot = this.velocitySnapshotSlots
+					.filter((v) => v.sync)
+					.sort((a, b) => a.sequence - b.sequence)[0];
+				if (
+					!slot ||
+					gl.getSyncParameter(slot.sync!, gl.SYNC_STATUS) !== gl.SIGNALED
+				)
+					return null;
+				const { width, height } = this.velocitySnapshotTarget!;
+				const rgba = new Float32Array(width * height * 4);
+				try {
+					gl.bindBuffer(gl.PIXEL_PACK_BUFFER, slot.buffer);
+					gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, rgba);
+				} finally {
+					gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+				}
+				gl.deleteSync(slot.sync);
+				slot.sync = null;
+				const data = new Float32Array(width * height * 2);
+				for (let i = 0; i < width * height; i++) {
+					data[i * 2] = rgba[i * 4];
+					data[i * 2 + 1] = rgba[i * 4 + 1];
+				}
+				return {
+					tick: slot.tick,
+					epoch: this.velocitySnapshotEpoch,
+					width,
+					height,
+					data,
+				};
+			}) ?? null
+		);
+	}
+
+	/** New epoch before any velocity-domain rebuild. Lost-context handles are simply forgotten. */
+	private invalidateVelocitySnapshots(release = false): void {
+		this.velocitySnapshotEpoch++;
+		if (!this.contextLost)
+			this.withGl(() => {
+				const gl = this.gl as WebGL2RenderingContext;
+				for (const slot of this.velocitySnapshotSlots) {
+					if (slot.sync) gl.deleteSync(slot.sync);
+					slot.sync = null;
+					if (release) gl.deleteBuffer(slot.buffer);
+				}
+				if (release && this.velocitySnapshotTarget)
+					disposeFBO(gl, this.velocitySnapshotTarget);
+			});
+		if (release || this.contextLost) {
+			this.velocitySnapshotSlots = [];
+			this.velocitySnapshotTarget = null;
+		}
 	}
 
 	private readFieldInner(field: ReadField, options: ReadFieldOptions): ReadFieldResult {
@@ -1595,6 +1821,8 @@ export class FluidEngine implements FluidHandle {
 	private handleContextLost(e?: Event): void {
 		e?.preventDefault(); // Signals to the browser we intend to restore
 		this.contextLost = true;
+		this.invalidateVelocitySnapshots();
+		this.velocitySnapshotProgram = null;
 		this.cancelSettleProbe();
 		this.profiler?.rejectContextLost();
 		this.stopRaf();
@@ -1697,6 +1925,7 @@ export class FluidEngine implements FluidHandle {
 
 	/** Rebuild the configured deterministic opening after construction/restore. */
 	private replayOpeningScene(): void {
+		this.invalidateVelocitySnapshots();
 		this.rng = mulberry32(this.config.SEED);
 		this.colorUpdateTimer = 0;
 		this.autoSplatTimer = 0;
@@ -1715,6 +1944,11 @@ export class FluidEngine implements FluidHandle {
 	dispose(): void {
 		if (this.disposed) return;
 		this.cancelSettleProbe();
+		this.invalidateVelocitySnapshots(true);
+		this.withGl(() => {
+			if (!this.host && this.velocitySnapshotProgram) this.gl.deleteProgram(this.velocitySnapshotProgram.program);
+		});
+		this.velocitySnapshotProgram = null;
 		this.disposed = true;
 
 		this.stopRaf();
@@ -2404,6 +2638,7 @@ export class FluidEngine implements FluidHandle {
 
 	/** Owns the persistent velocity field and all transient solver targets. */
 	private initSimulationFramebuffers(mode: ResourceInitMode): void {
+		this.invalidateVelocitySnapshots();
 		const gl = this.gl;
 		const simRes = getResolution(gl, this.config.SIM_RESOLUTION, this.bufferWidth(), this.bufferHeight());
 		const texType = this.ext.halfFloatTexType;
