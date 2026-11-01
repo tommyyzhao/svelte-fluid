@@ -7,7 +7,7 @@
 
 The Verdigris puzzle game moves out of this repo's `/puzzles` route into its own
 repository (owner, 2026-11-01). It needs `LiquidEngine` (ADR 0114) and, from
-`FluidEngine`, the caller-clocked `advance`/`renderOnce` path plus the velocity
+`FluidEngine`, the caller-clocked `advance`/`renderOnce`/`resize` path plus the velocity
 snapshot ring (ADR 0115). All of these were internal: `stripInternal` removes them
 from `dist` declarations, and `LiquidEngine` was never exported.
 
@@ -18,7 +18,7 @@ from `dist` declarations, and `LiquidEngine` was never exported.
   - `createSteppedFluidEngine(options)`, which builds a `FluidEngine` with
     `autoStart: false`;
   - the `SteppedFluidEngine` and `VelocitySnapshot` types, which declare the
-    four stepped methods publicly.
+    five stepped methods publicly.
 - The engine code is unchanged. The internal tags stay on `FluidEngine` itself, so
   the root entry and its docs keep their current surface.
 - No semver promise. A minor release may change or remove any experimental name.
