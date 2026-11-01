@@ -106,6 +106,8 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0110](./0110-presentation-rate-cap.md) | Presentation-only rate cap; preserve every solver frame | Accepted as opt-in (default 0); default-on not adopted |
 | [0111](./0111-component-excellence-eval.md) | Pre-registered E4 component excellence, installability, accessibility and bundle cost | Accepted |
 | [0113](./0113-half-dye-default.md) | Owner-approved generic half dye default; E1 Round 6 incomplete, archived | Rejected |
+| [0114](./0114-internal-flip-liquid-engine.md) | Internal free-surface PIC/FLIP liquid engine for the Verdigris game | Accepted (internal) |
+| [0115](./0115-air-to-liquid-coupling.md) | Async normalized air velocity snapshots and airborne liquid drag | Accepted (internal) |
 
 ADRs 0067-0078 exist only on the private R&D branch (`rd/webgpu-replacement`); the numbering gap here is intentional.
 
