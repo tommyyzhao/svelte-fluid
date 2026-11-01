@@ -489,7 +489,7 @@ interface FlowGridField {LB}
 
 <ul>
 	<li><code>LiquidEngine</code> — a free-surface PIC/FLIP liquid on its own WebGL2 canvas, with terrain, three pigment species, exact sensor counts and drains (needs <code>EXT_color_buffer_float</code> and <code>EXT_float_blend</code>). Its scene, tick and sensor types are exported alongside.</li>
-	<li><code>createSteppedFluidEngine(options)</code> — a <code>FluidEngine</code> driven by your clock: <code>advance(steps, dt)</code>, <code>renderOnce()</code>, and nonblocking air velocity readback with <code>queueVelocitySnapshot(tick, w, h)</code> / <code>pollVelocitySnapshot()</code>. Pass a snapshot to <code>LiquidEngine.step({LB} wind {RB})</code> so air deflects falling liquid.</li>
+	<li><code>createSteppedFluidEngine(options)</code> — a <code>FluidEngine</code> driven by your clock: <code>advance(steps, dt)</code>, <code>renderOnce()</code>, in-place <code>resize(w, h)</code>, and nonblocking air velocity readback with <code>queueVelocitySnapshot(tick, w, h)</code> / <code>pollVelocitySnapshot()</code>. Pass a snapshot to <code>LiquidEngine.step({LB} wind {RB})</code> so air deflects falling liquid.</li>
 </ul>
 
 <pre><code>import {LB} LiquidEngine, createSteppedFluidEngine {RB} from 'svelte-fluid/experimental';</code></pre>

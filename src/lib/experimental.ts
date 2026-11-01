@@ -23,6 +23,8 @@ export interface SteppedFluidEngine extends FluidEngine {
 	advance(steps: number, dt: number): void;
 	/** Present the current state once. */
 	renderOnce(): void;
+	/** Resize the drawing buffer in place, keeping the context; true when the size changed. */
+	resize(width: number, height: number): boolean;
 	/** Queue a nonblocking GPU readback; false when unavailable or all 3 slots are busy. */
 	queueVelocitySnapshot(tick: number, width: number, height: number): boolean;
 	/** Oldest completed snapshot, never blocks; null until a fence signals. */
