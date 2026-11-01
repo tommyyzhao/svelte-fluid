@@ -11,7 +11,7 @@ const pages = import.meta.glob<{ default: Component }>(['./docs/**/+page.svelte'
 // Dropping or adding an example must be a deliberate edit here.
 const EXPECTED: Record<string, number> = {
 	'./docs/+page.svelte': 5,
-	'./docs/api/+page.svelte': 15,
+	'./docs/api/+page.svelte': 16,
 	'./docs/components/+page.svelte': 14,
 	'./docs/configuration/+page.svelte': 0,
 	'./docs/presets/+page.svelte': 1,
@@ -35,12 +35,16 @@ const snippets = Object.entries(pages).flatMap(([page, mod]) =>
 		.map((code, index) => ({ page, id: `${page}#${index}`, code, svelte: code.startsWith('<') }))
 );
 
-const publicExports = (() => {
-	const filename = decodeURIComponent(new URL('../lib/index.ts', import.meta.url).pathname);
+const exportsOf = (entry: string) => {
+	const filename = decodeURIComponent(new URL(`../lib/${entry}`, import.meta.url).pathname);
 	const program = ts.createProgram([filename], { strict: true, skipLibCheck: true, allowImportingTsExtensions: true, noEmit: true });
 	const checker = program.getTypeChecker();
 	return new Set(checker.getExportsOfModule(checker.getSymbolAtLocation(program.getSourceFile(filename)!)!).map((s) => s.name));
-})();
+};
+const publicExports: Record<string, Set<string>> = {
+	'svelte-fluid': exportsOf('index.ts'),
+	'svelte-fluid/experimental': exportsOf('experimental.ts')
+};
 
 describe('docs code examples', () => {
 	it('match the expected count per page', () => {
@@ -63,9 +67,9 @@ describe('docs code examples', () => {
 	it.each(snippets.map((s) => [s.id, s] as const))('%s imports only public svelte-fluid names', (_id, { code }) => {
 		for (const [, names, specifier] of code.matchAll(/import\s+(?:type\s+)?(?:\{([^}]*)\}|\w+)\s+from\s+'([^']+)'/g)) {
 			if (FOREIGN_SPECIFIERS.has(specifier)) continue;
-			expect(specifier).toBe('svelte-fluid');
+			expect(Object.keys(publicExports)).toContain(specifier);
 			for (const name of (names ?? '').split(',').map((n) => n.trim().replace(/^type\s+/, '')).filter(Boolean)) {
-				expect(publicExports, name).toContain(name);
+				expect(publicExports[specifier], name).toContain(name);
 			}
 		}
 	});

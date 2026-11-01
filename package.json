@@ -50,6 +50,11 @@
 			"svelte": "./dist/index.js",
 			"import": "./dist/index.js",
 			"default": "./dist/index.js"
+		},
+		"./experimental": {
+			"types": "./dist/experimental.d.ts",
+			"import": "./dist/experimental.js",
+			"default": "./dist/experimental.js"
 		}
 	},
 	"peerDependencies": {
