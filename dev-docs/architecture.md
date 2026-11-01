@@ -109,6 +109,11 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
   compilation happens in the engine.
 - **The Svelte component never touches WebGL directly.** It hands the
   canvas to the engine and lets the engine do everything.
+- **Two package entries.** `index.ts` is the semver-stable root.
+  `experimental.ts` (`svelte-fluid/experimental`, ADR 0116) exposes
+  `LiquidEngine` (`engine/liquid/`, ADR 0114) and the stepped air snapshot
+  path (ADR 0115) with no semver promise. Both obey the GL-type-neutral
+  declaration rule.
 
 ## Lifecycle
 

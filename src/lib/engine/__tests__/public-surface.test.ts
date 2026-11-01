@@ -9,6 +9,9 @@ import { describe, expect, it } from 'vitest';
 import * as api from '../../index.js';
 import indexSrc from '../../index.ts?raw';
 import typesSrc from '../types.ts?raw';
+import * as experimental from '../../experimental.js';
+import experimentalSrc from '../../experimental.ts?raw';
+import liquidTypesSrc from '../liquid/types.ts?raw';
 
 const REMOVED = ['FBO', 'DoubleFBO', 'ExtInfo', 'ResolvedConfig', 'ProgramWrap', 'ToroidalTempest'];
 const BANNED = /\b(WebGL2?[A-Z]\w*|GPU[A-Z]\w*|ProgramWrap|DoubleFBO|FBO|ExtInfo|ResolvedConfig)\b/g;
@@ -36,5 +39,13 @@ describe('public API surface', () => {
 
 	it('engine/types.ts (all public declarations) is GL-type free', () => {
 		expect(leaks(typesSrc)).toEqual([]);
+	});
+
+	it('experimental entry is GL-type free and stays out of the root', () => {
+		expect(leaks(experimentalSrc)).toEqual([]);
+		expect(leaks(liquidTypesSrc)).toEqual([]);
+		expect('LiquidEngine' in api).toBe(false);
+		expect(typeof experimental.LiquidEngine).toBe('function');
+		expect(typeof experimental.createSteppedFluidEngine).toBe('function');
 	});
 });

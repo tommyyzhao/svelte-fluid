@@ -480,6 +480,20 @@ interface FlowGridField {LB}
 	<li><code>dispose()</code> — free all GPU resources (textures, framebuffers, programs). The WebGL context is left intact for potential reuse.</li>
 </ul>
 
+<h2>Experimental entry</h2>
+
+<p>
+	<code>svelte-fluid/experimental</code> exposes engine surfaces built for the Verdigris puzzle
+	game. <strong>No semver promise:</strong> any minor release may change or remove them.
+</p>
+
+<ul>
+	<li><code>LiquidEngine</code> — a free-surface PIC/FLIP liquid on its own WebGL2 canvas, with terrain, three pigment species, exact sensor counts and drains (needs <code>EXT_color_buffer_float</code> and <code>EXT_float_blend</code>). Its scene, tick and sensor types are exported alongside.</li>
+	<li><code>createSteppedFluidEngine(options)</code> — a <code>FluidEngine</code> driven by your clock: <code>advance(steps, dt)</code>, <code>renderOnce()</code>, in-place <code>resize(w, h)</code>, and nonblocking air velocity readback with <code>queueVelocitySnapshot(tick, w, h)</code> / <code>pollVelocitySnapshot()</code>. Pass a snapshot to <code>LiquidEngine.step({LB} wind {RB})</code> so air deflects falling liquid.</li>
+</ul>
+
+<pre><code>import {LB} LiquidEngine, createSteppedFluidEngine {RB} from 'svelte-fluid/experimental';</code></pre>
+
 <p>
 	Architecture invariant: the engine never imports Svelte. It is fully framework-agnostic and
 	could be used with React, vanilla JS, or any other framework. The Svelte component is a thin
