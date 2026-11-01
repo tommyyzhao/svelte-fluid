@@ -12,6 +12,11 @@ import { Fluid, FluidBackground, FluidReveal, FluidDistortion, FluidStick, Fluid
 	type FluidProps, type FluidBackgroundProps, type FluidRevealProps, type FluidDistortionProps,
 	type FluidStickProps, type FluidTextProps, type FluidConfig, type FluidHandle } from './dist/index.js';
 import type { ComponentProps } from 'svelte';
+import { LiquidEngine, createSteppedFluidEngine, STONE,
+	type LiquidScene, type LiquidSim, type SteppedFluidEngine, type VelocitySnapshot } from './dist/experimental.js';
+export const liquid: typeof LiquidEngine = LiquidEngine;
+export const stepped: (canvas: HTMLCanvasElement) => SteppedFluidEngine = (canvas) => createSteppedFluidEngine({ canvas });
+export type Experimental = [LiquidScene, LiquidSim, VelocitySnapshot, typeof STONE];
 export const fluid: ComponentProps<typeof Fluid> = { simResolution: 64, onReady: () => {}, fallbackText: 'x' };
 export const text: FluidTextProps = { text: 'hi', poster: '/p.png', posterAlt: 'p' };
 export const props: FluidProps[] = [fluid];

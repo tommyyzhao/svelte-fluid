@@ -20,6 +20,7 @@ const browserProject = defineProject({
 		env: {
 			// Explicit local Chrome remains a hardware gate, not a software skip run.
 			SVELTE_FLUID_HARDWARE_GATE: process.env.VITEST_CHROME_PATH ? '1' : '',
+			SVELTE_FLUID_GPU_BENCH: process.env.SVELTE_FLUID_GPU_BENCH ?? '',
 			SVELTE_FLUID_GPU_BENCH_OUT: process.env.SVELTE_FLUID_GPU_BENCH_OUT ?? '',
 			SVELTE_FLUID_GPU_BENCH_PRESETS: process.env.SVELTE_FLUID_GPU_BENCH_PRESETS ?? '',
 			SVELTE_FLUID_GPU_BENCH_TIER: process.env.SVELTE_FLUID_GPU_BENCH_TIER ?? '',

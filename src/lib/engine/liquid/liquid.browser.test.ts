@@ -5,6 +5,7 @@ import { compileShader, makeProgram } from '../gl-utils.js';
 import * as liquidShaders from './liquid-shaders.js';
 import { mixtureLut } from './palette.js';
 import { STONE } from './types.js';
+import { softwareGL } from '../__benches__/renderer.js';
 import type { LiquidScene, Rect, SensorFrame, TerrainEdit, Wind } from './types.js';
 
 const PALETTE = ['#6ec6ff', '#f2b134', '#e8608a'] as const;
@@ -94,7 +95,8 @@ function surface(f: SensorFrame, width: number, r: Rect): number {
 	return columns[Math.floor(columns.length / 2)] ?? Infinity;
 }
 
-describe('Verdigris real-GPU liquid', () => {
+// Hardware-only (ADR 0114): real-GPU timings, captures and 3600-tick suites; software GL is too slow.
+describe.skipIf(softwareGL)('Verdigris real-GPU liquid', () => {
 	it('hardware smoke, exact sensors, compaction and epoch isolation', async () => {
 		const { engine, gl } = setup();
 		try {
@@ -608,7 +610,8 @@ describe('Verdigris real-GPU liquid', () => {
 	}, 180_000);
 });
 
-describe('one-way air coupling', () => {
+// Hardware-only (ADR 0114): real-GPU timings, captures and 3600-tick suites; software GL is too slow.
+describe.skipIf(softwareGL)('one-way air coupling', () => {
 	const wind = (x = 60, y = 0): Wind => ({
 		width: 1,
 		height: 1,
@@ -819,7 +822,8 @@ describe('one-way air coupling', () => {
 });
 
 
-describe('falling-column air coupling', () => {
+// Hardware-only (ADR 0114): real-GPU timings, captures and 3600-tick suites; software GL is too slow.
+describe.skipIf(softwareGL)('falling-column air coupling', () => {
 	it('deflects the real 6.4-marker/tick pour and captures beauty renders', async () => {
 		const landings: number[] = [];
 		for (const windy of [false, true]) {
@@ -958,7 +962,8 @@ it('preserves resting pool and dam-break body rendering; captures before/after',
 	} finally { gl.deleteProgram(oldDensity.program); gl.deleteProgram(oldComposite.program); engine.dispose(); }
 }, 120_000);
 
-describe('render-only connected liquid mixing', () => {
+// Hardware-only (ADR 0114): real-GPU timings, captures and 3600-tick suites; software GL is too slow.
+describe.skipIf(softwareGL)('render-only connected liquid mixing', () => {
 	it('mixes layered pools with KM, isolates stone basins and preserves falling gold', async () => {
 		const { engine, gl, canvas } = setup(640, 480);
 		const baseline = setup(64, 48);

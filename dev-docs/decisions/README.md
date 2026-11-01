@@ -108,6 +108,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0113](./0113-half-dye-default.md) | Owner-approved generic half dye default; E1 Round 6 incomplete, archived | Rejected |
 | [0114](./0114-internal-flip-liquid-engine.md) | Internal free-surface PIC/FLIP liquid engine for the Verdigris game | Accepted (internal) |
 | [0115](./0115-air-to-liquid-coupling.md) | Async normalized air velocity snapshots and airborne liquid drag | Accepted (internal) |
+| [0116](./0116-experimental-entry.md) | `svelte-fluid/experimental` subpath exposes LiquidEngine and stepped air snapshots | Accepted |
 
 ADRs 0067-0078 exist only on the private R&D branch (`rd/webgpu-replacement`); the numbering gap here is intentional.
 

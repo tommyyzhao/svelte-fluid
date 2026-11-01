@@ -2,6 +2,7 @@
 
 **Status:** Accepted (internal)
 **Date:** 2026-10-30
+**Amended by:** ADR 0116 (exported from `svelte-fluid/experimental`)
 
 ## Context
 
