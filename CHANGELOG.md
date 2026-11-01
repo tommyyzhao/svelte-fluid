@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0
+
+### Minor Changes
+
+- [#18](https://github.com/tommyyzhao/svelte-fluid/pull/18) [`5aac0fa`](https://github.com/tommyyzhao/svelte-fluid/commit/5aac0fae0231962eca4e8d2954f66ae7fcf21a05) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Add the `svelte-fluid/experimental` entry (no semver promise): `LiquidEngine`, a free-surface PIC/FLIP liquid with terrain, pigment species and exact sensors, plus `createSteppedFluidEngine` for caller-clocked `advance`/`renderOnce`/`resize` and nonblocking air velocity snapshots that feed liquid `wind`. The root entry is unchanged.
+
 ## 1.0.0
 
 ### Major Changes
