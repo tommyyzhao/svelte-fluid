@@ -1,8 +1,14 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, defineProject } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
+
+const browser = process.env.VITEST_BROWSER_NAME ?? 'chromium';
+if (browser !== 'chromium' && browser !== 'firefox' && browser !== 'webkit') {
+	throw new Error('VITEST_BROWSER_NAME must be chromium, firefox, or webkit');
+}
+const chromePath = browser === 'chromium' ? process.env.VITEST_CHROME_PATH : undefined;
 
 const browserProject = defineProject({
 	extends: true,
@@ -15,11 +21,11 @@ const browserProject = defineProject({
 			// Slow measurement-only bench: opt in with SVELTE_FLUID_GPU_BENCH=1.
 			...(process.env.SVELTE_FLUID_GPU_BENCH
 				? []
-				: ['**/pressure-residual.browser.test.ts', '**/gpu-budget.browser.test.ts', '**/dpr-shots.browser.test.ts', '**/surface-shots.browser.test.ts', '**/surface-gpu.browser.test.ts', '**/dropzone-shots.browser.test.ts', '**/caustics-shots.browser.test.ts', '**/dropzone-gpu.browser.test.ts', '**/enamel-shots.browser.test.ts', '**/enamel-gpu.browser.test.ts', '**/shared-present.browser.test.ts'])
+				: ['**/pressure-residual.browser.test.ts', '**/gpu-budget.browser.test.ts', '**/dpr-shots.browser.test.ts', '**/surface-shots.browser.test.ts', '**/surface-gpu.browser.test.ts', '**/dropzone-shots.browser.test.ts', '**/caustics-shots.browser.test.ts', '**/dropzone-gpu.browser.test.ts', '**/enamel-shots.browser.test.ts', '**/enamel-gpu.browser.test.ts', '**/shared-present.browser.test.ts', '**/paper-valve.browser.test.ts', '**/flow-conservation.browser.test.ts'])
 		],
 		env: {
 			// Explicit local Chrome remains a hardware gate, not a software skip run.
-			SVELTE_FLUID_HARDWARE_GATE: process.env.VITEST_CHROME_PATH ? '1' : '',
+			SVELTE_FLUID_HARDWARE_GATE: chromePath ? '1' : '',
 			SVELTE_FLUID_GPU_BENCH: process.env.SVELTE_FLUID_GPU_BENCH ?? '',
 			SVELTE_FLUID_GPU_BENCH_OUT: process.env.SVELTE_FLUID_GPU_BENCH_OUT ?? '',
 			SVELTE_FLUID_GPU_BENCH_PRESETS: process.env.SVELTE_FLUID_GPU_BENCH_PRESETS ?? '',
@@ -30,6 +36,9 @@ const browserProject = defineProject({
 			SVELTE_FLUID_SHOTS_DPRS: process.env.SVELTE_FLUID_SHOTS_DPRS ?? '',
 			SVELTE_FLUID_SHOTS_CSS: process.env.SVELTE_FLUID_SHOTS_CSS ?? '',
 			SVELTE_FLUID_SHOTS_EXTRA: process.env.SVELTE_FLUID_SHOTS_EXTRA ?? '',
+				SVELTE_FLUID_MAC_N: process.env.SVELTE_FLUID_MAC_N ?? '',
+				SVELTE_FLUID_MAC_SECONDS: process.env.SVELTE_FLUID_MAC_SECONDS ?? '',
+				SVELTE_FLUID_MAC_BUDGET: process.env.SVELTE_FLUID_MAC_BUDGET ?? '',
 			SVELTE_FLUID_SHOTS_DYE: process.env.SVELTE_FLUID_SHOTS_DYE ?? '',
 			SVELTE_FLUID_CONTRAST_TAG: process.env.SVELTE_FLUID_CONTRAST_TAG ?? ''
 		},
@@ -51,26 +60,41 @@ const browserProject = defineProject({
 			// and per-browser `instances` instead of a top-level `name`.
 			// VITEST_CHROME_PATH selects a hardware-capable installed Chrome.
 			provider: playwright(
-				process.env.VITEST_CHROME_PATH
+				chromePath
 					? {
-							launchOptions: { executablePath: process.env.VITEST_CHROME_PATH, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'] },
+							launchOptions: { executablePath: chromePath, ignoreDefaultArgs: ['--enable-unsafe-swiftshader'] },
 							// Opt-in DPR for native-DPR captures and GPU benches.
 							...(process.env.SVELTE_FLUID_DPR ? { contextOptions: { deviceScaleFactor: Number(process.env.SVELTE_FLUID_DPR) } } : {})
 						}
 					: {}
 			),
-			instances: [{ browser: 'chromium' }],
+			instances: [{ browser }],
 			commands: {
-				async captureCanvasScreenshot(ctx: { page: any; frame: () => Promise<any> }, rect: { x: number; y: number; width: number; height: number }) {
+				async captureCanvasScreenshot(ctx: { page: any; frame: () => Promise<any> }, rect: { x: number; y: number; width: number; height: number; nativeSize?: boolean }) {
 					const frame = await ctx.frame();
-					const offset = await (await frame.frameElement()).boundingBox();
-					return (await ctx.page.screenshot({ clip: { ...rect, x: offset.x + rect.x, y: offset.y + rect.y } })).toString('base64');
+					const element = await frame.frameElement();
+					if (rect.nativeSize) {
+						await ctx.page.setViewportSize({ width: 1280, height: 720 });
+						// Vitest scales its preview iframe to the runner pane. Evidence must be native-sized.
+						await element.evaluate((el: HTMLElement) => {
+							for (let node: HTMLElement | null = el; node; node = node.parentElement) {
+								node.style.transform = 'none'; node.style.zoom = '1'; node.style.overflow = 'visible';
+							}
+							Object.assign(el.style, { position: 'fixed', left: '0', top: '0', width: '1280px', height: '720px', maxWidth: 'none', maxHeight: 'none', zIndex: '2147483647' });
+						});
+					}
+					const offset = await element.boundingBox();
+					const { nativeSize: _, ...clip } = rect;
+					return (await ctx.page.screenshot({ clip: { ...clip, x: offset.x + rect.x, y: offset.y + rect.y } })).toString('base64');
 				},
 				async emulateControlMedia(ctx: { page: any }, media: { forcedColors?: 'active' | 'none'; reducedMotion?: 'reduce' | 'no-preference' }) {
 					await ctx.page.emulateMedia(media);
 				},
 				// Built-in writeFile is confined to the project root; the GPU bench
 				// writes its JSON to an arbitrary path (default /tmp).
+				async readBenchBase64(_ctx: unknown, path: string) {
+					return (await readFile(path)).toString('base64');
+				},
 				async writeBenchJson(_ctx: unknown, path: string, content: string) {
 					await mkdir(dirname(path), { recursive: true });
 					await writeFile(path, content);

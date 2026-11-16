@@ -2,7 +2,7 @@
  * LiquidDropZone on hardware WebGL2 (ADR-0094).
  */
 import { flushSync, mount, unmount } from 'svelte';
-import { userEvent } from 'vitest/browser';
+import { server, userEvent } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import LiquidDropZone from '../../LiquidDropZone.svelte';
 import { activeFrameSubscribers } from '../frame-scheduler.js';
@@ -10,6 +10,14 @@ import { acquireGlHost } from '../gl-host.js';
 import { SurfaceEngine } from '../surface/SurfaceEngine.js';
 import type { SurfaceConfig } from '../surface/SurfaceEngine.js';
 import { waitForSurfaceSettle } from './renderer.js';
+
+// macOS WebKit Tab skips non-text controls unless Keyboard navigation is on;
+// Option+Tab reaches them (https://github.com/microsoft/playwright/issues/41808).
+// ponytail: assumes the macOS default (setting off); Option+Tab reverses it when on.
+const tab = () =>
+	server.browser === 'webkit' && server.platform === 'darwin'
+		? userEvent.keyboard('{Alt>}{Tab}{/Alt}')
+		: userEvent.tab();
 
 const live: (() => void)[] = [];
 afterEach(() => {
@@ -90,7 +98,7 @@ describe('LiquidDropZone', () => {
 			e.preventDefault();
 		});
 		document.body.focus();
-		await userEvent.tab();
+		await tab();
 		expect(document.activeElement).toBe(input);
 		await userEvent.keyboard('{Enter}');
 		expect(picks).toHaveLength(1);

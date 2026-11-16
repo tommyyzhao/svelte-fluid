@@ -109,6 +109,20 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0114](./0114-internal-flip-liquid-engine.md) | Free-surface PIC/FLIP liquid engine (exposed via `svelte-fluid/experimental`, ADR 0116) | Accepted (internal) |
 | [0115](./0115-air-to-liquid-coupling.md) | Async normalized air velocity snapshots and airborne liquid drag | Accepted (internal) |
 | [0116](./0116-experimental-entry.md) | `svelte-fluid/experimental` subpath exposes LiquidEngine and stepped air snapshots | Accepted |
+| [0117](./0117-thermal-salt-emission.md) | Opt-in thermal transport, no-slip walls and linear flame-salt emission | Accepted |
+| [0118](./0118-substep-submission-and-pressure-crossover.md) | Measured substep submission and pressure-pair crossover | Accepted |
+| [0119](./0119-svg-channel-glass-cover.md) | SDF-shaped glass cover for SVG channels | Accepted |
+| [0120](./0120-transmitted-dye-and-paper-valve.md) | Transmitted dye and the paper Tesla-valve study | Accepted (optics); experimental (paper-flow reproduction) |
+| [0121](./0121-staggered-conservative-flow.md) | Conservative staggered-flow preflight | Experimental — not adopted |
+| [0122](./0122-paper-mac-plenums.md) | Route-local paper MAC flow with reservoir plenums | Experimental — Re50/200 flow accepted; paper reproduction fails; Re400 ships under exceptions with limits |
+| [0123](./0123-paper-tracers.md) | Route-local passive paper dye tracers | Experimental — opt-in visualisation; sampling-limited in mixed regions |
+| [0124](./0124-flow-disturbance-force.md) | Opt-in flow disturbance force | Accepted |
+| [0125](./0125-flow-outlet-relax.md) | Flux-preserving flow outlet relaxation | Accepted |
+| [0126](./0126-flow-tracers.md) | Opt-in passive flow tracers | Accepted |
+| [0127](./0127-tracer-warmup-splat-bound.md) | Bound tracer splats to the initialized prefix during warmup | Accepted |
+| [0128](./0128-no-slip-viscosity-final-mask.md) | Crop no-slip viscosity exactly once before projection | Accepted |
+| [0129](./0129-thermal-mask-supercover.md) | Conservative thermal mask-space segment traversal | Accepted |
+| [0130](./0130-shared-presentation-progress.md) | Shared presentation progress under overlapping snapshots | Accepted |
 
 ADRs 0067-0078 exist only on the private R&D branch (`rd/webgpu-replacement`); the numbering gap here is intentional.
 
