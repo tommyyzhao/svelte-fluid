@@ -60,7 +60,7 @@ describe('generated API reference', () => {
 
 	it('covers thermal options, composition semantics, linear emission and approximation limits', () => {
 		for (const name of ['inflow', 'diffusivity', 'diffusionIterations', 'wall', 'radiativeCooling', 'temperatureRatio', 'emission', 'walls']) expect(out).toContain(`| \`${name}\``);
-		for (const text of ['unsupplied scalar channels survive', 'dye alpha stays deposited thickness', 'diffusivity/viscosity = 1/Pr', 'one tone map, one sRGB encode', 'not calibrated CFD', 'allocate no textures/FBOs and compile no shaders']) expect(out).toContain(text);
+		for (const text of ['unsupplied scalar channels survive', 'dye alpha stays deposited thickness', 'diffusivity/viscosity = 1/Pr', 'one tone map, one sRGB encode', 'not calibrated CFD', 'allocate no textures or framebuffers and compile no shaders']) expect(out).toContain(text);
 	});
 
 	it('documents SVG glass cover capability, isolation and legacy fallback', () => {
@@ -68,22 +68,22 @@ describe('generated API reference', () => {
 	});
 
 	it('covers transmitted species, validation, precedence and hot-update ownership', () => {
-		for (const text of ['| `absorption`', 'Beer–Lambert', 'three species concentrations', 'encoded exactly once', 'simultaneous emission throw RangeError', 'Bucket-B keyword', 'mix-blend-mode: multiply', 'not measured dye spectra']) expect(out).toContain(text);
+		for (const text of ['| `absorption`', 'Beer–Lambert', 'three species concentrations', 'encoded exactly once', 'simultaneous emission throw RangeError', 'recompiles the display shader', 'mix-blend-mode: multiply', 'not measured dye spectra']) expect(out).toContain(text);
 	});
 
 	it('documents outlet modes, flux semantics, validation and optional lifecycle', () => {
 		for (const generated of [out, buildLlmsFullTxt()]) {
-			for (const text of ['| `velocity`', '| `relaxRate`', 'effective only with clearVelocity true', '39.5%', 'mask-weighted fluid-section mean', 'solids remain untouched', 'default 10', 'invalid modes/rates throw RangeError', 'outlet-pass flux, not whole-solver conservation', 'allocates/frees reduction targets (Bucket C)', 'updates allocate/link nothing (Bucket A)', 'Preset defaults are unchanged']) expect(generated).toContain(text);
+			for (const text of ['| `velocity`', '| `relaxRate`', 'effective only with clearVelocity true', 'mask-weighted fluid-section mean', 'solids remain untouched', 'default 10', 'invalid modes/rates throw RangeError', 'outlet-pass flux, not whole-solver conservation', 'allocates or frees reduction targets', 'rate, extent and edge changes are hot updates', 'Preset defaults are unchanged']) expect(generated).toContain(text);
 		}
 	});
 
 	it('documents passive tracer units, budgets, buckets and fallback', () => {
-		for (const generated of [out, buildLlmsFullTxt()]) for (const text of ['| `tracers`', 'visualization only, not concentration', '0.75 dye texels', 'finite in 0.25–4/3', '2048 particles per simulation second', '262144 particles', 'Fractional emission survives rate changes', 'zero hot allocations or program links', 'RGBA16F additive blending', 'one-time warning', 'velocity and grid dye remain unchanged']) expect(generated).toContain(text);
+		for (const generated of [out, buildLlmsFullTxt()]) for (const text of ['| `tracers`', 'visualization only, not concentration', '0.75 dye texels', 'finite in 0.25–4/3', '2048 particles per simulation second', '262144 particles', 'Fractional emission survives rate changes', 'hot updates with no allocation or program link', 'RGBA16F additive blending', 'one-time warning', 'velocity and grid dye remain unchanged']) expect(generated).toContain(text);
 	});
 
 	it('documents disturbance units, defaults, calibration and hot ownership', () => {
 		for (const generated of [out, buildLlmsFullTxt()]) {
-			for (const text of ["kind: 'disturbance'", 'correlationTime: number', 'canvas-height units', '0–65535 defaults to 704', 'simulation time, never wall time', 'rig noise, not turbulence synthesis', 'inlet velocity RMS/U', 'baseline variance in quadrature', 'no GL allocation or program link on hot updates', 'zero acceleration skips the pass']) expect(generated).toContain(text);
+			for (const text of ["kind: 'disturbance'", 'correlationTime: number', 'canvas-height units', '0–65535 defaults to 704', 'simulation time, never wall time', 'rig noise, not turbulence synthesis', 'inlet velocity RMS/U', 'baseline variance in quadrature', 'Changing acceleration, correlationTime or scale is a hot update', 'zero acceleration skips the pass']) expect(generated).toContain(text);
 		}
 	});
 

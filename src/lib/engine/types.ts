@@ -201,8 +201,9 @@ export interface FlowVisualization {
 	 * `backlight` is linear RGB radiance (default white). All values finite, nonnegative.
 	 * Encodes linear transmission to sRGB once; ignores bloom, sunrays, shading,
 	 * specular and tone mapping. Mutually exclusive with emission; reveal/distortion
-	 * take precedence. Presence is Bucket B plus a concentration-precision transition;
-	 * coefficient values are hot uniforms. MacCormack also corrects concentration RGB.
+	 * take precedence. Turning it on or off recompiles the display shader and
+	 * reallocates concentration targets; coefficient values are hot-updatable.
+	 * MacCormack also corrects concentration RGB.
 	 */
 	absorption?: { absorbance: [RGB, RGB, RGB]; backlight?: RGB };
 	colorBy?: FlowVisualizationField;
@@ -1528,7 +1529,7 @@ export interface FluidTextProps
 }
 
 /* ---------------------------------------------------------------------------
- * InkPaper (ADR-0090): pigment on paper.
+ * InkPaper: pigment on paper.
  * ------------------------------------------------------------------------- */
 
 /** Brush for {@link InkPaperProps.brush}. Omitted fields keep their current value. */
@@ -1566,7 +1567,7 @@ export interface InkPaperProps extends Omit<import('svelte/elements').HTMLAttrib
 }
 
 /* ------------------------------------------------------------------------ */
-/*              Liquid controls (height-field surface, ADR-0091)            */
+/*              Liquid controls (height-field surface)          */
 /* ------------------------------------------------------------------------ */
 
 /** `'auto'` follows the page colour behind the control. */
@@ -1611,7 +1612,7 @@ export interface LiquidSegmentedProps
 }
 
 /* ------------------------------------------------------------------------ */
-/*           Liquid drop zone and caustics (height-field surface, ADR-0094)  */
+/*           Liquid drop zone and caustics (height-field surface)*/
 /* ------------------------------------------------------------------------ */
 
 /**
@@ -1721,7 +1722,7 @@ export type AnnularFluidProps = PresetBaseProps;
 export type KarmanProps = InteractivePresetProps;
 
 /* ------------------------------------------------------------------------ */
-/*                 Enamel text (compliant enamel, ADR-0097)                  */
+/*                 Enamel text (compliant enamel)                */
 /* ------------------------------------------------------------------------ */
 
 /**
