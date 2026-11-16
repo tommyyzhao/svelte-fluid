@@ -6,7 +6,7 @@ import { mulberry32 } from '../rng.js';
 import type { Rng } from '../rng.js';
 import { mixtureLut } from './palette.js';
 import * as shaders from './liquid-shaders.js';
-import type { Counts, LiquidOptions, LiquidScene, LiquidSim, LiquidTick, Rect, RenderOptions, SensorFrame, Species, Wind } from './types.js';
+import type { CellRect, LiquidOptions, LiquidRenderOptions, LiquidScene, LiquidSim, LiquidSpecies, LiquidTick, LiquidWind, SensorFrame, SpeciesCounts } from './types.js';
 
 const CAPACITY = 65_536;
 const SUBSTEPS = 2;
@@ -14,7 +14,7 @@ const PRESSURE_ITERATIONS = 24;
 const OMEGA = 1.8;
 const DENSITY_CORRECTION = 8;
 const FLIP_RATIO = 0.7;
-const UNAVAILABLE = 'This garden needs WebGL2 floating-point rendering. Enable hardware acceleration or try another browser.';
+const UNAVAILABLE = 'Liquid needs WebGL2 floating-point rendering. Enable hardware acceleration or try another browser.';
 type MutableCounts = [number, number, number];
 type Pair = { a: FBO; b: FBO; fbo: WebGLFramebuffer };
 type Snapshot = {
@@ -51,18 +51,18 @@ function integer(value: number, name: string, min: number, max: number): void {
 function finite(value: number, name: string, min: number, max: number): void {
 	if (!Number.isFinite(value) || value < min || value > max) throw new RangeError(`Liquid ${name} must be finite, from ${min} to ${max}`);
 }
-function rectangle(rect: Rect, width: number, height: number, name: string): void {
+function rectangle(rect: CellRect, width: number, height: number, name: string): void {
 	if (!rect) throw new TypeError(`Liquid ${name} needs a rectangle`);
 	integer(rect.x, `${name}.x`, 0, width - 1);
 	integer(rect.y, `${name}.y`, 0, height - 1);
 	integer(rect.w, `${name}.w`, 1, width - rect.x);
 	integer(rect.h, `${name}.h`, 1, height - rect.y);
 }
-function species(value: Species): void {
+function species(value: LiquidSpecies): void {
 	integer(value, 'species', 0, 2);
 }
 
-/** Internal, instance-owned WebGL2 MAC-grid PIC/FLIP solver. Never root-exported. */
+/** Instance-owned WebGL2 MAC-grid PIC/FLIP solver. Exported from `svelte-fluid/experimental` only (unstable, ADR 0116). */
 export class LiquidEngine implements LiquidSim {
 	readonly canvas: HTMLCanvasElement;
 	private readonly gl: WebGL2RenderingContext;
@@ -77,7 +77,7 @@ export class LiquidEngine implements LiquidSim {
 	private readbacks: Readback[] = [];
 	private density: [FBO, FBO] | null = null;
 	private wind: FBO | null = null;
-	private lastWind: Wind | null = null;
+	private lastWind: LiquidWind | null = null;
 	private windData = new Float32Array(0);
 	private hasWind = false;
 	private rng: Rng = mulberry32(1);
@@ -116,7 +116,7 @@ export class LiquidEngine implements LiquidSim {
 		this.canvas.addEventListener('webglcontextrestored', this.contextRestored);
 	}
 
-	get emitted(): Counts {
+	get emitted(): SpeciesCounts {
 		return [...this.emittedCounts];
 	}
 	get capacityLeft(): number {
@@ -242,7 +242,7 @@ export class LiquidEngine implements LiquidSim {
 			item.snapshot = null;
 			if (snapshot.epoch !== this.epoch) continue;
 			const floats = new Float32Array(bytes.buffer, 0, 32 * 8 + 17 * 4);
-			const sensors: Record<string, { counts: Counts; flux: { x: number; y: number } }> = Object.create(null);
+			const sensors: Record<string, { counts: SpeciesCounts; flux: { x: number; y: number } }> = Object.create(null);
 			const triple = (at: number): MutableCounts => [Math.round(floats[at]), Math.round(floats[at + 1]), Math.round(floats[at + 2])];
 			scene.sensors.forEach((sensor, i) => {
 				sensors[sensor.id] = {
@@ -250,7 +250,7 @@ export class LiquidEngine implements LiquidSim {
 					flux: { x: floats[128 + i * 4], y: floats[129 + i * 4] }
 				};
 			});
-			const drained: Record<string, Counts> = Object.create(null);
+			const drained: Record<string, SpeciesCounts> = Object.create(null);
 			scene.drains.forEach((drain, i) => {
 				const counts = triple(256 + (i + 1) * 4);
 				drained[drain.id] = counts.map((v, j) => v + snapshot.drained[i][j]) as MutableCounts;
@@ -283,7 +283,7 @@ export class LiquidEngine implements LiquidSim {
 		let alive = 0;
 		for (let i = 0; i < this.nextSlot; i++) {
 			const at = i * 4;
-			if (b[at + 1] === 2) this.drainedCounts[b[at + 2]][b[at] as Species]++;
+			if (b[at + 1] === 2) this.drainedCounts[b[at + 2]][b[at] as LiquidSpecies]++;
 			else if (b[at + 1] === 1) {
 				a.copyWithin(alive * 4, at, at + 4);
 				b.copyWithin(alive * 4, at, at + 4);
@@ -296,7 +296,7 @@ export class LiquidEngine implements LiquidSim {
 		this.uploadSlots(this.particles[this.particleSide].b, b.subarray(0, alive * 4), 0);
 	}
 
-	render(options: RenderOptions): void {
+	render(options: LiquidRenderOptions): void {
 		this.assertLive();
 		finite(options.time, 'render.time', -1e10, 1e10);
 		finite(options.glow ?? 0, 'render.glow', 0, 1);
@@ -371,7 +371,7 @@ export class LiquidEngine implements LiquidSim {
 		if (this.canvas.height !== height) this.canvas.height = height;
 	}
 
-	/** Test-only synchronous particle snapshot, tagged to the most recent step. */
+	/** Synchronous particle readback for tests and debugging. Stalls the GPU, so don't call it per frame. Tagged to the most recent step. */
 	_debugParticles(): {
 		a: Float32Array;
 		b: Float32Array;
@@ -415,7 +415,7 @@ export class LiquidEngine implements LiquidSim {
 			!gl.getExtension('EXT_float_blend') ||
 			!supportRenderTextureFormat(gl, gl.RGBA32F, gl.RGBA, gl.FLOAT)
 		)
-			throw new WebGLUnavailableError('no-webgl', UNAVAILABLE);
+			throw new WebGLUnavailableError('no-float-textures', UNAVAILABLE);
 		gl.clearColor(0, 0, 0, 0);
 		gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
 		gl.pixelStorei(gl.PACK_ALIGNMENT, 1);
@@ -590,7 +590,7 @@ export class LiquidEngine implements LiquidSim {
 		gl.flush();
 	}
 
-	private spawn(kind: Species, count: number, rect: Rect, vx: number, vy: number, airOnly: boolean): void {
+	private spawn(kind: LiquidSpecies, count: number, rect: CellRect, vx: number, vy: number, airOnly: boolean): void {
 		if (!count) return;
 		const scene = this.scene!;
 		const cells: number[] = [];
@@ -644,7 +644,7 @@ export class LiquidEngine implements LiquidSim {
 		gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, scene.width, scene.height, gl.RED, gl.UNSIGNED_BYTE, scene.terrain);
 	}
 
-	private updateWind(wind: Wind | undefined): void {
+	private updateWind(wind: LiquidWind | undefined): void {
 		if (wind === undefined) {
 			this.hasWind = false;
 			return;
@@ -747,7 +747,7 @@ export class LiquidEngine implements LiquidSim {
 		const target = createFBO(this.gl, w, h, internal, format, type, filter);
 		this.targets.add(target);
 		if (this.gl.checkFramebufferStatus(this.gl.FRAMEBUFFER) !== this.gl.FRAMEBUFFER_COMPLETE)
-			throw new WebGLUnavailableError('no-webgl', UNAVAILABLE);
+			throw new WebGLUnavailableError('no-float-textures', UNAVAILABLE);
 		return target;
 	}
 	private pair(w: number, h: number): Pair {
@@ -761,7 +761,7 @@ export class LiquidEngine implements LiquidSim {
 		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, a.texture, 0);
 		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, b.texture, 0);
 		gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
-		if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new WebGLUnavailableError('no-webgl', UNAVAILABLE);
+		if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new WebGLUnavailableError('no-float-textures', UNAVAILABLE);
 		this.clear(fbo, w, h, true);
 		return { a, b, fbo };
 	}
@@ -801,7 +801,7 @@ export class LiquidEngine implements LiquidSim {
 		this.gl.blendEquation(this.gl.FUNC_ADD);
 		this.gl.blendFunc(this.gl.ONE, this.gl.ONE);
 	}
-	private rects(items: readonly { rect: Rect }[]): Float32Array {
+	private rects(items: readonly { rect: CellRect }[]): Float32Array {
 		return new Float32Array(items.flatMap(({ rect: r }) => [r.x, r.y, r.w, r.h]));
 	}
 	private readbackBytes(): number {

@@ -2,7 +2,7 @@
   Registry-driven reference block for a single preset on /docs/presets.
 
   Generates the pinned-prop table from the registry (so it can never drift from
-  what `<Preset />` renders — ADR-0040). "Show code" reveals BOTH the zero-config
+  what `<Preset />` renders. "Show code" reveals BOTH the zero-config
   wrapper usage AND the full recreate-from-scratch `<Fluid>` component (imports +
   sizing wrapper + any assets). Plus an Open-in-Playground link. The page keeps
   its hand-authored prose; this owns the table + actions.

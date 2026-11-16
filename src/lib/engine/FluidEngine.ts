@@ -344,6 +344,22 @@ export const DEFAULTS: ResolvedConfig = {
 	OBSTRUCTION_COLOR: null,
 	FLOW: null
 };
+/**
+ * @internal Exported for tests. Resolve a runtime patch against the committed
+ * config. Construct-only fields are carried over unchanged: the opening scene
+ * is replayed from the committed config on context restore, so a later patch
+ * must not change what that replay paints.
+ */
+export function resolvePatch(patch: FluidConfig, current: ResolvedConfig): ResolvedConfig {
+	const next = resolveConfig(patch, current);
+	next.ADVECTION_SCHEME = current.ADVECTION_SCHEME;
+	next.SEED = current.SEED;
+	next.INITIAL_SPLAT_MIN = current.INITIAL_SPLAT_MIN;
+	next.INITIAL_SPLAT_MAX = current.INITIAL_SPLAT_MAX;
+	next.REQUIRE_HARDWARE_ACCELERATION = current.REQUIRE_HARDWARE_ACCELERATION;
+	return next;
+}
+
 /** @internal Exported for tests — not part of the public API. */
 export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConfig): ResolvedConfig {
 	const out: ResolvedConfig = { ...base };
@@ -1682,23 +1698,37 @@ export class FluidEngine implements FluidHandle {
 	}
 
 	/**
-	 * Hot-update a subset of config fields. Uses a 4-bucket strategy:
-	 *   A — scalar/boolean assignment, picked up next frame.
-	 *       Includes `pointerInput`, which also installs/removes the
-	 *       canvas + window event listeners on transition.
-	 *   B — display shader keyword recompile (shading, bloom, sunrays, toneMapping)
-	 *   C — FBO rebuild (sim/dye/bloom/sunrays resolutions)
-	 *   D — construct-only — `seed`, `initialSplatCount*`, `presetSplats`,
-	 *       `advectionScheme`.
-	 *       These are silently ignored: `seed` and `initialSplatCount*`
-	 *       only affect the first frame, and `presetSplats` is absent
-	 *       from `ResolvedConfig` entirely; `advectionScheme` picks a shader
-	 *       path at construction/context initialization.
+	 * Update config fields on a running engine. Omitted (`undefined`) fields keep
+	 * their current value. Fields fall into four groups by cost:
+	 *
+	 * - **Hot-updatable** (most scalars and booleans, colours, splat and glass
+	 *   tuning): picked up on the next frame. `pointerInput` and `pointerTarget`
+	 *   also reinstall the pointer listeners.
+	 * - **Recompiles the display shader** when these change: `shading`, `bloom`,
+	 *   `sunrays`, `toneMapping`, `specular` or `refraction` crossing 0,
+	 *   `minContrast` crossing 1, `contrastMode`, `contrastColor` appearing or
+	 *   clearing, `transparent`, `reveal`, `distortion`, `flow`, and
+	 *   `obstructionColor` appearing or clearing. Other values of these fields
+	 *   are hot uniforms.
+	 * - **Rebuilds render targets or textures**: `simResolution`, `dyeResolution`,
+	 *   `bloomResolution`, `bloomIterations`, `sunraysResolution` (only the owning
+	 *   group is rebuilt; contents are preserved). Also `containerShape`,
+	 *   `obstructions`, `openBoundary` (solid mask), `glass` (scene target),
+	 *   `sticky` and `stickyMask` (sticky mask), `flow` (prescribed grids, scalar
+	 *   storage), and `distortionImageUrl` (starts a new async image load).
+	 * - **Construct-only**, ignored here: `seed`, `initialSplatCount`,
+	 *   `initialSplatCountMin`, `initialSplatCountMax`, `presetSplats`,
+	 *   `requireHardwareAcceleration` and `advectionScheme`. They shape the opening
+	 *   scene or the context, so changing them later would also change what a
+	 *   context restore replays.
+	 *
+	 * If the display shader fails to compile, the call is a no-op: the previous
+	 * config and resources stay live. No-op after dispose, context loss or a
+	 * failed frame.
 	 */
 	setConfig(patch: FluidConfig): void {
 		if (this.disposed || this.contextLost || this.failed) return;
-		const next = resolveConfig(patch, this.config);
-		next.ADVECTION_SCHEME = this.config.ADVECTION_SCHEME;
+		const next = resolvePatch(patch, this.config);
 		const a = this.config;
 		const b = next;
 

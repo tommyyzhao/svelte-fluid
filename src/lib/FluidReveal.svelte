@@ -28,12 +28,18 @@
 	import { prefersReducedMotion, watchReducedMotion } from './engine/reduced-motion.js';
 
 	let {
+		// Deprecated aliases (sensitivity/curve/autoReveal*/coverColor/accentColor/
+		// fringeColor/fadeSpeed): the FluidConfig-named prop wins when both are given.
 		sensitivity = 0.1,
+		revealSensitivity,
 		curve = 0.5,
+		revealCurve,
 		fadeBack = true,
 		fadeSpeed,
 		autoReveal = false,
 		autoRevealSpeed = 1.0,
+		autoAnimate,
+		autoAnimateSpeed,
 		lazy = false,
 		autoPause = true,
 		width,
@@ -60,13 +66,18 @@
 		pointerInput = false,
 		backColor = { r: 0, g: 0, b: 0 },
 		coverColor,
+		revealCoverColor,
 		accentColor,
+		revealAccentColor,
 		fringeColor,
+		revealFringeColor,
 		...fluidProps
 	}: FluidRevealProps = $props();
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
 	let canvasWrapperEl: HTMLDivElement | undefined = $state(undefined);
+	const resolvedAutoAnimate = $derived(autoAnimate ?? autoReveal);
+	const resolvedAutoAnimateSpeed = $derived(autoAnimateSpeed ?? autoRevealSpeed);
 	// Reduced motion: drop the cover canvas so the content is shown still, in full.
 	let reduced = $state(prefersReducedMotion());
 
@@ -127,7 +138,7 @@
 				autoRevealRaf = requestAnimationFrame(tick);
 				return;
 			}
-			const t = (now - startTime) * 0.001 * autoRevealSpeed;
+			const t = (now - startTime) * 0.001 * resolvedAutoAnimateSpeed;
 			const x = 0.5 + 0.25 * Math.cos(0.7 * t) * Math.sin(0.9 * t);
 			const y = 0.5 + 0.15 * Math.sin(1.1 * t);
 			const dx = 800 * (x - autoRevealPrevX);
@@ -165,7 +176,7 @@
 	// Live reduced-motion toggle: the cover is hidden and auto-reveal stops while
 	// reduced (ADR 0085); both come back when the preference clears.
 	$effect(() => {
-		if (!autoReveal || reduced) return;
+		if (!resolvedAutoAnimate || reduced) return;
 		startAutoReveal();
 		return () => {
 			if (autoRevealRaf != null) cancelAnimationFrame(autoRevealRaf);
@@ -224,11 +235,11 @@
 		<Fluid
 			bind:this={inner}
 			reveal={true}
-			revealSensitivity={sensitivity}
-			revealCurve={curve}
-			revealCoverColor={coverColor}
-			revealAccentColor={accentColor}
-			revealFringeColor={fringeColor}
+			revealSensitivity={revealSensitivity ?? sensitivity}
+			revealCurve={revealCurve ?? curve}
+			revealCoverColor={revealCoverColor ?? coverColor}
+			revealAccentColor={revealAccentColor ?? accentColor}
+			revealFringeColor={revealFringeColor ?? fringeColor}
 			densityDissipation={dissipation}
 			{splatRadius}
 			{splatOnHover}

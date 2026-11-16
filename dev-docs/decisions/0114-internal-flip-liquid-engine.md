@@ -6,7 +6,7 @@
 
 ## Context
 
-The `/puzzles` game rebuild ("Verdigris") needs liquid with volume and weight:
+An external game consumer (github.com/tommyyzhao/verdigris) needs liquid with volume and weight:
 it pours, pools, fills urns, presses plates and is finite. `FluidEngine` is a
 single-phase smoke solver: every cell is fluid, dye is passive and weightless,
 and its divergence/pressure stencils assume a filled domain
@@ -37,7 +37,7 @@ grid–particle PIC/FLIP on a staggered (MAC) grid:
   blurs, thresholds a surface and mixes colour with the existing
   Kubelka–Munk helpers (`pigment/spectral.ts`).
 - Requires WebGL2 with `EXT_color_buffer_float` and `EXT_float_blend`;
-  otherwise construction throws `WebGLUnavailableError` and the game shows a
+  otherwise construction throws `WebGLUnavailableError` and the caller shows a
   refusal. It owns its context (one heavy engine per page) and frees every
   resource on dispose without `loseContext()`.
 
@@ -75,7 +75,7 @@ determinism claim.
 
 ## Consequences
 
-- The game's objective can be the liquid itself, with exact accounting for
+- A caller's objective can be the liquid itself, with exact accounting for
   finite supply, recipes and contamination.
 - New GPU code path to maintain; it is covered by its own browser tests
   (conservation, leakage, communicating vessels, sensor exactness).

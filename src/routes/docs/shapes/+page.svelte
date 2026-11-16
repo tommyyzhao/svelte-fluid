@@ -471,7 +471,7 @@
 	obstacle is about <code>2 / simResolution</code> in 0-1 canvas units (~0.016 at the default
 	<code>simResolution: 128</code>). Walls thinner than that may leak — raise
 	<code>simResolution</code> for finer mazes. The wall stops flow crossing it but applies no drag
-	along it, so the solver produces flow-around and speed-up through gaps. See ADR-0034.
+	along it, so the solver produces flow-around and speed-up through gaps.
 </p>
 
 <p>

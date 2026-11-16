@@ -19,7 +19,9 @@ svelte-fluid is a client-side WebGL fluid simulation library. It:
 
 - Runs entirely in the browser (no server-side component)
 - Uses the WebGL API to render to a `<canvas>` element
-- Does not make network requests, handle user data, or manage authentication
+- Makes no network requests of its own. The only network fetch is the optional
+  `distortionImageUrl` image, loaded with `crossOrigin="anonymous"`. It handles no
+  user data and manages no authentication
 - Does not ship any runtime dependencies beyond Svelte 5
 
 The attack surface is limited to:

@@ -105,7 +105,8 @@ svelte-fluid/
    `...rest` (spread onto the `<canvas>`) and never reaches the engine. The
    `fluid-props-forwarding.test.ts` guard fails if any `FluidConfig` field is
    missing from `buildConfig()`.
-7. Add a row to the prop table in `README.md`.
+7. Add a `/docs/configuration` entry (`src/routes/docs/configuration/+page.svelte`).
+   Add a `README.md` row only for headline props; the README table is a curated subset.
 8. Run `bun run check` and `bun run dev`.
 
 ### Modify a shader

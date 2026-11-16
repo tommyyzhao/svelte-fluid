@@ -4,9 +4,9 @@ import { LiquidEngine } from './LiquidEngine.js';
 import { compileShader, makeProgram } from '../gl-utils.js';
 import * as liquidShaders from './liquid-shaders.js';
 import { mixtureLut } from './palette.js';
-import { STONE } from './types.js';
+import { Cell } from './types.js';
 import { softwareGL } from '../__benches__/renderer.js';
-import type { LiquidScene, Rect, SensorFrame, TerrainEdit, Wind } from './types.js';
+import type { CellRect, LiquidScene, LiquidWind, SensorFrame, TerrainEdit } from './types.js';
 
 const PALETTE = ['#6ec6ff', '#f2b134', '#e8608a'] as const;
 const output = commands as unknown as {
@@ -15,7 +15,7 @@ const output = commands as unknown as {
 	captureCanvasScreenshot(rect: { x: number; y: number; width: number; height: number }): Promise<string>;
 };
 const yieldGpu = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
-const rect = (x: number, y: number, w: number, h: number): Rect => ({
+const rect = (x: number, y: number, w: number, h: number): CellRect => ({
 	x,
 	y,
 	w,
@@ -31,7 +31,7 @@ function scene(width = 64, height = 48): LiquidScene {
 		drains: []
 	};
 }
-function paint(s: LiquidScene, r: Rect, kind = STONE): void {
+function paint(s: LiquidScene, r: CellRect, kind = Cell.Solid): void {
 	for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) s.terrain[y * s.width + x] = kind;
 }
 function setup(
@@ -82,7 +82,7 @@ async function finish(engine: LiquidEngine, gl: WebGL2RenderingContext): Promise
 function occupied(f: SensorFrame): number {
 	return f.occupancy.reduce((sum, v) => sum + +(v > 0), 0);
 }
-function surface(f: SensorFrame, width: number, r: Rect): number {
+function surface(f: SensorFrame, width: number, r: CellRect): number {
 	const columns: number[] = [];
 	for (let x = r.x; x < r.x + r.w; x++) {
 		for (let y = r.y; y < r.y + r.h; y++)
@@ -96,14 +96,14 @@ function surface(f: SensorFrame, width: number, r: Rect): number {
 }
 
 // Hardware-only (ADR 0114): real-GPU timings, captures and 3600-tick suites; software GL is too slow.
-describe.skipIf(softwareGL)('Verdigris real-GPU liquid', () => {
+describe.skipIf(softwareGL)('Liquid real-GPU', () => {
 	it('hardware smoke, exact sensors, compaction and epoch isolation', async () => {
 		const { engine, gl } = setup();
 		try {
 			const debug = gl.getExtension('WEBGL_debug_renderer_info');
 			expect(debug).not.toBeNull();
 			const renderer = gl.getParameter(debug!.UNMASKED_RENDERER_WEBGL) as string;
-			console.info('Verdigris GPU:', renderer);
+			console.info('Liquid GPU:', renderer);
 			expect(renderer.toLowerCase()).not.toMatch(/swiftshader|llvmpipe|software/);
 			const s = scene();
 			s.fills = [
@@ -231,7 +231,7 @@ describe.skipIf(softwareGL)('Verdigris real-GPU liquid', () => {
 				emitted: final!.emitted
 			};
 			console.info('Conservation:', report);
-			await output.writeBenchJson('/tmp/verdigris-engine/conservation.json', JSON.stringify(report, null, 2));
+			await output.writeBenchJson('/tmp/svelte-fluid-liquid/engine/conservation.json', JSON.stringify(report, null, 2));
 			expect(gl.getError()).toBe(gl.NO_ERROR);
 		} finally {
 			engine.dispose();
@@ -281,7 +281,7 @@ describe.skipIf(softwareGL)('Verdigris real-GPU liquid', () => {
 			for (const f of await finish(engine, gl)) for (const reading of Object.values(f.sensors)) expect(reading.counts).toEqual([0, 0, 0]);
 			expect(frames).toBeGreaterThan(100);
 			console.info('Leakage:', { frames, escaped: 0 });
-			await output.writeBenchJson('/tmp/verdigris-engine/leakage.json', JSON.stringify({ ticks: 3600, frames, escaped: 0 }, null, 2));
+			await output.writeBenchJson('/tmp/svelte-fluid-liquid/engine/leakage.json', JSON.stringify({ ticks: 3600, frames, escaped: 0 }, null, 2));
 			expect(gl.getError()).toBe(gl.NO_ERROR);
 		} finally {
 			engine.dispose();
@@ -347,7 +347,7 @@ describe.skipIf(softwareGL)('Verdigris real-GPU liquid', () => {
 				drift
 			};
 			console.info('Vessels:', report);
-			await output.writeBenchJson('/tmp/verdigris-engine/vessels.json', JSON.stringify(report, null, 2));
+			await output.writeBenchJson('/tmp/svelte-fluid-liquid/engine/vessels.json', JSON.stringify(report, null, 2));
 			expect(Math.abs(a - b)).toBeLessThanOrEqual(2);
 			expect(drift).toBeLessThanOrEqual(0.1);
 			expect(gl.getError()).toBe(gl.NO_ERROR);
@@ -371,7 +371,7 @@ describe.skipIf(softwareGL)('Verdigris real-GPU liquid', () => {
 				}
 			}
 			const edits: TerrainEdit[] = [];
-			for (let y = 34; y < 40; y++) for (let x = 20; x < 26; x++) edits.push({ x, y, kind: STONE });
+			for (let y = 34; y < 40; y++) for (let x = 20; x < 26; x++) edits.push({ x, y, kind: Cell.Solid });
 			for (let tick = 180; tick < 190; tick++) engine.step({ tick, edits: tick === 180 ? edits : [], emit: [] });
 			const particles = engine._debugParticles();
 			let alive = 0;
@@ -414,7 +414,7 @@ describe.skipIf(softwareGL)('Verdigris real-GPU liquid', () => {
 		}
 	}, 120_000);
 
-	it('rebuilds after real context loss; the game can load a new epoch', async () => {
+	it('rebuilds after real context loss; a caller can load a new epoch', async () => {
 		const canvas = document.createElement('canvas');
 		let lost = 0;
 		let restored = 0;
@@ -556,8 +556,8 @@ describe.skipIf(softwareGL)('Verdigris real-GPU liquid', () => {
 				substeps: 2,
 				pressureIterations: 24
 			};
-			console.info('Verdigris perf:', report);
-			await output.writeBenchJson('/tmp/verdigris-engine/perf.json', JSON.stringify(report, null, 2));
+			console.info('Liquid perf:', report);
+			await output.writeBenchJson('/tmp/svelte-fluid-liquid/engine/perf.json', JSON.stringify(report, null, 2));
 			// Wall-clock budgets only mean something on a quiet machine; the report is always written.
 			if (import.meta.env.SVELTE_FLUID_GPU_BENCH) {
 				expect(authoredStepMs).toBeLessThanOrEqual(8);
@@ -578,8 +578,8 @@ describe.skipIf(softwareGL)('Verdigris real-GPU liquid', () => {
 				ctx.drawImage(canvas, 0, 0);
 				return image.toDataURL('image/png').split(',')[1];
 			};
-			await output.writeBenchBase64('/tmp/verdigris-engine/dam-break.png', screenshot());
-			await output.writeBenchBase64('/tmp/verdigris-engine/dam-break-dark.png', screenshot('#0f2a2e'));
+			await output.writeBenchBase64('/tmp/svelte-fluid-liquid/engine/dam-break.png', screenshot());
+			await output.writeBenchBase64('/tmp/svelte-fluid-liquid/engine/dam-break-dark.png', screenshot('#0f2a2e'));
 			const mixed = scene(192, 120);
 			paint(mixed, rect(0, 118, 192, 2));
 			mixed.fills = [
@@ -600,8 +600,8 @@ describe.skipIf(softwareGL)('Verdigris real-GPU liquid', () => {
 				}
 			}
 			engine.render({ time: 3, glow: 0.15 });
-			await output.writeBenchBase64('/tmp/verdigris-engine/mixed-pool.png', screenshot());
-			await output.writeBenchBase64('/tmp/verdigris-engine/mixed-pool-dark.png', screenshot('#0f2a2e'));
+			await output.writeBenchBase64('/tmp/svelte-fluid-liquid/engine/mixed-pool.png', screenshot());
+			await output.writeBenchBase64('/tmp/svelte-fluid-liquid/engine/mixed-pool-dark.png', screenshot('#0f2a2e'));
 			expect(gl.getError()).toBe(gl.NO_ERROR);
 		} finally {
 			canvas.remove();
@@ -612,7 +612,7 @@ describe.skipIf(softwareGL)('Verdigris real-GPU liquid', () => {
 
 // Hardware-only (ADR 0114): real-GPU timings, captures and 3600-tick suites; software GL is too slow.
 describe.skipIf(softwareGL)('one-way air coupling', () => {
-	const wind = (x = 60, y = 0): Wind => ({
+	const wind = (x = 60, y = 0): LiquidWind => ({
 		width: 1,
 		height: 1,
 		data: new Float32Array([x, y]),
@@ -684,7 +684,7 @@ describe.skipIf(softwareGL)('one-way air coupling', () => {
 							ctx.arc(particles.a[i * 4] / s.width * image.width, particles.a[i * 4 + 1] / s.height * image.height, 2, 0, 2 * Math.PI);
 							ctx.fill();
 						}
-						await output.writeBenchBase64('/tmp/verdigris-v2/wind-stream.png', image.toDataURL('image/png').split(',')[1]);
+						await output.writeBenchBase64('/tmp/svelte-fluid-liquid/v2/wind-stream.png', image.toDataURL('image/png').split(',')[1]);
 					}
 				}
 				for (const frame of await finish(engine, gl)) {
@@ -863,7 +863,7 @@ describe.skipIf(softwareGL)('falling-column air coupling', () => {
 						if (!windy) expect(widths[1]).toBeLessThanOrEqual(5);
 						expect(gaps).toBe(0);
 						ctx.fillStyle = '#f8f1df'; ctx.fillRect(0, 0, image.width, image.height); ctx.drawImage(canvas, 0, 0);
-						await output.writeBenchBase64(windy ? '/tmp/verdigris-v2/wind-dense-pour.png' : '/tmp/verdigris-v2/no-wind-dense-pour.png', image.toDataURL('image/png').split(',')[1]);
+						await output.writeBenchBase64(windy ? '/tmp/svelte-fluid-liquid/v2/wind-dense-pour.png' : '/tmp/svelte-fluid-liquid/v2/no-wind-dense-pour.png', image.toDataURL('image/png').split(',')[1]);
 					}
 				}
 				for (const f of await finish(engine, gl)) conserved(f);
@@ -944,7 +944,7 @@ it('preserves resting pool and dam-break body rendering; captures before/after',
 				const ctx = image.getContext('2d')!; ctx.drawImage(canvas, 0, 0);
 				pixels.push(ctx.getImageData(0, 0, image.width, image.height).data);
 				ctx.globalCompositeOperation = 'destination-over'; ctx.fillStyle = '#f8f1df'; ctx.fillRect(0, 0, image.width, image.height);
-				await output.writeBenchBase64(`/tmp/verdigris-v2/${kind}-${version}.png`, image.toDataURL('image/png').split(',')[1]);
+				await output.writeBenchBase64(`/tmp/svelte-fluid-liquid/v2/${kind}-${version}.png`, image.toDataURL('image/png').split(',')[1]);
 			}
 			internals.programs.set('density', currentDensity); internals.programs.set('composite', currentComposite);
 			let coreDifference = 0, allDifference = 0;
@@ -1029,7 +1029,7 @@ describe.skipIf(softwareGL)('render-only connected liquid mixing', () => {
 					{ id: 'lower', rect: rect(20, 36, 24, 8) }
 				];
 				if (kind === 'two-springs-urn') {
-					// Current game urn (20,17,6,5) LU, four solver cells per LU.
+					// Reference urn (20,17,6,5) LU, four solver cells per LU.
 					s.width = 192;
 					s.height = 120;
 					s.terrain = new Uint8Array(192 * 120);
@@ -1100,7 +1100,7 @@ describe.skipIf(softwareGL)('render-only connected liquid mixing', () => {
 					ctx.globalCompositeOperation = 'destination-over';
 					ctx.fillStyle = '#0f2a2e';
 					ctx.fillRect(0, 0, image.width, image.height);
-					await output.writeBenchBase64(`/tmp/verdigris-mix/${kind}-${version}.png`, image.toDataURL('image/png').split(',')[1]);
+					await output.writeBenchBase64(`/tmp/svelte-fluid-liquid/mix/${kind}-${version}.png`, image.toDataURL('image/png').split(',')[1]);
 				}
 				internals.programs.set('composite', current);
 				if (kind === 'stream-into-pool') {
@@ -1113,7 +1113,7 @@ describe.skipIf(softwareGL)('render-only connected liquid mixing', () => {
 					ctx.fillStyle = '#0f2a2e';
 					ctx.fillRect(0, 0, 282, 211);
 					ctx.drawImage(canvas, 0, 0);
-					await output.writeBenchBase64('/tmp/verdigris-mix/stream-game-scale-after.png', scaleImage.toDataURL('image/png').split(',')[1]);
+					await output.writeBenchBase64('/tmp/svelte-fluid-liquid/mix/stream-reference-scale-after.png', scaleImage.toDataURL('image/png').split(',')[1]);
 					engine.resize(640, 480);
 				}
 				const after = images[1];

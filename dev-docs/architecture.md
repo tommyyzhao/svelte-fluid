@@ -33,9 +33,9 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 └────────────────────────────┼────────────────────────────────────┘
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ src/lib/engine/FluidEngine.ts             (TS class, ~1400 LOC) │
+│ src/lib/engine/FluidEngine.ts             (TS class, ~5600 LOC) │
 │                                                                 │
-│  Owned state (per instance, never shared):                      │
+│  Per-instance state (gl/ext shared on shared tier):             │
 │   • gl, ext (WebGL2 or WebGL1)                                  │
 │   • ResolvedConfig                                              │
 │   • Rng (mulberry32, seeded)                                    │

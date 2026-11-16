@@ -54,13 +54,23 @@ describe('preset pointer interaction defaults', () => {
 	}
 });
 
+describe('preset base props', () => {
+	it('share one base type that carries every commonly forwarded prop', () => {
+		const base = typesSrc.slice(typesSrc.indexOf('export type PresetBaseProps')).split(';')[0];
+		for (const prop of ['width', 'height', 'maxPixelRatio', 'maxFps', 'class', 'style', 'seed', 'lazy', 'splatOnHover', 'aria-label', 'backColor'])
+			expect(base).toContain(`'${prop}'`);
+		const interactive = typesSrc.slice(typesSrc.indexOf('export type InteractivePresetProps')).split(';')[0];
+		expect(interactive).toContain("'pointerInput'");
+	});
+});
+
 describe('preset pixel-ratio forwarding', () => {
 	for (const [name, source] of Object.entries(presets)) {
 		if (name === 'Airfoil' || name === 'Maze') continue;
 		it(`${name} forwards maxPixelRatio`, () => {
 			// The prop alias lives in engine/types.ts; the preset re-exports it.
 			const alias = typesSrc.slice(typesSrc.indexOf(`export type ${name}Props`)).split(';')[0];
-			expect(alias).toContain("'maxPixelRatio'");
+			expect(alias).toMatch(/= (PresetBaseProps|InteractivePresetProps)/);
 			expect(source).toContain('{maxPixelRatio}');
 		});
 	}

@@ -1,18 +1,19 @@
 <!--
 	Native radio group (<fieldset>, <legend>, <input type="radio">) whose selected
 	option sits on a shallow liquid lens that sloshes across on change
-	(ADR-0092). Arrow keys, Tab and form submission are the browser's own.
+	Arrow keys, Tab and form submission are the browser's own.
 	Without WebGL2 it is a plain, fully styled segmented control.
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { notifyHost } from './engine/notify-host.js';
 	import { SURFACE_PAD, attachSurface, rectIn, resolveTone } from './engine/surface/attach.js';
 	import type { SurfaceBinding } from './engine/surface/attach.js';
 	import { LOOKS } from './engine/surface/look.js';
 	import type { SurfaceTone } from './engine/surface/look.js';
 	import type { LiquidSegmentedProps } from './engine/types.js';
 
-	let { options, value = $bindable(), name, legend, tone = 'auto', disabled = false, class: className = '' }: LiquidSegmentedProps = $props();
+	let { options, value = $bindable(), name, legend, tone = 'auto', disabled = false, class: className = '', onchange, ...rest }: LiquidSegmentedProps = $props();
 
 	let track: HTMLDivElement;
 	let canvas: HTMLCanvasElement;
@@ -56,7 +57,7 @@
 	});
 </script>
 
-<fieldset class="liquid-segmented {className}" class:live {disabled}>
+<fieldset {...rest} class="liquid-segmented {className}" class:live {disabled}>
 	<legend>{legend}</legend>
 	<div
 		class="track"
@@ -72,7 +73,7 @@
 		<canvas bind:this={canvas} aria-hidden="true"></canvas>
 		{#each options as option, i (option.value)}
 			<label bind:this={labels[i]}>
-				<input type="radio" {name} value={option.value} bind:group={value} />
+				<input type="radio" {name} value={option.value} bind:group={value} onchange={() => notifyHost(onchange, 'onchange', option.value)} />
 				<span>{option.label}</span>
 			</label>
 		{/each}
