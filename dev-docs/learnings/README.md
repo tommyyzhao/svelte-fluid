@@ -6,7 +6,7 @@ doesn't have to rediscover them.
 
 | File | Topic |
 | --- | --- |
-| [`tooling.md`](./tooling.md) | bun + sv scaffolding, package.json fixes, base64 generation, vitest browser timeouts |
+| [`tooling.md`](./tooling.md) | bun + sv scaffolding, package.json fixes, base64 generation, vitest browser timeouts, absolute `vi.mock` paths, BSD `sed -i` |
 | [`typescript-and-svelte5.md`](./typescript-and-svelte5.md) | TS node16 module resolution, Svelte 5 runes pitfalls |
 | [`webgl-refactoring.md`](./webgl-refactoring.md) | Refactoring a global-state WebGL script into a class |
 | [`verification.md`](./verification.md) | What worked for catching bugs early |

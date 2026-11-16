@@ -100,3 +100,21 @@ written, no ad hoc `--testTimeout` flag — passes 7/7 files green.
 flaky" when it's actually "the tests are honest about how long real
 WebGL simulation takes." Check `testTimeout` before assuming a browser
 test regression is real.
+
+## `vi.mock` with an absolute machine path passes locally and fails on CI
+
+**Symptom:** `wrapper-aliases.test.ts` passed locally (16/16) but failed on CI with `expected [] to have a length of 1 but got +0`. The stubbed `<Fluid>` never recorded a render.
+
+**Cause:** The mock was registered as `vi.mock('/Users/admin/.../src/lib/Fluid.svelte', …)`. On the CI runner that path doesn't exist, so the specifier never matches the module the wrappers import, and the real `Fluid.svelte` runs instead.
+
+**Fix:** Mock by a path relative to the test file: `vi.mock('../../Fluid.svelte', …)` (commit 15f38f0). Re-prove: `git grep -n '/Users/' -- 'src/**/*.ts'` prints nothing.
+
+**Why this matters:** Agent-written tests tend to resolve paths to absolute ones. Local runs can't catch it, so grep for `/Users/` before pushing.
+
+## Agent `sed -i -E` on macOS leaves `<file>-E` backups
+
+**Symptom:** A stray untracked `liquid.browser.test.ts-E` appeared next to the edited test.
+
+**Cause:** BSD `sed -i` takes the next argument as the backup suffix, so `sed -i -E 's/…/'` means "suffix `-E`" and the regex runs as a basic expression.
+
+**Fix:** On macOS, use `sed -i '' -E '…'`. Re-prove: `git status --short | grep -- '-E$'` prints nothing.
