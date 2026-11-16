@@ -26,6 +26,11 @@ Contributing guidelines live in [`CONTRIBUTING.md`](../CONTRIBUTING.md).
   update [`architecture.md`](./architecture.md) if module boundaries shift.
 - **Debugging a weird issue?** Check [`learnings/`](./learnings/) — the same
   trap may already be documented.
+- **Looking for unmerged research?** Unmerged engine branches and work-in-progress
+  snapshots are kept as hidden refs, e.g. `refs/archive/thermal-tracers-closeout` (thermal
+  transport and tracers, ADRs 0114–0127 there) and `refs/archive/rd-webgpu-replacement`.
+  Fetch them with `git fetch origin 'refs/archive/*:refs/remotes/origin-archive/*'`.
+  Removed research harnesses and evals live in commit `aa2cf1e`.
 
 ## Document conventions
 
