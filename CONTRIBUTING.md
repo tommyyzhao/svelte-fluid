@@ -10,15 +10,16 @@ direction before you write code.
 
 ## Prerequisites
 
-- [bun](https://bun.com) 1.3 or newer. That's it. No npm, no node, no python.
+- [bun](https://bun.com) 1.3 or newer. That's it for development. Bun-first: no npm, pnpm or yarn for dev.
 
 ## Hard rules
 
 These are non-negotiable. They exist because previous violations
 caused real bugs (see [`dev-docs/learnings/`](dev-docs/learnings/)).
 
-1. **bun and uv only.** No npm, no pnpm, no yarn, no `node` invocations
-   in scripts, no `python3` / `pip`. Helper one-shots use `bun -e`.
+1. **bun-first.** No npm, pnpm or yarn for dev. Helper one-shots use `bun -e`.
+   Existing tracked scripts (`prepack` runs `node scripts/check-public-declarations.mjs`;
+   `scripts/tesla-3d/*.py`) are the exceptions, not the pattern to copy.
    See [ADR 0001](dev-docs/decisions/0001-bun-and-uv-only-tooling.md).
 2. **Svelte 5 runes only.** Use `$props`, `$state`, `$derived`,
    `$effect`, `$bindable`, `untrack`. Never `export let`, never `$:`,

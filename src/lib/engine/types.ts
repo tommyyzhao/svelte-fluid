@@ -30,7 +30,11 @@ export interface RGB {
 	b: number;
 }
 
-/** 2D vector in normalized flow space. `y` follows the fluid convention: positive is upward. */
+/**
+ * Two-component vector; units depend on the field. Positions use normalized UV;
+ * source velocity uses simulation texels/s, acceleration uses texels/s².
+ * Positive y is upward.
+ */
 export interface Vec2 {
 	x: number;
 	y: number;
@@ -62,6 +66,8 @@ export interface FlowBoundary {
 }
 
 interface FlowSourceBase {
+	/** Relax supplied dye/scalars toward a fixed composition; velocity stays additive. Default false. */
+	inflow?: boolean;
 	/** Raw velocity injected every frame, in the same units as {@link PresetSplat.dx}. */
 	velocity?: Vec2;
 	/** RGB dye injected every frame. Components use the same 0-1/HDR range as {@link PresetSplat.color}. */
@@ -107,12 +113,31 @@ export interface FlowOutlet {
 	clearDye?: number;
 	/** Whether to damp velocity in the outlet zone. Default false. */
 	clearVelocity?: boolean;
+	/**
+	 * How `clearVelocity` treats velocity in the outlet zone.
+	 * 'damp' (default): multiply by a fixed factor (legacy; removes flux).
+	 * 'relax': relax the normal component toward its per-section fluid mean and damp the
+	 * tangential component, preserving flux through the outlet.
+	 */
+	velocity?: 'damp' | 'relax';
+	/** Relaxation rate for `velocity: 'relax'`, per second. Default 10. */
+	relaxRate?: number;
 	/** Whether to damp scalar fields in the outlet zone. Default true. */
 	clearScalars?: boolean;
 }
 
 export interface FlowScalarField {
 	name: FlowScalarName;
+	/** Dimensionless thermal diffusion, using the viscosity resolution convention. Omitted = off; explicit 0 preallocates the optional solve for allocation-free hot updates. */
+	diffusivity?: number;
+	/** Positive integer Jacobi iterations for conduction. Default 40. Check convergence for your grid/dt. */
+	diffusionIterations?: number;
+	/** Thermal wall condition, including closed canvas edges. Default insulated; open edges have zero diffusive flux. */
+	wall?: 'insulated' | 'isothermal';
+	/** Net optically thin radiative heat loss at inlet temperature, per second. Default 0. */
+	radiativeCooling?: number;
+	/** Inlet/ambient absolute temperature ratio (at least 1.01 for float precision). Default 6. */
+	temperatureRatio?: number;
 	/** Scalar dissipation. Defaults to `densityDissipation` semantics. */
 	dissipation?: number;
 	/** `low-dissipation` reduces explicit scalar dissipation; it is not MacCormack/BFECC advection. Default `standard`. */
@@ -124,6 +149,19 @@ export interface FlowScalarField {
 }
 
 export type FlowForce =
+	| {
+			kind: 'disturbance';
+			/** Peak acceleration in velocity units per second (same units as pressureGradient.vector). */
+			acceleration: number;
+			/** UV rectangle where the forcing acts; cos² taper to zero at its edges. Default whole domain. */
+			region?: { x: number; y: number; width: number; height: number };
+			/** Correlation time in seconds of simulation time. */
+			correlationTime: number;
+			/** Spatial scale in canvas-height units. */
+			scale: number;
+			/** Integer seed 0–65535. Default 704. */
+			seed?: number;
+	  }
 	| { kind: 'gravity'; vector: Vec2 }
 	| { kind: 'pressureGradient'; vector: Vec2 }
 	| {
@@ -155,6 +193,19 @@ export type PrescribedFlowField = {
 };
 
 export interface FlowVisualization {
+	/** Linear-light salt emission from temperature; replaces dye display/field overlay and feeds bloom. Opt-in. */
+	emission?: { scalar: FlowScalarName; intensity: number; excitation: number };
+	/**
+	 * Beer–Lambert transmission: dye RGB becomes three species concentrations.
+	 * `absorbance[s]` is species s's RGB optical depth per unit concentration.
+	 * `backlight` is linear RGB radiance (default white). All values finite, nonnegative.
+	 * Encodes linear transmission to sRGB once; ignores bloom, sunrays, shading,
+	 * specular and tone mapping. Mutually exclusive with emission; reveal/distortion
+	 * take precedence. Turning it on or off recompiles the display shader and
+	 * reallocates concentration targets; coefficient values are hot-updatable.
+	 * MacCormack also corrects concentration RGB.
+	 */
+	absorption?: { absorbance: [RGB, RGB, RGB]; backlight?: RGB };
 	colorBy?: FlowVisualizationField;
 	scalar?: FlowScalarName;
 	/** Add a small display-only glow from either speed or the selected scalar. */
@@ -174,6 +225,8 @@ export interface FlowVisualization {
  * prescribed-grid or scalar storage it needs.
  */
 export interface FlowConfig {
+	/** Viscous wall stencil. Default free-slip; no-slip needs nonzero viscosity. */
+	walls?: 'free-slip' | 'no-slip';
 	mode?: FlowMode;
 	boundary?: FlowBoundary;
 	sources?: ReadonlyArray<FlowSource>;
@@ -182,6 +235,17 @@ export interface FlowConfig {
 	forces?: ReadonlyArray<FlowForce>;
 	prescribed?: PrescribedFlowField;
 	visualization?: FlowVisualization;
+	/** Passive streak visualization only, not concentration. Requires visualization.absorption. */
+	tracers?: {
+		/** Injection segments in UV; particles are emitted uniformly along each segment. */
+		sources: ReadonlyArray<{ from: Vec2; to: Vec2; species: 0 | 1 | 2 }>;
+		/** Ring capacity (particles). Default 262144. Presence/capacity rebuild tracer fields. */
+		capacity?: number;
+		/** Emission rate, particles per second of simulation time, shared across sources. Default 2048. */
+		rate?: number;
+		/** Splat Gaussian sigma in dye texels (minimum 0.25, maximum 4/3). Default 0.75. */
+		sigma?: number;
+	};
 }
 
 /**
@@ -411,7 +475,8 @@ export interface FluidConfig {
 	 *
 	 * `maccormack` uses second-order velocity advection for crisper flow and
 	 * structured scenes, but it can look angular/cubey on diffuse decorative dye.
-	 * Dye and scalar advection remain semi-Lagrangian, and devices without linear
+	 * Ordinary dye/scalars remain semi-Lagrangian; opt-in thermal fields and emission/
+	 * absorption concentration RGB receive a bounded, boundary-aware correction (thickness stays first-order). Devices without linear
 	 * filtering are capability-gated back to `semilagrangian`.
 	 *
 	 * Construct-only: `setConfig()` ignores runtime changes.
@@ -721,8 +786,10 @@ export interface FluidConfig {
 	/**
 	 * Enable glass vessel effect on the container shape. Adds a
 	 * post-processing pass that simulates refraction and specular
-	 * highlights at the container boundary. Requires a `containerShape`
-	 * to be set — ignored when `containerShape` is null.
+	 * highlights at the container boundary. SVG paths with a WebGL2 mask
+	 * distance field get an interior glass cover with fixed skylight reflections;
+	 * other shapes keep the vessel/rim model. Display-only.
+	 * Requires a `containerShape` — ignored when it is null.
 	 * Default false.
 	 */
 	glass?: boolean;
@@ -730,7 +797,8 @@ export interface FluidConfig {
 	 * Glass wall thickness in UV units. For non-circle shapes, controls
 	 * how wide the refraction band is at the boundary. For circles,
 	 * boosts refraction, specular, and glow toward the rim of the
-	 * hemisphere dome. Default 0.04. Hot-updatable.
+	 * hemisphere dome. For SVG covers, bevel width is relative to mask height;
+	 * optical slab thickness is half that width. Default 0.04. Hot-updatable.
 	 */
 	glassThickness?: number;
 	/**
@@ -1461,7 +1529,7 @@ export interface FluidTextProps
 }
 
 /* ---------------------------------------------------------------------------
- * InkPaper (ADR-0090): pigment on paper.
+ * InkPaper: pigment on paper.
  * ------------------------------------------------------------------------- */
 
 /** Brush for {@link InkPaperProps.brush}. Omitted fields keep their current value. */
@@ -1499,7 +1567,7 @@ export interface InkPaperProps extends Omit<import('svelte/elements').HTMLAttrib
 }
 
 /* ------------------------------------------------------------------------ */
-/*              Liquid controls (height-field surface, ADR-0091)            */
+/*              Liquid controls (height-field surface)          */
 /* ------------------------------------------------------------------------ */
 
 /** `'auto'` follows the page colour behind the control. */
@@ -1544,7 +1612,7 @@ export interface LiquidSegmentedProps
 }
 
 /* ------------------------------------------------------------------------ */
-/*           Liquid drop zone and caustics (height-field surface, ADR-0094)  */
+/*           Liquid drop zone and caustics (height-field surface)*/
 /* ------------------------------------------------------------------------ */
 
 /**
@@ -1654,7 +1722,7 @@ export type AnnularFluidProps = PresetBaseProps;
 export type KarmanProps = InteractivePresetProps;
 
 /* ------------------------------------------------------------------------ */
-/*                 Enamel text (compliant enamel, ADR-0097)                  */
+/*                 Enamel text (compliant enamel)                */
 /* ------------------------------------------------------------------------ */
 
 /**

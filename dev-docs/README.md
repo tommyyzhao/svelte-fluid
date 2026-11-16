@@ -28,7 +28,7 @@ Contributing guidelines live in [`CONTRIBUTING.md`](../CONTRIBUTING.md).
   trap may already be documented.
 - **Looking for unmerged research?** Unmerged engine branches and work-in-progress
   snapshots are kept as hidden refs, e.g. `refs/archive/thermal-tracers-closeout` (thermal
-  transport and tracers, ADRs 0114–0127 there) and `refs/archive/rd-webgpu-replacement`.
+  transport and tracers, ADRs 0114–0127 there; renumbered 0117–0130 on main) and `refs/archive/rd-webgpu-replacement`.
   Fetch them with `git fetch origin 'refs/archive/*:refs/remotes/origin-archive/*'`.
   Removed research harnesses and evals live in commit `aa2cf1e`.
 

@@ -114,4 +114,4 @@ because no candidate survived. No image or trace committed.
   through exact handles/PIDs. Final process inventory has no owned capture,
   test browser, xctrace or Vite process; GPU lock released. User Chrome untouched.
 - Worktree/ignored `node_modules` symlink retained (not remotely preserved).
-  No installs, tracker writes, `.beads`/`memory` staging, push or merge.
+  No installs, tracker writes, internal staging, push or merge.
