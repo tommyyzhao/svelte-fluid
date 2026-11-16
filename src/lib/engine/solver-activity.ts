@@ -20,6 +20,7 @@ export function flowCanDriveSolver(flow: FlowConfig | null | undefined): boolean
 	});
 	if (hasSource) return true;
 	return !!flow?.forces?.some((force) =>
+		force.kind === 'disturbance' ? force.acceleration > 0 :
 		force.kind === 'buoyancy' ? force.strength !== 0 : force.vector.x !== 0 || force.vector.y !== 0
 	);
 }

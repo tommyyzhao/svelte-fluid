@@ -144,6 +144,8 @@ See the [recipe](https://svelte-fluid.dev/docs/recipes/splash-cursor).
   unavailable, the engine turns off shading, bloom, sunrays and glass, and clamps
   `dyeResolution` to 512 or less. See `FluidEngine.initContext()`.
 
+These compatibility targets are broader than the current verification evidence; see [browser coverage and release checks](dev-docs/release/browser-coverage.md).
+
 ## Components
 
 Six fluid components (`Fluid`, `FluidBackground`, `FluidReveal`, `FluidDistortion`,

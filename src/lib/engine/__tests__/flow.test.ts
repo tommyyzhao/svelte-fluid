@@ -1,4 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import { FluidEngine, DEFAULTS, resolveConfig } from '../FluidEngine.js';
+import { flowCanDriveSolver } from '../solver-activity.js';
+import { flowForceShader, flowDisturbanceShader } from '../shaders.js';
+import type { FlowForce } from '../types.js';
 import engineSrc from '../FluidEngine.ts?raw';
 import shadersSrc from '../shaders.ts?raw';
 import typesSrc from '../types.ts?raw';
@@ -69,6 +73,48 @@ describe('flow force math', () => {
 	});
 });
 
+describe('disturbance force', () => {
+	const force: Extract<FlowForce, { kind: 'disturbance' }> = {
+		kind: 'disturbance', acceleration: 1, correlationTime: 0.2, scale: 0.1
+	};
+	it.each([
+		...[-1, NaN, Infinity, -Infinity, undefined].map((acceleration) => ({ acceleration })),
+		...[0, -1, NaN, Infinity, undefined].map((correlationTime) => ({ correlationTime })),
+		...[0, -1, NaN, Infinity, undefined].map((scale) => ({ scale })),
+		...[-1, 65536, 0.5, NaN, Infinity].map((seed) => ({ seed })),
+		...[{ x: -0.1 }, { y: -0.1 }, { x: Infinity }, { y: NaN }, { width: 0 }, { width: -1 }, { width: NaN }, { height: 0 }, { height: -1 }, { height: Infinity }, { x: 0.9, width: 0.2 }, { y: 0.9, height: 0.2 }].map((r) => ({ region: { x: 0, y: 0, width: 1, height: 1, ...r } }))
+	])('rejects invalid fields before resolving config: %j', (patch) => {
+		expect(() => resolveConfig({ flow: { forces: [{ ...force, ...patch } as FlowForce] } }, DEFAULTS)).toThrow(/^svelte-fluid: disturbance\./);
+		expect(() => resolveConfig({ flow: { forces: [{ ...force, ...patch } as FlowForce] } }, DEFAULTS)).toThrow(RangeError);
+	});
+	it('accepts zero, seed endpoints, omitted defaults and a domain-edge rectangle', () => {
+		for (const seed of [undefined, 0, 65535]) expect(() => resolveConfig({ flow: { forces: [{ ...force, acceleration: 0, seed, region: { x: 0.5, y: 0.5, width: 0.5, height: 0.5 } }] } }, DEFAULTS)).not.toThrow();
+	});
+	it('selects the separate program only for disturbance, preserving the legacy shader hash', async () => {
+		const h = Object.create(FluidEngine.prototype) as { selectedOptionalPrograms(config: typeof DEFAULTS): Set<string> };
+		const selected = (forces: FlowForce[]) => h.selectedOptionalPrograms(resolveConfig({ bloom: false, sunrays: false, flow: { forces } }, DEFAULTS));
+		expect([...selected([])]).toEqual([]);
+		expect([...selected([{ kind: 'gravity', vector: { x: 1, y: 0 } }])]).toEqual(['flowForce']);
+		expect([...selected([force])]).toEqual(['flowDisturbance']);
+		const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(flowForceShader));
+		expect([...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')).toBe('ad4d5cd5b4ca9463a9926396030191e25b227710266be1676adc23e5ffbb1b3c');
+		expect(flowDisturbanceShader).toContain('b + uSeed + 1.0');
+		expect(flowDisturbanceShader).toContain('t + 193.0');
+	});
+	it('drives an empty solver only with positive acceleration', () => {
+		expect(flowCanDriveSolver({ forces: [force] })).toBe(true);
+		expect(flowCanDriveSolver({ forces: [{ ...force, acceleration: 0 }] })).toBe(false);
+	});
+	it('accumulates dt even outside deterministic mode and while the solver is empty', () => {
+		const h = Object.create(FluidEngine.prototype) as { simTime: number; config: typeof DEFAULTS; solverMayContainContent: boolean; step(dt: number): void };
+		h.simTime = 0;
+		h.config = DEFAULTS;
+		h.solverMayContainContent = false;
+		for (const dt of [0.01, 0.02, 0.005]) h.step(dt);
+		expect(h.simTime).toBe(0.01 + 0.02 + 0.005);
+	});
+});
+
 describe('mask-aware projection shader wiring', () => {
 	it('divergence, pressure, and gradient shaders sample the solid mask', () => {
 		expect(shadersSrc.match(/uniform sampler2D uSolidMask/g)?.length).toBeGreaterThanOrEqual(3);
@@ -92,7 +138,7 @@ describe('mask-aware projection shader wiring', () => {
 describe('flow visualization precedence', () => {
 	it('keeps reveal and distortion authoritative over flow visualization', () => {
 		expect(engineSrc).toContain(
-			"return !!colorBy && colorBy !== 'dye' && !this.config.REVEAL && !this.config.DISTORTION;"
+			"return !!colorBy && colorBy !== 'dye' && !config.REVEAL && !config.DISTORTION && !concentrationDyeActive(config);"
 		);
 		expect(engineSrc).toMatch(
 			/if \(this\.flowVisualizationActiveFor\(config\)\) keywords\.push\('FLOW_VISUALIZATION'\);[\s\S]*if \(config\.DISTORTION\) keywords\.push\('DISTORTION'\);[\s\S]*else if \(config\.REVEAL\) keywords\.push\('REVEAL'\);/
@@ -151,7 +197,7 @@ describe('solver pass order', () => {
 	});
 
 	it('drains live velocity before projection and dye/scalar only after advection', () => {
-		expect(engineSrc).toContain("if (!prescribedOnly) this.applyFlowOutlets(['velocity']);");
+		expect(engineSrc).toContain("if (!prescribedOnly) this.applyFlowOutlets(['velocity'], dt);");
 		expect(engineSrc).not.toContain("this.applyFlowOutlets(prescribedOnly ? ['dye', 'scalar'] : ['velocity', 'dye', 'scalar']);");
 		expect(engineSrc).toMatch(
 			/this\.projectVelocity\(\);[\s\S]*const simulateDye = this\.shouldSimulateDye\(\);[\s\S]*this\.advectScalar\(dt\);[\s\S]*this\.applyFlowOutlets\(simulateDye \? \['dye', 'scalar'\] : \['scalar'\]\);/
@@ -163,7 +209,7 @@ describe('solver pass order', () => {
 		expect(engineSrc).toContain('private shouldSimulateDye(): boolean');
 		expect(engineSrc).toContain('this.dyeMayContainContent = true;');
 		expect(engineSrc).toContain('if (simulateDye) {');
-		expect(engineSrc).toContain('if (this.config.BLOOM && hasDyeContent) {');
+		expect(engineSrc).toContain('if (this.config.BLOOM && hasDyeContent && !absorptionActive(this.config)) {');
 		expect(engineSrc).toContain("this.requireOptionalFBO(this.bloom, 'bloom')");
 	});
 
