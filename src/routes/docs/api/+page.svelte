@@ -432,8 +432,7 @@ interface PerformanceState {LB}
 	<code>clearDye</code> (default 0); <code>clearScalars</code> defaults true.
 	<code>clearVelocity</code> defaults false. When true, <code>velocity: 'damp'</code>
 	(the default) retains the legacy fixed-factor velocity drain: it removes flux.
-	The controlled open-channel measurement had 39.5% post-projection section-flux spread
-	with this damp outlet, versus 0.0% without it. Existing preset defaults are unchanged.
+	Preset defaults are unchanged.
 </p>
 <p>
 	Opt into <code>velocity: 'relax'</code> to calm the edge without removing normal section flux:
@@ -447,8 +446,8 @@ interface PerformanceState {LB}
 	in the outlet pass, not a guarantee of whole-solver conservation through obstructions.
 </p>
 <p>
-	First/last effective relax presence allocates/frees optional reduction targets (Bucket C).
-	Rate, extent and edge changes are Bucket A: no GL allocations or links.
+	Turning relax on or off allocates or frees its reduction targets. Changing the rate, extent
+	or edge is a hot update with no allocation.
 	Prescribed-only mode keeps its prescribed velocity, ignoring velocity outlets.
 </p>
 
@@ -522,12 +521,12 @@ interface FlowGridField {LB}
 	invalid values throw <code>RangeError</code> before GPU changes.
 </p>
 <p>
-	This is rig noise, not turbulence synthesis. Calibrate <code>acceleration</code> by measuring temporal
-	inlet velocity RMS/U at a disturbance-free probe just downstream of the region; subtract an identical
-	zero-noise baseline variance in quadrature. Approximately 1% U is a useful starting target, not a default.
-	The same seed and dt sequence repeat on the same GPU/driver. All values are Bucket A:
-	hot updates allocate no GL resources and link no programs after first presence selects the optional shader.
-	Zero acceleration skips the pass entirely; omission leaves existing scenes unchanged.
+	This is rig noise, not turbulence synthesis. To set <code>acceleration</code>, measure the RMS of
+	the inlet velocity fluctuation as a fraction of mean inlet speed U, at a probe just downstream of the
+	region, with the disturbance disabled subtracted in quadrature. Roughly 1% U is a starting point.
+	The same seed and dt sequence reproduce the same field on a given GPU and driver.
+	Changing <code>acceleration</code>, <code>correlationTime</code> or <code>scale</code> is a hot update with no
+	allocation. Zero acceleration skips the pass; omitting the force leaves existing scenes unchanged.
 </p>
 
 <h3>Fixed-composition inflow and thermal emission (opt-in)</h3>
@@ -576,31 +575,6 @@ interface FlowGridField {LB}
 	this constant-density reduced thermal-emission model is not calibrated combustion CFD.
 </p>
 
-<h4>Reproduce the conduction measurement</h4>
-<p>
-	From a source checkout with development dependencies and the test browser installed, run the
-	<a href="https://github.com/tommyyzhao/svelte-fluid/blob/main/src/lib/engine/__benches__/thermal.browser.test.ts">existing thermal browser test</a>:
-</p>
-<pre><code>bun run test:browser src/lib/engine/__benches__/thermal.browser.test.ts -t "slab mode matches analytic conduction"</code></pre>
-<p>
-	This is a repository test, not a published-package example. It uses internal field upload,
-	transport and readback helpers; <code>readField</code> and <code>advance</code> are not public
-	<code>FluidHandle</code> methods, even though <code>FluidEngine</code> is exported.
-	The seed-704 fixture starts normalized excess temperature at <code>sin(πy)</code>, with
-	<code>diffusivity: 4</code>, isothermal top/bottom walls and open left/right edges.
-	It compares 16×16, 32×32 and 64×64 grids after ten <code>dt = 0.01</code> steps
-	(0.1 simulation seconds), solving each with 100 and 200 Jacobi iterations.
-</p>
-<p>
-	The console label <code>slab refinement RMS</code> reports each grid's <code>error</code>:
-	the 100-iteration RMS against <code>exp(−(4/128)π² × 0.1) × sin(πy)</code> at cell centres.
-	Its <code>doublingDelta</code> instead measures the maximum temperature difference between
-	100 and 200 iterations; that iteration-sensitivity check is not the analytic-profile RMS.
-	Existing gates are <code>doublingDelta &lt; 0.002</code> and <code>error &lt; 0.025</code>.
-	These are fixture regression tolerances, not physical-error guarantees. Roundoff limits refinement;
-	no convergence order, cross-device byte identity or calibrated CFD accuracy is promised.
-</p>
-
 <hr />
 
 <h2>Beer–Lambert transmitted dye (opt-in)</h2>
@@ -618,8 +592,8 @@ interface FlowGridField {LB}
 	transport/full-float capability policy; no scalar field or emission target is required.
 </p>
 <p>
-	Presence is a Bucket-B keyword plus a concentration-precision resource transition;
-	absorbance/backlight values are Bucket-A uniforms, with no allocation or shader compile.
+	Turning absorption on or off recompiles the display shader and reallocates the concentration
+	targets. Changing absorbance or backlight values is a hot update with no allocation or shader compile.
 	For a white backlit channel use opaque rendering and white <code>backColor</code>, then
 	CSS <code>mix-blend-mode: multiply</code> over a white/grey SVG backdrop. Coefficients
 	approximate three colour bands, not measured spectra; fluorescence is not modelled.
@@ -637,12 +611,13 @@ interface FlowGridField {LB}
 	Invalid options throw <code>RangeError</code> before GPU transitions.
 </p>
 <p>
-	Presence/capacity allocate tracer fields (Bucket C); rate, sigma and sources hot-update without
-	allocations or program links (Bucket A). Fractional emission survives rate changes; resize retains
-	particle UVs and replaces only the depth target. Context restore deterministically reseeds.
-	Finite ring recycling deletes old particles; wall sticking and sampling gaps remain possible.
-	WebGL2 RGBA32F state plus a tested RGBA16F additive-blend target are required; unsupported devices
-	disable tracers, warn once and retain ordinary grid-dye absorption. Defaults remain unchanged.
+	Turning tracers on or off, or changing <code>capacity</code>, allocates or frees the tracer
+	fields. Changing <code>rate</code>, <code>sigma</code> or <code>sources</code> is a hot update
+	with no allocation. Fractional emission carries over when <code>rate</code> changes. Resizing keeps
+	particle positions. Context restore reseeds the particles deterministically. When the ring is full,
+	the oldest particles are recycled, and tracers do not stick to walls. WebGL2 RGBA32F and
+	RGBA16F additive blending are required; without them, tracers are disabled with a one-time warning
+	and grid-dye absorption still applies.
 </p>
 
 <h3>Other public types</h3>
@@ -669,9 +644,8 @@ interface FlowGridField {LB}
 <h2>GL-type-neutral API</h2>
 
 <p>
-	No root-exported declaration mentions a <code>WebGL*</code> DOM type. The internal
-	types <code>FBO</code>, <code>DoubleFBO</code>, <code>ExtInfo</code> and
-	<code>ResolvedConfig</code> are not exported.
+	No root-exported declaration mentions a <code>WebGL*</code> DOM type. Internal GL helper
+	types (render-target, extension and resolved-config types) are not exported.
 	<code>isWebGLAvailable()</code> accepts a <code>ContextProbeAttributes</code> object,
 	<code>{LB} failIfMajorPerformanceCaveat?: boolean {RB}</code>.
 </p>

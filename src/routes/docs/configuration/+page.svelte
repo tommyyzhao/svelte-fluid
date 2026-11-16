@@ -880,9 +880,9 @@
 	mask-weighted fluid-section mean and tangential velocity toward zero. <code>relaxRate</code>
 	is finite and positive, per simulation second (default 10). Both options are inactive when
 	<code>clearVelocity</code> is false; dye/scalar clearing and preset defaults are unchanged.
-	Effective relax presence owns optional reduction targets (Bucket C); rate, extent and edge
-	updates allocate/link nothing (Bucket A). See <a href="{base}/docs/api">FlowOutlet API</a>
-	for interval/solid-mask semantics and conservation limits.
+	Turning relax on or off allocates or frees its reduction targets; changing the rate, extent or edge
+	is a hot update. See <a href="{base}/docs/api">FlowOutlet API</a> for interval/solid-mask
+	semantics and conservation limits.
 </p>
 
 <h3>Disturbance force (opt-in)</h3>
@@ -892,10 +892,10 @@
 	positive finite <code>correlationTime</code> in simulation seconds and <code>scale</code> in canvas-height units.
 	Optional <code>region</code> is a positive UV rectangle inside [0, 1] (default whole domain),
 	cos²-tapered at its edges; optional integer <code>seed</code> is 0–65535 (default 704).
-	These are Bucket A values after first presence compiles the optional program; no FBO is allocated.
-	Zero acceleration is a skipped pass. This is rig noise, not turbulence: measure inlet velocity RMS/U
-	just downstream, subtract zero-noise baseline variance in quadrature, then calibrate acceleration
-	(e.g. toward 1% U). See <a href="{base}/docs/api">FlowForce API</a>.
+	Changing <code>acceleration</code>, <code>correlationTime</code> or <code>scale</code> is a hot update.
+	Zero acceleration skips the pass. This is rig noise, not turbulence: calibrate <code>acceleration</code>
+	against measured inlet velocity fluctuation (roughly 1% of mean inlet speed as a starting point).
+	See <a href="{base}/docs/api">FlowForce API</a>.
 </p>
 
 <h3>Passive tracers (opt-in)</h3>
@@ -903,10 +903,11 @@
 	<code>flow.tracers</code> requires <code>flow.visualization.absorption</code>; visualization only,
 	not concentration. Supply 1–3 UV source segments with species 0, 1 or 2. Defaults:
 	<code>capacity: 262144</code> particles, <code>rate: 2048</code> particles per simulation second
-	shared across sources, <code>sigma: 0.75</code> dye texels (minimum 0.25, maximum 4/3). Presence/capacity are
-	Bucket C; rate/sigma/sources are allocation-free Bucket A. Velocity/grid dye stay unchanged.
-	Unsupported RGBA32F state or RGBA16F additive blending disables tracers with one warning,
-	retaining grid absorption. See <a href="{base}/docs/api">FlowConfig tracers API</a> for validation and limits.
+	shared across sources, <code>sigma: 0.75</code> dye texels (minimum 0.25, maximum 4/3).
+	Changing <code>capacity</code> or turning tracers on or off allocates or frees the tracer fields;
+	changing <code>rate</code>, <code>sigma</code> or <code>sources</code> is a hot update. Velocity and grid dye are unchanged.
+	Without WebGL2 RGBA32F and RGBA16F additive blending, tracers are disabled with one warning,
+	and grid absorption still applies. See <a href="{base}/docs/api">FlowConfig tracers API</a> for validation and limits.
 </p>
 
 <h3>Transmitted dye (opt-in)</h3>
@@ -921,12 +922,11 @@
 </p>
 <p>
 	Absorption ignores bloom, sunrays, shading, specular and tone mapping; reveal/distortion
-	still take precedence. Presence selects a display keyword (Bucket B) and concentration
-	storage/scratch transition; coefficient/backlight changes are hot uniforms (Bucket A).
-	RGB concentration uses the bounded MacCormack path when selected, with float storage
-	where supported; alpha remains first-order thickness. Use opaque white for a backlit
-	image; <code>mix-blend-mode: multiply</code> over a white geometry backdrop preserves walls.
-	Three-band coefficients approximate spectra; this is not a spectral dye measurement.
+	still take precedence. Turning absorption on or off recompiles the display shader and reallocates
+	the concentration targets; changing coefficients or backlight is a hot update. RGB concentration uses
+	the bounded MacCormack path when selected, with float storage where supported; alpha remains
+	first-order thickness. Use opaque white for a backlit image; <code>mix-blend-mode: multiply</code>
+	over a white geometry backdrop preserves walls. Three-band coefficients approximate spectra.
 	See <a href="{base}/docs/api">FlowVisualization API</a>.
 </p>
 
