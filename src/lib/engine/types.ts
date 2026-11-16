@@ -766,7 +766,7 @@ export interface FluidConfig {
 	 * distance field get an interior glass cover with fixed skylight reflections;
 	 * other shapes/capabilities retain the vessel/rim model. Display-only.
 	 * Requires a `containerShape` — ignored when it is null.
-	 * Default false. See ADR-0025 and ADR-0116.
+	 * Default false. See ADR-0025 and ADR-0119.
 	 */
 	glass?: boolean;
 	/**

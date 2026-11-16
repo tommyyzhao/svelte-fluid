@@ -743,7 +743,7 @@ export interface FluidEngineOptions {
 /** Fixed opening-settle length for the reduced-motion still frame (ADR 0085). */
 const STILL_STEPS = 60;
 const STILL_DT = 1 / 60;
-// Measured M1 Max winning band; shared by pressure and no-slip viscosity (ADR 0115).
+// Measured M1 Max winning band; shared by pressure and no-slip viscosity (ADR 0118).
 const PAIRED_JACOBI_MAX_TEXELS = 330_672;
 
 export class FluidEngine implements FluidHandle {
@@ -814,7 +814,7 @@ export class FluidEngine implements FluidHandle {
 	private flowOutletProgram!: ProgramWrap;
 	private flowOutletReduceProgram!: ProgramWrap;
 	private flowOutletRelaxProgram!: ProgramWrap;
-	/** ADR 0122: transient scaled section sums, columns then rows; absent on legacy scenes. */
+	/** ADR 0125: transient scaled section sums, columns then rows; absent on legacy scenes. */
 	private outletReduceChains: [FBO[], FBO[]] = [[], []];
 	private flowForceProgram!: ProgramWrap;
 	private flowDisturbanceProgram!: ProgramWrap;
@@ -4567,7 +4567,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		}
 	}
 
-	/** ADR 0122: each outlet reduces its own fluid interval before applying its sponge. */
+	/** ADR 0125: each outlet reduces its own fluid interval before applying its sponge. */
 	private applyFlowOutletRelax(outlet: FlowOutlet, dt: number): void {
 		const gl = this.gl;
 		const edge = this.flowOutletEdgeCode(outlet.edge);
@@ -5253,7 +5253,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		// without the extra blit.
 		const stickyPressure = this.config.STICKY ? this.config.STICKY_PRESSURE : 0.0;
 		// M1 Max: paired wins by 40% at 330,672 texels, only 10% at 591,408.
-		// Keep margin for unmeasured, more fragment-bound GPUs (ADR 0115).
+		// Keep margin for unmeasured, more fragment-bound GPUs (ADR 0118).
 		const usePairs = this.velocity.width * this.velocity.height <= PAIRED_JACOBI_MAX_TEXELS;
 		const pairs = usePairs ? Math.floor(iterations / 2) : 0;
 		const singles = iterations - pairs * 2;

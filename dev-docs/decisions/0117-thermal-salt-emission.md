@@ -1,4 +1,4 @@
-# ADR 0114: Opt-in thermal transport and flame-salt emission
+# ADR 0117: Opt-in thermal transport and flame-salt emission
 
 **Status:** Accepted
 **Date:** 2026-10-18

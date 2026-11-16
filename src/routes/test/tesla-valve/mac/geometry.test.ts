@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { disturbanceBand } from './geometry.js';
 
-// ADR 0119 numbers: 1080-wide valve, wet mean width 30.0898148, plenum ceil(4 * w) = 121.
+// ADR 0122 numbers: 1080-wide valve, wet mean width 30.0898148, plenum ceil(4 * w) = 121.
 const g = { plenum: 121, valveWidth: 1080, meanWidth: 30.0898148 };
 const gridWidth = g.valveWidth + 2 * g.plenum;
 const sponge = Math.ceil(g.meanWidth);
@@ -21,7 +21,7 @@ it('threads explicit default and non-default disturbance widths without reassoci
 	}
 });
 
-it('pins the disturbance forcing support and its 1.24-cell sponge clearance (ADR 0119 D-1 violation)', () => {
+it('pins the disturbance forcing support and its 1.24-cell sponge clearance (ADR 0122 D-1 violation)', () => {
 	for (const direction of [1, -1]) {
 		const { center, halfWidth } = disturbanceBand(direction, g);
 		const lo = center - halfWidth,

@@ -1,4 +1,4 @@
-# ADR 0115: Measured substep submission and pressure-pair crossover
+# ADR 0118: Measured substep submission and pressure-pair crossover
 
 **Status:** Accepted
 **Date:** 2026-10-20

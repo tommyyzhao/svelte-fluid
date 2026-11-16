@@ -1,4 +1,4 @@
-// Route-local GLSL only. MAC packing/sampling matches the verified ADR 0118 operators.
+// Route-local GLSL only. MAC packing/sampling matches the verified ADR 0121 operators.
 const common = `
 precision highp float;
 precision highp sampler2D;

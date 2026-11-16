@@ -4,7 +4,7 @@ import {
 } from '$lib/engine/staggered.js';
 import { coarseGeometry } from './coarse.js';
 
-/** Bench-only rejected C1 candidate; no GPU/production evolution (ADR 0119). */
+/** Bench-only rejected C1 candidate; no GPU/production evolution (ADR 0122). */
 export function smoothedReference(g: StaggeredGeometry, bands = 256) {
 	const c = coarseGeometry(g, -1, bands),
 		n = c.count,

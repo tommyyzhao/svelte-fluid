@@ -1533,7 +1533,7 @@ export const flowForceShader = `
     }
 `;
 
-// Calibrated rig noise (ADR 0121), not a turbulence model.
+// Calibrated rig noise (ADR 0124), not a turbulence model.
 export const flowDisturbanceShader = `
     precision highp float;
     precision highp sampler2D;
@@ -2737,7 +2737,7 @@ export const applyMaskShader = `
     }
 `;
 
-// Internal MAC preflight only; legacy program selection never compiles these (ADR 0118).
+// Internal MAC preflight only; legacy program selection never compiles these (ADR 0121).
 const staggeredCommon = `
     precision highp float;
     precision highp sampler2D;

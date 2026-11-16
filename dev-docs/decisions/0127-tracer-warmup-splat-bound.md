@@ -1,4 +1,4 @@
-# ADR 0124: Bound tracer splats during ring warmup
+# ADR 0127: Bound tracer splats during ring warmup
 
 **Status:** Accepted
 **Date:** 2026-10-24

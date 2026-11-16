@@ -1,4 +1,4 @@
-# ADR 0117: Transmitted dye and the paper Tesla-valve study
+# ADR 0120: Transmitted dye and the paper Tesla-valve study
 
 **Status:** Accepted (optics); experimental (paper-flow reproduction)
 **Date:** 2026-10-21
@@ -23,7 +23,7 @@ before GPU changes; reveal/distortion retain precedence. Presence selects a
 Bucket-B display keyword and the concentration transport resource transition;
 coefficients/backlight are Bucket-A uniforms.
 
-Reuse ADR 0114's bounded, boundary-aware RGB MacCormack transport and float dye
+Reuse ADR 0117's bounded, boundary-aware RGB MacCormack transport and float dye
 when supported; retain the first-order thickness path. The existing optional
 transport scratch is shared sequentially, not duplicated. No absorption config
 means the old dye/display arithmetic and allocations remain unchanged.

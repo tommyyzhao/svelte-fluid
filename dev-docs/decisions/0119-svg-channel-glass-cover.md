@@ -1,4 +1,4 @@
-# ADR 0116: SDF-shaped glass cover for SVG channels
+# ADR 0119: SDF-shaped glass cover for SVG channels
 
 **Status:** Accepted
 **Date:** 2026-10-21

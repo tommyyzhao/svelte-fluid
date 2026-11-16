@@ -1,7 +1,7 @@
 import { PAPER_ISLAND_CENTERS, PAPER_VIEWBOX } from './geometry.js';
 import type { PaperMacEngine } from './engine.js';
 
-// ADR 0117 thresholds frozen before the MAC results. Geometry now has 11 units.
+// ADR 0120 thresholds frozen before the MAC results. Geometry now has 11 units.
 export const PAPER_THRESHOLDS = {
 	mixed: 0.05,
 	bearing: 0.1,
