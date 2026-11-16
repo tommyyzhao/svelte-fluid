@@ -103,6 +103,6 @@ claim below is tied to interleaved A/B numbers, not the fill-rate model.
   consolidation), so these numbers are no longer reproducible from the repo. The
   epic §4 measurement protocol is superseded by the Phase 0 harness (ADR-0042):
   a deterministic GPU-readback acceptance tier plus a restored interactive
-  `/examples/bench` timing profiler that reads shared `__benches__/scenes.ts`.
+  `/examples/bench` timing profiler that reads shared `__benches__/scenes.ts`. (archived locally)
 - Phase 2 (MacCormack) inherits the lesson: assume pass-bound at production
   grids, fragment-bound at high grids; measure both regimes before committing.

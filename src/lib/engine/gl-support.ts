@@ -15,7 +15,7 @@ export interface ContextProbeAttributes {
  * fallback) from a **transient** one (`context-limit`: the page hit the
  * browser's live-context cap → stay blank and retry on the next reconcile).
  * `render-failed` is permanent: a frame threw and the engine was evicted from
- * the shared scheduler (ADR 0085).
+ * the shared scheduler.
  */
 export type WebGLUnavailableReason =
 	| 'no-webgl'
@@ -24,7 +24,7 @@ export type WebGLUnavailableReason =
 	| 'render-failed';
 
 /**
- * Thrown by {@link getWebGLContext} when a usable context cannot be created.
+ * Thrown when the engine cannot get a usable WebGL context.
  * Carries a typed {@link WebGLUnavailableReason} so callers can react without
  * string-matching the message.
  */
@@ -73,7 +73,7 @@ export function isWebGLAvailable(attributes?: ContextProbeAttributes): boolean {
 }
 
 /**
- * Memoized capability cache for {@link getWebGLContext}'s failure classification,
+ * Memoized capability cache for `getWebGLContext`'s failure classification,
  * keyed by whether hardware acceleration was required. This is NOT GL state (it
  * holds no context/buffer/program/FBO — invariant #2 is about not sharing GL
  * *resources* across instances): it is a single flag per key so that classifying
@@ -102,7 +102,7 @@ export function _resetWebGLSupportCache(): void {
 	delete webglSupportCache.any;
 }
 
-/** Options for {@link getWebGLContext}. */
+/** Options for the internal `getWebGLContext`. */
 export interface GetContextOptions {
 	/**
 	 * Reject a software/SwiftShader rendering path via

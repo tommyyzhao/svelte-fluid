@@ -58,8 +58,8 @@ describe('maccormack: default-off + capability gate', () => {
 		expect(engineSrc).toContain('this.config.ADVECTION_SCHEME = opts.advectionScheme;');
 	});
 
-	it('treats advectionScheme as Bucket D at runtime', () => {
-		expect(engineSrc).toContain('next.ADVECTION_SCHEME = this.config.ADVECTION_SCHEME;');
+	it('treats advectionScheme as construct-only at runtime', () => {
+		expect(engineSrc).toContain('next.ADVECTION_SCHEME = current.ADVECTION_SCHEME;');
 		expect(engineSrc).toContain('`advectionScheme`');
 	});
 

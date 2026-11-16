@@ -10,7 +10,7 @@ review path should the owner ever want to reconsider a default-on cap.
 
 ## Comparison
 
-Open `/examples/bench/max-fps`: two real `<Fluid>` instances, initially
+Open `/examples/bench/max-fps`: two real `<Fluid>` instances, initially (archived locally)
 **left: maxFps=0 (uncapped)**, **right: maxFps=60**. Both use the same registry
 configuration and seed **5**. Plasma, a TRAIN preset with auto-splats, is selected
 initially. The registry-driven selector includes held-out presets: this is an
@@ -35,7 +35,7 @@ not the wrapper's periodic reinjection. Both canvases are equal-sized,
 bun run dev
 ```
 
-Open <http://localhost:5173/examples/bench/max-fps> on a **ProMotion display at
+Open <http://localhost:5173/examples/bench/max-fps> on a **ProMotion display at (archived locally)
 120 Hz**. Ensure the OS/browser permits 120 Hz, keep the tab visible, close other
 GPU-heavy tabs and wait for the RAF readout. A reading near 60 Hz does not test
 the cap's 120 Hz motion trade-off. If sustained RAF is much lower than 120 Hz,
@@ -78,7 +78,7 @@ Owner-approved headed 120 Hz paired run (ADR 0107 Amendments 5–7):
   is 15.68% against an 11.59% bar, with matched-run savings of 12–35%. It is not a
   verdict.
 - Details: [ADR 0110 Outcome](../../../decisions/0110-presentation-rate-cap.md),
-  `../../max-fps-120hz-summary.json`, held-out section of `../../energy-eval.md`.
+  `../../max-fps-120hz-summary.json`, held-out section of `../../energy-eval.md`. (archived locally)
 
 Default remains **0 (opt-in)**. A default change would still need a **held-out
 E2 pass** and **owner motion approval**; neither exists, and the lead decision

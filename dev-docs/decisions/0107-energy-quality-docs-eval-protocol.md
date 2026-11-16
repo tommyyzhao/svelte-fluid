@@ -45,7 +45,7 @@ keep/revert decision. No per-preset change may name a test preset.
 
 - **Metric:** Chrome GPU-process GPU-busy ms per wall-second: the union of
   Metal command-buffer execution intervals (xctrace Metal System Trace, same
-  parser as `scripts/gpu-capture.mjs`) over a fixed window ÷ window length.
+  parser as `scripts/gpu-capture.mjs`) over a fixed window ÷ window length. (archived locally)
   Ordinary hardware Chrome, real `<Fluid>` component and real RAF loop (not the
   manual `update()` driver of ADR 0105, because the levers are scheduling).
 - **Scenarios per scene** (one mount, sequential windows, 10 s each):
@@ -294,7 +294,7 @@ Verification records byte-identical velocity/dye readbacks after 120 equal
 synthetic 120 Hz updates on own/shared, normal/profiled paths (9/9 hardware
 checks), with 120 solver updates and 60/120 render submissions. Still-frame
 statistics/judging need not re-test identical solver fields. Temporal
-smoothness remains the owner's motion review at `/examples/bench/max-fps`;
+smoothness remains the owner's motion review at `/examples/bench/max-fps`; (archived locally)
 this evaluation does not authorize changing default `maxFps=0`.
 
 Exclusive atomic-mkdir GPU lock: owner lane `E1-120hz`, purpose, start,

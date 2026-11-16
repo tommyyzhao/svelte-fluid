@@ -3,8 +3,7 @@
 
   Kept minimal so it doesn't fight full-bleed demos (e.g. FluidBackground).
   These routes are intentionally UNLISTED for now — noindex, not in nav or the
-  sitemap — until we choose to feature them. See
-  dev-docs/plans/scratch-route-consolidation.md.
+  sitemap — until we choose to feature them.
 -->
 <script lang="ts">
 	import { base } from '$app/paths';

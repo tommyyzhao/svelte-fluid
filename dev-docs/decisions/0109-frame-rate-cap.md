@@ -104,7 +104,7 @@ those SHAs.
   Amendment 1 scope). Judge: 6 losses / 7 non-tie pairs (85.7%, limit 33.3%);
   null diagnostic 6/16 = 37.5% vs identical-render 11.1%. Statistics: 45
   band violations across 15/16 scenes (curl low band 30, mid 6, chroma 9).
-  Details: [quality-eval Round 1](../benchmarks/quality-eval.md).
+  Details: quality-eval Round 1: `dev-docs/benchmarks/quality-eval.md` (archived locally).
 - **E1 energy:** not decisive. The keep rule needs both gates; the
   candidate runs that were in progress are logged as data only.
 - **Likely cause:** halving the step count at equal simulated time changes

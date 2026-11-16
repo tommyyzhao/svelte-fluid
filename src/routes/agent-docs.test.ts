@@ -67,7 +67,7 @@ describe('generated API reference', () => {
 	});
 
 	it('keeps the FluidDistortion copy-paste size consistent across public references', () => {
-		const snippet = '<FluidDistortion src="/hero.jpg" width={640} height={360} strength={0.4} intensity={24} />';
+		const snippet = '<FluidDistortion src="/hero.jpg" width={640} height={360} distortionPower={0.4} intensity={24} />';
 		for (const generated of [buildSkillMd(), buildLlmsFullTxt()]) expect(generated).toContain(snippet);
 		const canonical = componentDocs.split('<h2 id="fluiddistortion">')[1].split('</code></pre>')[0]
 			.replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll("{'{'}", '{').replaceAll("{'}'}", '}');

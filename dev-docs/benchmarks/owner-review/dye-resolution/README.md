@@ -49,12 +49,12 @@ The referenced section lives on the eval branch until that evidence is merged.
 
 ```sh
 bun install
-bun scripts/capture-dye-review.mjs
+bun scripts/capture-dye-review.mjs  # archived locally
 # Recompose existing owned captures without GPU capture:
-bun scripts/capture-dye-review.mjs --compose-only
+bun scripts/capture-dye-review.mjs --compose-only  # archived locally
 ```
 
-The script imports `withCapture` from `scripts/quality-eval.mjs`, requests only
+The script imports `withCapture` from `scripts/quality-eval.mjs`, requests only (archived locally)
 these six scenes and bypasses judging rather than falsely asserting
 `--spatial-safe`. E2 acquires `/tmp/svelte-fluid-gpu.lock` atomically with lane
 `dye-review`, owner metadata and acquired-at timestamp; occupied-lock polling
@@ -62,7 +62,7 @@ these six scenes and bypasses judging rather than falsely asserting
 leases. Vite uses port
 5232 (override `QUALITY_EVAL_PORT`, 5230–5239). It closes its own browsers/server
 and releases only its own lock. PNGs/readbacks use the dedicated labels
-`/tmp/quality-eval/owner-dye-{1024,512}/`; remove only those directories after
+`/tmp/quality-eval/owner-dye-{1024,512}/`; remove only those directories after (archived locally)
 checking the generated packet. Offline JPEG compositing uses installed Chrome's
 2D canvas with GPU disabled, no new dependency.
 

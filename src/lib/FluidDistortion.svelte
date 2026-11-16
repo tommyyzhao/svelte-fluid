@@ -28,12 +28,19 @@
 
 	let {
 		src,
+		// Deprecated aliases (strength/fit/scale/autoDistort*): the FluidConfig-named
+		// prop wins when both are given. See `FluidDistortionProps`.
 		strength = 0.4,
+		distortionPower,
 		intensity = 24,
 		fit = 'cover',
+		distortionFit,
 		scale = 1.0,
+		distortionScale,
 		autoDistort = false,
 		autoDistortSpeed = 1.0,
+		autoAnimate,
+		autoAnimateSpeed,
 		initialSplats = 20,
 		bleed = 60,
 		lazy = false,
@@ -68,6 +75,12 @@
 		posterAlt,
 		...fluidProps
 	}: FluidDistortionProps = $props();
+
+	const resolvedPower = $derived(distortionPower ?? strength);
+	const resolvedFit = $derived(distortionFit ?? fit);
+	const resolvedScale = $derived(distortionScale ?? scale);
+	const resolvedAutoAnimate = $derived(autoAnimate ?? autoDistort);
+	const resolvedAutoAnimateSpeed = $derived(autoAnimateSpeed ?? autoDistortSpeed);
 
 	let inner = $state<{ handle: FluidHandle } | undefined>(undefined);
 	let canvasWrapperEl: HTMLDivElement | undefined = $state(undefined);
@@ -147,8 +160,8 @@
 			}
 			if (previousReadyFrame !== undefined) elapsed += now - previousReadyFrame;
 			previousReadyFrame = now;
-			// `autoDistortSpeed` scales curve time (it was previously ignored).
-			const t = elapsed * 0.001 * autoDistortSpeed;
+			// `autoAnimateSpeed` scales curve time (it was previously ignored).
+			const t = elapsed * 0.001 * resolvedAutoAnimateSpeed;
 			const x = 0.5 + 0.25 * Math.sin(2 * t - Math.PI);
 			const y = 0.5 + 0.1 * Math.sin(5 * t) * Math.cos(2 * t);
 			const dx = 800 * (x - autoDistortPrevX);
@@ -172,7 +185,7 @@
 
 	// Live reduced-motion toggle (ADR 0085).
 	$effect(() => {
-		if (!autoDistort || reduced) return;
+		if (!resolvedAutoAnimate || reduced) return;
 		startAutoDistort();
 		return () => {
 			if (autoDistortRaf != null) cancelAnimationFrame(autoDistortRaf);
@@ -239,10 +252,10 @@
 		<Fluid
 			bind:this={inner}
 			distortion={true}
-			distortionPower={strength}
+			distortionPower={resolvedPower}
 			distortionImageUrl={src}
-			distortionFit={fit}
-			distortionScale={scale}
+			distortionFit={resolvedFit}
+			distortionScale={resolvedScale}
 			distortionBleedX={bleedFracX}
 			distortionBleedY={bleedFracY}
 			densityDissipation={densityDissipationProp}

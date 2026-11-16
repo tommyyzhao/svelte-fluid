@@ -10,13 +10,29 @@ const source = `
 import { Fluid, FluidBackground, FluidReveal, FluidDistortion, FluidStick, FluidText, FluidEngine,
 	isWebGLAvailable, WebGLUnavailableError,
 	type FluidProps, type FluidBackgroundProps, type FluidRevealProps, type FluidDistortionProps,
-	type FluidStickProps, type FluidTextProps, type FluidConfig, type FluidHandle } from './dist/index.js';
+	type FluidStickProps, type FluidTextProps, type FluidConfig, type FluidHandle,
+	type Obstruction, type ContextProbeAttributes, type FlowSourceKind, type FlowProfile, type FlowScalarName,
+	type FlowAdvection, type FlowVisualizationField, type FlowTransfer, type PresetBaseProps,
+	type InteractivePresetProps } from './dist/index.js';
 import type { ComponentProps } from 'svelte';
-import { LiquidEngine, createSteppedFluidEngine, STONE,
-	type LiquidScene, type LiquidSim, type SteppedFluidEngine, type VelocitySnapshot } from './dist/experimental.js';
+import { LiquidEngine, createSteppedFluidEngine, Cell, STONE, LOAM, type CellKind,
+	type LiquidScene, type LiquidSim, type SteppedFluidEngine, type VelocitySnapshot,
+	type CellRect, type CellVec, type SpeciesCounts, type LiquidSpecies, type LiquidWind, type LiquidRenderOptions,
+	type LiquidFill, type LiquidRegion, type LiquidEmit,
+	type Rect, type Vec, type Counts, type Species, type Wind, type RenderOptions } from './dist/experimental.js';
 export const liquid: typeof LiquidEngine = LiquidEngine;
 export const stepped: (canvas: HTMLCanvasElement) => SteppedFluidEngine = (canvas) => createSteppedFluidEngine({ canvas });
-export type Experimental = [LiquidScene, LiquidSim, VelocitySnapshot, typeof STONE];
+export type Experimental = [LiquidScene, LiquidSim, VelocitySnapshot, typeof STONE, typeof Cell.Solid, CellKind];
+export const loam: CellKind = LOAM;
+// Each deprecated alias must be mutually assignable with its replacement.
+type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
+export const aliases: [Same<Rect, CellRect>, Same<Vec, CellVec>, Same<Counts, SpeciesCounts>,
+	Same<Species, LiquidSpecies>, Same<Wind, LiquidWind>, Same<RenderOptions, LiquidRenderOptions>] =
+	[true, true, true, true, true, true];
+export type Named = [LiquidFill, LiquidRegion, LiquidEmit];
+// Stepped engines must not expose the RAF-owning controls.
+// @ts-expect-error resume() would start requestAnimationFrame
+export const noResume = (e: SteppedFluidEngine) => e.resume();
 export const fluid: ComponentProps<typeof Fluid> = { simResolution: 64, onReady: () => {}, fallbackText: 'x' };
 export const text: FluidTextProps = { text: 'hi', poster: '/p.png', posterAlt: 'p' };
 export const props: FluidProps[] = [fluid];
@@ -24,6 +40,8 @@ export const handle: FluidHandle | undefined = undefined;
 export const engine: typeof FluidEngine = FluidEngine;
 export const values: unknown[] = [FluidBackground, FluidReveal, FluidDistortion, FluidStick, FluidText,
 	isWebGLAvailable, WebGLUnavailableError];
+export type RootTypes = [Obstruction, ContextProbeAttributes, FlowSourceKind, FlowProfile, FlowScalarName,
+	FlowAdvection, FlowVisualizationField, FlowTransfer, PresetBaseProps, InteractivePresetProps];
 export type Types = [FluidBackgroundProps, FluidRevealProps, FluidDistortionProps, FluidStickProps, FluidConfig];
 `;
 const options = {

@@ -15,7 +15,7 @@ registered noise17.59%, 2×bar35.18%. Lead's initial arithmetic (12/13 savings
 belowbar guarantees12/22 belowbar) bounds median scene saving, **not** saving
 of headline medians. DeterministicFAIL claim withdrawn; stop is judgement.
 
-[Full22-row table, missing scenes, retries and cleanup](energy-eval.md#round-6--owner-approved-half-dye-default-not-kept).
+Full22-row table, missing scenes, retries and cleanup: `dev-docs/benchmarks/energy-eval.md` (archived locally).
 SvgPath smallR3 not run; Toroidal/GasFlare/Venturi/Karman bothsizes not run.
 
 | Complete TRAIN scene | Active saving large / small | 2× registered noise large / small |
@@ -178,7 +178,7 @@ preset, 1024×640 capture, quality candidate or E1 keep claim.
 
 ### Export, frame identity and mapping validation
 
-`energy-capture.mjs --per-encoder-export` adds read-only diagnostic exports
+`energy-capture.mjs --per-encoder-export` adds read-only diagnostic exports (archived locally)
 **outside** the frozen parser/windows. `--self-check` still passes;
 measurement hash remains
 `24c277a4f8bfed880b03a371513a229b0a26f9d45765d0240516b9851bb0cef9`.
@@ -366,14 +366,14 @@ should target measured work, not generic encoder-count arithmetic.
 Reproduce one preset per invocation:
 
 ```sh
-ENERGY_CAPTURE_SOLO=1 bun scripts/energy-capture.mjs --label attrib-Plasma-baseline-29065ca --cases Plasma@1440x900:2:5 --runs 2 --per-encoder-export
+ENERGY_CAPTURE_SOLO=1 bun scripts/energy-capture.mjs --label attrib-Plasma-baseline-29065ca --cases Plasma@1440x900:2:5 --runs 2 --per-encoder-export  # archived locally
 # Separate --label for --override '{"bloom":false}', '{"curl":0}', '{"pressureIterations":10}'.
 # Karman baseline same arguments except preset; pressure override 17; bloom false is null.
-bun scripts/encoder-attribution.mjs --analyse /tmp/energy-eval/attrib-Plasma-baseline-29065ca/Plasma-1440x900-dpr2-seed5-r1.json /tmp/attrib-Plasma-baseline-r1.analysis.json
-bun scripts/encoder-attribution.mjs --self-check
+bun scripts/encoder-attribution.mjs --analyse /tmp/energy-eval/attrib-Plasma-baseline-29065ca/Plasma-1440x900-dpr2-seed5-r1.json /tmp/attrib-Plasma-baseline-r1.analysis.json  # archived locally
+bun scripts/encoder-attribution.mjs --self-check  # archived locally
 ```
 
-Evidence: `/tmp/energy-eval/attrib-{Plasma,Karman}-{baseline,bloom,curl,pressure}-29065ca/`
+Evidence: `/tmp/energy-eval/attrib-{Plasma,Karman}-{baseline,bloom,curl,pressure}-29065ca/` (archived locally)
 (TOCs, interval/encoder/submission/IOSurface XML with SHA256, parsed rows,
 uptime, raw cleanup receipts); `/tmp/attrib-*-r*.analysis.json` contains
 ordered examples, per-frame costs, medians, count exclusions, partial rows.
@@ -721,7 +721,7 @@ No held-out presets/sizes ran for these cost probes.
 velocity advection, curl/vorticity, divergence, pressure, gradient, dye
 advection, bloom or display. Shared-only `no-present` / `no-solver` are coarse
 ablations. ANGLE TIME_ELAPSED / EngineProfiler groups have the command-buffer
-bias documented below. `gpu-capture.mjs` attributes whole-frame Metal interval
+bias documented below. `gpu-capture.mjs` attributes whole-frame Metal interval (archived locally)
 unions; its optional draw-name log provides counts, not execution durations.
 No new engine hooks or synthetic stage timings were introduced. A top-five
 stage ranking, ms/frame and percentage shares cannot be certified from these
@@ -755,7 +755,7 @@ remaining PIDs (`/tmp/e1-headless-stages/cleanup.json`).
 Scope amended before ladder execution: Plasma (bloom+shading) and Karman
 (no bloom/shading), 1440×900 DPR2 seed5, **R=1 per rung**; independent baseline
 first and last per preset for drift. Public props only via existing
-`energy-capture.mjs --override`; not candidates, not E1 keep decisions or E2
+`energy-capture.mjs --override`; not candidates, not E1 keep decisions or E2 (archived locally)
 quality claims. Each rung captures real component/RAF, unchanged registered
 windows/Metal parser, blank controls. Active GPU-ms/s divided by actual engine
 Hz reports a whole-window mean GPU-ms/frame, not p95. Deltas are changes in
@@ -797,7 +797,7 @@ dye-half 0.6095 (33.36%); Karman dye-half 0.6034 (24.85%); Plasma sim-half
 are excluded from automatic E2 certification. The next candidate needs
 independent R3 noise and unchanged-quality evidence, not this noisy ranking.
 
-Raw parsed evidence `/tmp/energy-eval/cost-{Plasma,Karman}-*-71b8ddf/`;
+Raw parsed evidence `/tmp/energy-eval/cost-{Plasma,Karman}-*-71b8ddf/`; (archived locally)
 assert-based aggregation `/tmp/e1-aggregate-cost.mjs`, synthesis
 `/tmp/e1-headless-stages/attribution-summary.json`. Every rung cleanup reports
 lock released and no owned processes. All raw trace bundles and before/after
@@ -913,7 +913,7 @@ ADR 0089. The harness retains old queries only as evidence of this artifact.
 Wall throughput above 2 ms does not prove GPU execution alone exceeds 2 ms;
 favorable batch averages do not certify every individually presented frame.
 Independent GPU attribution is blocked; see
-[measurement blocker and resume protocol](gpu-measurement-blocker.md).
+measurement blocker and resume protocol: `dev-docs/benchmarks/gpu-measurement-blocker.md` (archived locally).
 Latest full own-tier matrix: worst ordinary
 median **LavaLamp 1.845 ms**, worst batch **LavaLamp 1.945 ms** (1440x900 DPR 3).
 Worst checked median **Karman 1.970 ms** (same). These favorable averages do not
@@ -1045,7 +1045,7 @@ replacement. No runtime/shader/config/default changes were made.
 - **200 warm-up frames**, await presentation and one originating-GL 1px drain before
   capture. Then **60 individual frames**, each fixed simulation dt 1/60 s, paced
   three RAFs apart; no competing engine RAF. Production driver/settle eligibility
-  retained via the same private gates as `paced-presentation.mjs`. No measured
+  retained via the same private gates as `paced-presentation.mjs`. No measured (archived locally)
   readPixels or timer query. Snapshot transfer counted per frame on shared/model
   pages; own tier presents directly and has no bitmap transfer by design.
 - Own preset matrix: 1440×900 and 800×500 CSS, native DPR 2; corresponding backing
@@ -1065,7 +1065,7 @@ replacement. No runtime/shader/config/default changes were made.
 ### Verdict metric, attribution and ceilings
 
 The existing protocol explicitly requires **every individual frame**, not favorable
-averages (`gpu-budget.md` verdict; `strict-budget-followup.md` lines 60–62). Verdict
+averages (`gpu-budget.md` verdict; `strict-budget-followup.md` lines 60–62). Verdict (archived locally)
 is therefore **max <2 ms** across 60 frames. Median: sorted index 30; p95: index 56;
 max: index 59. The p95 reading is shown separately, not substituted after results.
 A finite sample cannot prove all future frames or other machines.
@@ -1243,7 +1243,7 @@ are claimed by this re-tabulation.
 
 ### Pinned-seed optimisation protocol — 2026-10-06
 
-Use `bun scripts/gpu-capture.mjs [--seed N[,N...]]`: reference seed **5** by
+Use `bun scripts/gpu-capture.mjs [--seed N[,N...]]`: reference seed **5** by (archived locally)
 default; optionally supply up to five distinct uint32 seeds, for example
 `--seed 5,42,2026`. Every preset result and console row records the explicit seed;
 trace names include it. InkPaper retains its existing seed 5 workload; other model
@@ -1424,7 +1424,7 @@ warm-start pressure decay into paired Jacobi, retain 16 iterations and all field
 precisions. Pressure draws **17 → 8**; held-wet steady step+display **24 → 15**.
 No capture-script, preset, host or FluidEngine edits.
 
-Same-seed native comparison uses unchanged `bun scripts/gpu-capture.mjs`,
+Same-seed native comparison uses unchanged `bun scripts/gpu-capture.mjs`, (archived locally)
 `GPU_CAPTURE_CASES='model-inkpaper@800x500:shared:2'`, seed 5, 1600×1000 native
 backing, GPU lock held. Existing 200 warm-up/60 paced frame protocol, attribution,
 transfer and foreign-contention gates, all-clean-repeats rule unchanged.
@@ -1477,7 +1477,7 @@ optimization left to the lead; none performed to make the numbers pass.
 
 ### Reproducibility / exact commands
 
-Single script: `scripts/gpu-capture.mjs`; no new dependencies. Raw `.trace`, TOC,
+Single script: `scripts/gpu-capture.mjs`; no new dependencies. Raw `.trace`, TOC, (archived locally)
 frame details and exploratory exports remain only under `/tmp/gpu-capture/`.
 Capture script revisions: `c1f93e1` (preset matrix), `23ad9d3` (shared/models/InkPaper),
 `f932c7a` (attribution retries). Underlying production runtime remains `9df58fc`.
@@ -1487,12 +1487,12 @@ errors retained. The two originally ambiguous viewport rows were freshly retried
 not certified by manufactured marks. Components/retries already include ceilings.
 
 ```sh
-GPU_CAPTURE_DIR=/tmp/gpu-capture/native-matrix bun scripts/gpu-capture.mjs
-GPU_CAPTURE_CASES='Karman@1440x900:shared:2,GasFlare@1440x900:shared:2,LavaLamp@1440x900:shared:2,(default)@1440x900:shared:2,Karman@480.25x300.5:own:2,model-button@232x68:shared:2,model-wide-button@492x76:shared:2,model-segmented@372x68:shared:2,model-dropzone@492x212:shared:2,model-caustics@720x400:shared:2,model-enamel96@1x1:shared:2,model-enamel64@1x1:shared:2' GPU_CAPTURE_DIR=/tmp/gpu-capture/components bun scripts/gpu-capture.mjs
-GPU_CAPTURE_CASES='model-inkpaper@800x500:shared:2' GPU_CAPTURE_DIR=/tmp/gpu-capture/inkpaper bun scripts/gpu-capture.mjs
-GPU_CAPTURE_CASES='CircularFluid@1440x900:own:2,FrameFluid@1440x900:own:2,InkInWater@800x500:own:2' GPU_CAPTURE_DIR=/tmp/gpu-capture/retry-attribution bun scripts/gpu-capture.mjs
-bun scripts/gpu-capture.mjs --replay /tmp/gpu-capture/native-matrix/capture.json
-bun scripts/gpu-capture.mjs --self-check
+GPU_CAPTURE_DIR=/tmp/gpu-capture/native-matrix bun scripts/gpu-capture.mjs  # archived locally
+GPU_CAPTURE_CASES='Karman@1440x900:shared:2,GasFlare@1440x900:shared:2,LavaLamp@1440x900:shared:2,(default)@1440x900:shared:2,Karman@480.25x300.5:own:2,model-button@232x68:shared:2,model-wide-button@492x76:shared:2,model-segmented@372x68:shared:2,model-dropzone@492x212:shared:2,model-caustics@720x400:shared:2,model-enamel96@1x1:shared:2,model-enamel64@1x1:shared:2' GPU_CAPTURE_DIR=/tmp/gpu-capture/components bun scripts/gpu-capture.mjs  # archived locally
+GPU_CAPTURE_CASES='model-inkpaper@800x500:shared:2' GPU_CAPTURE_DIR=/tmp/gpu-capture/inkpaper bun scripts/gpu-capture.mjs  # archived locally
+GPU_CAPTURE_CASES='CircularFluid@1440x900:own:2,FrameFluid@1440x900:own:2,InkInWater@800x500:own:2' GPU_CAPTURE_DIR=/tmp/gpu-capture/retry-attribution bun scripts/gpu-capture.mjs  # archived locally
+bun scripts/gpu-capture.mjs --replay /tmp/gpu-capture/native-matrix/capture.json  # archived locally
+bun scripts/gpu-capture.mjs --self-check  # archived locally
 ```
 
 Per-capture native command (table below supplies exact PID, path and notification suffix):
@@ -1657,7 +1657,7 @@ were never signalled. Hot-pass diagnostic traces are not scene-verdict repeats.
 
 ### Checks and cleanup
 
-`bun scripts/gpu-capture.mjs --self-check`, `bun run test && bun run check`,
+`bun scripts/gpu-capture.mjs --self-check`, `bun run test && bun run check`, (archived locally)
 `bun run prepack`, `git diff --check` passed after script changes. No installs,
 tracker writes, push, merge, publish or runtime edits. Hardware capture is the
 browser evidence for this docs/bench-only lane; no full release rerun claimed.
@@ -1665,7 +1665,7 @@ browser evidence for this docs/bench-only lane; no full release rerun claimed.
 Every owned Chrome, xctrace recorder/export, notifyutil waiter and Bun/Vite server
 was closed by its handle/PID. The interrupted wrong-DPR run was closed by exact
 owned PIDs89020/89031/89032/89085; export91973 had already completed. Final process
-inventory contains no `gpu-capture.mjs`, xctrace or port5198 server. User Chrome
+inventory contains no `gpu-capture.mjs`, xctrace or port5198 server. User Chrome (archived locally)
 pid4386 / GPU4411 left alone. Worktree retained (not remotely preserved); untracked
 node_modules symlink retained, never staged. Traces retained in /tmp only, no live
 profiling processes. No cleanup of shared/unknown resources.
@@ -1677,7 +1677,7 @@ records paired-viscosity/outlet parity failures, sunrays native-gate rejection,
 packed-bloom blue/HDR rejection. Baseline `76bdaa2`; sunrays trial `8691527`.
 Final production runtime unchanged from baseline. No p95 budget closure.
 
-Unchanged `bun scripts/gpu-capture.mjs --seed 5`, M1 Max, ordinary headed Chrome,
+Unchanged `bun scripts/gpu-capture.mjs --seed 5`, M1 Max, ordinary headed Chrome, (archived locally)
 native DPR2. Same 200 warm-up / 60 paced fixed-dt frames and interval-union
 attribution; all original matrix rows aligned,60native writes, shared60/60
 transfers, zero strays. Original baseline and unpaired trial foreign overlap
@@ -1803,8 +1803,8 @@ The script's literal default covers only 30 own-tier preset scenes; `GPU_CAPTURE
 
 ```sh
 export GPU_CAPTURE_CASES='(default)@1440x900:own:2,(default)@800x500:own:2,LavaLamp@1440x900:own:2,LavaLamp@800x500:own:2,Plasma@1440x900:own:2,Plasma@800x500:own:2,InkInWater@1440x900:own:2,InkInWater@800x500:own:2,FrozenSwirl@1440x900:own:2,FrozenSwirl@800x500:own:2,Aurora@1440x900:own:2,Aurora@800x500:own:2,CircularFluid@1440x900:own:2,CircularFluid@800x500:own:2,FrameFluid@1440x900:own:2,FrameFluid@800x500:own:2,AnnularFluid@1440x900:own:2,AnnularFluid@800x500:own:2,SvgPathFluid@1440x900:own:2,SvgPathFluid@800x500:own:2,Toroidal@1440x900:own:2,Toroidal@800x500:own:2,GasFlare@1440x900:own:2,GasFlare@800x500:own:2,Venturi@1440x900:own:2,Venturi@800x500:own:2,Karman@1440x900:own:2,Karman@800x500:own:2,TeslaValve@1440x900:own:2,TeslaValve@800x500:own:2,Karman@1440x900:shared:2,GasFlare@1440x900:shared:2,LavaLamp@1440x900:shared:2,(default)@1440x900:shared:2,Karman@480.25x300.5:own:2,model-button@232x68:shared:2,model-wide-button@492x76:shared:2,model-segmented@372x68:shared:2,model-dropzone@492x212:shared:2,model-caustics@720x400:shared:2,model-enamel96@1x1:shared:2,model-enamel64@1x1:shared:2,model-inkpaper@800x500:shared:2'
-GPU_CAPTURE_DIR=/tmp/post-opt-matrix/run1 env DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer bun scripts/gpu-capture.mjs --seed 5
-GPU_CAPTURE_DIR=/tmp/post-opt-matrix/run2 env DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer bun scripts/gpu-capture.mjs --seed 5
+GPU_CAPTURE_DIR=/tmp/post-opt-matrix/run1 env DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer bun scripts/gpu-capture.mjs --seed 5  # archived locally
+GPU_CAPTURE_DIR=/tmp/post-opt-matrix/run2 env DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer bun scripts/gpu-capture.mjs --seed 5  # archived locally
 ```
 
 Unchanged 200 warm-up frames / 60 fixed-dt measured frames, three-RAF pacing; native Metal execution interval union, <4 ms mark alignment, native IOSurface writes and 60 requested/delivered shared transfers. p95 remains sorted index 56 (4th-worst of 60), a coarse sample not sustained population certification. ADR 0101's strict **p95 <2 ms** and all-clean-repeats rule apply; max remains visible. Foreign overlap **≥5% = CONTENDED**, not FAIL/PASS; WindowServer excluded. Script retries only CONTENDED, once after 30 s (two-attempt bound); INCONCLUSIVE attempts are retained without replacing marks or relaxing gates. Browser/OS ceilings, per-shader attribution and scanout limits remain as above.
@@ -2052,7 +2052,7 @@ Comparison capture provenance (ephemeral raw data):
 - `/tmp/opt-solver/sunrays-pairs/p3-baseline/capture.json`: capture SHA `869152762b697fa1bb97638cce8d9f65d08fc0d5`; SHA256 `2f0b317f88e8fcdf544530b21d4fed6d0348fa6cd5f917d621656bf20e1347b1`.
 ### Checks, cleanup and retained resources
 
-`bun scripts/gpu-capture.mjs --self-check`, `bun run test && bun run check` passed: **52 Node files / 864 tests**, **471 checked files / 0 errors / 0 warnings**. `bun run prepack` passed publint and strict public declarations; existing `import.meta.env` advisory retained. `git diff --check` passed. Captures supply native hardware evidence, not a full release/browser-suite rerun. Initial run1 Vite reported the not-yet-generated `.svelte-kit/tsconfig.json` and existing missing SplashCursor dependency-scan advisory; static measurement pages still completed. No runtime/preset/script fixes made.
+`bun scripts/gpu-capture.mjs --self-check`, `bun run test && bun run check` passed: **52 Node files / 864 tests**, **471 checked files / 0 errors / 0 warnings**. `bun run prepack` passed publint and strict public declarations; existing `import.meta.env` advisory retained. `git diff --check` passed. Captures supply native hardware evidence, not a full release/browser-suite rerun. Initial run1 Vite reported the not-yet-generated `.svelte-kit/tsconfig.json` and existing missing SplashCursor dependency-scan advisory; static measurement pages still completed. No runtime/preset/script fixes made. (archived locally)
 
 Ownership: `/tmp/svelte-fluid-gpu.lock` acquired with lane/worktree/SHA owner file before run1, retained through run2, released after both captures closed. Run1 Bun **33589**, Vite **33592**, Chrome GPU **33606**; run2 Bun **57419**, Vite **57425**, Chrome GPU **57447**. Playwright closed each owned browser and contexts; unchanged script stopped every recorder by exact owned handle/PID, awaited completion, closed notifyutil handles, killed and awaited owned Bun/Vite. Final exact-PID census confirms captured owned descendants gone; no xctrace, gpu-capture or port5198 listener remains. User Chrome **4386/4411**, foreign Chrome-for-Testing **48074** remain alive, untouched. Process ownership snapshots stay machine-local under each run directory.
 
@@ -2080,7 +2080,7 @@ remain: historical median scene spread **0.530916 ms**, maximum **1.703376 ms**;
 27 same-seed post-opt pairs differ by median **0.318750 ms**, max **0.949169 ms**.
 No promise to resolve every 0.08 ms gap; no retrospective PASS reclassification.
 
-`bun scripts/gpu-capture.mjs` now uses the registered default; explicit
+`bun scripts/gpu-capture.mjs` now uses the registered default; explicit (archived locally)
 `--frames N` / `GPU_CAPTURE_FRAMES`, `--runs R` / `GPU_CAPTURE_RUNS` overrides
 are experimental. `--legacy` retains 60/1 and the 10 s ceiling for comparison.
 Separate output directories required. `--replay` honors recorded run count.

@@ -57,7 +57,7 @@ Two approaches coexist: **analytical** (SDF in GLSL + TypeScript mirror) and **m
 4. Update `containerShapeEqual` for the new variant
 5. Update `resolveConfig` in `FluidEngine.ts`
 
-See [ADR 0024](dev-docs/decisions/0024-svg-path-container-shape.md) for the mask texture approach.
+See [ADR 0024](dev-docs/decisions/0024-svg-path-container-shapes.md) for the mask texture approach.
 
 ## Conventions
 
@@ -82,7 +82,7 @@ route as part of the same change — not as a follow-up.
 |-------|---------|
 | `src/routes/docs/+page.svelte` | Getting Started |
 | `src/routes/docs/components/+page.svelte` | All 13 components (6 fluid, 7 interface primitives) with props and live examples |
-| `src/routes/docs/configuration/+page.svelte` | Full FluidConfig prop reference (70+ props) |
+| `src/routes/docs/configuration/+page.svelte` | Full FluidConfig prop reference (90+ props) |
 | `src/routes/docs/shapes/+page.svelte` | ContainerShape variants and fields |
 | `src/routes/docs/presets/+page.svelte` | All 14 presets (registry-driven tables via `PresetReference`) |
 | `src/routes/docs/api/+page.svelte` | FluidHandle imperative API, RGB, PresetSplat |
