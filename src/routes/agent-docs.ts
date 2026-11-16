@@ -63,11 +63,11 @@ function componentPropReference(): string[] {
 		'### Wrapper behaviour and accessibility', '',
 		'- FluidBackground, FluidReveal, FluidDistortion, FluidStick and FluidText do NOT accept `aria-label`, `aria-hidden`, `role`, `id` or arbitrary DOM events. Put additional semantics/events on a real outer DOM element, never spread HTML attributes into these wrappers.',
 		'- FluidBackground is decorative by default. Keep meaningful page content inside it; do not aria-hide the whole wrapper including that content. `posterAlt` describes the unavailable-WebGL poster, not the live background.',
-		'- FluidDistortion uses `posterAlt` as the live image accessible name AND fallback image alt; its fallback poster defaults to `src`. `src` is required; use a served URL, e.g. a file in SvelteKit `static/`. Give it an explicit size, e.g. `<FluidDistortion src="/hero.jpg" width={640} height={360} strength={0.4} intensity={24} />`, or a CSS-sized parent with a definite height. There is no `alt` prop. Use `strength` for warp amount, `intensity` for injected dye. `distortion` is a boolean mode flag, NOT a numeric strength.',
-		'- FluidReveal already enables reveal mode. Use `sensitivity`, `curve`, `coverColor`, `accentColor`, `fringeColor`; no `mode` or `revealMode` selector. Unset cover/accent/fringe inherit engine defaults (white / deep navy / soft blue). Fade precedence: `fadeSpeed`, then `densityDissipation`, then `fadeBack` (true = 0.995, false = 1).',
+		'- FluidDistortion uses `posterAlt` as the live image accessible name AND fallback image alt; its fallback poster defaults to `src`. `src` is required; use a served URL, e.g. a file in SvelteKit `static/`. Give it an explicit size, e.g. `<FluidDistortion src="/hero.jpg" width={640} height={360} distortionPower={0.4} intensity={24} />`, or a CSS-sized parent with a definite height. There is no `alt` prop. Use `distortionPower` for warp amount, `intensity` for injected dye. `distortion` is a boolean mode flag, NOT a numeric strength.',
+		'- FluidReveal already enables reveal mode. Use `revealSensitivity`, `revealCurve`, `revealCoverColor`, `revealAccentColor`, `revealFringeColor`; no `mode` or `revealMode` selector. Unset cover/accent/fringe inherit engine defaults (white / deep navy / soft blue). Fade precedence: `fadeSpeed`, then `densityDissipation`, then `fadeBack` (true = 0.995, false = 1).',
 		'- FluidReveal and FluidDistortion put the canvas ABOVE children; children are decorative visual content, not clickable controls. FluidReveal has its own pointer-move handler even with `pointerInput={false}`; that prop disables the inner Fluid input, not the wrapper handler. Reduced motion hides the reveal cover entirely. Reveal is not a security/privacy boundary: children remain in the DOM.',
-		'- `autoReveal` / `autoDistort` enable a built-in path animation; speed uses `autoRevealSpeed` / `autoDistortSpeed`. They stop on first pointer-down/touch interaction. Do not build a second RAF loop for this. Distortion `initialSplats={0}` starts undistorted; `initialSplatCount` is a different inner-engine control.',
-		'- FluidStick takes `text` or SVG path `d` (d wins), never image `src`. Its `text` supplies the live accessible name. `strength`, `stickyPressureAmount`, `amplify` map to sticky physics. `autoAnimate` stops on pointer activity or after `autoAnimateDuration` seconds (0 = until interaction).',
+		'- `autoAnimate` (FluidReveal, FluidDistortion, FluidStick) enables a built-in path animation; speed uses `autoAnimateSpeed`. They stop on first pointer-down/touch interaction. Do not build a second RAF loop for this. Distortion `initialSplats={0}` starts undistorted; `initialSplatCount` is a different inner-engine control.',
+		'- FluidStick takes `text` or SVG path `d` (d wins), never image `src`. Its `text` supplies the live accessible name. `stickyStrength`, `stickyPressure`, `stickyAmplify` map to sticky physics. `autoAnimate` stops on pointer activity or after `autoAnimateDuration` seconds (0 = until interaction).',
 		'- FluidText requires `text`; it supplies role="img" and its accessible name, computes aspect ratio, builds its text container and defaults to a 4.5:1 outline halo. It is not native selectable heading text: keep document headings in the DOM. Supply `contrastColor` for gradients or changing page colours.', '',
 		...COMPONENTS.filter((c) => !FLUID_COMPONENTS.includes(c.name)).flatMap((c) => [
 			`### ${c.name}Props`, '', ...propTable(`${c.name}Props`),
@@ -80,13 +80,13 @@ function componentPropReference(): string[] {
 
 function structuredTypeReference(): string[] {
 	const names = ['RGB', 'Vec2', 'PresetSplat', 'FlowConfig', 'FlowBoundary', 'FlowOutlet', 'FlowScalarField', 'FlowGridField', 'FlowVisualization', 'Obstruction', 'StickyMask', 'InkBrush', 'LiquidSegmentedOption'];
-	const aliases = ['ToneMapping', 'LiquidTone', 'FlowMode', 'FlowBoundaryKind', 'FlowProfile', 'FlowScalarName', 'FlowAdvection', 'FlowVisualizationField', 'FlowTransfer', 'ContainerShape', 'FlowSource', 'FlowForce', 'PrescribedFlowField'];
+	const aliases = ['ToneMapping', 'LiquidTone', 'FlowMode', 'FlowBoundaryKind', 'FlowSourceKind', 'FlowProfile', 'FlowScalarName', 'FlowAdvection', 'FlowVisualizationField', 'FlowTransfer', 'ContainerShape', 'FlowSource', 'FlowForce', 'PrescribedFlowField', 'PresetBaseProps', 'InteractivePresetProps'];
 	return [
 		'## Structured values (nested config types)', '',
 		'Coordinates are normalized x left→right, y bottom→top; DOM y must be flipped once. `backColor`, `contrastColor`, `obstructionColor` use RGB 0–255; splats, flow dye, reveal colours and autoSplatColor use 0–1 linear/HDR. `autoSplatColor` receives an engine 10× multiplier. RGB is an object, not a CSS colour string or array.', '',
 		...names.flatMap((name) => [`### ${name}`, '', ...propTable(name)]),
 		'### Discriminated shapes, sources and forces', '',
-		'Optional fields use `?`. Required discriminants and fields must match a single variant. `ContainerShape.svgPath` needs `d` or `text`; `StickyMask` and `Obstruction` also use path/text, not an image URL. `fit` exists on Obstruction, NOT ContainerShape or StickyMask. `viewBox` is a four-number tuple, not a string.', '',
+		'`ContextProbeAttributes` (from `gl-support`) is the parameter type of `isWebGLAvailable()`. Optional fields use `?`. Required discriminants and fields must match a single variant. `ContainerShape.svgPath` needs `d` or `text`; `StickyMask` and `Obstruction` also use path/text, not an image URL. `fit` exists on Obstruction, NOT ContainerShape or StickyMask. `viewBox` is a four-number tuple, not a string.', '',
 		...aliases.flatMap((name) => {
 			const declaration = declarations.statements.find((node): node is ts.TypeAliasDeclaration => ts.isTypeAliasDeclaration(node) && node.name.text === name);
 			if (!declaration) throw new Error(`Unknown value type: ${name}`);
@@ -125,7 +125,7 @@ export function buildLlmsTxt(site = DEFAULT_SITE): string {
 	const docs = [
 		['Getting Started', '/docs', 'install and first component'],
 		['Components', '/docs/components', 'all thirteen components, props, examples, keyboard and reduced-motion behaviour'],
-		['Configuration', '/docs/configuration', 'full FluidConfig prop reference (70+ props)'],
+		['Configuration', '/docs/configuration', 'full FluidConfig prop reference (90+ props)'],
 		['Container shapes', '/docs/shapes', 'ContainerShape variants and fields'],
 		['Presets', '/docs/presets', 'all 14 presets with configs and playground links'],
 		['Imperative API', '/docs/api', 'FluidHandle, RGB, PresetSplat'],
@@ -204,9 +204,9 @@ export function buildSkillMd(site = DEFAULT_SITE): string {
 		'- Determinism and resize: pass `seed` for reproducible initial splats. Resize preserves the live context, programs, dye, and velocity; rendering uses native DPR by default (`maxPixelRatio={2}` caps it).',
 		'- Lifecycle: all WebGL access is deferred to `onMount` (SSR-safe). `autoPause` (default true) stops the RAF loop when offscreen/hidden; `lazy` defers engine creation until in view.',
 		'- Resilience: if WebGL is permanently unavailable, `<Fluid>` never crashes — it renders a `fallback` snippet, else a `poster` image, else fills `backColor` + a visually-hidden message. `isWebGLAvailable({ failIfMajorPerformanceCaveat? })` is exported; `requireHardwareAcceleration` treats a software-only renderer as unavailable.',
-		'- The public API is GL-type-neutral (1.0): `FBO`, `DoubleFBO`, `ExtInfo` and `ResolvedConfig` are not exported and no public signature mentions a `WebGL*` DOM type.',
-		'- Runtime prop changes go through `setConfig`, which classifies each field: hot scalars (next frame), keyword recompiles (shading/bloom/sunrays/reveal/distortion), FBO rebuilds (resolutions), or construct-only (seed, initial splat counts).',
-		'- `autoPerformance` is opt-in. Under sustained live-frame load above `autoPerformanceTargetFrameMs` (default 1000/60), it lowers effective Bucket-A quality only (`pressureIterations`, then `substeps`) and never auto-restores; deterministic `advance()` runs ignore it.',
+		'- No public signature mentions WebGL types.',
+		'- Runtime prop changes go through `setConfig`, which classifies each field: hot-updatable values (next frame), display shader recompiles (shading/bloom/sunrays/reveal/distortion), render-target rebuilds (resolutions), or construct-only (seed, initial splat counts).',
+		'- `autoPerformance` is opt-in. Under sustained live-frame load above `autoPerformanceTargetFrameMs` (default 1000/60), it lowers effective quality only (`pressureIterations`, then `substeps`) and never auto-restores; deterministic `advance()` runs ignore it.',
 		"- `advectionScheme: 'maccormack'` is construct-only, velocity-only, and best for flow/structured scenes; diffuse decorative dye can look angular. Default is `'semilagrangian'`, and no-linear-filtering devices fall back to it.",
 		'',
 		'## Components',

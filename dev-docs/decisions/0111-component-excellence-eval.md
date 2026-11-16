@@ -140,7 +140,7 @@ source map or asset image bytes are included. Absolute bytes, not pass/fail.
 **g. Visual (candidate rounds only).** Freeze R=2 static specimen screenshots at
 baseline. Reuse E2's blind randomised A/B, side-swapped two-trial verdict,
 inconsistency-as-tie, calibration thresholds and null-aware no-worse gate from
-`scripts/quality-eval.mjs` / ADR 0107, scoped to static UI legibility, hierarchy,
+`scripts/quality-eval.mjs` / ADR 0107, scoped to static UI legibility, hierarchy, (archived locally)
 shape, spacing and visual finish. Judge tier must differ from implementer
 (Sonnet judges this Opus-authored harness; later Sonnet candidates use Opus).
 Existing fluid calibration does **not** certify static UI; rerun identical,
@@ -167,10 +167,10 @@ harness/eval errors before further library changes. No held-out-specific fixes.
 
 ### Execution and evidence
 
-`scripts/component-eval.mjs --self-check` is pure logic; `baseline --cpu-only`
+`scripts/component-eval.mjs --self-check` is pure logic; `baseline --cpu-only` (archived locally)
 performs all GPU-free work first; `baseline --hardware` resumes it. Results go
-to `evals/components/*.json`, screenshots to `evals/components/baseline/`, and
-`dev-docs/benchmarks/component-eval.md` is the static results page/work queue.
+to `evals/components/*.json`, screenshots to `evals/components/baseline/`, and (archived locally)
+`dev-docs/benchmarks/component-eval.md` is the static results page/work queue. (archived locally)
 Each missing cell has an explicit reason; no component fixes in this lane.
 
 Only installed headless Chrome at

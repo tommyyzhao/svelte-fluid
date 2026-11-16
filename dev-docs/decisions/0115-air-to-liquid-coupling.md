@@ -6,7 +6,7 @@
 
 ## Context
 
-Verdigris v2 stirs cursor-driven air/mist with `FluidEngine`; falling markers
+The external game consumer (github.com/tommyyzhao/verdigris) stirs cursor-driven air/mist with `FluidEngine`; falling markers
 belong to `LiquidEngine` in a different WebGL2 context. Air should deflect a
 pour without bulldozing a supported pool or compromising exact species counts.
 
@@ -24,16 +24,16 @@ pour without bulldozing a supported pool or compromising exact species counts.
   `uv - dt * velocity * simTexelSize`, so snapshot `ux = vx / simWidth`,
   `uy = vy / simHeight`. Values are normalized-domain units/s, x right/y up,
   interleaved xy, **bottom row first**.
-- The game converts to a liquid grid W×H: for top-down wind cell (x,y), read
+- The caller converts to a liquid grid W×H: for top-down wind cell (x,y), read
   snapshot offset `2 * ((snapshot.height - 1 - y) * snapshot.width + x)`;
-  set `vx = W * ux`, `vy = -H * uy`. For Verdigris W=192, `vx = 192 * ux`;
+  set `vx = W * ux`, `vy = -H * uy`. For W=192, `vx = 192 * ux`;
   use the actual level height for `vy`. Scale both components together by
   `min(1, 400 / hypot(vx,vy))` (zero vector stays zero). Wind samples cover the
   entire liquid domain; the liquid shader manually bilinearly interpolates
   cell-centred values with edge clamping. Wind rows are top first, y down.
 - Three instance-owned PBO/fence slots, FIFO issue order, zero-wait fence
   polling. Full ring refuses enqueue, never blocks or overwrites a pending
-  sample. Poll returns one completed sample. Verdigris buffers by issue tick:
+  sample. Poll returns one completed sample. The consumer buffers by issue tick:
   snapshot t is consumed only at liquid tick t+2, sensor t is observed immediately
   before planning t+2. The first two ticks have no wind. A missing exact frame
   suspends simulation, yielding with `setTimeout(0)` until that fence signals;
@@ -92,7 +92,7 @@ all 1152 markers conserved. Sparse 2-marker/tick regression shifts 86.890 cells
 
 Fast vertical freefall exposed an existing renderer failure: a valid pour's
 markers separate by 2–3 cells and vanish below the density threshold. Changing
-physics or increasing emitted volume to hide this would break the game contract.
+physics or increasing emitted volume to hide this would break the caller contract.
 
 Only airborne markers get a velocity-aligned capsule footprint, stretched by
 one tick (`velocity / 60`) in image pixels. Its cross-stream radius is 35% of
@@ -154,10 +154,10 @@ GPU regressions compare several layered-pool hues with the palette's equal KM
 mixture, sample opposite sides of a four-cell wall, preserve gold above a blue
 pool, compare pure-pool pixels with the previous composite, and compare every
 marker plus exact sensor counts against an unrendered simulation. Before/after
-captures live under `/tmp/verdigris-mix/`. Existing opt-in render budget remains
+captures live under `/tmp/svelte-fluid-liquid/mix/`. Existing opt-in render budget remains
 2 ms at 50,000 markers and 1280×800; no unconditional timing assertion.
 
 Rejected synchronous `readField`: stalls the animation thread on unfinished
 GPU work. Rejected sharing textures: WebGL objects cannot cross contexts.
 Rejected shared-context migration and feedback pressure: disproportionate
-ownership/lifecycle changes, unnecessary for this one-way game mechanic.
+ownership/lifecycle changes, unnecessary for this one-way mechanic.

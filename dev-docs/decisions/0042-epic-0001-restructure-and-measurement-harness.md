@@ -83,7 +83,7 @@ The epic conflated two things with opposite natures. They are split:
     a separate script and is **not** in the default green-gate.
 - **Interactive timing profiler (NOT CI-gateable).** `EXT_disjoint_timer_query_webgl2`
   results are async, GPU_DISJOINT-invalidatable, and thermal/driver-dependent — they
-  cannot be synchronous `expect()`s. A restored `/examples/bench` dev route reads its
+  cannot be synchronous `expect()`s. A restored `/examples/bench` dev route reads its (archived locally)
   scene from `__benches__/scenes.ts`, exposes `window.__benchResult` (with an `energy`
   field), and offers a per-pass timer path (behind a default-off `instrument` ctor flag)
   with an rAF-EMA fallback. All millisecond/fps numbers are recorded in the relevant

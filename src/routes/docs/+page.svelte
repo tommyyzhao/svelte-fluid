@@ -92,7 +92,7 @@ yarn add svelte-fluid</code></pre>
   colorful
 /&gt;</code></pre>
 
-<p>See the full list of 70+ props on the <a href="{base}/docs/configuration">Configuration</a> page.</p>
+<p>See the full list of 90+ props on the <a href="{base}/docs/configuration">Configuration</a> page.</p>
 
 <h2>Container shapes</h2>
 
@@ -119,7 +119,7 @@ yarn add svelte-fluid</code></pre>
 	<tbody>
 		<tr>
 			<td><code><a href="{base}/docs/components#fluid">&lt;Fluid&gt;</a></code></td>
-			<td>Core simulation canvas. 70+ props for physics, flow, and visuals.</td>
+			<td>Core simulation canvas. 90+ props for physics, flow, and visuals.</td>
 		</tr>
 		<tr>
 			<td><code><a href="{base}/docs/components#fluidbackground">&lt;FluidBackground&gt;</a></code></td>

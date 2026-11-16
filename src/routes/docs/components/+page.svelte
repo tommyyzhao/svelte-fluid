@@ -153,11 +153,11 @@ ${SCRIPT_CLOSE}
 </table>
 
 <div class="callout">
-	<strong>WebGL fallback (ADR-0041):</strong> when WebGL is <em>permanently</em> unavailable — no WebGL, or no half-float texture support — <code>&lt;Fluid&gt;</code> keeps the page intact. It renders, in order of preference, your <code>fallback</code> snippet, then a <code>poster</code> image, else it fills the box with <code>backColor</code> and exposes a visually-hidden <code>fallbackText</code> message (default: <em>"This animation requires WebGL, which isn't available in your browser."</em>). Short-lived failures, such as hitting the browser's live-context cap on a dense <code>lazy</code> page, stay blank and retry on the next scroll. The fill matches the mode: <code>transparent</code> stays see-through, and <code>reveal</code> uses the cover color and masks on <em>any</em> failure so hidden content is never exposed. For <code>distortion</code>, pass <code>poster=&#123;yourImageUrl&#125;</code> so the still image stands in for the warp. Set <a href="{base}/docs/configuration"><code>requireHardwareAcceleration</code></a> to also treat a software-only renderer as unavailable. The helper <code>isWebGLAvailable()</code> is exported if you want to gate rendering yourself. A frame that throws at runtime (ADR-0085) is also terminal: the engine is evicted, <code>onError</code> is called once, and the same fallback appears with reason <code>'render-failed'</code>. It is never retried.
+	<strong>WebGL fallback:</strong> when WebGL is <em>permanently</em> unavailable — no WebGL, or no half-float texture support — <code>&lt;Fluid&gt;</code> keeps the page intact. It renders, in order of preference, your <code>fallback</code> snippet, then a <code>poster</code> image, else it fills the box with <code>backColor</code> and exposes a visually-hidden <code>fallbackText</code> message (default: <em>"This animation requires WebGL, which isn't available in your browser."</em>). Short-lived failures, such as hitting the browser's live-context cap on a dense <code>lazy</code> page, stay blank and retry on the next scroll. The fill matches the mode: <code>transparent</code> stays see-through, and <code>reveal</code> uses the cover color and masks on <em>any</em> failure so hidden content is never exposed. For <code>distortion</code>, pass <code>poster=&#123;yourImageUrl&#125;</code> so the still image stands in for the warp. Set <a href="{base}/docs/configuration"><code>requireHardwareAcceleration</code></a> to also treat a software-only renderer as unavailable. The helper <code>isWebGLAvailable()</code> is exported if you want to gate rendering yourself. A frame that throws at runtime is also terminal: the engine is evicted, <code>onError</code> is called once, and the same fallback appears with reason <code>'render-failed'</code>. It is never retried.
 </div>
 
 <div class="callout">
-	<strong>Reduced motion (ADR-0085):</strong> under <code>prefers-reduced-motion: reduce</code> every component settles the opening scene for a fixed 60 steps at 1/60 s, renders one finished frame, and stays still with no animation loop and no pointer response. <code>FluidReveal</code> drops its cover so content shows in full; auto-animation (<code>autoReveal</code>, <code>autoDistort</code>, <code>autoAnimate</code>) is skipped. The preference is followed live in both directions.
+	<strong>Reduced motion:</strong> under <code>prefers-reduced-motion: reduce</code> every component settles the opening scene for a fixed 60 steps at 1/60 s, renders one finished frame, and stays still with no animation loop and no pointer response. <code>FluidReveal</code> drops its cover so content shows in full; auto-animation (<code>autoAnimate</code>) is skipped. The preference is followed live in both directions.
 </div>
 
 <p>Exposes a <a href="{base}/docs/api"><code>FluidHandle</code></a> via <code>bind:this</code> for programmatic control (splats, pause, resume, performance state).</p>
@@ -199,7 +199,7 @@ ${SCRIPT_CLOSE}
 </table>
 
 <div class="callout">
-	<strong>Contrast:</strong> Off by default so the 0.8.0 look is unchanged. With <code>minContrast={'{'}4.5{'}'}</code> every fluid pixel is lightened or darkened (hue kept) until it meets AA against the text colour; pixels that already pass are untouched. Glass presets are excluded because reflections composite after this pass. The text colour is read once on mount; pass <code>contrastColor</code> for theme switches or per-section colours (ADR-0086).
+	<strong>Contrast:</strong> Off by default. With <code>minContrast={'{'}4.5{'}'}</code> every fluid pixel is lightened or darkened (hue kept) until it meets AA against the text colour; pixels that already pass are untouched. Glass presets are excluded because reflections composite after this pass. The text colour is read once on mount; pass <code>contrastColor</code> for theme switches or per-section colours.
 </div>
 
 <p>Defaults to <code>pointerTarget='window'</code> and <code>splatOnHover=true</code>. All <a href="{base}/docs/configuration">FluidConfig</a> props are accepted.</p>
@@ -216,10 +216,10 @@ ${SCRIPT_CLOSE}
 {SCRIPT_CLOSE}
 
 &lt;FluidReveal
-  sensitivity={'{'}0.24{'}'}
-  coverColor={'{'}{'{'} r: 0.15, g: 0.15, b: 0.18 {'}'}{'}'}
-  fringeColor={'{'}{'{'} r: 0.6, g: 0.7, b: 0.85 {'}'}{'}'}
-  accentColor={'{'}{'{'} r: 0.2, g: 0.35, b: 0.7 {'}'}{'}'}
+  revealSensitivity={'{'}0.24{'}'}
+  revealCoverColor={'{'}{'{'} r: 0.15, g: 0.15, b: 0.18 {'}'}{'}'}
+  revealFringeColor={'{'}{'{'} r: 0.6, g: 0.7, b: 0.85 {'}'}{'}'}
+  revealAccentColor={'{'}{'{'} r: 0.2, g: 0.35, b: 0.7 {'}'}{'}'}
 &gt;
   &lt;div&gt;Your hidden content here&lt;/div&gt;
 &lt;/FluidReveal&gt;</code></pre>
@@ -227,26 +227,28 @@ ${SCRIPT_CLOSE}
 <table>
 	<thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
 	<tbody>
-		<tr><td><code>sensitivity</code></td><td><code>number</code></td><td><code>0.1</code></td><td>How easily areas reveal. Higher = less dye needed.</td></tr>
-		<tr><td><code>curve</code></td><td><code>number</code></td><td><code>0.5</code></td><td>Power exponent for reveal alpha. Higher = crisper edge.</td></tr>
-		<tr><td><code>coverColor</code></td><td><code>RGB</code></td><td><code>{'{'} r: 1, g: 1, b: 1 {'}'}</code></td><td>Solid color of the cover layer (0–1 linear).</td></tr>
-		<tr><td><code>accentColor</code></td><td><code>RGB</code></td><td><code>{'{'} r: 0.2, g: 0.35, b: 0.7 {'}'}</code></td><td>Fringe accent color at reveal edges (0–1 linear).</td></tr>
-		<tr><td><code>fringeColor</code></td><td><code>RGB</code></td><td><code>{'{'} r: 0.6, g: 0.7, b: 0.85 {'}'}</code></td><td>Outer fringe color between cover and accent (0–1 linear).</td></tr>
+		<tr><td><code>revealSensitivity</code></td><td><code>number</code></td><td><code>0.1</code></td><td>How easily areas reveal. Higher = less dye needed.</td></tr>
+		<tr><td><code>revealCurve</code></td><td><code>number</code></td><td><code>0.5</code></td><td>Power exponent for reveal alpha. Higher = crisper edge.</td></tr>
+		<tr><td><code>revealCoverColor</code></td><td><code>RGB</code></td><td><code>{'{'} r: 1, g: 1, b: 1 {'}'}</code></td><td>Solid color of the cover layer (0–1 linear).</td></tr>
+		<tr><td><code>revealAccentColor</code></td><td><code>RGB</code></td><td><code>{'{'} r: 0.2, g: 0.35, b: 0.7 {'}'}</code></td><td>Fringe accent color at reveal edges (0–1 linear).</td></tr>
+		<tr><td><code>revealFringeColor</code></td><td><code>RGB</code></td><td><code>{'{'} r: 0.6, g: 0.7, b: 0.85 {'}'}</code></td><td>Outer fringe color between cover and accent (0–1 linear).</td></tr>
 		<tr><td><code>fadeBack</code></td><td><code>boolean</code></td><td><code>true</code></td><td>Whether revealed areas gradually fade back to covered.</td></tr>
-		<tr><td><code>fadeSpeed</code></td><td><code>number</code></td><td>—</td><td>Explicit dissipation value. 1.0 = permanent, 0.99 = slow fade. Overrides <code>fadeBack</code>.</td></tr>
-		<tr><td><code>autoReveal</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Auto-animate a smooth looping path to reveal content before user interaction.</td></tr>
-		<tr><td><code>autoRevealSpeed</code></td><td><code>number</code></td><td><code>1.0</code></td><td>Speed of the auto-reveal animation.</td></tr>
+		<tr><td><code>densityDissipation</code></td><td><code>number</code></td><td>—</td><td>Explicit dissipation value. 1.0 = permanent, 0.99 = slow fade. Overrides <code>fadeBack</code>.</td></tr>
+		<tr><td><code>autoAnimate</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Auto-animate a smooth looping path to reveal content before user interaction.</td></tr>
+		<tr><td><code>autoAnimateSpeed</code></td><td><code>number</code></td><td><code>1.0</code></td><td>Speed of the auto-reveal animation.</td></tr>
 	</tbody>
 </table>
 
 <p>Also accepts <code>width</code>, <code>height</code>, <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, <code>fallback</code>, <code>poster</code>, <code>posterAlt</code>, <code>fallbackText</code>, <code>onReady</code>, <code>onError</code>, and all <a href="{base}/docs/configuration">FluidConfig</a> props.</p>
+
+<p>Older prop names still work as <code>@deprecated</code> aliases and will be removed in 2.0.</p>
 
 <div class="callout">
 	<strong>Note:</strong> The canvas sits on top of children for alpha compositing. Interactive elements (links, buttons) inside the slot will not receive pointer events.
 </div>
 
 <div class="callout">
-	<strong>Contrast:</strong> Revealed content is your own DOM, so its contrast is the text colour you choose against the page behind it. Fully revealed pixels (cover alpha under 0.1) keep at least 80% of that contrast (measured, 5th percentile). The cover and its fringe are a deliberate partial state and are <em>not</em> AA-guaranteed: do not put essential text only reachable through a half-revealed cover. Reduced-motion users get the content with no cover. Pick <code>coverColor</code> and text colour as a pair with at least 4.5:1 (ADR-0086).
+	<strong>Contrast:</strong> Revealed content is your own DOM, so its contrast is the text colour you choose against the page behind it. Fully revealed pixels (cover alpha under 0.1) keep at least 80% of that contrast (measured, 5th percentile). The cover and its fringe are a deliberate partial state and are <em>not</em> AA-guaranteed: do not put essential text only reachable through a half-revealed cover. Reduced-motion users get the content with no cover. Pick <code>coverColor</code> and text colour as a pair with at least 4.5:1.
 </div>
 
 <!-- ============================================================ -->
@@ -260,24 +262,26 @@ ${SCRIPT_CLOSE}
   import {'{'} FluidDistortion {'}'} from 'svelte-fluid';
 {SCRIPT_CLOSE}
 
-&lt;FluidDistortion src="/hero.jpg" width={'{'}640{'}'} height={'{'}360{'}'} strength={'{'}0.4{'}'} intensity={'{'}24{'}'} /&gt;</code></pre>
+&lt;FluidDistortion src="/hero.jpg" width={'{'}640{'}'} height={'{'}360{'}'} distortionPower={'{'}0.4{'}'} intensity={'{'}24{'}'} /&gt;</code></pre>
 
 <table>
 	<thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
 	<tbody>
 		<tr><td><code>src</code></td><td><code>string</code></td><td>—</td><td>URL of the image to distort. <strong>Required.</strong></td></tr>
-		<tr><td><code>strength</code></td><td><code>number</code></td><td><code>0.4</code></td><td>How strongly velocity warps the image. 0–1.</td></tr>
+		<tr><td><code>distortionPower</code></td><td><code>number</code></td><td><code>0.4</code></td><td>How strongly velocity warps the image. 0–1.</td></tr>
 		<tr><td><code>intensity</code></td><td><code>number</code></td><td><code>24</code></td><td>How much dye each interaction injects.</td></tr>
-		<tr><td><code>fit</code></td><td><code>'cover' | 'contain'</code></td><td><code>'cover'</code></td><td>How the image fits the canvas.</td></tr>
-		<tr><td><code>scale</code></td><td><code>number</code></td><td><code>1.0</code></td><td>Image scale. &gt;1 zooms out, &lt;1 zooms in.</td></tr>
-		<tr><td><code>autoDistort</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Auto-animate distortion along a smooth looping path before user interaction.</td></tr>
-		<tr><td><code>autoDistortSpeed</code></td><td><code>number</code></td><td><code>1.0</code></td><td>Speed of auto-distort animation.</td></tr>
+		<tr><td><code>distortionFit</code></td><td><code>'cover' | 'contain'</code></td><td><code>'cover'</code></td><td>How the image fits the canvas.</td></tr>
+		<tr><td><code>distortionScale</code></td><td><code>number</code></td><td><code>1.0</code></td><td>Image scale. &gt;1 zooms out, &lt;1 zooms in.</td></tr>
+		<tr><td><code>autoAnimate</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Auto-animate distortion along a smooth looping path before user interaction.</td></tr>
+		<tr><td><code>autoAnimateSpeed</code></td><td><code>number</code></td><td><code>1.0</code></td><td>Speed of auto-distort animation.</td></tr>
 		<tr><td><code>initialSplats</code></td><td><code>number</code></td><td><code>20</code></td><td>Random splats at startup. Creates a chaotic distortion that settles. 0 to start clean.</td></tr>
 		<tr><td><code>bleed</code></td><td><code>number</code></td><td><code>60</code></td><td>Extra canvas pixels beyond visible edges. Prevents velocity bounce at boundaries.</td></tr>
 	</tbody>
 </table>
 
 <p>Also accepts <code>width</code>, <code>height</code>, <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, <code>fallback</code>, <code>poster</code>, <code>posterAlt</code>, <code>fallbackText</code>, <code>onReady</code>, <code>onError</code>, and all <a href="{base}/docs/configuration">FluidConfig</a> props.</p>
+
+<p>Older prop names still work as <code>@deprecated</code> aliases and will be removed in 2.0.</p>
 
 <!-- ============================================================ -->
 <h2 id="fluidstick">&lt;FluidStick&gt;</h2>
@@ -307,9 +311,9 @@ ${SCRIPT_CLOSE}
 		<tr><td><code>maskResolution</code></td><td><code>number</code></td><td><code>512</code></td><td>Mask rasterization resolution.</td></tr>
 		<tr><td><code>maskBlur</code></td><td><code>number</code></td><td><code>4</code></td><td>Blur radius in mask pixels. Softens edges.</td></tr>
 		<tr><td><code>maskPadding</code></td><td><code>number</code></td><td><code>0.9</code></td><td>How much of the texture the text fills (text mode only).</td></tr>
-		<tr><td><code>strength</code></td><td><code>number</code></td><td><code>0.95</code></td><td>How strongly dissipation is reduced on the mask. 1 = dye never fades.</td></tr>
-		<tr><td><code>stickyPressureAmount</code></td><td><code>number</code></td><td><code>0.15</code></td><td>Artificial pressure on the mask to push fluid around it.</td></tr>
-		<tr><td><code>amplify</code></td><td><code>number</code></td><td><code>2.0</code></td><td>Splat intensity multiplier on the mask.</td></tr>
+		<tr><td><code>stickyStrength</code></td><td><code>number</code></td><td><code>0.95</code></td><td>How strongly dissipation is reduced on the mask. 1 = dye never fades.</td></tr>
+		<tr><td><code>stickyPressure</code></td><td><code>number</code></td><td><code>0.15</code></td><td>Artificial pressure on the mask to push fluid around it.</td></tr>
+		<tr><td><code>stickyAmplify</code></td><td><code>number</code></td><td><code>2.0</code></td><td>Splat intensity multiplier on the mask.</td></tr>
 		<tr><td><code>autoAnimate</code></td><td><code>boolean</code></td><td><code>true</code></td><td>Auto-animate a smooth looping path to deposit dye before user interaction.</td></tr>
 		<tr><td><code>autoAnimateSpeed</code></td><td><code>number</code></td><td><code>2.0</code></td><td>Speed of auto-animation.</td></tr>
 		<tr><td><code>autoAnimateDuration</code></td><td><code>number</code></td><td><code>5.0</code></td><td>Seconds before auto-animation stops. 0 = indefinite.</td></tr>
@@ -317,6 +321,8 @@ ${SCRIPT_CLOSE}
 </table>
 
 <p>Also accepts <code>width</code>, <code>height</code>, <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, <code>fallback</code>, <code>poster</code>, <code>posterAlt</code>, <code>fallbackText</code>, <code>onReady</code>, <code>onError</code>, and all <a href="{base}/docs/configuration">FluidConfig</a> props.</p>
+
+<p>Older prop names still work as <code>@deprecated</code> aliases and will be removed in 2.0.</p>
 
 <!-- ============================================================ -->
 <h2 id="fluidtext">&lt;FluidText&gt;</h2>
@@ -345,20 +351,20 @@ ${SCRIPT_CLOSE}
 		<tr><td><code>font</code></td><td><code>string</code></td><td><code>'bold 100px "Helvetica Neue", Arial, sans-serif'</code></td><td>CSS font string for mask rasterization.</td></tr>
 		<tr><td><code>maskResolution</code></td><td><code>number</code></td><td><code>512</code></td><td>Mask rasterization resolution.</td></tr>
 		<tr><td><code>height</code></td><td><code>number</code></td><td>—</td><td>Fixed height in CSS px.</td></tr>
-		<tr><td><code>minContrast</code></td><td><code>number</code></td><td><code>4.5</code></td><td>WCAG AA ratio the glyph outline keeps against the page at every text size. Explicit <code>3</code> is valid for large text; use <code>1</code> to disable (0.8.0 look).</td></tr>
+		<tr><td><code>minContrast</code></td><td><code>number</code></td><td><code>4.5</code></td><td>WCAG AA ratio the glyph outline keeps against the page at every text size. Explicit <code>3</code> is valid for large text; use <code>1</code> to disable.</td></tr>
 		<tr><td><code>contrastColor</code></td><td><code>RGB</code></td><td>nearest opaque ancestor background</td><td>Page colour (0–255) to guarantee contrast against. Measured once on mount; set it for gradients, images or theme switches.</td></tr>
 	</tbody>
 </table>
 
 <div class="callout">
-	<strong>Contrast:</strong> The canvas is transparent, so dim dye was indistinguishable from the page (measured 1.0:1 on every preset). A thin ~1.5 CSS px outline supplies at least 4.5:1 contrast against the page by default (WCAG halo technique); interior dye stays bit-identical. The existing jump-flood SDF keeps the band anti-aliased at native DPR. WebGL1 builds the same outline from the coverage mask. Page colour is measured on mount (any CSS colour syntax, alpha composited); consumer responsibility: page backgrounds that are images or gradients need an explicit <code>contrastColor</code> (ADR-0086).
+	<strong>Contrast:</strong> The canvas is transparent, so dim dye was indistinguishable from the page (measured 1.0:1 on every preset). A thin ~1.5 CSS px outline supplies at least 4.5:1 contrast against the page by default (WCAG halo technique); interior dye stays bit-identical. The existing jump-flood SDF keeps the band anti-aliased at native DPR. WebGL1 builds the same outline from the coverage mask. Page colour is measured on mount (any CSS colour syntax, alpha composited); consumer responsibility: page backgrounds that are images or gradients need an explicit <code>contrastColor</code>.
 </div>
 
 <p>Also accepts <code>class</code>, <code>style</code>, <code>lazy</code>, <code>autoPause</code>, <code>fallback</code>, <code>poster</code>, <code>posterAlt</code>, <code>fallbackText</code>, <code>onReady</code>, <code>onError</code>, and all <a href="{base}/docs/configuration">FluidConfig</a> props. Defaults to <code>transparent=true</code>.</p>
 
 <h2 id="interface-primitives">Interface primitives</h2>
 
-<p>Six components for interactive UI rather than backgrounds. Each is a real native element (button, radio group, file input, switch or <code>div</code>) with a decorative WebGL2 surface behind or over it. They share one WebGL2 context per page (ADR-0088/0093), so a dense page does not hit the browser's context cap. Without WebGL2 each renders a plain, fully styled native control that behaves identically. They are not <code>&lt;Fluid&gt;</code> wrappers and take no <code>FluidConfig</code> props.</p>
+<p>Seven components for interactive UI rather than backgrounds. Each is a real native element (button, radio group, file input, switch or <code>div</code>) with a decorative WebGL2 surface behind or over it. They share one WebGL2 context per page, so a dense page does not hit the browser's context cap. Without WebGL2 each renders a plain, fully styled native control that behaves identically. They are not <code>&lt;Fluid&gt;</code> wrappers and take no <code>FluidConfig</code> props.</p>
 
 <!-- ============================================================ -->
 <h2 id="inkpaper">&lt;InkPaper&gt;</h2>
@@ -391,7 +397,7 @@ ${SCRIPT_CLOSE}
 	<strong>Input:</strong> mouse, touch and pen strokes paint (pen pressure scales the brush). Vertical touch drags still scroll the page. Keyboard: the paper takes no input; focusing a <code>data-ink-wick</code> control blooms pigment around it, and your children keep their own native keyboard behaviour.<br>
 	<strong>Reduced motion:</strong> no painting and no animation; the paper settles to one finished still.<br>
 	<strong>Contrast:</strong> children are your own DOM drawn above the paper, so text contrast is the colour you choose against <code>paper</code>. Pigment never covers a <code>data-ink-resist</code> box. Keep body text at 4.5:1 against the paper and the darkest pigment mix.<br>
-	<strong>No WebGL2:</strong> the <code>div</code> is a flat <code>paper</code> colour and every child works. Shares one WebGL2 context per page with the other interface primitives (ADR-0088/0093), so many on one page do not hit the context cap.
+	<strong>No WebGL2:</strong> the <code>div</code> is a flat <code>paper</code> colour and every child works. Shares one WebGL2 context per page with the other interface primitives, so many on one page do not hit the context cap.
 </div>
 
 <!-- ============================================================ -->
@@ -419,8 +425,8 @@ ${SCRIPT_CLOSE}
 <div class="callout">
 	<strong>Input:</strong> a real <code>&lt;button&gt;</code>. Click, tap, pen, Enter and Space all activate it and send one ripple (pen pressure scales it). The focus ring appears on <code>:focus-visible</code> and follows the shape. Minimum height 2.75rem.<br>
 	<strong>Reduced motion:</strong> presses add no ripple; the surface is drawn once as a still.<br>
-	<strong>Contrast:</strong> the label rides above the liquid; light added under it is clamped so the label keeps at least 4.5:1 in both tones (ADR-0092).<br>
-	<strong>No WebGL2 / forced colours:</strong> a gradient-filled native button with a native outline; under <code>forced-colors</code> it uses system colours. Shares one WebGL2 context per page with the other interface primitives (ADR-0088/0093), so many on one page do not hit the context cap.
+	<strong>Contrast:</strong> the label rides above the liquid; light added under it is clamped so the label keeps at least 4.5:1 in both tones.<br>
+	<strong>No WebGL2 / forced colours:</strong> a gradient-filled native button with a native outline; under <code>forced-colors</code> it uses system colours. Shares one WebGL2 context per page with the other interface primitives, so many on one page do not hit the context cap.
 </div>
 
 <!-- ============================================================ -->
@@ -444,15 +450,17 @@ ${SCRIPT_CLOSE}
 		<tr><td><code>legend</code></td><td><code>string</code></td><td>—</td><td><strong>Required.</strong> Visible group label (<code>&lt;legend&gt;</code>).</td></tr>
 		<tr><td><code>tone</code></td><td><code>'light' | 'dark' | 'auto'</code></td><td><code>'auto'</code></td><td>Palette. <code>'auto'</code> measures the page colour behind the control once per change.</td></tr>
 		<tr><td><code>disabled</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Disable the group.</td></tr>
+		<tr><td><code>onchange</code></td><td><code>(value: string) =&gt; void</code></td><td>—</td><td>Called with the new value after a user selection. Exceptions are caught and logged.</td></tr>
 		<tr><td><code>class</code></td><td><code>string</code></td><td>—</td><td>Class on the <code>&lt;fieldset&gt;</code>.</td></tr>
+		<tr><td><code>...rest</code></td><td><code>HTMLFieldsetAttributes</code></td><td>—</td><td>Native fieldset attributes are forwarded to the <code>&lt;fieldset&gt;</code>.</td></tr>
 	</tbody>
 </table>
 
 <div class="callout">
 	<strong>Input:</strong> a <code>&lt;fieldset&gt;</code> of native radios. Tab enters the group, arrow keys move and select, and it submits in forms; click, tap and pen select an option. Focus is shown by a ring around the selected option.<br>
 	<strong>Reduced motion:</strong> the lens snaps to the selection with no slosh.<br>
-	<strong>Contrast:</strong> labels keep at least 4.5:1 against the surface in both tones (ADR-0092).<br>
-	<strong>No WebGL2 / forced colours:</strong> a plain styled segmented control with a checked tint; system colours under <code>forced-colors</code>. Shares one WebGL2 context per page with the other interface primitives (ADR-0088/0093), so many on one page do not hit the context cap.
+	<strong>Contrast:</strong> labels keep at least 4.5:1 against the surface in both tones.<br>
+	<strong>No WebGL2 / forced colours:</strong> a plain styled segmented control with a checked tint; system colours under <code>forced-colors</code>. Shares one WebGL2 context per page with the other interface primitives, so many on one page do not hit the context cap.
 </div>
 
 <!-- ============================================================ -->
@@ -486,8 +494,8 @@ ${SCRIPT_CLOSE}
 <div class="callout">
 	<strong>Input:</strong> a <code>&lt;label&gt;</code> around a visually hidden but focusable <code>&lt;input type="file"&gt;</code>. Click, tap, pen, Enter and Space open the browser's picker; drag and drop works with a mouse or pen. Results are announced in a polite live region.<br>
 	<strong>Reduced motion:</strong> the meniscus snaps to its target and drops send no ripple.<br>
-	<strong>Contrast:</strong> the label keeps at least 4.5:1 in both tones (ADR-0094).<br>
-	<strong>No WebGL2 / forced colours:</strong> a plain styled native control; system colours under <code>forced-colors</code>. Shares one WebGL2 context per page with the other interface primitives (ADR-0088/0093), so many on one page do not hit the context cap.
+	<strong>Contrast:</strong> the label keeps at least 4.5:1 in both tones.<br>
+	<strong>No WebGL2 / forced colours:</strong> a plain styled native control; system colours under <code>forced-colors</code>. Shares one WebGL2 context per page with the other interface primitives, so many on one page do not hit the context cap.
 </div>
 
 <!-- ============================================================ -->
@@ -518,8 +526,8 @@ ${SCRIPT_CLOSE}
 <div class="callout">
 	<strong>Input:</strong> pointer moves and focus send a ripple that spreads and fades over about a second. At rest nothing is drawn or scheduled. The overlay ignores pointer events, so the content stays fully interactive, selectable and zoomable.<br>
 	<strong>Reduced motion:</strong> no ripples and nothing drawn; the content alone.<br>
-	<strong>Contrast:</strong> dark tone adds light, light tone adds soft shade. Every visible native text run (including links and labels) limits the peak against its solid ancestor backgrounds, preserving passing 4.5:1 text (ADR-0094). Authored failing text stays unchanged, with no AA claim; the whole overlay is disabled. Gradients/images, filters, blending, opacity, shadows, styled first-letter/first-line paint, generated/embedded/shadow content, animated styling <code>display: contents</code>, out-of-flow/shifted descendants, negative margins, grid and list-item layouts also show plain content. An opaque root ancestor background is required; browser Canvas colours are not guessed. The static-solid contract is bounded to 128 text runs, 512 elements, 1024 nodes and 64 ancestors; overflow disables the overlay. Class/style, content, font, pointer/focus and resize changes remeasure; arbitrary CSSOM edits and external overlapping layers are not supported.<br>
-	<strong>No WebGL2 / forced colours:</strong> the content alone. Shares one WebGL2 context per page with the other interface primitives (ADR-0088/0093), so many on one page do not hit the context cap.
+	<strong>Contrast:</strong> dark tone adds light, light tone adds soft shade. Every visible native text run (including links and labels) limits the peak against its solid ancestor backgrounds, preserving passing 4.5:1 text. Authored failing text stays unchanged, with no AA claim; the whole overlay is disabled. Gradients/images, filters, blending, opacity, shadows, styled first-letter/first-line paint, generated/embedded/shadow content, animated styling <code>display: contents</code>, out-of-flow/shifted descendants, negative margins, grid and list-item layouts also show plain content. An opaque root ancestor background is required; browser Canvas colours are not guessed. The static-solid contract is bounded to 128 text runs, 512 elements, 1024 nodes and 64 ancestors; overflow disables the overlay. Class/style, content, font, pointer/focus and resize changes remeasure; arbitrary CSSOM edits and external overlapping layers are not supported.<br>
+	<strong>No WebGL2 / forced colours:</strong> the content alone. Shares one WebGL2 context per page with the other interface primitives, so many on one page do not hit the context cap.
 </div>
 
 <!-- ============================================================ -->
@@ -577,8 +585,8 @@ ${SCRIPT_CLOSE}
 <div class="callout">
 	<strong>Input:</strong> a pointer, touch or pen press dents the enamel under the contact and it relaxes on release; pen pressure scales the dent. It is not focusable and adds no tab stop. Keyboard users see the full static relief. The text is a real <code>&lt;span&gt;</code> in the heading, so it stays selectable, findable and zoomable; presses are observed, never captured or prevented.<br>
 	<strong>Reduced motion:</strong> the static relief is drawn and presses are ignored.<br>
-	<strong>Contrast:</strong> glyph pixels are clamped to at least 3:1 against the page for large text (24 px, or bold 18.66 px, and up) and at least 4.5:1 otherwise (ADR-0097).<br>
-	<strong>No WebGL2 / EXT_color_buffer_float:</strong> plain text in the inherited colour; the DOM text only turns transparent once the first enamel frame is on screen. Shares one WebGL2 context per page with the other interface primitives (ADR-0088/0093).
+	<strong>Contrast:</strong> glyph pixels are clamped to at least 3:1 against the page for large text (24 px, or bold 18.66 px, and up) and at least 4.5:1 otherwise.<br>
+	<strong>No WebGL2 / EXT_color_buffer_float:</strong> plain text in the inherited colour; the DOM text only turns transparent once the first enamel frame is on screen. Shares one WebGL2 context per page with the other interface primitives.
 </div>
 
 <style>

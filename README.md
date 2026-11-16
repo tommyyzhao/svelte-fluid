@@ -21,8 +21,8 @@ Fluid simulation for Svelte 5.
 Most fluid packages are vanilla JS with a Svelte wrapper bolted on.
 This one is built for Svelte 5 from the ground up:
 
-- **True component API** — `<Fluid />` with 70+ typed props, live reactive updates, and full cleanup on unmount
-- **Multiple independent instances** per page — no shared GL state
+- **True component API** — `<Fluid />` with 90+ typed props, live reactive updates, and full cleanup on unmount
+- **Multiple instances** per page — engines past the first eight share one WebGL2 context
 - **State-preserving resize** — live dye and velocity survive layout changes without shader recompilation
 - **14 example presets** — reference configurations showing the range of what's possible
 - **5 container shapes** — circle, frame, roundedRect, annulus, and arbitrary SVG paths / text via mask texture
@@ -130,18 +130,19 @@ A full-viewport, transparent, pointer-following fluid cursor:
 </style>
 ```
 
-Or `npx shadcn-svelte@latest add https://svelte-fluid.dev/r/splash-cursor.json`.
+Or `npx shadcn-svelte@latest add https://svelte-fluid.dev/r/splash-cursor.json`
+(the registry version renders nothing when `prefers-reduced-motion: reduce` is set).
 See the [recipe](https://svelte-fluid.dev/docs/recipes/splash-cursor).
 
 ## Browser compatibility
 
-- **WebGL 1** (with linear filtering) and **WebGL 2** both work
-- Tested on Chrome 120+, Firefox 121+, Safari 17+
-- **Mobile:** works on iOS Safari 16+ and Chrome Android, with `lazy={true}`
-  strongly recommended on dense pages
-- **Linear filtering fallback:** when `OES_texture_float_linear` is unavailable,
-  the engine drops shading, bloom, sunrays and clamps `dyeResolution` ≤ 512 —
-  see `FluidEngine.initContext()`
+- Runs on any browser with **WebGL2**, or **WebGL1** with half-float textures.
+  Without WebGL at all, or without a renderable half-float format, the engine
+  does not start and `<Fluid />` shows its fallback.
+- Use `lazy={true}` on pages with many instances.
+- **Linear filtering fallback:** when linear filtering for float textures is
+  unavailable, the engine turns off shading, bloom, sunrays and glass, and clamps
+  `dyeResolution` to 512 or less. See `FluidEngine.initContext()`.
 
 ## Components
 
@@ -158,7 +159,7 @@ Full props, live examples and contrast notes: [docs/components](https://svelte-f
 | --- | --- | --- |
 | `InkPaper` | Paper that takes watercolour from strokes | `<InkPaper style="height: 240px"><h3>Notes</h3></InkPaper>` |
 | `LiquidButton` | Primary action button with a liquid surface | `<LiquidButton onclick={save}>Save</LiquidButton>` |
-| `LiquidSegmented` | Single-choice radio group on a liquid lens | `<LiquidSegmented name="r" legend="Range" options={[{ value: 'day', label: 'Day' }, { value: 'week', label: 'Week' }]} bind:value />` |
+| `LiquidSegmented` | Single-choice radio group on a liquid lens; `onchange(value)` fires on selection | `<LiquidSegmented name="r" legend="Range" options={[{ value: 'day', label: 'Day' }, { value: 'week', label: 'Week' }]} bind:value />` |
 | `LiquidDropZone` | File picker and drop target | `<LiquidDropZone accept="image/*" onfiles={(files) => upload(files)} />` |
 | `LiquidCaustics` | Caustic light over live content | `<LiquidCaustics tone="dark"><p>Content</p></LiquidCaustics>` |
 | `LiquidToggle` | Native checkbox switch with a sliding liquid lens | `<LiquidToggle bind:checked={on}>Notifications</LiquidToggle>` |
@@ -178,7 +179,11 @@ Full props, live examples and contrast notes: [docs/components](https://svelte-f
 ## Props
 
 All props are optional. CamelCase wraps the original SCREAMING_CASE
-config from the upstream project.
+config from the upstream project. This table is a curated subset of the
+93 config fields; see [`/docs/configuration`](https://svelte-fluid.dev/docs/configuration)
+for the full reference. Wrapper props such as `distortionPower`, `revealSensitivity`
+and `stickyStrength` are documented on [`/docs/components`](https://svelte-fluid.dev/docs/components).
+Older wrapper prop names still work as `@deprecated` aliases and are removed in 2.0.
 
 | Prop | Type | Default | Notes |
 | --- | --- | --- | --- |
@@ -186,8 +191,8 @@ config from the upstream project.
 | `height` | `number` | — | CSS px. Omit to fill parent. |
 | `maxPixelRatio` | `number \| null` | `null` | native DPR; pass a number (e.g. `2`) to cap physical DPR |
 | `seed` | `number` | random | 32-bit uint; deterministic initial splats |
-| `simResolution` | `number` | `128` | velocity grid; **rebuilds FBOs** |
-| `dyeResolution` | `number` | `1024` | dye grid; **rebuilds FBOs** |
+| `simResolution` | `number` | `128` | velocity grid; rebuilds render targets |
+| `dyeResolution` | `number` | `1024` | dye grid; rebuilds render targets |
 | `densityDissipation` | `number` | `1` | hot; **steady-state** value |
 | `initialDensityDissipation` | `number` | (= `densityDissipation`) | hot; ramp start (see [burn-in pattern](#burn-in-density-dissipation)) |
 | `initialDensityDissipationDuration` | `number` | `0` | seconds; duration of the linear ramp |
@@ -199,7 +204,7 @@ config from the upstream project.
 | `curl` | `number` | `30` | vorticity confinement; hot |
 | `splatRadius` | `number` | `0.25` | hot |
 | `splatForce` | `number` | `6000` | hot |
-| `shading` | `boolean` | `true` | **shader recompile**; diffuse from independent deposited thickness, not RGB |
+| `shading` | `boolean` | `true` | recompiles shader; diffuse from independent deposited thickness, not RGB |
 | `specular` | `number` | `0` | opt-in 0–1 Fresnel highlight; recompile only when crossing 0 |
 | `refraction` | `number` | `0` | opt-in 0–1; refracts the distortion image or glass scene; recompile only when crossing 0 |
 | `colorful` | `boolean` | `true` | hot; rotate pointer/touch splat colors over time |
@@ -210,24 +215,24 @@ config from the upstream project.
 | `transparent` | `boolean` | `false` | hot |
 | `minContrast` | `number` | `0` | WCAG contrast floor vs `contrastColor`; hot (on/off recompiles shader) |
 | `contrastColor` | `{r,g,b} \| null` | `null` | 0–255 reference colour; no reference, no correction; hot |
-| `bloom` | `boolean` | `true` | **shader recompile** |
-| `bloomIterations` | `number` | `8` | **rebuilds FBOs** |
-| `bloomResolution` | `number` | `256` | **rebuilds FBOs** |
+| `bloom` | `boolean` | `true` | recompiles shader |
+| `bloomIterations` | `number` | `8` | rebuilds render targets |
+| `bloomResolution` | `number` | `256` | rebuilds render targets |
 | `bloomIntensity` | `number` | `0.8` | hot |
 | `bloomThreshold` | `number` | `0.6` | hot |
 | `bloomSoftKnee` | `number` | `0.7` | hot |
-| `sunrays` | `boolean` | `true` | **shader recompile** |
-| `sunraysResolution` | `number` | `196` | **rebuilds FBOs** |
+| `sunrays` | `boolean` | `true` | recompiles shader |
+| `sunraysResolution` | `number` | `196` | rebuilds render targets |
 | `sunraysWeight` | `number` | `1` | hot |
 | `initialSplatCount` | `number` | — | exact count for the first frame |
 | `initialSplatCountMin` | `number` | `5` | min of random range |
 | `initialSplatCountMax` | `number` | `25` | max of random range |
-| `autoSplatRate` | `number` | `0` | automatic burst rate in splats/sec; 0 = disabled (Bucket A) |
-| `autoSplatCount` | `number` | `1` | number of splats emitted each burst (Bucket A) |
-| `autoSplatColor` | `{r,g,b}` | `null` | fixed color for automatic splats; null = fresh random color per splat (Bucket A) |
-| `autoSplatVelocityX` | `number` | `0` | x velocity for automatic splats; ignored when `autoSplatSwirl` is nonzero (Bucket A) |
-| `autoSplatVelocityY` | `number` | `0` | y velocity for automatic splats; negative moves downward in DOM space (Bucket A) |
-| `autoSplatCenterY` | `number` | `0.5` | vertical center of the spawn band: 0 = bottom, 0.5 = center, 1 = top (Bucket A) |
+| `autoSplatRate` | `number` | `0` | automatic burst rate in splats/sec; 0 = disabled |
+| `autoSplatCount` | `number` | `1` | number of splats emitted each burst |
+| `autoSplatColor` | `{r,g,b}` | `null` | fixed color for automatic splats; null = fresh random color per splat |
+| `autoSplatVelocityX` | `number` | `0` | x velocity for automatic splats; ignored when `autoSplatSwirl` is nonzero |
+| `autoSplatVelocityY` | `number` | `0` | y velocity for automatic splats; negative moves downward in DOM space |
+| `autoSplatCenterY` | `number` | `0.5` | vertical center of the spawn band: 0 = bottom, 0.5 = center, 1 = top |
 | `autoSplatEvenX` | `boolean` | `false` | within each burst, use equal x positions instead of random x positions |
 | `autoSplatSwirl` | `number` | `0` | orbital velocity around the container/canvas center; positive = CCW |
 | `autoSplatBandHeight` | `number` | `0.1` | height of the spawn band; 0 = single line, 0.1 = ±5%, 2.0 = full canvas |
@@ -255,19 +260,19 @@ container shapes, and solver-native flow scenes. Useful as starting points for b
 | Component | Look |
 | --- | --- |
 | `<LavaLamp />` | Warm blobs in a glass vessel with rim refraction |
-| `<Plasma />` | Plasma-inspired visual fluid with full-spectrum jets converging into a bright core |
-| `<InkInWater />` | India ink sinking through dark water with volumetric bloom |
-| `<FrozenSwirl />` | An icy whirlpool frozen inside a circular vessel |
-| `<Aurora />` | Green, magenta, and pale-blue ribbons glowing like northern lights |
-| `<Toroidal />` | Full-spectrum storm circulating in a high-velocity ring |
-| `<CircularFluid />` | Vivid swirling fluid contained inside a circle |
-| `<FrameFluid />` | Colorful fluid swirling around a rectangular inner cutout |
-| `<AnnularFluid />` | Ring-vortex fluid between two concentric circles |
-| `<SvgPathFluid />` | Fluid shaped by an ampersand glyph via mask texture |
-| `<GasFlare />` | Temperature scalar, buoyancy, and physical nozzle obstructions |
-| `<Venturi />` | Pressure-gradient throughflow with CFD-style speed visualization |
-| `<Karman />` | Alternating cylinder-wake vortex street with multicolor tracers |
-| `<TeslaValve />` | High-viscosity multicolor splats through an SVG conduit mask |
+| `<Plasma />` | A plasma-inspired visual fluid preset with full-spectrum jets churning at center |
+| `<InkInWater />` | India-ink droplets blooming as they sink through dark water |
+| `<FrozenSwirl />` | A single icy whirlpool that spins out and freezes in place |
+| `<Aurora />` | Layered green and magenta ribbons glowing like northern lights |
+| `<Toroidal />` | A violent full-spectrum storm circulating in a toroidal ring |
+| `<CircularFluid />` | Vivid fluid swirling inside a circular container |
+| `<FrameFluid />` | Fluid circulating around a rectangular picture-frame cutout |
+| `<AnnularFluid />` | A ring-vortex orbiting between two concentric circles |
+| `<SvgPathFluid />` | Fluid confined to an ampersand glyph (text container shape) |
+| `<GasFlare />` | A hot buoyant jet rising from a flare-stack nozzle |
+| `<Venturi />` | Bernoulli's principle: flow accelerating through a pinched throat |
+| `<Karman />` | Flow past a cylinder, evoking a von Kármán vortex street |
+| `<TeslaValve />` | Throughflow routing through a passive Tesla-valve channel |
 
 ```svelte
 <script lang="ts">
@@ -332,7 +337,7 @@ across resizes.
 ```
 
 Note: `presetSplats` is **construct-only** — like `seed`, changes after
-mount are ignored (Bucket D). To paint a new scene, remount the wrapper
+mount are ignored (construct-only). To paint a new scene, remount the wrapper
 with a Svelte `{#key sceneId}` block and a new seed, or call
 `handle.splat()` imperatively. Changing the seed prop alone does not rebuild.
 
@@ -481,12 +486,12 @@ screens.
 
 ## Multiple instances
 
-Each engine owns its fields, framebuffers, masks, uniforms, and input state.
-All live engines subscribe to one shared RAF scheduler ([ADR 0080](dev-docs/decisions/0080-shared-frame-scheduler.md)).
-WebGL2 engines use their own contexts for the first eight live own-context
-slots, then use the shared host; the tier stays with the canvas. WebGL1 and
-`requireHardwareAcceleration` engines stay own-context ([ADR 0093](dev-docs/decisions/0093-fluid-engine-on-shared-gl-host.md)).
-Browsers still cap simultaneous contexts, including third-party WebGL.
+Each engine owns its simulation state, render targets, masks, uniforms, and input state.
+All live engines share one animation-frame scheduler.
+The first eight WebGL2 engines each get their own WebGL context; later ones draw
+through one shared WebGL2 context. WebGL1 and `requireHardwareAcceleration`
+engines always get their own context. Browsers still cap simultaneous contexts,
+including third-party WebGL.
 The Svelte component owns DOM lifecycle, sizing, visibility, and accessible
 fallback; it delegates rendering to the engine rather than issuing GL commands.
 
@@ -525,9 +530,8 @@ engine.setConfig({ curl: 5 });
 engine.dispose();
 ```
 
-The public API is GL-type-neutral: no root-exported signature mentions a
-`WebGL*` DOM type, `FBO`, `DoubleFBO`, `ExtInfo` or `ResolvedConfig` (removed in
-1.0; they were internal). `isWebGLAvailable()` takes
+The public API is GL-type-neutral: no exported signature mentions a
+`WebGL*` DOM type or an internal engine type. `isWebGLAvailable()` takes
 `{ failIfMajorPerformanceCaveat?: boolean }`.
 
 ## Development

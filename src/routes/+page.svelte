@@ -468,11 +468,11 @@
 		revealScratch:
 			'<FluidReveal velocityDissipation={0.95} pressureIterations={10}>\n\t<div>Revealed</div>\n</FluidReveal>',
 		revealAuto:
-			'<FluidReveal\n\tautoReveal\n\tautoRevealSpeed={0.8}\n\tfadeBack={false}\n\tsensitivity={0.15}\n\tvelocityDissipation={0.95}\n>\n\t<div>Auto reveal</div>\n</FluidReveal>',
+			'<FluidReveal\n\tautoAnimate\n\tautoAnimateSpeed={0.8}\n\tfadeBack={false}\n\trevealSensitivity={0.15}\n\tvelocityDissipation={0.95}\n>\n\t<div>Auto reveal</div>\n</FluidReveal>',
 		distortSubtle:
-			'<FluidDistortion src="/bosch-garden.jpg" strength={0.3} intensity={20} fit="cover" initialSplats={6} />',
+			'<FluidDistortion src="/bosch-garden.jpg" distortionPower={0.3} intensity={20} distortionFit="cover" initialSplats={6} />',
 		distortStrong:
-			'<FluidDistortion src="/bosch-garden.jpg" strength={0.45} intensity={28} fit="cover" initialSplats={6} />'
+			'<FluidDistortion src="/bosch-garden.jpg" distortionPower={0.45} intensity={28} distortionFit="cover" initialSplats={6} />'
 	};
 
 	function markCustom() {
@@ -772,19 +772,19 @@
 			if (mode === 'sticky' && !stickyAutoAnimateOn) lines.push(`\tautoAnimate={false}`);
 		if (mode === 'distortion') {
 			lines.push(`\tsrc="${base}/bosch-garden.jpg"`);
-			lines.push(`\tstrength={${distortionStrength}}`);
+			lines.push(`\tdistortionPower={${distortionStrength}}`);
 			lines.push(`\tintensity={${distortionIntensity}}`);
 		}
 		if (mode === 'reveal') {
-			if (revealAutoReveal) lines.push(`\tautoReveal`);
+			if (revealAutoReveal) lines.push(`\tautoAnimate`);
 			// Compare against FluidReveal component defaults, not playground state defaults.
-			if (revealSensitivity !== 0.1) lines.push(`\tsensitivity={${fmt(revealSensitivity)}}`);
-			if (revealAutoRevealSpeed !== 1.0) lines.push(`\tautoRevealSpeed={${fmt(revealAutoRevealSpeed)}}`);
+			if (revealSensitivity !== 0.1) lines.push(`\trevealSensitivity={${fmt(revealSensitivity)}}`);
+			if (revealAutoRevealSpeed !== 1.0) lines.push(`\tautoAnimateSpeed={${fmt(revealAutoRevealSpeed)}}`);
 			if (!revealFadeBack) lines.push(`\tfadeBack={false}`);
 			const rgb01 = (c: RGB) => `{{ r: ${fmt(c.r)}, g: ${fmt(c.g)}, b: ${fmt(c.b)} }}`;
-			lines.push(`\tcoverColor=${rgb01(revealCoverColor)}`);
-			lines.push(`\tfringeColor=${rgb01(revealFringeColor)}`);
-			lines.push(`\taccentColor=${rgb01(revealAccentColor)}`);
+			lines.push(`\trevealCoverColor=${rgb01(revealCoverColor)}`);
+			lines.push(`\trevealFringeColor=${rgb01(revealFringeColor)}`);
+			lines.push(`\trevealAccentColor=${rgb01(revealAccentColor)}`);
 		}
 		if (lines.length === 0) return `<${tag} />`;
 		return `<${tag}\n${lines.join('\n')}\n/>`;
@@ -1372,9 +1372,9 @@
 						lazy
 						velocityDissipation={0.95}
 						pressureIterations={10}
-						coverColor={revealCoverColor}
-						fringeColor={revealFringeColor}
-						accentColor={revealAccentColor}
+						revealCoverColor={revealCoverColor}
+						revealFringeColor={revealFringeColor}
+						revealAccentColor={revealAccentColor}
 					>
 						<div class="reveal-content">Revealed</div>
 					</FluidReveal>
@@ -1387,14 +1387,14 @@
 				>
 					<FluidReveal
 						lazy
-						autoReveal={stickyAutoAnimate}
-						autoRevealSpeed={0.8}
+						autoAnimate={stickyAutoAnimate}
+						autoAnimateSpeed={0.8}
 						fadeBack={false}
 						velocityDissipation={0.95}
-						sensitivity={0.15}
-						coverColor={revealCoverColor}
-						fringeColor={revealFringeColor}
-						accentColor={revealAccentColor}
+						revealSensitivity={0.15}
+						revealCoverColor={revealCoverColor}
+						revealFringeColor={revealFringeColor}
+						revealAccentColor={revealAccentColor}
 					>
 						<div class="reveal-content">Auto reveal</div>
 					</FluidReveal>
@@ -1411,7 +1411,7 @@
 			<div class="grid grid-2">
 				<Card
 					title="Subtle"
-					blurb="strength 0.3, intensity 20."
+					blurb="distortionPower 0.3, intensity 20."
 					snippet={SNIPPETS.distortSubtle}
 					height={280}
 					onCustomize={() => openInPlayground('Distortion')}
@@ -1419,17 +1419,17 @@
 					<FluidDistortion
 						src="{base}/bosch-garden.jpg"
 						seed={311}
-						strength={0.3}
+						distortionPower={0.3}
 						intensity={20}
-						scale={1.0}
-						fit="cover"
+						distortionScale={1.0}
+						distortionFit="cover"
 						initialSplats={6}
 						lazy
 					/>
 				</Card>
 				<Card
 					title="Strong"
-					blurb="strength 0.45, intensity 28."
+					blurb="distortionPower 0.45, intensity 28."
 					snippet={SNIPPETS.distortStrong}
 					height={280}
 					onCustomize={() => openInPlayground('Distortion')}
@@ -1437,10 +1437,10 @@
 					<FluidDistortion
 						src="{base}/bosch-garden.jpg"
 						seed={322}
-						strength={0.45}
+						distortionPower={0.45}
 						intensity={28}
-						scale={1.0}
-						fit="cover"
+						distortionScale={1.0}
+						distortionFit="cover"
 						initialSplats={6}
 						lazy
 					/>
@@ -1534,9 +1534,9 @@
 							{#key revealKey}
 								<FluidReveal
 									lazy
-									sensitivity={revealSensitivity}
-									autoReveal={revealAutoReveal && stickyAutoAnimate}
-									autoRevealSpeed={revealAutoRevealSpeed}
+									revealSensitivity={revealSensitivity}
+									autoAnimate={revealAutoReveal && stickyAutoAnimate}
+									autoAnimateSpeed={revealAutoRevealSpeed}
 									fadeBack={revealFadeBack}
 									{curl}
 									{splatRadius}
@@ -1556,9 +1556,9 @@
 									{colorful}
 									{splatOnHover}
 									{transparent}
-									coverColor={revealCoverColor}
-									fringeColor={revealFringeColor}
-									accentColor={revealAccentColor}
+									revealCoverColor={revealCoverColor}
+									revealFringeColor={revealFringeColor}
+									revealAccentColor={revealAccentColor}
 									containerShape={containerType !== 'none' ? containerShape : undefined}
 									{glass}
 								>
@@ -1604,10 +1604,10 @@
 									lazy
 									seed={42}
 									src="{base}/bosch-garden.jpg"
-									strength={distortionStrength}
+									distortionPower={distortionStrength}
 									intensity={distortionIntensity}
-									scale={1.0}
-									fit="cover"
+									distortionScale={1.0}
+									distortionFit="cover"
 									initialSplats={6}
 									{curl}
 									{splatRadius}
@@ -2078,7 +2078,7 @@
 						<div class="knob-group">
 							<div class="knob-group-title">Reveal</div>
 							<label class="knob-row">
-								<span class="knob-label">sensitivity</span>
+								<span class="knob-label">revealSensitivity</span>
 								<input
 									type="range"
 									min="0"
@@ -2090,7 +2090,7 @@
 								<span class="knob-value">{revealSensitivity.toFixed(2)}</span>
 							</label>
 							<label class="knob-row">
-								<span class="knob-label">autoSpeed</span>
+								<span class="knob-label">autoAnimateSpeed</span>
 								<input
 									type="range"
 									min="0.1"
@@ -2104,7 +2104,7 @@
 							<label class="toggle-row">
 								<input type="checkbox" bind:checked={revealAutoReveal} onchange={() => { revealKey++; markCustom(); }} />
 								<span class="toggle-pill" aria-hidden="true"></span>
-								<span class="knob-label">autoReveal</span>
+								<span class="knob-label">autoAnimate</span>
 							</label>
 							<label class="toggle-row">
 								<input type="checkbox" bind:checked={revealFadeBack} onchange={() => { revealKey++; markCustom(); }} />
@@ -2139,7 +2139,7 @@
 						<div class="knob-group">
 							<div class="knob-group-title">Distortion</div>
 							<label class="knob-row">
-								<span class="knob-label">strength</span>
+								<span class="knob-label">distortionPower</span>
 								<input
 									type="range"
 									min="0"

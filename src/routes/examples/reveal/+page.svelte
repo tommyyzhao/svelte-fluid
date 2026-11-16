@@ -61,10 +61,10 @@
 		<div class="demo-row" role="img" aria-label="Auto-revealing panel; drag or tap to take over the cursor">
 			<FluidReveal
 				lazy
-				autoReveal
-				autoRevealSpeed={0.8}
+				autoAnimate
+				autoAnimateSpeed={0.8}
 				fadeBack={false}
-				sensitivity={0.15}
+				revealSensitivity={0.15}
 				class="demo-card"
 			>
 				<div class="content auto-content">
@@ -81,18 +81,18 @@
 	</section>
 
 	<section>
-		<h2>Soft reveal (high curve)</h2>
+		<h2>Soft reveal (high reveal curve)</h2>
 		<div class="demo-row" role="img" aria-label="Drag to reveal content with soft, gradual edges">
 			<FluidReveal
 				lazy
-				curve={0.5}
-				sensitivity={0.2}
+				revealCurve={0.5}
+				revealSensitivity={0.2}
 				splatRadius={0.3}
 				class="demo-card"
 			>
 				<div class="content gradient-content-2">
 					<h3>Soft Edges</h3>
-					<p>Higher curve values create a softer, more gradual reveal transition.</p>
+					<p>Higher reveal curve values create a softer, more gradual reveal transition.</p>
 				</div>
 			</FluidReveal>
 		</div>

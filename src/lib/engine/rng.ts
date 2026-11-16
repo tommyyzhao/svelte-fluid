@@ -29,8 +29,8 @@ export function randomSeed(): number {
 
 /**
  * Convert HSV (all 0–1) to RGB (all 0–1).
- * Ported verbatim from script.js:1573-1595.
  */
+// Ported verbatim from script.js:1573-1595.
 export function HSVtoRGB(h: number, s: number, v: number): RGB {
 	let r = 0;
 	let g = 0;
@@ -80,8 +80,8 @@ export function HSVtoRGB(h: number, s: number, v: number): RGB {
 /**
  * Pick a random colorful pointer/splat color from the seeded RNG,
  * scaled down to a tasteful intensity.
- * Ported from script.js:1565-1571 with `Math.random` replaced by `rng()`.
  */
+// Ported from script.js:1565-1571 with `Math.random` replaced by `rng()`.
 export function generateColor(rng: Rng): RGB {
 	const c = HSVtoRGB(rng(), 1.0, 1.0);
 	c.r *= 0.15;

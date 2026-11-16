@@ -50,7 +50,7 @@ Hardware Chrome, ordinary validation, focused pigment browser tests:
 
 ## Native measurement
 
-Unchanged `scripts/gpu-capture.mjs`, seed 5, single row
+Unchanged `scripts/gpu-capture.mjs`, seed 5, single row (archived locally)
 `model-inkpaper@800x500:shared:2`. Shared GPU lock held for each hardware run.
 200 warm-up frames; 60 fixed-step frames paced three RAFs apart. Metal execution
 interval union, 60 native writes and bitmap transfers, ≥5% foreign-overlap gate,

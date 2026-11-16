@@ -31,9 +31,14 @@
 		maskResolution = 512,
 		maskBlur = 4,
 		maskPadding,
+		// Deprecated aliases (strength/stickyPressureAmount/amplify): the
+		// FluidConfig-named prop wins when both are given.
 		strength = 0.95,
+		stickyStrength,
 		stickyPressureAmount = 0.15,
+		stickyPressure,
 		amplify = 2.0,
+		stickyAmplify,
 		autoAnimate = true,
 		autoAnimateSpeed = 2.0,
 		autoAnimateDuration = 5.0,
@@ -175,9 +180,9 @@
 		bind:this={inner}
 		sticky={true}
 		{stickyMask}
-		stickyStrength={strength}
-		stickyPressure={stickyPressureAmount}
-		stickyAmplify={amplify}
+		stickyStrength={stickyStrength ?? strength}
+		stickyPressure={stickyPressure ?? stickyPressureAmount}
+		stickyAmplify={stickyAmplify ?? amplify}
 		{densityDissipation}
 		{velocityDissipation}
 		{curl}

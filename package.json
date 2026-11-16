@@ -1,6 +1,6 @@
 {
 	"name": "svelte-fluid",
-	"version": "1.1.0",
+	"version": "1.2.0",
 	"description": "WebGL fluid simulation for Svelte 5: interactive backgrounds, splash cursor, text and shape masks, reveals and image distortion. Zero dependencies.",
 	"license": "MIT",
 	"author": "Tommy Zhao (https://github.com/tommyyzhao)",
@@ -35,7 +35,9 @@
 		"NOTICE",
 		"!dist/**/*.test.*",
 		"!dist/**/*.spec.*",
-		"!dist/**/__benches__/**"
+		"!dist/**/__benches__/**",
+		"!dist/**/__screenshots__/**",
+		"!dist/engine/webgpu/**"
 	],
 	"sideEffects": false,
 	"svelte": "./dist/index.js",
@@ -73,7 +75,6 @@
 	"devDependencies": {
 		"@changesets/changelog-github": "^0.6.0",
 		"@changesets/cli": "^2.31.1",
-		"@sveltejs/adapter-auto": "^7.0.1",
 		"@sveltejs/adapter-static": "^3.0.10",
 		"@sveltejs/kit": "^2.70.1",
 		"@sveltejs/package": "^2.5.8",
@@ -82,7 +83,6 @@
 		"@vitest/browser-playwright": "^4.1.10",
 		"playwright": "^1.61.1",
 		"publint": "^0.3.22",
-		"puppeteer-core": "^24.43.1",
 		"svelte": "^5.56.7",
 		"svelte-check": "^4.7.3",
 		"typescript": "^5.9.3",
