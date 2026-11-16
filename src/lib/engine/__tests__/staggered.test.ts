@@ -95,7 +95,7 @@ describe('MAC operator algebra', () => {
 		);
 
 		// Closed box, then the existing binary baffle pattern at a larger clearance.
-		// Scale=1, sticky pressure=0, inline mask=1; no solve or dynamics claim (ADR 0118).
+		// Scale=1, sticky pressure=0, inline mask=1; no solve or dynamics claim (ADR 0121).
 		// Legacy impulse support stays interior; only the MAC basis sweep covers walls.
 		for (const baffle of [false, true]) {
 			const g = staggeredGeometry(

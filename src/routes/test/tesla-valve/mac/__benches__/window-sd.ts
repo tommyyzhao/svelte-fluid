@@ -1,4 +1,4 @@
-// Recomputes ADR 0119 per-unit SD/U over sub-windows of the 30 s step-level Re 400 records.
+// Recomputes ADR 0122 per-unit SD/U over sub-windows of the 30 s step-level Re 400 records.
 // Run: bun src/routes/test/tesla-valve/mac/__benches__/window-sd.ts <spectrum128.json> <spectrumexact.json>
 // U matches the ADR table: the window's own mean Re * nu / (0.8 * width / 30) (solver cells/s);
 // SD is population SD of the transverse probe velocity. Bench-only, never imported by the route.

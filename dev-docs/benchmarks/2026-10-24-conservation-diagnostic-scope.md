@@ -62,10 +62,10 @@ remains useful. The relaxed-channel gate stays `meanSpread <= 0.02`, now explici
 `established`; other rows assert finite spread, not a conservation threshold.
 [Outlet relaxation test](../../src/lib/engine/__benches__/flow-outlet-relax.browser.test.ts)
 has a separate `<0.002` (0.2%) masked interval-flux gate around the outlet stage only,
-not a system-wide conservation guarantee; see [ADR 0122](../decisions/0122-flow-outlet-relax.md).
+not a system-wide conservation guarantee; see [ADR 0125](../decisions/0125-flow-outlet-relax.md).
 
 Extra Jacobi sweeps are sensitivity data, not separation of convergence error from boundary
-leakage. [ADR 0118, corrected verdict](../decisions/0118-staggered-conservative-flow.md#independent-review-correction-and-boundary-hotspot-repeat)
+leakage. [ADR 0121, corrected verdict](../decisions/0121-staggered-conservative-flow.md#independent-review-correction-and-boundary-hotspot-repeat)
 (line 259) records exact-pressure reproduction of the growing inlet runaway; specific
 energy/backflow mechanism remains unproven. No promise that extra sweeps fix it.
 Operator certification is separate; this note neither supplies nor replaces it.

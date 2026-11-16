@@ -1,11 +1,11 @@
-# ADR 0121: Opt-in flow disturbance force
+# ADR 0124: Opt-in flow disturbance force
 
 **Status:** Accepted
 **Date:** 2026-10-23
 
 ## Context
 
-ADR 0119's route-local rig disturbance supplies controlled ambient fluctuations. Public flow scenes need the same explicit forcing without importing laboratory routes or changing existing presets. Acceleration is an input, not a promised turbulence intensity: inlet response depends on geometry, timestep, transport, projection and probe placement.
+ADR 0122's route-local rig disturbance supplies controlled ambient fluctuations. Public flow scenes need the same explicit forcing without importing laboratory routes or changing existing presets. Acceleration is an input, not a promised turbulence intensity: inlet response depends on geometry, timestep, transport, projection and probe placement.
 
 ## Decision
 

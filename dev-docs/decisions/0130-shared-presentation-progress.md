@@ -1,4 +1,4 @@
-# ADR 0127: Shared presentation progress under overlapping snapshots
+# ADR 0130: Shared presentation progress under overlapping snapshots
 
 **Status:** Accepted
 **Date:** 2026-10-24

@@ -1,4 +1,4 @@
-# ADR 0122: Flux-preserving flow outlet relaxation
+# ADR 0125: Flux-preserving flow outlet relaxation
 
 **Status:** Accepted
 **Date:** 2026-10-23

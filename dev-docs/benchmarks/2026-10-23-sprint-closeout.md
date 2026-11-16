@@ -3,8 +3,8 @@
 ## Outcome and scope
 
 Public disturbance forcing, passive tracers and flux-preserving outlet relaxation are integrated and opt-in.
-ADRs [0121](../decisions/0121-flow-disturbance-force.md), [0122](../decisions/0122-flow-outlet-relax.md)
-and [0123](../decisions/0123-flow-tracers.md) are Accepted. No preset/default migration is implied.
+ADRs [0124](../decisions/0124-flow-disturbance-force.md), [0125](../decisions/0125-flow-outlet-relax.md)
+and [0126](../decisions/0126-flow-tracers.md) are Accepted. No preset/default migration is implied.
 The laboratory two-level pressure solver remains bench-only: its timing gate failed.
 The paper experiment is an honest 2D diagnostic, **not a reproduction of the 3D experiment**.
 This record closes implementation/verification, not a release, publish or production-3D authorization.
@@ -13,16 +13,16 @@ This record closes implementation/verification, not a release, publish or produc
 
 | Area | Accepted result | Boundary / rejected shortcut |
 |---|---|---|
-| Thermal emission | Independent temperature and salt; float-capable bounded transport; opt-in no-slip ([0114](../decisions/0114-thermal-salt-emission.md)). | Reduced model, not combustion or converged CFD; physical cooling can be dominated by numerical transport. |
-| Submission / pairing | Measured pressure/viscosity pairing ([0115](../decisions/0115-substep-submission-and-pressure-crossover.md)). | `gl.flush()` and paired conduction rejected by measurement; geometric multigrid missed contraction gate. |
-| SVG glass | Existing SDF/glass resources produce an inside-only cover ([0116](../decisions/0116-svg-channel-glass-cover.md)). | Fixed artistic reflections, not calibrated optics; no solver change. |
-| Absorption | Beer–Lambert transmission, concentrations separate from display ([0117](../decisions/0117-transmitted-dye-and-paper-valve.md)). | Legacy collocated paper-flow calibration failed conservation; appearance is not validation. |
-| MAC preflight | Compatible face operators and Poiseuille verification ([0118](../decisions/0118-staggered-conservative-flow.md)). | Inlet runaway persisted with exact projection; “more pressure iterations” was not its cure. |
-| Reservoir laboratory | Plenums plus flux-preserving outer relaxation stabilize the route ([0119](../decisions/0119-paper-mac-plenums.md)). | Route-local, experimental; no wholesale replacement of the public engine. |
-| Laboratory tracers | Thin passive streaks without altering velocity/grid dye ([0120](../decisions/0120-paper-tracers.md)). | Finite sampling, sticking and ring deletion; neither concentration nor missing 3D folding. |
-| Public disturbance | Seeded smooth forcing; uniform-only hot changes; omission parity ([0121](../decisions/0121-flow-disturbance-force.md)). | Acceleration is an input, not a guaranteed turbulence intensity. |
-| Public outlet | `velocity: 'relax'`, positive `relaxRate`, default 10/s ([0122](../decisions/0122-flow-outlet-relax.md)). | Legacy `'damp'` remains default; preserving outlet flux does not fix obstruction projection. |
-| Public tracers | Absorption-only optical inventory; UV-area mass; exact fractional emission ages ([0123](../decisions/0123-flow-tracers.md)). | Default capacity 262144; report-only cost; sigma contract already decided, not reopened. |
+| Thermal emission | Independent temperature and salt; float-capable bounded transport; opt-in no-slip ([0117](../decisions/0117-thermal-salt-emission.md)). | Reduced model, not combustion or converged CFD; physical cooling can be dominated by numerical transport. |
+| Submission / pairing | Measured pressure/viscosity pairing ([0118](../decisions/0118-substep-submission-and-pressure-crossover.md)). | `gl.flush()` and paired conduction rejected by measurement; geometric multigrid missed contraction gate. |
+| SVG glass | Existing SDF/glass resources produce an inside-only cover ([0119](../decisions/0119-svg-channel-glass-cover.md)). | Fixed artistic reflections, not calibrated optics; no solver change. |
+| Absorption | Beer–Lambert transmission, concentrations separate from display ([0120](../decisions/0120-transmitted-dye-and-paper-valve.md)). | Legacy collocated paper-flow calibration failed conservation; appearance is not validation. |
+| MAC preflight | Compatible face operators and Poiseuille verification ([0121](../decisions/0121-staggered-conservative-flow.md)). | Inlet runaway persisted with exact projection; “more pressure iterations” was not its cure. |
+| Reservoir laboratory | Plenums plus flux-preserving outer relaxation stabilize the route ([0122](../decisions/0122-paper-mac-plenums.md)). | Route-local, experimental; no wholesale replacement of the public engine. |
+| Laboratory tracers | Thin passive streaks without altering velocity/grid dye ([0123](../decisions/0123-paper-tracers.md)). | Finite sampling, sticking and ring deletion; neither concentration nor missing 3D folding. |
+| Public disturbance | Seeded smooth forcing; uniform-only hot changes; omission parity ([0124](../decisions/0124-flow-disturbance-force.md)). | Acceleration is an input, not a guaranteed turbulence intensity. |
+| Public outlet | `velocity: 'relax'`, positive `relaxRate`, default 10/s ([0125](../decisions/0125-flow-outlet-relax.md)). | Legacy `'damp'` remains default; preserving outlet flux does not fix obstruction projection. |
+| Public tracers | Absorption-only optical inventory; UV-area mass; exact fractional emission ages ([0126](../decisions/0126-flow-tracers.md)). | Default capacity 262144; report-only cost; sigma contract already decided, not reopened. |
 
 ### Conservation: separate the two causes
 
@@ -83,7 +83,7 @@ p95 spread **3.45%** and only **39%** of samples pass the amended gate (required
 Last-third iterative/exact upstream SD ratios are **19.6 / 21.0 / 24.5×** at units 1–3;
 exact upstream transients are still decaying. Do not substitute the withdrawn full-window “6×/35×” claims.
 Downstream shedding is independently supported; upstream units 1–4 are largely projection-leak artifacts.
-ADR0119 retains the detailed chronology, exceptions, transient tables and corrected claims.
+ADR0122 retains the detailed chronology, exceptions, transient tables and corrected claims.
 
 Independent evidence provenance: final Basilisk cross-code report and OpenFOAM pilot report,
 2026-10-23, retained in the private research archive; key numbers summarized here, not raw logs.

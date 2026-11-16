@@ -1,18 +1,18 @@
-# ADR 0119: Route-local paper MAC flow with reservoir plenums
+# ADR 0122: Route-local paper MAC flow with reservoir plenums
 
 **Status:** Experimental — Re50/200 flow accepted; paper reproduction fails; Re400 ships under exceptions with limits
 **Date:** 2026-10-22
 
 ## Context
 
-ADR 0118 verifies the staggered operators and Poiseuille test. Its runaway diagnosis identifies a growing velocity hotspot at the open inlet, reproduced even by exact pressure projection. Reservoirs suppress that hotspot at measured Re≈146; remaining outer-face backflow requires a longer test. ADR 0117's absorption optics remain accepted; the old collocated paper variants remain failed calibration experiments until a replacement passes G1.
+ADR 0121 verifies the staggered operators and Poiseuille test. Its runaway diagnosis identifies a growing velocity hotspot at the open inlet, reproduced even by exact pressure projection. Reservoirs suppress that hotspot at measured Re≈146; remaining outer-face backflow requires a longer test. ADR 0120's absorption optics remain accepted; the old collocated paper variants remain failed calibration experiments until a replacement passes G1.
 
 ## Lead design constraints
 
 - Inflow fix is full-height plenums ≥4 measured mean widths long, matching the paper rig's chambers. No new inflow boundary condition. The outer ≈1-width band damps transverse velocity toward zero and streamwise velocity toward its own column mean. Column flux is unchanged in exact arithmetic. **Apply this forcing before projection**, because it changes local divergence; projection removes that divergence before rendering/measurement. Total-pressure inflow is skipped unless plenums fail.
 - Patent trace as-is, never tune geometry to pass a metric. Copy from `memory/research/tesla-paper/derived/paper-valve.svg`; Tesla US1329559 p1, source SHA256 `c169635802df6b7320db350eaf8cc32b89a5ab0897babdff9182eb098299d93b`. Eleven islands/units. Crop the empty SVG tail to wet extent x=[0,29.973013], mapping this cell width to L=30cm (0.09% scale change); unchanged path. Assert both mouth columns wet, no solid seam with reservoirs. Traced mean width 0.837cm versus paper0.9cm; trace/photo IoU0.707; traced hydraulic estimate0.660cm versus reported0.8cm. Do not hide these mismatches.
 - Route-only own-WebGL2 engine, float render targets required, explicit resource deletion without `loseContext()`. Engine imports no Svelte; GLSL strings are GL-free; component hands over canvas/calls methods. Pause offscreen/hidden. No public API/default/preset changes; FluidEngine and every non-paper variant unchanged.
-- Replace only G1-passing `paper-*` variants, same IDs. Crop display to valve; compute plenums offscreen. Blue/green/carrier concentration species use ADR0117 Beer–Lambert optical depths with linear white backlight, single sRGB encode. No dye stirring/diffusion; ≈3× bounded MacCormack dye. White plate, pale acrylic islands, thin grey outline.
+- Replace only G1-passing `paper-*` variants, same IDs. Crop display to valve; compute plenums offscreen. Blue/green/carrier concentration species use ADR0120 Beer–Lambert optical depths with linear white backlight, single sRGB encode. No dye stirring/diffusion; ≈3× bounded MacCormack dye. White plate, pale acrylic islands, thin grey outline.
 
 ## Numerics and units
 
@@ -30,7 +30,7 @@ Frozen injection: Fig3a at x25 has blue centre y55, green y44, approximately2px 
 - **Lead amendment G1-a**, declared2026-10-22 before any G1 data: duration≥22 measured flow-through times `T=L/U`, replacing300 dimensional seconds. At Re200,22T≈300 physical seconds; preserves original intent across dynamically similar solver clocks. G2 averaging last10T. Segment with explicit face/pressure/dye checkpoints under separate≤25min GPU locks if necessary.
 - **G2:** log-force secant, measured Re within±10%; state post-spin-up averaging window inT, flux SD and frequency if unsteady.
 - **G3:** equal-force forward/reverse Q nearRe200; matched-Re resistance ratio from two forces/direction. Patent forward+x unchanged. Paper Di≈1.5; failures are findings.
-- **G4:** frozen ADR0117 mixed threshold min(blue,green)>.05, bearing sum>.1, onset when mixed/bearing area>.1. Eleven bins separated halfway between traced island centres. Corridor is connected vertical wet interval containing interpolated mouth centreline. Forward retention≥.9 each and correlation<.2; reverseRe200 onset>unit2 and unsteady; onsetRe50 later than200 later than400.
+- **G4:** frozen ADR0120 mixed threshold min(blue,green)>.05, bearing sum>.1, onset when mixed/bearing area>.1. Eleven bins separated halfway between traced island centres. Corridor is connected vertical wet interval containing interpolated mouth centreline. Forward retention≥.9 each and correlation<.2; reverseRe200 onset>unit2 and unsteady; onsetRe50 later than200 later than400.
 - **G5:** real-page headless Chrome1280×900,DPR2 scroll, target≥50fps; report GPUms, resolution/sweeps/steps frontier. Playback target≥.3 physical seconds/wall second or≤45 wall seconds/T atRe200. Fixed deterministic velocity pre-roll without presentation/passive dye, stop at fixed budget or within5% calibratedRe; report wall time.
 - **G6:** node/typecheck/prepack, touched hardware, unchanged non-paper configs and public surface.
 - **Lead amendment D-1**, declared2026-10-22 **after ε0 steady equal-force data, before onset/G4 data**: deterministic seeded ambient tentative forcing upstream, spatial scale wbar/3, correlation.05T, support at least1wbar from mouth and sponge. Shipped measured inlet fluctuation ε=.01U, sensitivity0/.03 at reverseRe200. ε is response, not input acceleration: calibrate temporal rms of u/v in disturbance-free centreline probe1wbar upstream, baselineε0 subtracted in quadrature, tolerance±20%. FreezeU to calibrated target. G3 rerun atε1%; reverse ladder50/200/400/800; ship800 only ifG1 passes. HighestRe1.5× resolution comparison, label under-resolved if onset/Q differ.
@@ -153,7 +153,7 @@ Two same-tentative-field curves, warm previousq, Float32GPUdivergence RHS, Float
 |worst|512|3.458624|.000327923|
 |worst|exact|.000004404|3.04490e−7|
 
-Jacobi16×work barely changes smoothalong-channelerror. This motivates scalable pressure work rather than changing advection or tuninggeometry. ADR0115 warning: a coarse hierarchy/aggregation is not evidence of convergence; channelconnectivity/low-energy modes matter.
+Jacobi16×work barely changes smoothalong-channelerror. This motivates scalable pressure work rather than changing advection or tuninggeometry. ADR0118 warning: a coarse hierarchy/aggregation is not evidence of convergence; channelconnectivity/low-energy modes matter.
 
 Leadphase3candidate(c),route-localopt-in`coarseCorrection`onlyRe400: CPUinlet-geodesicBFS,128/256bands splitintoconnectedcomponents, piecewiseconstantP, exactGalerkinA_c=PᵀAP, denseSPDCholeskyinverseuploadedR32F. GPUresidual/restrict/densematvec/prolong4passes+8postsweeps. Re50/200unsetandunchanged. C1bothcaptures:spread≤.2%,D/U≤1e−3,main+post≤64sweeps. B128has277aggregates,max1386cells;B256557aggregates,max756cells. **C1fails**. Worst56main+8post:B128spread3.28640%,D/U.0112226;B2563.16833%,D/U.0119465. HighqB256alsofails (raw`coarse-highq.json`). Noevolutionadopted.
 

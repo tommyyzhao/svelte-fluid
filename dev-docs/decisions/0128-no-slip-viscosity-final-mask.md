@@ -1,4 +1,4 @@
-# ADR 0125: Crop no-slip viscosity exactly once before projection
+# ADR 0128: Crop no-slip viscosity exactly once before projection
 
 **Status:** Accepted
 **Date:** 2026-10-24

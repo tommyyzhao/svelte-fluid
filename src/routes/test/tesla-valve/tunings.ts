@@ -241,7 +241,7 @@ const flame = {
 	} satisfies FluidConfig
 };
 
-// Fig3a linear-light one-scalar fit; residual hue mismatch ΔE76=12.12 (ADR 0119).
+// Fig3a linear-light one-scalar fit; residual hue mismatch ΔE76=12.12 (ADR 0122).
 export const PAPER_CARRIER = 5.65212;
 
 // Optical depths approximate the photographs, not measured dye spectra.

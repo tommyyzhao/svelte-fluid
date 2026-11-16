@@ -1,11 +1,11 @@
-# ADR 0118: Conservative staggered-flow preflight
+# ADR 0121: Conservative staggered-flow preflight
 
 **Status:** Experimental — not adopted
 **Date:** 2026-10-21
 
 ## Context
 
-ADR 0115 rejected multigrid and measured an incompatible pure-Neumann pressure RHS in the collocated valve. More Jacobi iterations cannot repair the mismatch between that divergence, pressure stencil and gradient. Existing scenes, including `flame-jet`, likely share this conservation defect. This experiment does not change those scenes.
+ADR 0118 rejected multigrid and measured an incompatible pure-Neumann pressure RHS in the collocated valve. More Jacobi iterations cannot repair the mismatch between that divergence, pressure stencil and gradient. Existing scenes, including `flame-jet`, likely share this conservation defect. This experiment does not change those scenes.
 
 The Nguyen, Abouezzi & Ristroph (2021), Nature Communications 12:2884 dye experiment requires measured mass conservation before Reynolds numbers, diodicity or mixing can be calibrated. This remains a two-dimensional Navier–Stokes model, not a three-dimensional reproduction.
 
@@ -116,7 +116,7 @@ MAC dual-volume energy (half weights at open normal faces) is audited with exact
 
 ## Scope decision and next-solver estimate
 
-The MAC operators are verified; the current fixed-sweep Jacobi path is not sufficient for conservative target-regime rightward evolution within a useful budget. A scalable pressure solver is required before further acceptance work. Multigrid-preconditioned CG on this compatible staggered operator is a standard candidate, **not implemented or accepted here**. ADR 0115's failed aggregation/prolongation remains a warning: a coarse space must resolve the valve connectivity and low-energy channel modes; adding a hierarchy is not itself evidence of convergence.
+The MAC operators are verified; the current fixed-sweep Jacobi path is not sufficient for conservative target-regime rightward evolution within a useful budget. A scalable pressure solver is required before further acceptance work. Multigrid-preconditioned CG on this compatible staggered operator is a standard candidate, **not implemented or accepted here**. ADR 0118's failed aggregation/prolongation remains a warning: a coarse space must resolve the valve connectivity and low-energy channel modes; adding a hierarchy is not itself evidence of convergence.
 
 Planning estimate only: six levels1152×384 down to36×12, one V(2,2) preconditioner costs roughly34–40 smoothing/restriction/prolongation draws (4 smoothers + restriction + prolongation per noncoarsest level, plus coarse solve). PCG adds operator/vector updates and reductions: about45–60 draws per iteration, with packed dot products and GPU-side scalars; two serial dot reductions across a6–7-level reduction chain can raise that to55–70. If5–10 iterations suffice, budget roughly225–700 total draws per step, approximately50–150 finest-grid-equivalent stencil draws because coarse levels shrink geometrically. Actual iteration count, coarse-grid robustness, GPU ms, and the50fps frontier are unmeasured. No promise that this beats160 paired-Jacobi draws until hardware evidence exists.
 

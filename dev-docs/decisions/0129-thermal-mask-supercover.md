@@ -1,4 +1,4 @@
-# ADR 0126: Conservative thermal mask-space segment traversal
+# ADR 0129: Conservative thermal mask-space segment traversal
 
 **Status:** Accepted
 **Date:** 2026-10-24
