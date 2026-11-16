@@ -5,8 +5,7 @@ export const prerender = true;
 
 // The /examples/* feature demos ship in the static build but are intentionally
 // unlisted for now — keep crawlers out until we choose to feature them.
-// /lab is private R&D and never linked or listed.
-const DISALLOW = ['/examples', '/lab'];
+const DISALLOW = ['/examples'];
 
 export function GET() {
 	const body = [

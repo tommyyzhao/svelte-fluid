@@ -15,6 +15,15 @@
 <svelte:head>
 	<link rel="canonical" href={canonicalUrl} />
 	<meta property="og:url" content={canonicalUrl} />
+	<!-- name="description" is per page (SvelteKit does not dedupe head tags, so a layout copy would double up). -->
+	<meta
+		property="og:description"
+		content="Multi-instance, resize-stable, deterministic-seeded port of Pavel Dobryakov's WebGL-Fluid-Simulation. Fourteen presets, 90+ configurable props, zero runtime dependencies."
+	/>
+	<meta
+		name="twitter:description"
+		content="WebGL fluid simulation as a Svelte 5 component. Fourteen presets, 90+ configurable props."
+	/>
 </svelte:head>
 
 {@render children?.()}

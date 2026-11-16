@@ -14,7 +14,8 @@ const config = {
 		adapter: adapter({
 			pages: 'build',
 			assets: 'build',
-			fallback: undefined,
+			// 404.html is the SPA shell GitHub Pages serves for unknown paths; it renders +error.svelte.
+			fallback: '404.html',
 			precompress: false,
 			strict: true
 		}),

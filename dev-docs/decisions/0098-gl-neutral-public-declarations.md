@@ -8,8 +8,8 @@ Accepted (2026-10-02). 0097 is reserved by another lane.
 
 `FBO`, `DoubleFBO`, `ExtInfo` and `ResolvedConfig` were root-exported but
 only ever used by the engine, and mentioned `WebGLTexture`/`WebGLFramebuffer`.
-They were deprecated in 0.8 with removal promised at 1.0. A WebGPU backend is
-planned (private R&D branch), so a GL type in a root signature would pin the
+They were deprecated in 0.8 with removal promised at 1.0. An archived research
+branch (`refs/archive/rd-webgpu-replacement`; not shipped) explored a WebGPU backend, so a GL type in a root signature would pin the
 public API to one backend and force consumers to load DOM WebGL typings.
 
 ## Decision

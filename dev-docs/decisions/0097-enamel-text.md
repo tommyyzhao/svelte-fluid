@@ -6,7 +6,7 @@ Accepted (2026-10-02)
 
 ## Context
 
-The WebGPU R&D branch found one material useful in a design system: compliant
+The archived WebGPU research branch (`refs/archive/rd-webgpu-replacement`; not shipped) found one material useful in a design system: compliant
 enamel typography (R&D ADR 0072, exported experimentally under R&D ADR 0078).
 Native glyph coverage gets a molded, rounded rest profile; a press displaces
 the material, which then relaxes; the outline never moves. Main is WebGL2 on a

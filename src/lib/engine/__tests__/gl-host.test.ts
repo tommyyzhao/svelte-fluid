@@ -53,8 +53,8 @@ async function setup() {
 	vi.stubGlobal('OffscreenCanvas', FakeSurface);
 	const mod = await import('../gl-host.js');
 	const presents = vi.fn();
-	const instance = (lost = vi.fn(), restored = vi.fn()): GlHostInstance => ({
-		canvas: { width: 4, height: 3, getContext: () => ({ transferFromImageBitmap: presents }) } as unknown as HTMLCanvasElement,
+	const instance = (lost = vi.fn(), restored = vi.fn(), transfer = presents): GlHostInstance => ({
+		canvas: { width: 4, height: 3, getContext: () => ({ transferFromImageBitmap: transfer }) } as unknown as HTMLCanvasElement,
 		onContextLost: lost,
 		onContextRestored: restored
 	});
@@ -77,7 +77,78 @@ describe('gl-host (ADR-0088)', () => {
 		releaseGlHost(a);
 	});
 
-	it('presents only the newest overlapping snapshot, closing stale bitmaps', async () => {
+	it('presents completed snapshots while newer requests remain pending, including sustained overlap', async () => {
+		const { acquireGlHost, releaseGlHost, instance, presents, snapshots } = await setup();
+		const a = instance();
+		const host = acquireGlHost(a);
+		let pending = host.present(a);
+		for (let i = 0; i < 4; i++) {
+			const newer = host.present(a);
+			snapshots[i].resolve();
+			await pending;
+			expect(presents).toHaveBeenCalledTimes(i + 1);
+			expect(presents).toHaveBeenLastCalledWith(snapshots[i].bitmap);
+			pending = newer;
+		}
+		snapshots[4].resolve();
+		await pending;
+		expect(presents).toHaveBeenCalledTimes(5);
+		for (const { bitmap } of snapshots) expect(bitmap.close).toHaveBeenCalledOnce();
+		releaseGlHost(a);
+	});
+
+	it('keeps presentation progress isolated between siblings', async () => {
+		const { acquireGlHost, releaseGlHost, instance, presents, snapshots } = await setup();
+		const siblingPresents = vi.fn();
+		const a = instance();
+		const b = instance(vi.fn(), vi.fn(), siblingPresents);
+		const host = acquireGlHost(a);
+		acquireGlHost(b);
+		const first = host.present(a);
+		const newer = host.present(a);
+		const sibling = host.present(b);
+		snapshots[2].resolve();
+		await sibling;
+		snapshots[0].resolve();
+		await first;
+		expect(presents).toHaveBeenCalledExactlyOnceWith(snapshots[0].bitmap);
+		expect(siblingPresents).toHaveBeenCalledExactlyOnceWith(snapshots[2].bitmap);
+		snapshots[1].resolve();
+		await newer;
+		for (const { bitmap } of snapshots) expect(bitmap.close).toHaveBeenCalledOnce();
+		releaseGlHost(a);
+		releaseGlHost(b);
+	});
+
+	it.each(['transfer throw', 'snapshot rejection'])('%s does not suppress an older completed frame', async (failure) => {
+		const { acquireGlHost, releaseGlHost, instance, presents, snapshots } = await setup();
+		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const a = instance();
+		const host = acquireGlHost(a);
+		const older = host.present(a);
+		const newer = host.present(a);
+		const reason = new Error(failure);
+		if (failure === 'transfer throw') {
+			presents.mockImplementationOnce(() => { throw reason; });
+			const rejected = expect(newer).rejects.toBe(reason);
+			snapshots[1].resolve();
+			await rejected;
+			expect(snapshots[1].bitmap.close).toHaveBeenCalledOnce();
+		} else {
+			snapshots[1].reject(reason);
+			await newer;
+			expect(error).toHaveBeenCalledExactlyOnceWith('svelte-fluid: gl-host present failed', reason);
+			expect(snapshots[1].bitmap.close).not.toHaveBeenCalled();
+		}
+		presents.mockClear();
+		snapshots[0].resolve();
+		await older;
+		expect(presents).toHaveBeenCalledExactlyOnceWith(snapshots[0].bitmap);
+		expect(snapshots[0].bitmap.close).toHaveBeenCalledOnce();
+		releaseGlHost(a);
+	});
+
+	it('presents only the newest successfully transferred overlapping snapshot, closing stale bitmaps', async () => {
 		const { acquireGlHost, releaseGlHost, instance, presents, snapshots } = await setup();
 		const a = instance();
 		const host = acquireGlHost(a);
@@ -100,23 +171,49 @@ describe('gl-host (ADR-0088)', () => {
 		const a = instance(lost, restored);
 		const host = acquireGlHost(a);
 		const pendingLoss = host.present(a);
+		const pendingLossNewer = host.present(a);
 		surfaces[0].listeners.webglcontextlost({ preventDefault() {} } as Event);
 		surfaces[0].listeners.webglcontextrestored({} as Event);
-		snapshots[0].resolve();
-		await pendingLoss;
+		const postRestore = host.present(a);
+		for (const i of [1, 0]) snapshots[i].resolve();
+		await Promise.all([pendingLoss, pendingLossNewer]);
 		expect(presents).not.toHaveBeenCalled();
-		expect(snapshots[0].bitmap.close).toHaveBeenCalledOnce();
+		snapshots[2].resolve();
+		await postRestore;
+		expect(presents).toHaveBeenCalledExactlyOnceWith(snapshots[2].bitmap);
+		presents.mockClear();
 		const pendingRelease = host.present(a);
 		releaseGlHost(a);
 		const fresh = acquireGlHost(a);
 		expect(fresh).not.toBe(host);
-		snapshots[1].resolve();
+		snapshots[3].resolve();
 		await pendingRelease;
 		expect(presents).not.toHaveBeenCalled();
-		expect(snapshots[1].bitmap.close).toHaveBeenCalledOnce();
+		for (const { bitmap } of snapshots) expect(bitmap.close).toHaveBeenCalledOnce();
 		expect(lost).toHaveBeenCalledOnce();
 		expect(restored).toHaveBeenCalledOnce();
 		releaseGlHost(a);
+	});
+
+	it('invalidates the old registration when the same instance rejoins a live sibling host', async () => {
+		const { acquireGlHost, releaseGlHost, instance, presents, snapshots } = await setup();
+		const a = instance();
+		const b = instance();
+		const host = acquireGlHost(a);
+		acquireGlHost(b);
+		const old = host.present(a);
+		releaseGlHost(a);
+		expect(acquireGlHost(a)).toBe(host);
+		const fresh = host.present(a);
+		snapshots[0].resolve();
+		await old;
+		expect(presents).not.toHaveBeenCalled();
+		snapshots[1].resolve();
+		await fresh;
+		expect(presents).toHaveBeenCalledExactlyOnceWith(snapshots[1].bitmap);
+		for (const { bitmap } of snapshots) expect(bitmap.close).toHaveBeenCalledOnce();
+		releaseGlHost(a);
+		releaseGlHost(b);
 	});
 
 	it('does not log a rejected pending snapshot after release', async () => {

@@ -384,6 +384,7 @@ interface PerformanceState {LB}
 </p>
 
 <pre><code>interface FlowConfig {LB}
+  walls?: 'free-slip' | 'no-slip';
   mode?: 'live' | 'prescribed' | 'hybrid';
   boundary?: {LB} left?: 'wall'|'open'; right?: 'wall'|'open'; top?: 'wall'|'open'; bottom?: 'wall'|'open' {RB};
   sources?: FlowSource[];
@@ -392,12 +393,18 @@ interface PerformanceState {LB}
   forces?: FlowForce[];
   prescribed?: PrescribedFlowField;
   visualization?: FlowVisualization;
+  tracers?: {LB}
+    sources: ReadonlyArray&lt;{LB} from: Vec2; to: Vec2; species: 0 | 1 | 2 {RB}&gt;;
+    capacity?: number;
+    rate?: number;
+    sigma?: number;
+  {RB};
 {RB}</code></pre>
 
 <p>
 	Use <code>FlowSource</code> for persistent point/line/rect emitters, <code>FlowOutlet</code>
 	for edge sponge/drain zones, <code>FlowScalarField</code> for temperature or ink-like
-		quantities, <code>FlowForce</code> for gravity, pressure-gradient body force, or buoyancy, and <code>PrescribedFlowField</code>
+		quantities, <code>FlowForce</code> for gravity, pressure-gradient body force, buoyancy, or opt-in disturbance, and <code>PrescribedFlowField</code>
 	for custom uploaded flow grids. In <code>mode: 'prescribed'</code>, source velocity and
 	forces are ignored so the velocity remains exactly prescribed; use
 	<code>'hybrid'</code> when you want to add live velocity before projection.
@@ -405,8 +412,52 @@ interface PerformanceState {LB}
 	edges are actual pressure-open boundaries.
 </p>
 
+<h3>FlowOutlet</h3>
+
+<pre><code>interface FlowOutlet {LB}
+  edge: 'left' | 'right' | 'top' | 'bottom';
+  from?: number;
+  to?: number;
+  width?: number;
+  clearDye?: number;
+  clearVelocity?: boolean;
+  velocity?: 'damp' | 'relax';
+  relaxRate?: number;
+  clearScalars?: boolean;
+{RB}</code></pre>
+
+<p>
+	<code>from</code>/<code>to</code> delimit the edge interval (defaults 0/1);
+	<code>width</code> is UV edge-zone width (default 0.035). Dye clearing uses
+	<code>clearDye</code> (default 0); <code>clearScalars</code> defaults true.
+	<code>clearVelocity</code> defaults false. When true, <code>velocity: 'damp'</code>
+	(the default) retains the legacy fixed-factor velocity drain: it removes flux.
+	Preset defaults are unchanged.
+</p>
+<p>
+	Opt into <code>velocity: 'relax'</code> to calm the edge without removing normal section flux:
+	relax normal velocity toward its mask-weighted fluid mean per column (left/right) or row
+	(top/bottom), tangential velocity toward zero. Only fluid cells inside the outlet interval
+	contribute to that mean; solids remain untouched. Weight is
+	<code>exp(−dt × relaxRate × gate²)</code> with the same smoothstep edge gate as damp mode.
+	<code>relaxRate</code> is finite and positive, per simulation second (default 10).
+	Invalid modes/rates throw <code>RangeError</code>. Neither option affects velocity unless
+	<code>clearVelocity</code> is true; dye/scalar clearing is unchanged. This preserves flux
+	in the outlet pass, not a guarantee of whole-solver conservation through obstructions.
+</p>
+<p>
+	Turning relax on or off allocates or frees its reduction targets. Changing the rate, extent
+	or edge is a hot update with no allocation.
+	Prescribed-only mode keeps its prescribed velocity, ignoring velocity outlets.
+</p>
+
 <pre><code>interface FlowScalarField {LB}
   name: string;
+  diffusivity?: number;
+  diffusionIterations?: number;
+  wall?: 'insulated' | 'isothermal';
+  radiativeCooling?: number;
+  temperatureRatio?: number;
   dissipation?: number;
   advection?: 'standard' | 'low-dissipation';
   color?: RGB;
@@ -418,9 +469,19 @@ type Vec2 = {LB} x: number; y: number {RB};
 type FlowForce =
   | {LB} kind: 'gravity'; vector: Vec2 {RB}
   | {LB} kind: 'pressureGradient'; vector: Vec2 {RB}
-  | {LB} kind: 'buoyancy'; scalar: string; direction?: Vec2; strength: number; ambient?: number {RB};
+  | {LB} kind: 'buoyancy'; scalar: string; direction?: Vec2; strength: number; ambient?: number {RB}
+  | {LB}
+      kind: 'disturbance';
+      acceleration: number;
+      region?: {LB} x: number; y: number; width: number; height: number {RB};
+      correlationTime: number;
+      scale: number;
+      seed?: number;
+    {RB};
 
 interface FlowVisualization {LB}
+  emission?: {LB} scalar: string; intensity: number; excitation: number {RB};
+  absorption?: {LB} absorbance: [RGB, RGB, RGB]; backlight?: RGB {RB};
   colorBy?: 'dye' | 'speed' | 'pressure' | 'temperature' | 'scalar';
   scalar?: string;
   glowBy?: 'speed' | 'scalar' | 'none';
@@ -444,6 +505,119 @@ interface FlowGridField {LB}
 	For velocity and pressure plots, <code>FlowVisualization.range</code> maps raw field
 	values onto the selected transfer function; <code>transfer: 'cfd'</code> provides a
 	blue→cyan→green→yellow→red engineering-style magnitude ramp.
+</p>
+
+<h3>Disturbance: calibrated rig noise (opt-in)</h3>
+
+<p>
+	<code>kind: 'disturbance'</code> adds smooth seeded value-noise acceleration before projection.
+	<code>acceleration</code> is the peak forcing coefficient in simulation velocity units per second
+	(texels/s², the same units as <code>pressureGradient.vector</code>), not a promised velocity RMS
+	or strict noise-sample bound. <code>correlationTime</code> is positive seconds of accumulated simulation
+	time, never wall time; <code>scale</code> is positive canvas-height units.
+	The optional <code>region</code> is a positive UV rectangle inside [0, 1], with y increasing
+	bottom-to-top and a separable cos² taper to zero at every edge; omission uses the whole domain.
+	<code>seed</code> is an integer 0–65535, default 704. All numeric fields must be finite;
+	invalid values throw <code>RangeError</code> before GPU changes.
+</p>
+<p>
+	This is rig noise, not turbulence synthesis. To set <code>acceleration</code>, measure the RMS of
+	the inlet velocity fluctuation as a fraction of mean inlet speed U, at a probe just downstream of the
+	region, with the disturbance disabled subtracted in quadrature. Roughly 1% U is a starting point.
+	The same seed and dt sequence reproduce the same field on a given GPU and driver.
+	Changing <code>acceleration</code>, <code>correlationTime</code> or <code>scale</code> is a hot update with no
+	allocation. Zero acceleration skips the pass; omitting the force leaves existing scenes unchanged.
+</p>
+
+<h3>Fixed-composition inflow and thermal emission (opt-in)</h3>
+
+<p>
+	Set <code>FlowSource.inflow: true</code> to relax supplied dye/scalar channels toward
+	their configured targets with weight <code>1 − exp(−rate × dt × footprint)</code>,
+	instead of accumulating them indefinitely. Unsupplied scalar channels survive;
+	velocity remains additive. Dye alpha remains deposited thickness, never temperature.
+	Source <code>rate</code> is per second; <code>velocity</code> is simulation texels per second.
+</p>
+<p>
+	<code>diffusivity</code> defaults to 0 and uses the same model-relative, resolution-scaled
+	coefficient convention as <code>viscosity</code>, not calibrated SI units. For a model-relative
+	Prandtl ratio <code>Pr &gt; 0</code>, set <code>diffusivity = viscosity / Pr</code>. Velocity
+	and thermal solves apply this convention on their respective grids.
+	Conduction uses implicit Jacobi iterations (default 40); check iteration
+	doubling and timestep/grid refinement for your scene. <code>wall: 'isothermal'</code>
+	removes heat at ambient-zero walls; default <code>'insulated'</code> has zero wall heat flux.
+	Open canvas edges have zero diffusive flux. Thermal advection excludes solid donors/traces;
+	other scalar channels retain legacy transport. With <code>advectionScheme: 'maccormack'</code>,
+	thermal channels and emission/absorption concentration RGB receive a donor-limited, boundary-aware second-order correction;
+	ordinary dye/nonthermal scalars remain unchanged. Salt thickness stays first-order; sticky/reveal/distortion retain legacy transport.
+	Thermal/salt storage uses full float when WebGL2 float render targets
+	and float-linear filtering are available; otherwise half-float roundoff can dominate weak cooling.
+	Explicit <code>diffusivity: 0</code>
+	preallocates the optional solve for allocation-free coefficient updates; omit it to allocate nothing.
+	<code>walls: 'no-slip'</code> enables
+	viscous wall shear and requires nonzero viscosity; default <code>'free-slip'</code> is unchanged.
+</p>
+<p>
+	Temperature is normalized excess above ambient: 0 ambient, 1 inlet. <code>temperatureRatio</code>
+	is inlet/ambient absolute temperature (default 6, minimum 1.01 to keep radiation numerically resolved).
+	<code>radiativeCooling</code> defaults to 0; positive values enable net optically thin
+	radiation, a declared per-second heat loss solved implicitly, not dye fading.
+	All new coefficients must be finite and nonnegative; <code>diffusionIterations</code>
+	must be a positive integer. Invalid new fields throw <code>RangeError</code> before GPU changes.
+</p>
+<p>
+	<code>emission</code> replaces dye display and field overlays with linear radiance
+	<code>salt × intensity × exp(−excitation × (1 / normalizedAbsoluteTemperature − 1))</code>.
+	Bloom reads emitted light, not cold salt; one tone map and one sRGB encode follow.
+	Use <code>toneMapping: 'agx'</code> for incandescent highlights. Reveal/distortion remain authoritative.
+	Sources, colours and coefficients hot-update without reallocating targets or recompiling shaders;
+	presence/dimension changes own their optional resources. RGB salts share one excitation law;
+	this constant-density reduced thermal-emission model is not calibrated combustion CFD.
+</p>
+
+<hr />
+
+<h2>Beer–Lambert transmitted dye (opt-in)</h2>
+
+<p>
+	<code>visualization.absorption</code> interprets dye RGB as three independent species
+	concentrations. <code>absorbance: [RGB, RGB, RGB]</code> supplies each species' RGB optical
+	depth per concentration; <code>backlight</code> is linear RGB radiance, default
+	<code>{LB} r: 1, g: 1, b: 1 {RB}</code>. Display is
+	<code>sRGB(backlight × exp(−Σ concentration × absorbance))</code> with exactly one encoding,
+	no tone curve, bloom, sunrays, thickness shading or specular. Blue/green overlap can
+	be dark green from absorption alone. All values must be finite and nonnegative;
+	invalid vectors and simultaneous emission throw <code>RangeError</code> before GPU work.
+	Reveal/distortion retain precedence. RGB concentration shares the bounded thermal
+	transport/full-float capability policy; no scalar field or emission target is required.
+</p>
+<p>
+	Turning absorption on or off recompiles the display shader and reallocates the concentration
+	targets. Changing absorbance or backlight values is a hot update with no allocation or shader compile.
+	For a white backlit channel use opaque rendering and white <code>backColor</code>, then
+	CSS <code>mix-blend-mode: multiply</code> over a white/grey SVG backdrop. Coefficients
+	approximate three colour bands, not measured spectra; fluorescence is not modelled.
+</p>
+
+<h3>Passive streak tracers (opt-in)</h3>
+<p>
+	<code>flow.tracers</code> requires <code>flow.visualization.absorption</code>. This is
+	<strong>visualization only, not concentration</strong>: grid dye keeps running, velocity is
+	unaffected, and tracer optical depth adds to absorption before glass. Supply 1–3 nondegenerate
+	segments in bottom-up UV [0, 1]; <code>species: 0 | 1 | 2</code> selects the matching absorbance vector.
+	<code>capacity</code> defaults to 262144, an integer multiple of 512 in 512–1048576.
+	<code>rate</code> defaults to 2048 particles per simulation second shared across sources.
+	<code>sigma</code> defaults to 0.75 dye texels, finite in 0.25–4/3; rate must be finite and positive.
+	Invalid options throw <code>RangeError</code> before GPU transitions.
+</p>
+<p>
+	Turning tracers on or off, or changing <code>capacity</code>, allocates or frees the tracer
+	fields. Changing <code>rate</code>, <code>sigma</code> or <code>sources</code> is a hot update
+	with no allocation. Fractional emission carries over when <code>rate</code> changes. Resizing keeps
+	particle positions. Context restore reseeds the particles deterministically. When the ring is full,
+	the oldest particles are recycled, and tracers do not stick to walls. WebGL2 RGBA32F and
+	RGBA16F additive blending are required; without them, tracers are disabled with a one-time warning
+	and grid-dye absorption still applies.
 </p>
 
 <h3>Other public types</h3>
@@ -470,9 +644,8 @@ interface FlowGridField {LB}
 <h2>GL-type-neutral API</h2>
 
 <p>
-	No root-exported declaration mentions a <code>WebGL*</code> DOM type. The internal
-	types <code>FBO</code>, <code>DoubleFBO</code>, <code>ExtInfo</code> and
-	<code>ResolvedConfig</code> are not exported.
+	No root-exported declaration mentions a <code>WebGL*</code> DOM type. Internal GL helper
+	types (render-target, extension and resolved-config types) are not exported.
 	<code>isWebGLAvailable()</code> accepts a <code>ContextProbeAttributes</code> object,
 	<code>{LB} failIfMajorPerformanceCaveat?: boolean {RB}</code>.
 </p>
