@@ -18,7 +18,7 @@ JPEG compression keeps the complete packet below 4 MB; do not use it for pixel
 parity or fine dither/noise measurements.
 
 Reproduce with this worktree's dev server on port 5198 and exclusive GPU lock:
-`bun scripts/capture-lighting-review.mjs`. The script imports the real component
+`bun scripts/capture-lighting-review.mjs`. The script imports the real component (archived locally)
 through Vite; no copied solver, local shader or permanent capture route.
 
 ## Review

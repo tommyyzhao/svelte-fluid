@@ -126,13 +126,13 @@
 			<td><code>autoPerformance</code></td>
 			<td><code>boolean</code></td>
 			<td><code>false</code></td>
-			<td>Opt-in frame-time governor. Under sustained load it lowers Bucket-A quality only: pressure iterations first, then substeps. It never auto-restores quality, and deterministic <code>advance()</code> runs ignore it.</td>
+			<td>Opt-in frame-time governor. Under sustained load it lowers quality only: pressure iterations first, then substeps. It never auto-restores quality, and deterministic <code>advance()</code> runs ignore it.</td>
 		</tr>
 		<tr>
 			<td><code>autoPerformanceTargetFrameMs</code></td>
 			<td><code>number</code></td>
 			<td><code>1000 / 60</code></td>
-			<td>Average live-frame budget used by <code>autoPerformance</code>. Use approximately <code>33.33</code>, <code>16.67</code>, or <code>8.33</code> for 30, 60, or 120 Hz targets. Bucket A.</td>
+			<td>Average live-frame budget used by <code>autoPerformance</code>. Use approximately <code>33.33</code>, <code>16.67</code>, or <code>8.33</code> for 30, 60, or 120 Hz targets. Hot-updatable.</td>
 		</tr>
 		<tr>
 			<td><code>autoPerformanceMinPressureIterations</code></td>
@@ -160,7 +160,7 @@
 				Adaptive vorticity confinement blend. <code>0</code> disables adaptive gating (legacy
 				magnitude); <code>1</code> enables full local adaptive scaling by vorticity magnitude.
 				Confinement is separately attenuated next to solid boundaries (a bugfix), so output
-				near obstructions differs from prior versions regardless of this value.
+				near obstructions is attenuated regardless of this value.
 			</td>
 		</tr>
 	</tbody>
@@ -233,8 +233,7 @@
 			<td><code>true</code></td>
 			<td>Diffuse relief from independently deposited thickness, not pigment brightness.
 				Equal splats, including black pigment, have equal geometry. This passive thin
-				layer is not a calibrated free-surface solve; shading intentionally differs
-				from 0.8.0. Recompiles the display program.</td>
+				layer is not a calibrated free-surface solve; Recompiles the display program.</td>
 		</tr>
 		<tr>
 			<td><code>specular</code></td>
@@ -268,7 +267,7 @@
 			<td><code>maxFps</code></td>
 			<td><code>number | null</code></td>
 			<td><code>0</code></td>
-			<td>Opt-in maximum presented frames per second (for example <code>60</code> on 120 Hz displays presents half as many frames, which also halves presented motion cadence there). Simulation, input, and automatic splats still run every animation frame; only bloom, sunrays, display, glass, and presentation are capped. <code>0</code>/<code>null</code> presents every frame. Paused invalidations, resize/resume, explicit renders and the final settle frame bypass the cap. Negative/nonfinite values are ignored; <code>undefined</code> preserves the resolved hot value. Bucket A; no texture allocation or shader compilation.</td>
+			<td>Opt-in maximum presented frames per second (for example <code>60</code> on 120 Hz displays presents half as many frames, which also halves presented motion cadence there). Simulation, input, and automatic splats still run every animation frame; only bloom, sunrays, display, glass, and presentation are capped. <code>0</code>/<code>null</code> presents every frame. Paused invalidations, resize/resume, explicit renders and the final settle frame bypass the cap. Negative/nonfinite values are ignored; <code>undefined</code> preserves the resolved hot value. Hot-updatable; no texture allocation or shader compilation.</td>
 		</tr>
 		<tr>
 			<td><code>paused</code></td>
@@ -322,7 +321,7 @@
 			<td><code>'neutral' | 'agx' | 'none'</code></td>
 			<td><code>'none'</code></td>
 			<td>How bright dye and bloom are brought into display range. <code>'none'</code>
-				(default) clips each channel exactly as 0.8.0 did, so every preset keeps its
+				(default) clips each channel, so every preset keeps its
 				authored look and saturated HDR dye (fire, lava) stays vivid. Opt-in
 				<code>'neutral'</code> (Khronos PBR Neutral shoulder) leaves in-range colours
 				unchanged and rolls highlights off smoothly instead of clipping to white.
@@ -333,7 +332,7 @@
 	</tbody>
 </table>
 <p>Authored colours (splat and preset dye, <code>backColor</code>, <code>obstructionColor</code>)
-	are display-referred sRGB. Bloom is encoded and added to the dye as in 0.8.0. With
+	are display-referred sRGB. Bloom is encoded and added to the dye. With
 	<code>'neutral'</code> or <code>'agx'</code> the combined colour is decoded to linear
 	light, tone-mapped and encoded to sRGB once. Every mode is then composited over
 	<code>backColor</code> and blue-noise dithered to reduce 8-bit banding.</p>
@@ -427,7 +426,7 @@
 
 <!-- ================================================================ -->
 <h2>Initial Splats</h2>
-<p>Splats created once at engine construction. These are construct-only (Bucket D) — changing them at runtime has no effect.
+<p>Splats created once at engine construction. These are construct-only — changing them at runtime has no effect.
 	<code>initialSplatCount</code>, <code>initialSplatCountMin</code>, and <code>initialSplatCountMax</code> are clamped to 0–64.</p>
 
 <table>
@@ -474,7 +473,7 @@
 			<td><code>requireHardwareAcceleration</code></td>
 			<td><code>boolean</code></td>
 			<td><code>false</code></td>
-			<td>Reject a software/SwiftShader rendering path (<code>failIfMajorPerformanceCaveat</code>). When <code>true</code> and only a software renderer exists, the component shows its <a href="{base}/docs/components#fluid">WebGL fallback</a> instead of animating on a slow CPU path. Construct-only. See ADR-0041.</td>
+			<td>Reject a software/SwiftShader rendering path (<code>failIfMajorPerformanceCaveat</code>). When <code>true</code> and only a software renderer exists, the component shows its <a href="{base}/docs/components#fluid">WebGL fallback</a> instead of animating on a slow CPU path. Construct-only.</td>
 		</tr>
 		<tr>
 			<td><code>maxPixelRatio</code></td>
@@ -824,13 +823,13 @@
 			<td><code>obstructions</code></td>
 			<td><code>ReadonlyArray&lt;Obstruction&gt;</code></td>
 			<td><code>undefined</code></td>
-			<td>Interior obstacles the fluid flows around. Union into one combined mask; allowed region is <code>container × (1 − obstruction)</code>. Changing it rebuilds the obstruction mask texture (Bucket C) and recompiles the display shader. Mutually exclusive with <code>distortion</code>.</td>
+			<td>Interior obstacles the fluid flows around. Union into one combined mask; allowed region is <code>container × (1 − obstruction)</code>. Changing it rebuilds the obstruction mask texture and recompiles the display shader. Mutually exclusive with <code>distortion</code>.</td>
 		</tr>
 		<tr>
 			<td><code>obstructionColor</code></td>
 			<td><code>RGB | null</code></td>
 			<td><code>null</code></td>
-			<td>Fill color painted over obstruction footprints in the display pass, in 0–255 RGB (same convention as <code>backColor</code>). Makes solid bodies read as visible objects instead of background-colored silhouettes (e.g. the Karman cylinder). Anti-aliased edges from the rasterized mask. <code>null</code> keeps the silhouette. Presence toggles a display keyword (Bucket B); the value itself is a per-frame uniform.</td>
+			<td>Fill color painted over obstruction footprints in the display pass, in 0–255 RGB (same convention as <code>backColor</code>). Makes solid bodies read as visible objects instead of background-colored silhouettes (e.g. the Karman cylinder). Anti-aliased edges from the rasterized mask. <code>null</code> keeps the silhouette. Presence toggles a display keyword; the value itself is a per-frame uniform.</td>
 		</tr>
 	</tbody>
 </table>
@@ -839,7 +838,7 @@
 <h2>Flow scene</h2>
 <p>
 	<code>flow</code> is the higher-level API for believable fixed or semi-fixed scenes. It keeps
-	legacy splats available, but lets presets describe persistent inlets, edge-drain outlets, scalar fields,
+	the splat API available, but lets presets describe persistent inlets, edge-drain outlets, scalar fields,
 	body forces, prescribed fields, and field-aware visualization directly.
 </p>
 
@@ -878,11 +877,11 @@
 	previous value is kept.
 </p>
 <p>
-	When props change at runtime, <code>setConfig()</code> classifies each field into one of four buckets
+	When props change at runtime, <code>setConfig()</code> classifies each field into one of four update categories
 	that determine how the change takes effect:
 </p>
 
-<h3>Bucket A — Hot scalars</h3>
+<h3>Hot-updatable</h3>
 <p>
 	Written directly to the internal config object and picked up on the next simulation frame.
 	Zero overhead. Most numeric props live here: <code>densityDissipation</code>,
@@ -899,7 +898,7 @@
 	scalars.
 </p>
 
-<h3>Bucket B — Keyword recompile</h3>
+<h3>Recompiles the display shader</h3>
 <p>
 	Triggers a display shader recompile (~1 ms). Applies to feature toggles that change which
 	GLSL code paths are active: <code>shading</code>, <code>bloom</code>, <code>sunrays</code>,
@@ -908,17 +907,17 @@
 	<code>specular</code>/<code>refraction</code> changes are hot scalars.
 </p>
 
-<h3>Bucket C — FBO rebuild</h3>
+<h3>Rebuilds render targets</h3>
 <p>
-	Triggers framebuffer reallocation. Applies to resolution fields: <code>simResolution</code>,
+	Reallocates render targets. Applies to resolution fields: <code>simResolution</code>,
 	<code>dyeResolution</code>, <code>bloomResolution</code>, <code>bloomIterations</code>,
 	and <code>sunraysResolution</code>. Also triggered by <code>containerShape</code> changes
 	(mask texture rebuild), <code>obstructions</code> changes (obstruction mask rebuild +
 	display keyword recompile), scalar-field allocation inside <code>flow</code>, and
-	<code>glass</code> toggle (scene FBO alloc/dispose).
+	<code>glass</code> toggle (scene render target allocated or released).
 </p>
 
-<h3>Bucket D — Construct-only</h3>
+<h3>Construct-only</h3>
 <p>
 	Ignored by <code>setConfig()</code> after construction. These values are consumed once when the
 	engine is created: <code>seed</code>, <code>initialSplatCountMin</code>,

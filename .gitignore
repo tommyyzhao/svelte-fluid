@@ -41,3 +41,6 @@ dev-docs/launch/
 # vitest browser-mode artifacts
 .vitest-attachments/
 **/__screenshots__/
+
+# Local-only research archive (see archive/README.md)
+/archive/

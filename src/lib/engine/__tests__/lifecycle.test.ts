@@ -11,7 +11,7 @@
  * us verify the 4-bucket classification without real GL calls.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { resolveConfig, DEFAULTS } from '../FluidEngine.js';
+import { resolveConfig, resolvePatch, DEFAULTS } from '../FluidEngine.js';
 import { containerShapeEqual, stickyMaskEqual } from '../container-shapes.js';
 import type { FlowBoundary, FlowGridField, FluidConfig, PrescribedFlowField } from '../types.js';
 import type { ResolvedConfig } from '../internal-types.js';
@@ -346,6 +346,33 @@ describe('setConfig bucket classification', () => {
 			expect(c.config.SEED).toBe(999);
 			expect(c.fbChanged).toBe(false);
 			expect(c.kwChanged).toBe(false);
+		});
+	});
+
+	describe('construct-only fields never reach the committed config via setConfig', () => {
+		it('keeps seed, initial splat counts and hardware requirement; hot fields still apply', () => {
+			const base = resolveConfig(
+				{ seed: 7, initialSplatCount: 3, requireHardwareAcceleration: true, advectionScheme: 'maccormack' },
+				DEFAULTS
+			);
+			const next = resolvePatch(
+				{
+					seed: 999,
+					initialSplatCount: 40,
+					initialSplatCountMin: 1,
+					initialSplatCountMax: 2,
+					requireHardwareAcceleration: false,
+					advectionScheme: 'semilagrangian',
+					splatRadius: 0.5
+				},
+				base
+			);
+			expect(next.SEED).toBe(7);
+			expect(next.INITIAL_SPLAT_MIN).toBe(3);
+			expect(next.INITIAL_SPLAT_MAX).toBe(3);
+			expect(next.REQUIRE_HARDWARE_ACCELERATION).toBe(true);
+			expect(next.ADVECTION_SCHEME).toBe('maccormack');
+			expect(next.SPLAT_RADIUS).toBe(0.5);
 		});
 	});
 

@@ -38,7 +38,7 @@ cross-browser speed guarantee.
 
 ## Native proof and limits
 
-Seed 5, unchanged `scripts/gpu-capture.mjs`, actual native DPR 2; 200 warm-up,
+Seed 5, unchanged `scripts/gpu-capture.mjs`, actual native DPR 2; 200 warm-up, (archived locally)
 60 measured fixed-dt frames, three-RAF pacing, complete requested/delivered
 transfers, native Metal interval-union attribution and the existing contention
 gate. Own/shared captures interleave twice per full-size preset; InkPaper and

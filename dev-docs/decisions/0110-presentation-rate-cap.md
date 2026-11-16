@@ -142,7 +142,7 @@ versus 0.0477459 GPU-ms/s. A post-hoc control-spread relaxation was withdrawn;
 whole-process GPU attribution is not engine-submission accounting.
 
 Full tables, missing slots, load/CI/wrapper incidents and verified cleanup:
-`dev-docs/benchmarks/energy-eval.md`, “120 Hz paired maxFps evaluation”. Train
+`dev-docs/benchmarks/energy-eval.md`, “120 Hz paired maxFps evaluation”. Train (archived locally)
 results committed before held-out. Lead accepted train A6 go; held-out decision
 is reported below. Amendment 5 cites equal-clock byte-equality hardware evidence;
 that is not displayed-image certification at equal wall time. Default adoption
@@ -173,7 +173,7 @@ seed23 R3 pair (maximum parsed trace 582,384,902 bytes, below 10 GiB).
 
 Compact rows/hashes, missing-slot causes, lead annotations and sensitivity:
 `dev-docs/benchmarks/max-fps-120hz-summary.json` and the held-out section of
-`energy-eval.md`. Two successful blind lead-applied reruns preserve their
+`energy-eval.md`. Two successful blind lead-applied reruns preserve their (archived locally)
 operator-aborted FAILED originals; byte-copy provenance is explicit.
 No held-out equal-wall-time E2 quality pass or owner motion approval exists.
 **Default remains 0** (lead decision under owner delegation, 2026-10-09, Bead

@@ -172,3 +172,13 @@ both files and fails if any `FluidConfig` field is missing from `buildConfig()`.
 **Why this matters:** "Type-checks + unit tests green" is NOT proof a prop
 works end-to-end when the prop type is structurally shared with the component's
 attribute spread. Verify new props in the browser, or rely on the guard test.
+
+## `@internal` members vanish from `dist` declarations, so outside callers fail to type-check
+
+**Symptom:** After the game moved to its own repo and imported `svelte-fluid/experimental` through a `file:` link, `svelte-check` failed with `Property 'resize' does not exist on type 'SteppedFluidEngine'` (5 errors). `resize` works at runtime, and the same game code type-checked inside this repo.
+
+**Cause:** `tsconfig.json` sets `"stripInternal": true`, so `svelte-package` drops every `/** @internal */` member from `dist/*.d.ts`. `FluidEngine.advance`, `renderOnce`, `resize` and the velocity-snapshot methods are all `@internal`. Code inside this repo reads the `.ts` source, so it never sees the stripping.
+
+**Fix:** Declare each member an outside consumer needs on a public interface, rather than removing `@internal` from the engine. On `main` (since c587c21) that interface is `SteppedFluidEngine` in `src/lib/experimental.ts`. Re-prove: after `bun run prepack`, `grep -nE "^\s+(advance|resize)\(" dist/engine/FluidEngine.d.ts` prints nothing, while `dist/experimental.d.ts` lists both.
+
+**Why this matters:** In-repo `check` can't catch this, and the strict consumer in `scripts/check-public-declarations.mjs` only checks names it imports. Before publishing a surface for outside callers, type-check a real consumer against `dist`.

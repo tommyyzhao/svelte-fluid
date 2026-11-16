@@ -8,20 +8,22 @@ import type { Snippet } from 'svelte';
 import type { HTMLButtonAttributes, HTMLCanvasAttributes } from 'svelte/elements';
 import type { WebGLUnavailableReason } from './gl-support.js';
 
-/**
- * RGB triple. Unit conventions vary by call site:
- *
- * - {@link FluidConfig.backColor} — **0–255** (CSS-style). Normalized
- *   internally by `normalizeColor` before reaching the shader.
- * - {@link PresetSplat.color} and {@link FluidHandle.splat} — **0–1**
- *   (linear). Values above 1 are valid HDR and read as bloom highlights.
- * - All RGB values returned by `generateColor` / `HSVtoRGB` — 0–1.
- *
- * Each consumer documents its own range explicitly.
- */
 /** Display tone map selector. See {@link FluidConfig.toneMapping}. */
 export type ToneMapping = 'neutral' | 'agx' | 'none';
 
+/**
+ * RGB triple. The unit range depends on the field that takes it:
+ *
+ * - **0–255** (CSS-style): {@link FluidConfig.backColor},
+ *   {@link FluidConfig.contrastColor}, {@link FluidConfig.obstructionColor}.
+ * - **0–1** (linear): splat colours ({@link PresetSplat.color},
+ *   {@link FluidHandle.splat}, `autoSplatColor`) and the reveal colours
+ *   (`revealCoverColor`, `revealAccentColor`, `revealFringeColor`). Values
+ *   above 1 are valid HDR and read as bloom highlights.
+ * - CSS colour strings (not `RGB`): `InkPaper` and `EnamelText` colour props.
+ *
+ * Each field documents its own range.
+ */
 export interface RGB {
 	r: number;
 	g: number;
@@ -34,15 +36,24 @@ export interface Vec2 {
 	y: number;
 }
 
+/** Where flow-scene velocity comes from: simulated (`live`), a supplied grid (`prescribed`), or both (`hybrid`). */
 export type FlowMode = 'live' | 'prescribed' | 'hybrid';
+/** An edge either blocks fluid (`wall`) or lets it leave and enter freely (`open`). */
 export type FlowBoundaryKind = 'wall' | 'open';
+/** Shape of a {@link FlowSource}. */
 export type FlowSourceKind = 'point' | 'line' | 'rect';
+/** Strength profile across a line or rect source. */
 export type FlowProfile = 'uniform' | 'parabolic';
+/** Name of a scalar field carried by the flow. `temperature` and `ink` are conventional; any string is accepted. */
 export type FlowScalarName = 'temperature' | 'ink' | string;
+/** Scalar advection variant. See {@link FlowScalarField.advection}. */
 export type FlowAdvection = 'standard' | 'low-dissipation';
+/** Field a {@link FlowVisualization} colours by. */
 export type FlowVisualizationField = 'dye' | 'speed' | 'pressure' | 'temperature' | 'scalar';
+/** Colour ramp used by {@link FlowVisualization.transfer}. */
 export type FlowTransfer = 'fire' | 'water' | 'ink' | 'viridis' | 'cfd';
 
+/** Per-edge boundary kind for a flow scene. Omitted edges keep the default. */
 export interface FlowBoundary {
 	left?: FlowBoundaryKind;
 	right?: FlowBoundaryKind;
@@ -155,6 +166,13 @@ export interface FlowVisualization {
 	scale?: number;
 }
 
+/**
+ * Flow-scene controls for {@link FluidConfig.flow}: persistent sources, outlets,
+ * scalar fields, forces, a prescribed velocity grid and field-aware
+ * visualization. Every part is optional; `mode` picks where velocity comes from.
+ * Changing `flow` at runtime recompiles the display shader and rebuilds any
+ * prescribed-grid or scalar storage it needs.
+ */
 export interface FlowConfig {
 	mode?: FlowMode;
 	boundary?: FlowBoundary;
@@ -232,7 +250,7 @@ export interface PresetSplat {
  *   Great for fluid-filled letters without needing SVG path data.
  *
  * At least one of `d` or `text` must be provided. If both are given,
- * `d` takes precedence. See ADR-0024.
+ * `d` takes precedence.
  */
 export type ContainerShape =
 	| { type: 'circle'; cx: number; cy: number; radius: number }
@@ -285,7 +303,7 @@ export type ContainerShape =
  * All obstructions in {@link FluidConfig.obstructions} are rasterized into a
  * single combined mask (their filled regions union together). This is
  * orthogonal to `containerShape`: the allowed fluid region is
- * `container × (1 − obstruction)`. See ADR-0034.
+ * `container × (1 − obstruction)`.
  */
 export interface Obstruction {
 	/** SVG path data string (path mode). Takes precedence over `text`. */
@@ -360,7 +378,12 @@ export interface FluidConfig {
 	simResolution?: number;
 	/** Dye grid resolution. Default 1024 (clamped to 512 if linear filtering is unsupported). */
 	dyeResolution?: number;
-	/** How fast dye fades. Default 1. */
+	/**
+	 * How fast dye fades. Default 1. The meaning depends on the mode. By default
+	 * it is a rate: 0 keeps dye forever, larger fades faster. In `reveal` and
+	 * `sticky` modes it is a per-frame multiplier instead: 1 keeps dye, 0.98
+	 * fades 2% per frame, lower fades faster.
+	 */
 	densityDissipation?: number;
 	/**
 	 * Initial value for density dissipation, used during the first
@@ -391,7 +414,7 @@ export interface FluidConfig {
 	 * Dye and scalar advection remain semi-Lagrangian, and devices without linear
 	 * filtering are capability-gated back to `semilagrangian`.
 	 *
-	 * Construct-only (Bucket D): `setConfig()` ignores runtime changes.
+	 * Construct-only: `setConfig()` ignores runtime changes.
 	 */
 	advectionScheme?: 'semilagrangian' | 'maccormack';
 	/**
@@ -424,7 +447,7 @@ export interface FluidConfig {
 	pressureIterations?: number;
 	/**
 	 * Opt-in frame-time governor. When sustained live RAF frames exceed the
-	 * internal budget, the engine sheds Bucket-A quality only: pressure
+	 * internal budget, the engine sheds only hot-updatable quality settings: pressure
 	 * iterations first, then solver substeps. It never auto-restores quality;
 	 * call `setConfig()` with explicit values to raise them again. Ignored by
 	 * deterministic `advance()` harness runs. Default false.
@@ -433,17 +456,17 @@ export interface FluidConfig {
 	/**
 	 * Average live-frame duration, in milliseconds, that autoPerformance aims
 	 * to stay at or below. Set approximately 33.33 for 30 Hz, 16.67 for 60 Hz,
-	 * or 8.33 for 120 Hz. Default 1000/60. Bucket A.
+	 * or 8.33 for 120 Hz. Default 1000/60. Hot-updatable.
 	 */
 	autoPerformanceTargetFrameMs?: number;
 	/**
 	 * Lower bound for autoPerformance pressure-iteration shedding.
-	 * Default 8. Bucket A.
+	 * Default 8. Hot-updatable.
 	 */
 	autoPerformanceMinPressureIterations?: number;
 	/**
 	 * Lower bound for autoPerformance substep shedding.
-	 * Default 1. Bucket A.
+	 * Default 1. Hot-updatable.
 	 */
 	autoPerformanceMinSubsteps?: number;
 	/** Vorticity confinement strength. Default 30. */
@@ -454,7 +477,7 @@ export interface FluidConfig {
 	 * Note: confinement is independently attenuated next to solid boundaries (a fix
 	 * so it no longer injects momentum into walls / fights projection), so output
 	 * near obstructions differs from prior versions regardless of this value.
-	 * Default 0. Bucket A.
+	 * Default 0. Hot-updatable.
 	 */
 	vorticityAdaptive?: number;
 	/** Splat radius (NDC units). Default 0.25. */
@@ -489,7 +512,7 @@ export interface FluidConfig {
 	colorUpdateSpeed?: number;
 	/**
 	 * Maximum PRESENTED frames per second; simulation still advances every animation frame.
-	 * Default 0 (present every frame; opt-in, see ADR 0110). Set 60 to halve presentation work on high-refresh displays. Bucket A (hot scalar).
+	 * Default 0 (present every frame; opt-in). Set 60 to halve presentation work on high-refresh displays. Hot-updatable.
 	 * Negative/nonfinite values are ignored; undefined preserves the resolved value.
 	 */
 	maxFps?: number | null;
@@ -502,9 +525,8 @@ export interface FluidConfig {
 	 *
 	 * Example: `{ r: 222, g: 218, b: 215 }` is a warm silver.
 	 *
-	 * Note that this differs from {@link PresetSplat.color} and
-	 * {@link FluidHandle.splat}, which use 0–1 linear color. See
-	 * {@link RGB} for the full convention table.
+	 * This differs from {@link PresetSplat.color} and {@link FluidHandle.splat},
+	 * which use 0–1 linear colour. See {@link RGB} for the full table.
 	 */
 	backColor?: RGB;
 	/** Render with transparent background (checkerboard fallback). Default false. */
@@ -517,8 +539,8 @@ export interface FluidConfig {
 	 * which is the `<Fluid>` default, so the 0.8.0 look is unchanged.
 	 * `<FluidText>` defaults it to 4.5 (AA for all text sizes) using an outline halo. With a transparent
 	 * canvas the reference is the page behind it, so set `contrastColor` to the
-	 * real page colour (`<FluidText>` measures it for you); without one it does nothing. Bucket B (keyword recompile on
-	 * enable/disable; the value is a hot uniform). See ADR-0086.
+	 * real page colour (`<FluidText>` measures it for you); without one it does nothing. Enabling or disabling it recompiles
+	 * the display shader; changing the value is a hot uniform.
 	 */
 	minContrast?: number;
 	/**
@@ -530,10 +552,10 @@ export interface FluidConfig {
 	 * Exception: an `outline` halo on an opaque canvas uses `backColor`.
 	 */
 	contrastColor?: RGB | null;
-	/** Outline an svgPath mask (thin halo; interiors untouched, WebGL1 included) instead of correcting fill. FluidText defaults to outline. Bucket B. */
+	/** Outline an svgPath mask (thin halo; interiors untouched, WebGL1 included) instead of correcting fill. FluidText defaults to outline. Changing it recompiles the display shader. */
 	contrastMode?: 'floor' | 'outline';
 	/**
-	 * Display tone map for bright dye and bloom (ADR-0081).
+	 * Display tone map for bright dye and bloom.
 	 * - `'none'` (default): per-channel clip, exactly the 0.8.0 look.
 	 * - `'neutral'`: Khronos PBR Neutral shoulder applied once in linear light.
 	 *   Colours below it are unchanged; highlights roll off smoothly instead of
@@ -572,7 +594,7 @@ export interface FluidConfig {
 	 * Enable mouse / touch / pen input (Pointer Events). Default true.
 	 * A canvas-target instance sets `touch-action: none` on its canvas only
 	 * while this is true; otherwise touch scrolling is not blocked. Pen
-	 * pressure scales splat force 0.5x-1.5x. See ADR 0083.
+	 * pressure scales splat force 0.5x-1.5x.
 	 */
 	pointerInput?: boolean;
 	/**
@@ -584,7 +606,7 @@ export interface FluidConfig {
 	 *
 	 * When `'window'`, touch scrolling is never blocked. When `'canvas'`,
 	 * drags that leave the canvas keep splatting until release.
-	 * Bucket A (hot-updatable).
+	 * Hot-updatable.
 	 */
 	pointerTarget?: 'canvas' | 'window';
 	/**
@@ -594,9 +616,11 @@ export interface FluidConfig {
 	 */
 	splatOnHover?: boolean;
 	/**
-	 * 32-bit unsigned integer seed for the deterministic PRNG. If omitted,
-	 * the Svelte component generates one once per mount and reuses it
-	 * across resizes so the same initial splat pattern reappears.
+	 * 32-bit unsigned integer seed for the deterministic PRNG. Construct-only.
+	 * If omitted, the Svelte components pick a random seed once per mount and
+	 * reuse it across resizes, so the same opening splats reappear. A bare
+	 * `FluidEngine` given no seed also picks a random one; pass a fixed value
+	 * for reproducible scenes.
 	 */
 	seed?: number;
 	/**
@@ -607,7 +631,7 @@ export interface FluidConfig {
 	 *
 	 * Off by default — many legitimate integrated GPUs would otherwise be
 	 * misclassified. Construct-only (consumed once at context creation;
-	 * `setConfig` ignores it). See ADR-0041.
+	 * `setConfig` ignores it).
 	 */
 	requireHardwareAcceleration?: boolean;
 	/**
@@ -620,41 +644,41 @@ export interface FluidConfig {
 	presetSplats?: ReadonlyArray<PresetSplat>;
 	/**
 	 * Automatic splat generation. Splats per second; 0 = disabled.
-	 * Default 0. Bucket A (hot-updatable).
+	 * Default 0. Hot-updatable.
 	 */
 	autoSplatRate?: number;
-	/** Number of splats emitted each automatic burst. Default 1. Bucket A. */
+	/** Number of splats emitted each automatic burst. Default 1. Hot-updatable. */
 	autoSplatCount?: number;
 	/**
 	 * Fixed color for automatic splats. Null = fresh random color for
 	 * each splat via generateColor(). Components are in 0–1 linear range;
 	 * the engine applies a 10× HDR multiplier before injecting.
-	 * Default null. Bucket A.
+	 * Default null. Hot-updatable.
 	 */
 	autoSplatColor?: RGB | null;
-	/** X velocity for automatic splats (raw, NOT scaled by splatForce). Ignored when `autoSplatSwirl` is nonzero. Default 0. Bucket A. */
+	/** X velocity for automatic splats (raw, NOT scaled by splatForce). Ignored when `autoSplatSwirl` is nonzero. Default 0. Hot-updatable. */
 	autoSplatVelocityX?: number;
-	/** Y velocity for automatic splats (raw, NOT scaled by splatForce). Negative = downward in DOM. Ignored when `autoSplatSwirl` is nonzero. Default 0. Bucket A. */
+	/** Y velocity for automatic splats (raw, NOT scaled by splatForce). Negative = downward in DOM. Ignored when `autoSplatSwirl` is nonzero. Default 0. Hot-updatable. */
 	autoSplatVelocityY?: number;
 	/**
 	 * Vertical center of the automatic splat spawn band, in 0–1
 	 * (bottom-to-top): 0 = bottom edge, 0.5 = center, 1 = top edge.
 	 * Default 0.5. Actual y positions also use `autoSplatBandHeight`.
-	 * Bucket A.
+	 * Hot-updatable.
 	 */
 	autoSplatCenterY?: number;
 	/**
 	 * Horizontal center of the automatic splat spawn band, in 0–1
 	 * (left-to-right): 0 = left edge, 0.5 = center, 1 = right edge.
 	 * Default 0.5. Actual x positions also use `autoSplatBandWidth`
-	 * unless `autoSplatEvenX` is true. Bucket A.
+	 * unless `autoSplatEvenX` is true. Hot-updatable.
 	 */
 	autoSplatCenterX?: number;
 	/**
 	 * When true, each burst uses equal x positions across the horizontal
 	 * axis instead of random x positions. The `autoSplatCount` splats
 	 * are spaced at `(i + 0.5) / count` for i in 0..count-1.
-	 * Default false. Bucket A.
+	 * Default false. Hot-updatable.
 	 */
 	autoSplatEvenX?: boolean;
 	/**
@@ -662,7 +686,7 @@ export interface FluidConfig {
 	 * container center (or canvas center if no container shape). Positive =
 	 * counter-clockwise, negative = clockwise. This replaces
 	 * `autoSplatVelocityX` / `autoSplatVelocityY`. The magnitude controls speed.
-	 * Default 0. Bucket A.
+	 * Default 0. Hot-updatable.
 	 */
 	autoSplatSwirl?: number;
 	/**
@@ -671,7 +695,7 @@ export interface FluidConfig {
 	 * to [0, 1]. Default 0.1 (±5% of canvas height). Set to 0 for a
 	 * single horizontal line or 2.0 for full-canvas coverage
 	 * (useful with container shapes where the mask discards out-of-bounds
-	 * splats naturally). Bucket A.
+	 * splats naturally). Hot-updatable.
 	 */
 	autoSplatBandHeight?: number;
 	/**
@@ -679,7 +703,7 @@ export interface FluidConfig {
 	 * `autoSplatCenterX + (random - 0.5) * autoSplatBandWidth`, clamped
 	 * to [0, 1]. Default 1.0 (full canvas width). Set near 0 for a
 	 * left/right inlet plume. Ignored when `autoSplatEvenX` is true.
-	 * Bucket A.
+	 * Hot-updatable.
 	 */
 	autoSplatBandWidth?: number;
 	/**
@@ -688,9 +712,8 @@ export interface FluidConfig {
 	 * pass, and dye is masked after advection. `null` (default) = full
 	 * rectangle with no masking.
 	 *
-	 * Changing this field at runtime triggers a mask-FBO rebuild (Bucket C)
-	 * and a display-shader keyword recompile (Bucket B). Both are cheap
-	 * (~one GPU blit + ~1 ms shader compile).
+	 * Changing this field at runtime rebuilds the mask texture and recompiles
+	 * the display shader. Both are cheap (~one GPU blit + ~1 ms compile).
 	 *
 	 * See {@link ContainerShape} for coordinate conventions.
 	 */
@@ -700,32 +723,32 @@ export interface FluidConfig {
 	 * post-processing pass that simulates refraction and specular
 	 * highlights at the container boundary. Requires a `containerShape`
 	 * to be set — ignored when `containerShape` is null.
-	 * Default false. See ADR-0025.
+	 * Default false.
 	 */
 	glass?: boolean;
 	/**
 	 * Glass wall thickness in UV units. For non-circle shapes, controls
 	 * how wide the refraction band is at the boundary. For circles,
 	 * boosts refraction, specular, and glow toward the rim of the
-	 * hemisphere dome. Default 0.04. Bucket A.
+	 * hemisphere dome. Default 0.04. Hot-updatable.
 	 */
 	glassThickness?: number;
 	/**
 	 * Refraction strength, 0–1. 0 = no distortion, 1 = heavy bending.
-	 * Mapped internally to IOR 1.0–2.0. Default 0.4. Bucket A.
+	 * Mapped internally to IOR 1.0–2.0. Default 0.4. Hot-updatable.
 	 */
 	glassRefraction?: number;
 	/**
 	 * Specular reflectivity (Fresnel F0), 0–1. Controls the intensity
 	 * of specular highlights on the glass surface. 0 = matte,
-	 * 1 = mirror. Default 0.12. Bucket A.
+	 * 1 = mirror. Default 0.12. Hot-updatable.
 	 */
 	glassReflectivity?: number;
 	/**
 	 * Chromatic aberration strength, 0–1. Splits refraction into
 	 * separate R/G/B channels for a prismatic rainbow fringe.
 	 * 0 = monochrome refraction, 1 = strong color separation.
-	 * Default 0.15. Bucket A.
+	 * Default 0.15. Hot-updatable.
 	 */
 	glassChromatic?: number;
 	/**
@@ -733,33 +756,33 @@ export interface FluidConfig {
 	 * exists the canvas becomes transparent, revealing content behind it.
 	 * Where there is no dye, the canvas shows an opaque white cover.
 	 * The display shader outputs inverted dye color `(1 - C)` which
-	 * produces iridescent fringes at reveal edges. See ADR-0027/0028.
-	 * Default false. Bucket B (keyword recompile).
+	 * produces iridescent fringes at reveal edges.
+	 * Default false. Toggling it recompiles the display shader.
 	 */
 	reveal?: boolean;
 	/**
 	 * Multiplier on dye intensity before the power curve. Higher values
 	 * make areas reveal more easily (less dye needed). Default 0.1.
-	 * Bucket A.
+	 * Hot-updatable.
 	 */
 	revealSensitivity?: number;
 	/**
 	 * Power exponent for the reveal alpha curve. Higher values create a
 	 * crisper edge (more binary reveal), lower values create a softer
-	 * gradient with wider fringes. Default 0.5. Bucket A.
+	 * gradient with wider fringes. Default 0.5. Hot-updatable.
 	 */
 	revealCurve?: number;
 	/**
 	 * Solid color of the reveal cover layer (visible before scratching).
 	 * RGB components in 0–1 linear range. Default `{ r: 1, g: 1, b: 1 }`
-	 * (white). Bucket A.
+	 * (white). Hot-updatable.
 	 */
 	revealCoverColor?: RGB;
 	/**
 	 * Accent color shown in the fringe zone between the solid cover and
 	 * the fully revealed content. Controls the colored gradient at reveal
 	 * edges. RGB components in 0–1 linear range. Default
-	 * `{ r: 0.05, g: 0.16, b: 0.32 }` (deep navy). Bucket A.
+	 * `{ r: 0.05, g: 0.16, b: 0.32 }` (deep navy). Hot-updatable.
 	 */
 	revealAccentColor?: RGB;
 	/**
@@ -767,19 +790,19 @@ export interface FluidConfig {
 	 * the cover color and the accent color. Creates a two-tone fringe:
 	 * cover → fringeColor → accentColor → transparent. RGB components
 	 * in 0–1 linear range. Default `{ r: 0.6, g: 0.7, b: 0.85 }`
-	 * (soft blue). Bucket A.
+	 * (soft blue). Hot-updatable.
 	 */
 	revealFringeColor?: RGB;
 	/**
 	 * Enable distortion mode. The fluid velocity field warps an underlying
 	 * image instead of rendering dye colors. Cursor movement creates
 	 * velocity splats that ripple and distort the image like liquid glass.
-	 * Mutually exclusive with `reveal`. Default false. Bucket B (keyword recompile).
+	 * Mutually exclusive with `reveal`. Default false. Toggling it recompiles the display shader.
 	 */
 	distortion?: boolean;
 	/**
 	 * How strongly the velocity field warps the image UV coordinates.
-	 * 0 = no distortion, 1 = very strong. Default 0.4. Bucket A.
+	 * 0 = no distortion, 1 = very strong. Default 0.4. Hot-updatable.
 	 */
 	distortionPower?: number;
 	/**
@@ -797,7 +820,7 @@ export interface FluidConfig {
 	/**
 	 * Scale factor for the distortion image. Values > 1 zoom out (more
 	 * image visible, less edge smearing during distortion). Values < 1
-	 * zoom in. Default 1.0. Bucket A.
+	 * zoom in. Default 1.0. Hot-updatable.
 	 */
 	distortionScale?: number;
 	/**
@@ -806,12 +829,12 @@ export interface FluidConfig {
 	 * fluid velocity field doesn't bounce at the content edges.
 	 * The image is mapped to the visible sub-region only.
 	 * Typically computed by `FluidDistortion` from a pixel `bleed` prop.
-	 * Default 0. Bucket A.
+	 * Default 0. Hot-updatable.
 	 */
 	distortionBleedX?: number;
 	/**
 	 * Vertical bleed fraction (0–0.5). See `distortionBleedX`.
-	 * Default 0. Bucket A.
+	 * Default 0. Hot-updatable.
 	 */
 	distortionBleedY?: number;
 	/**
@@ -823,7 +846,7 @@ export interface FluidConfig {
 	 *
 	 * Default `false` (closed — fluid bounces at all boundaries).
 	 * {@link FluidReveal} defaults to `true` for natural scratch behavior.
-	 * Bucket A (hot-updatable).
+	 * Hot-updatable.
 	 */
 	openBoundary?: boolean;
 	/**
@@ -845,19 +868,19 @@ export interface FluidConfig {
 	/**
 	 * How strongly dye dissipation is reduced on the mask.
 	 * 0 = no effect, 1 = dye never fades on mask (dissipation → 0).
-	 * Default 0.9. Bucket A.
+	 * Default 0.9. Hot-updatable.
 	 */
 	stickyStrength?: number;
 	/**
 	 * Artificial pressure injected on the mask to push fluid around
 	 * the shape. Creates a high-pressure zone that repels incoming
-	 * velocity. 0 = no pressure effect. Default 0.15. Bucket A.
+	 * velocity. 0 = no pressure effect. Default 0.15. Hot-updatable.
 	 */
 	stickyPressure?: number;
 	/**
 	 * Splat intensity multiplier on the mask region. 0 = no extra
 	 * amplification, higher = more dye deposited on mask.
-	 * Default 0.3. Bucket A.
+	 * Default 0.3. Hot-updatable.
 	 */
 	stickyAmplify?: number;
 	/**
@@ -869,7 +892,7 @@ export interface FluidConfig {
 	 * Orthogonal to `containerShape` — works with any container (or none,
 	 * e.g. a full-rect maze). Changing this at runtime rebuilds the combined
 	 * obstruction mask texture. Default `undefined` (no obstructions).
-	 * See ADR-0034.
+	 *
 	 */
 	obstructions?: ReadonlyArray<Obstruction>;
 	/**
@@ -878,8 +901,8 @@ export interface FluidConfig {
 	 * solid bodies read as visible objects instead of `backColor`-colored
 	 * silhouettes — e.g. a cylinder in a vortex-street scene. Uses the
 	 * anti-aliased obstruction mask, so edges stay smooth. `null` (default)
-	 * keeps the legacy silhouette behavior. Bucket B (keyword recompile).
-	 * See ADR-0039.
+	 * keeps the legacy silhouette behavior. Appearing or clearing recompiles the
+	 * display shader; changing the colour is a hot uniform.
 	 */
 	obstructionColor?: RGB | null;
 	/**
@@ -893,16 +916,27 @@ export interface FluidConfig {
 export type PerformanceTier = 'none' | 'pressure' | 'substeps';
 export type PerformanceAction = 'none' | 'shed-pressure' | 'shed-substeps';
 
+/** Snapshot of the frame-time governor. See {@link FluidConfig.autoPerformance}. */
 export interface PerformanceState {
+	/** Whether `autoPerformance` is on. When off, `tier`, `emaMs`, `msSinceLastChange` and `lastAction` read as idle. */
 	readonly enabled: boolean;
+	/** Quality already shed: `none`, `pressure` (fewer pressure iterations) or `substeps` (fewer solver substeps too). */
 	readonly tier: PerformanceTier;
+	/** Smoothed live-frame duration in milliseconds. */
 	readonly emaMs: number;
+	/** Milliseconds since the governor last changed quality. */
 	readonly msSinceLastChange: number;
+	/** Frame duration in milliseconds the governor aims to stay at or below. */
 	readonly targetFrameMs: number;
+	/** Pressure iterations currently in use. */
 	readonly pressureIterations: number;
+	/** Solver substeps currently in use. */
 	readonly substeps: number;
+	/** Floor the governor will not shed pressure iterations below. */
 	readonly minPressureIterations: number;
+	/** Floor the governor will not shed substeps below. */
 	readonly minSubsteps: number;
+	/** The most recent shedding step, or `none`. */
 	readonly lastAction: PerformanceAction;
 }
 
@@ -939,7 +973,13 @@ export interface FluidHandle {
 	 * calling resume on an already-running engine is a no-op.
 	 */
 	resume(): void;
-	/** Whether the engine's animation loop is currently paused. */
+	/**
+	 * Whether the animation loop is currently paused. On the components this is
+	 * stricter than the raw `FluidEngine.isPaused`: an engine that stopped
+	 * itself because the fluid settled counts as idle, not paused, since it
+	 * wakes on input. It also reads `true` while no engine exists yet (before
+	 * mount, while a `lazy` instance is offscreen, or after a failure).
+	 */
 	readonly isPaused: boolean;
 	/**
 	 * Current frame-time governor state. Pull-based by design: no events are
@@ -968,7 +1008,8 @@ export interface FluidProps
 	 * Maximum physical pixels per CSS pixel. Default `null`: the device's
 	 * native DPR, so edges stay crisp on DPR 3 displays. Pass `2` to cap
 	 * physical pixels (and canvas-sized GPU work) on DPR 3+ screens. CSS-based
-	 * quality tiers are unchanged either way. Construct-only.
+	 * quality tiers are unchanged either way. Construct-only: read once at
+	 * mount; later changes are ignored.
 	 */
 	maxPixelRatio?: number | null;
 	/**
@@ -986,6 +1027,8 @@ export interface FluidProps
 	 * comes alive shortly before it would be visible, hiding the
 	 * recompile pause behind the user's scroll momentum while
 	 * minimizing simultaneous context creation.
+	 *
+	 * Construct-only: read once at mount; later changes are ignored.
 	 */
 	lazy?: boolean;
 	/**
@@ -998,6 +1041,7 @@ export interface FluidProps
 	 * and GPU cycles. When both `lazy` and `autoPause` are set, `lazy`
 	 * takes precedence for scroll visibility (full teardown), while
 	 * `autoPause` still handles tab-level visibility (Page Visibility API).
+	 * Construct-only: read once at mount; later changes are ignored.
 	 */
 	autoPause?: boolean;
 	/**
@@ -1008,9 +1052,9 @@ export interface FluidProps
 	 * those stay blank and retry on the next reconcile — EXCEPT in `reveal`
 	 * mode, where any failure (including transient) surfaces the fallback,
 	 * because the transparent reveal canvas would otherwise expose the
-	 * covered content. See ADR-0041. A frame that throws at runtime evicts the
+	 * covered content. A frame that throws at runtime evicts the
 	 * engine and surfaces this fallback with reason `render-failed` (and one
-	 * `onError` call); it is not retried. See ADR-0085.
+	 * `onError` call); it is not retried.
 	 */
 	fallback?: Snippet<[{ reason: WebGLUnavailableReason }]>;
 	/**
@@ -1051,6 +1095,11 @@ export interface FluidProps
 	onError?: (error: Error) => void;
 }
 
+/**
+ * Props for `<FluidBackground />`: a full-viewport fluid canvas behind page
+ * content that flows around DOM elements matched by `exclude`. Accepts every
+ * {@link FluidConfig} field; unset fields use background-friendly defaults.
+ */
 export interface FluidBackgroundProps
 	extends FluidConfig,
 		Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
@@ -1075,6 +1124,12 @@ export interface FluidBackgroundProps
 	children?: Snippet;
 }
 
+/**
+ * Props for `<FluidDistortion />`: the pointer warps an image like liquid
+ * glass. Accepts every {@link FluidConfig} field. Where a wrapper prop maps
+ * 1:1 onto a config field, the config name is preferred and the old name stays
+ * as a deprecated alias; if both are given the config name wins.
+ */
 export interface FluidDistortionProps
 	extends FluidConfig,
 		Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
@@ -1088,6 +1143,7 @@ export interface FluidDistortionProps
 	/**
 	 * How strongly the velocity field warps the image UV coordinates.
 	 * 0 = no distortion, 1 = very strong. Default 0.4.
+	 * @deprecated Use `distortionPower`; it wins when both are set. Will be removed in 2.0.
 	 */
 	strength?: number;
 	/**
@@ -1100,30 +1156,49 @@ export interface FluidDistortionProps
 	 * How the image fits the canvas.
 	 * - `'cover'`: image fills the canvas, cropping if needed (default)
 	 * - `'contain'`: full image visible, may have empty borders
+	 * @deprecated Use `distortionFit`; it wins when both are set. Will be removed in 2.0.
 	 */
 	fit?: 'cover' | 'contain';
 	/**
 	 * Scale factor for the image. Values > 1 zoom out (more image
 	 * visible, less edge smearing during distortion). Values < 1
 	 * zoom in. Default 1.0.
+	 * @deprecated Use `distortionScale`; it wins when both are set. Will be removed in 2.0.
 	 */
 	scale?: number;
 	/**
 	 * Enable automatic Lissajous curve animation before user interaction.
 	 * Creates a gentle, continuous distortion effect. Stops on the first
 	 * pointer/touch event. Default false.
+	 * @deprecated Use `autoAnimate`; it wins when both are set. Will be removed in 2.0.
 	 */
 	autoDistort?: boolean;
 	/**
 	 * Speed multiplier for the auto-distort animation. Higher values
 	 * make the Lissajous curve trace faster. Default 1.0.
+	 * @deprecated Use `autoAnimateSpeed`; it wins when both are set. Will be removed in 2.0.
 	 */
 	autoDistortSpeed?: number;
+	/**
+	 * Enable automatic Lissajous curve animation before user interaction.
+	 * Creates a gentle, continuous distortion effect. Stops on the first
+	 * pointer/touch event. Default false.
+	 */
+	autoAnimate?: boolean;
+	/**
+	 * Speed multiplier for the auto animation. Higher values make the
+	 * Lissajous curve trace faster. Default 1.0.
+	 */
+	autoAnimateSpeed?: number;
 	/**
 	 * Number of random high-velocity splats injected at startup.
 	 * Creates a chaotic distortion that settles into the undistorted
 	 * image over ~1 second. Set to 0 to start undistorted.
 	 * Default 20.
+	 *
+	 * Kept under this name on purpose: the inherited `initialSplatCount` still
+	 * means the engine's random opening splats (default 0 here), which is a
+	 * different thing.
 	 */
 	initialSplats?: number;
 	/**
@@ -1162,6 +1237,13 @@ export interface FluidDistortionProps
 	children?: Snippet;
 }
 
+/**
+ * Props for `<FluidReveal />`: the pointer scratches away a cover layer to
+ * reveal the children beneath. Accepts every {@link FluidConfig} field. Where a
+ * wrapper prop maps 1:1 onto a config field, the config name is preferred and
+ * the old name stays as a deprecated alias; if both are given the config name
+ * wins. In this mode `densityDissipation` is a per-frame multiplier.
+ */
 export interface FluidRevealProps
 	extends FluidConfig,
 		Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
@@ -1170,28 +1252,33 @@ export interface FluidRevealProps
 	/**
 	 * How easily areas reveal. Multiplier on dye intensity before
 	 * the power curve. Higher = less dye needed. Default 0.1.
+	 * @deprecated Use `revealSensitivity`; it wins when both are set. Will be removed in 2.0.
 	 */
 	sensitivity?: number;
 	/**
 	 * Power exponent for the reveal alpha curve. Higher values create
 	 * a crisper edge (more binary), lower values create a softer
 	 * gradient with wider fringes. Default 0.5.
+	 * @deprecated Use `revealCurve`; it wins when both are set. Will be removed in 2.0.
 	 */
 	curve?: number;
 	/**
 	 * Solid color of the reveal cover layer (visible before scratching).
 	 * RGB components in 0–1 linear range. Default white `{ r: 1, g: 1, b: 1 }`.
+	 * @deprecated Use `revealCoverColor`; it wins when both are set. Will be removed in 2.0.
 	 */
 	coverColor?: RGB;
 	/**
 	 * Accent color of the reveal fringe (visible at scratch edges).
 	 * RGB components in 0–1 linear range. Default deep navy `{ r: 0.05, g: 0.16, b: 0.32 }`.
+	 * @deprecated Use `revealAccentColor`; it wins when both are set. Will be removed in 2.0.
 	 */
 	accentColor?: RGB;
 	/**
 	 * Fringe color at the outer edge of the reveal boundary, between
 	 * cover and accent. Creates a two-tone fringe. RGB components in
 	 * 0–1 linear range. Default soft blue `{ r: 0.6, g: 0.7, b: 0.85 }`.
+	 * @deprecated Use `revealFringeColor`; it wins when both are set. Will be removed in 2.0.
 	 */
 	fringeColor?: RGB;
 	/**
@@ -1206,19 +1293,35 @@ export interface FluidRevealProps
 	 * Explicit density dissipation value (multiplicative).
 	 * 1.0 = permanent reveal, 0.99 = slow fade-back, 0.9 = fast fade.
 	 * Takes precedence over `fadeBack` when provided.
+	 * @deprecated Use `densityDissipation`, which means exactly the same in this
+	 * component (multiplicative, 1 = permanent). `fadeSpeed` still wins over it
+	 * for compatibility. Will be removed in 2.0.
 	 */
 	fadeSpeed?: number;
 	/**
 	 * Enable automatic Lissajous curve animation before user interaction.
 	 * The animation injects dye along a smooth path, gradually revealing
 	 * content. Stops on the first pointer/touch event. Default `false`.
+	 * @deprecated Use `autoAnimate`; it wins when both are set. Will be removed in 2.0.
 	 */
 	autoReveal?: boolean;
 	/**
 	 * Speed multiplier for the auto-reveal animation. Higher values
 	 * make the Lissajous curve trace faster. Default `1.0`.
+	 * @deprecated Use `autoAnimateSpeed`; it wins when both are set. Will be removed in 2.0.
 	 */
 	autoRevealSpeed?: number;
+	/**
+	 * Enable automatic Lissajous curve animation before user interaction.
+	 * The animation injects dye along a smooth path, gradually revealing
+	 * content. Stops on the first pointer/touch event. Default `false`.
+	 */
+	autoAnimate?: boolean;
+	/**
+	 * Speed multiplier for the auto animation. Higher values make the
+	 * Lissajous curve trace faster. Default `1.0`.
+	 */
+	autoAnimateSpeed?: number;
 	/** Optional fixed width in CSS pixels. Omit to fill the parent container. */
 	width?: number;
 	/** Optional fixed height in CSS pixels. Omit to fill the parent container. */
@@ -1248,6 +1351,13 @@ export interface FluidRevealProps
 	children?: Snippet;
 }
 
+/**
+ * Props for `<FluidStick />`: dye clings to a text or SVG-path mask while the
+ * fluid flows freely around it. Accepts every {@link FluidConfig} field. Where
+ * a wrapper prop maps 1:1 onto a config field, the config name is preferred and
+ * the old name stays as a deprecated alias; if both are given the config name
+ * wins. In this mode `densityDissipation` is a per-frame multiplier.
+ */
 export interface FluidStickProps
 	extends FluidConfig,
 		Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
@@ -1277,15 +1387,18 @@ export interface FluidStickProps
 	/**
 	 * How strongly dye dissipation is reduced on the mask.
 	 * 0 = no effect, 1 = dye never fades on mask. Default 0.95.
+	 * @deprecated Use `stickyStrength`; it wins when both are set. Will be removed in 2.0.
 	 */
 	strength?: number;
 	/**
 	 * Artificial pressure on the mask to push fluid around it.
 	 * 0 = no effect. Default 0.15.
+	 * @deprecated Use `stickyPressure`; it wins when both are set. Will be removed in 2.0.
 	 */
 	stickyPressureAmount?: number;
 	/**
 	 * Splat intensity multiplier on the mask. Default 2.0.
+	 * @deprecated Use `stickyAmplify`; it wins when both are set. Will be removed in 2.0.
 	 */
 	amplify?: number;
 	/**
@@ -1316,6 +1429,11 @@ export interface FluidStickProps
 	style?: string;
 }
 
+/**
+ * Props for `<FluidText />`: fluid confined inside text letterforms on a
+ * transparent canvas. Accepts every {@link FluidConfig} field. `minContrast`
+ * defaults to 4.5 so the letters stay legible on the page.
+ */
 export interface FluidTextProps
 	extends FluidConfig,
 		Pick<FluidProps, 'fallback' | 'poster' | 'posterAlt' | 'fallbackText' | 'onReady' | 'onError'> {
@@ -1367,6 +1485,7 @@ export interface InkPaperProps extends Omit<import('svelte/elements').HTMLAttrib
 	paper?: string;
 	/** Up to four pigment colours (`#rgb`/`#rrggbb`), mixed subtractively. */
 	pigments?: string[];
+	/** Brush settings; omitted fields keep their defaults. See {@link InkBrush}. */
 	brush?: InkBrush;
 	/** Seeds the paper grain and the opening wash. Default 1. */
 	seed?: number;
@@ -1394,13 +1513,20 @@ export interface LiquidButtonProps extends HTMLButtonAttributes {
 	children?: Snippet;
 }
 
+/** One choice in a {@link LiquidSegmentedProps} group. */
 export interface LiquidSegmentedOption {
+	/** Value written to `bind:value` and passed to `onchange` when selected. Unique within the group. */
 	value: string;
+	/** Visible text of the segment, also its accessible name. */
 	label: string;
 }
 
-/** `<fieldset>` of native radios; the selected option carries a liquid lens. */
-export interface LiquidSegmentedProps {
+/**
+ * `<fieldset>` of native radios; the selected option carries a liquid lens.
+ * Other attributes go to the `<fieldset>`.
+ */
+export interface LiquidSegmentedProps
+	extends Omit<import('svelte/elements').HTMLFieldsetAttributes, 'children' | 'onchange' | 'name' | 'class' | 'disabled'> {
 	options: LiquidSegmentedOption[];
 	/** Selected value (`bind:value`). */
 	value?: string;
@@ -1413,6 +1539,8 @@ export interface LiquidSegmentedProps {
 	disabled?: boolean;
 	/** Class applied to the `<fieldset>`. */
 	class?: string;
+	/** Called with the new value after a user selection. Exceptions are caught and logged. */
+	onchange?: (value: string) => void;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -1428,12 +1556,12 @@ export interface LiquidDropZoneProps extends Omit<import('svelte/elements').HTML
 	accept?: string;
 	/** Allow more than one file. Default `false` (a drop keeps the first match). */
 	multiple?: boolean;
-	/** Visible text; `children` replaces it. */
+	/** Visible text; `children` replaces it. Default `'Choose a file or drop it here'`. */
 	label?: string;
 	children?: Snippet;
 	/** Picked or dropped files (never empty). Exceptions are caught and logged. */
 	onfiles?: (files: File[]) => void;
-	/** Polite live-region text for a result. Default `'2 files selected'`. */
+	/** Polite live-region text for a result. Default: `'1 file selected'` / `'N files selected'`. */
 	announce?: (files: File[]) => string;
 	/** Palette. Default `'auto'`. */
 	tone?: LiquidTone;
@@ -1442,7 +1570,7 @@ export interface LiquidDropZoneProps extends Omit<import('svelte/elements').HTML
 	name?: string;
 }
 
-/** Native checkbox switch with a sliding height-field liquid lens (ADR-0092). */
+/** Native checkbox switch with a sliding height-field liquid lens. */
 export interface LiquidToggleProps extends Omit<import('svelte/elements').HTMLInputAttributes, 'type' | 'role' | 'aria-checked' | 'onchange' | 'children'> {
 	/** On/off (`bind:checked`). Default `false`. */
 	checked?: boolean;
@@ -1469,133 +1597,61 @@ export interface LiquidCausticsProps extends Omit<import('svelte/elements').HTML
 
 // ---- Preset component props (re-exported by each preset .svelte module) ----
 
-/** Props consumed by `<FrameFluid />`. */
-export type FrameFluidProps = Pick<
+/**
+ * Props every preset forwards to its inner `<Fluid />`: sizing, styling, seed,
+ * `lazy`, hover splats, accessible label and background colour. Everything
+ * else is pinned by the preset. `seed` here is a plain forwarded value; the
+ * component picks a random one when omitted.
+ */
+export type PresetBaseProps = Pick<
 	FluidProps,
 	'width' | 'height' | 'maxPixelRatio' | 'maxFps' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
-> & { innerCornerRadius?: number; outerCornerRadius?: number };
+>;
+
+/** {@link PresetBaseProps} plus `pointerInput`, for presets whose scene is interactive by default (default `true`). */
+export type InteractivePresetProps = PresetBaseProps & Pick<FluidProps, 'pointerInput'>;
+
+/** Props consumed by `<FrameFluid />`. Corner radii merge over the pinned frame geometry. */
+export type FrameFluidProps = PresetBaseProps & { innerCornerRadius?: number; outerCornerRadius?: number };
 
 /** Props consumed by `<GasFlare />`. Sizing/seed/styling are forwarded; flare geometry and plume behavior are pinned. */
-export type GasFlareProps = Pick<
-	FluidProps,
-	| 'width'
-	| 'height'
-	| 'maxPixelRatio'
-	| 'maxFps'
-	| 'class'
-	| 'style'
-	| 'seed'
-	| 'lazy'
-	| 'pointerInput'
-	| 'splatOnHover'
-	| 'aria-label'
-	| 'backColor'
->;
+export type GasFlareProps = InteractivePresetProps;
 
 /** Props consumed by `<LavaLamp />`. Sizing/seed/styling are forwarded; all other physics props are hard-coded. */
-export type LavaLampProps = Pick<
-	FluidProps,
-	'width' | 'height' | 'maxPixelRatio' | 'maxFps' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
->;
+export type LavaLampProps = PresetBaseProps;
 
 /** Props consumed by `<InkInWater />`. */
-export type InkInWaterProps = Pick<
-	FluidProps,
-	'width' | 'height' | 'maxPixelRatio' | 'maxFps' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
->;
+export type InkInWaterProps = PresetBaseProps;
 
 /** Props consumed by `<Venturi />`. Sizing/seed/styling are forwarded; all physics props are pinned. */
-export type VenturiProps = Pick<
-	FluidProps,
-	| 'width'
-	| 'height'
-	| 'maxPixelRatio'
-	| 'maxFps'
-	| 'class'
-	| 'style'
-	| 'seed'
-	| 'lazy'
-	| 'pointerInput'
-	| 'splatOnHover'
-	| 'aria-label'
-	| 'backColor'
->;
+export type VenturiProps = InteractivePresetProps;
 
 /** Props consumed by `<Toroidal />`. Sizing/seed/styling are forwarded; all other physics props are hard-coded. */
-export type ToroidalProps = Pick<
-	FluidProps,
-	'width' | 'height' | 'maxPixelRatio' | 'maxFps' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
->;
+export type ToroidalProps = PresetBaseProps;
 
 /** Props consumed by `<Plasma />`. Sizing/seed/styling are forwarded, and `backColor` may be overridden so the preset adapts to its host page; all other physics props are hard-coded. */
-export type PlasmaProps = Pick<
-	FluidProps,
-	'width' | 'height' | 'maxPixelRatio' | 'maxFps' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
->;
+export type PlasmaProps = PresetBaseProps;
 
 /** Props consumed by `<Aurora />`. */
-export type AuroraProps = Pick<
-	FluidProps,
-	'width' | 'height' | 'maxPixelRatio' | 'maxFps' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
->;
+export type AuroraProps = PresetBaseProps;
 
 /** Props consumed by `<TeslaValve />`. Sizing/seed/styling are forwarded; valve geometry and flow settings are pinned. */
-export type TeslaValveProps = Pick<
-	FluidProps,
-	| 'width'
-	| 'height'
-	| 'maxPixelRatio'
-	| 'maxFps'
-	| 'class'
-	| 'style'
-	| 'seed'
-	| 'lazy'
-	| 'pointerInput'
-	| 'splatOnHover'
-	| 'aria-label'
-	| 'backColor'
->;
+export type TeslaValveProps = InteractivePresetProps;
 
 /** Props consumed by `<CircularFluid />`. */
-export type CircularFluidProps = Pick<
-	FluidProps,
-	'width' | 'height' | 'maxPixelRatio' | 'maxFps' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
->;
+export type CircularFluidProps = PresetBaseProps;
 
 /** Props consumed by `<FrozenSwirl />`. */
-export type FrozenSwirlProps = Pick<
-	FluidProps,
-	'width' | 'height' | 'maxPixelRatio' | 'maxFps' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
->;
+export type FrozenSwirlProps = PresetBaseProps;
 
 /** Props consumed by `<SvgPathFluid />`. */
-export type SvgPathFluidProps = Pick<
-	FluidProps,
-	'width' | 'height' | 'maxPixelRatio' | 'maxFps' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
->;
+export type SvgPathFluidProps = PresetBaseProps;
 
 /** Props consumed by `<AnnularFluid />`. */
-export type AnnularFluidProps = Pick<
-	FluidProps,
-	'width' | 'height' | 'maxPixelRatio' | 'maxFps' | 'class' | 'style' | 'seed' | 'lazy' | 'splatOnHover' | 'aria-label' | 'backColor'
->;
+export type AnnularFluidProps = PresetBaseProps;
 
 /** Props consumed by `<Karman />`. Sizing/seed/styling are forwarded; all physics is pinned. */
-export type KarmanProps = Pick<
-	FluidProps,
-	| 'width'
-	| 'height'
-	| 'maxPixelRatio'
-	| 'maxFps'
-	| 'class'
-	| 'style'
-	| 'seed'
-	| 'lazy'
-	| 'pointerInput'
-	| 'splatOnHover'
-	| 'aria-label'
-	| 'backColor'
->;
+export type KarmanProps = InteractivePresetProps;
 
 /* ------------------------------------------------------------------------ */
 /*                 Enamel text (compliant enamel, ADR-0097)                  */

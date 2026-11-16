@@ -32,7 +32,7 @@ SvgPath small n2, eight scenes not started. Amendment 6 primary split verdict
 Matched13-scene active headline saving 23.405%, untouched 23.646%, descriptive
 only. The lead's stop is judgement, not a mathematically proven primary failure.
 Held-out not run; gain unproven, generic default restored to 1024.
-Full tables: [energy-eval.md](../benchmarks/energy-eval.md#round-6--owner-approved-half-dye-default-not-kept).
+Full tables: energy-eval.md: `dev-docs/benchmarks/energy-eval.md` (archived locally).
 
 ## Consequences
 

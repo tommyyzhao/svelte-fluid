@@ -9,7 +9,7 @@ ADR 0101 requires p95 GPU execution <2 ms per instance/frame at native DPR.
 Owner-approved candidates: paired viscosity, post-advection dye/scalar outlets,
 R16F sunrays mask, capability-gated packed bloom. No iteration, resolution,
 preset, idle, pressure-zero, undefined-config or WebGL1 semantics may change.
-Baseline `76bdaa2`; unchanged `scripts/gpu-capture.mjs --seed 5` protocol.
+Baseline `76bdaa2`; unchanged `scripts/gpu-capture.mjs --seed 5` protocol. (archived locally)
 
 Verified baseline sites: viscosity `FluidEngine.ts:4528–4558` / `shaders.ts:1792–1837`;
 outlets `4080–4137`, `4682`, `4723` / `1291–1328`; bloom `2459–2482`;
