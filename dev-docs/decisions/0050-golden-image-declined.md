@@ -7,7 +7,7 @@ Accepted (2026-07-09)
 ## Context
 
 The epic doc (§7) listed "CI golden-image visual-regression over all presets at
-fixed seed" as a Phase-0 follow-on, and `.ralph/prd.json` carried it as two
+fixed seed" as a Phase-0 follow-on, and the internal tracker carried it as two
 backlog tasks: `golden-image-adr` (design the determinism/regen/diff-metric
 approach — human-gated, since an undesigned regen workflow is the classic flaky
 gate every team eventually disables) and `golden-image-impl` (gated on the ADR

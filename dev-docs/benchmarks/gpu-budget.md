@@ -2054,9 +2054,8 @@ Comparison capture provenance (ephemeral raw data):
 
 `bun scripts/gpu-capture.mjs --self-check`, `bun run test && bun run check` passed: **52 Node files / 864 tests**, **471 checked files / 0 errors / 0 warnings**. `bun run prepack` passed publint and strict public declarations; existing `import.meta.env` advisory retained. `git diff --check` passed. Captures supply native hardware evidence, not a full release/browser-suite rerun. Initial run1 Vite reported the not-yet-generated `.svelte-kit/tsconfig.json` and existing missing SplashCursor dependency-scan advisory; static measurement pages still completed. No runtime/preset/script fixes made. (archived locally)
 
-Ownership: `/tmp/svelte-fluid-gpu.lock` acquired with lane/worktree/SHA owner file before run1, retained through run2, released after both captures closed. Run1 Bun **33589**, Vite **33592**, Chrome GPU **33606**; run2 Bun **57419**, Vite **57425**, Chrome GPU **57447**. Playwright closed each owned browser and contexts; unchanged script stopped every recorder by exact owned handle/PID, awaited completion, closed notifyutil handles, killed and awaited owned Bun/Vite. Final exact-PID census confirms captured owned descendants gone; no xctrace, gpu-capture or port5198 listener remains. User Chrome **4386/4411**, foreign Chrome-for-Testing **48074** remain alive, untouched. Process ownership snapshots stay machine-local under each run directory.
+Ownership: `/tmp/svelte-fluid-gpu.lock` acquired with lane/SHA owner file before run1, retained through run2, released after both captures closed. Run1 Bun **33589**, Vite **33592**, Chrome GPU **33606**; run2 Bun **57419**, Vite **57425**, Chrome GPU **57447**. Playwright closed each owned browser and contexts; unchanged script stopped every recorder by exact owned handle/PID, awaited completion, closed notifyutil handles, killed and awaited owned Bun/Vite. Final exact-PID census confirms captured owned descendants gone; no xctrace, gpu-capture or port5198 listener remains. User Chrome **4386/4411**, foreign Chrome-for-Testing **48074** remain alive, untouched. Process ownership snapshots stay machine-local under each run directory.
 
-Worktree and ignored `node_modules` symlink retained: work not remotely preserved, so no worktree removal. Symlink targets `/Users/admin/Projects/personal-archive/fluid-project/svelte-fluid/.claude/worktrees/integrate-main/node_modules`, never staged. Raw traces, logs, aggregation checks and process snapshots remain `/tmp/post-opt-matrix/` only; ephemeral, not durable archived binaries. No tracker writes, installs, push, merge or foreign process signals.
 
 ## Pre-registered stable measurement protocol — 2026-10-06
 
@@ -2543,7 +2542,7 @@ Additional file SHA256s:
 **864 tests /52 files passed;471 checked files,0 errors/warnings**.
 Harness self-check and `git diff --check` pass. No public/package/runtime change.
 Driver **40255**, launch shell **40253**, raw export **74707**, all128 recorded
-capture GPU PIDs absent in final exact-PID census; no worktree Vite/Chrome/parser
+capture GPU PIDs absent in final exact-PID census; no Vite/Chrome/parser
 resource remains, no port5198 listener. Script closed its owned Chrome contexts/
 temporary profiles and descendants; no user profile touched. GPU lock owner
 `stable-matrix39789` verified before removal; **lock gone**. User Chrome4386/GPU4411

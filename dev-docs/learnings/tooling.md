@@ -105,7 +105,7 @@ test regression is real.
 
 **Symptom:** `wrapper-aliases.test.ts` passed locally (16/16) but failed on CI with `expected [] to have a length of 1 but got +0`. The stubbed `<Fluid>` never recorded a render.
 
-**Cause:** The mock was registered as `vi.mock('/Users/admin/.../src/lib/Fluid.svelte', …)`. On the CI runner that path doesn't exist, so the specifier never matches the module the wrappers import, and the real `Fluid.svelte` runs instead.
+**Cause:** The mock was registered as `vi.mock('<repo>/src/lib/Fluid.svelte', …)`. On the CI runner that path doesn't exist, so the specifier never matches the module the wrappers import, and the real `Fluid.svelte` runs instead.
 
 **Fix:** Mock by a path relative to the test file: `vi.mock('../../Fluid.svelte', …)` (commit 15f38f0). Re-prove: `git grep -n '/Users/' -- 'src/**/*.ts'` prints nothing.
 

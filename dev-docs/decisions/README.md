@@ -124,7 +124,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0129](./0129-thermal-mask-supercover.md) | Conservative thermal mask-space segment traversal | Accepted |
 | [0130](./0130-shared-presentation-progress.md) | Shared presentation progress under overlapping snapshots | Accepted |
 
-ADRs 0067-0078 exist only on the private R&D branch (`rd/webgpu-replacement`); the numbering gap here is intentional.
+ADRs 0067-0078 exist only on the archived research branch (`refs/archive/rd-webgpu-replacement`; not shipped); the numbering gap here is intentional.
 
 ## How to add a new ADR
 

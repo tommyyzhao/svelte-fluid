@@ -53,8 +53,7 @@ concurrently, not as isolated paired energy trials.
 ## Why review this
 
 [ADR 0110, Outcome](../../../decisions/0110-presentation-rate-cap.md#outcome-2026-10-07)
-and [Bead svelte-fluid-v73](../../../../.beads/issues.jsonl) (local, untracked
-Beads record; search by ID) retain the pending default-on requirements:
+and Bead svelte-fluid-v73 (tracked internally) retain the pending default-on requirements:
 
 - `maxFps` caps **presentation only**, not simulation. At synthetic 120 Hz,
   `maxFps=60` submitted **60/120 presentations**, with byte-identical

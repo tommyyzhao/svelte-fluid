@@ -6,7 +6,7 @@ Accepted (2026-10-02). Number 0095 is the lead's disposition ADR.
 
 ## Context
 
-On the private WebGPU branch (`rd/webgpu-replacement`, ADR 0078 there) the
+On the archived WebGPU research branch (`refs/archive/rd-webgpu-replacement`, ADR 0078 there; not shipped) the
 owner trimmed the material library to one thing: a borderless foil
 appearance switch. The "clicky" bistable snap, with no box around it, was the
 part that was liked. Main ships WebGL2 only (ADR 0088), so the material

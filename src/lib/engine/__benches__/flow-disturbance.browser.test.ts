@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { commands } from 'vitest/browser';
-import { renderer } from './renderer.js';
+import { renderer, softwareGL } from './renderer.js';
 import { FluidEngine, _setContextTier } from '../FluidEngine.js';
 import { VENTURI_CONFIG } from '../../presets/registry.js';
 import { flowDisturbanceShader } from '../shaders.js';
@@ -79,7 +79,8 @@ describe('opt-in disturbance hardware gates', () => {
 		expect(bytes(z.dye)).toEqual(bytes(a.dye));
 	});
 
-	it('CHANNEL_OPEN inlet response scales roughly linearly with acceleration', { timeout: 180_000 }, async () => {
+	// ~5800 solver steps per engine: a hardware calibration, minutes-long on SwiftShader CI.
+	it.skipIf(softwareGL)('CHANNEL_OPEN inlet response scales roughly linearly with acceleration', { timeout: 180_000 }, async () => {
 		// amended after first run: 4 s spin-up left baseline drift
 		// First ratio NaN (both baseline-subtracted RMS zero), variance 179.49582.
 		// Post-hoc setup only: 40s spin-up; force/probe/8s record/[1.6,2.4] unchanged.

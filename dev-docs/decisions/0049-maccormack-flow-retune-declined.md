@@ -56,7 +56,7 @@ worth shipping as a built-in preset default given the visual cost observed here.
 
 ## Consequences
 
-- `maccormack-flow-retune` closes as declined (`.ralph/prd.json` status `cut`), not
+- `maccormack-flow-retune` closes as declined (internal tracker status `cut`), not
   revisited without new evidence (e.g. a retuned candidate config a human explicitly
   wants QA'd again).
 - No preset config, shader, or engine code changes — this ADR is a decision record,
