@@ -3,7 +3,7 @@ import { render } from 'svelte/server';
 
 // Stub <Fluid>: record the props each wrapper forwards (server render, no GL).
 const seen = vi.hoisted(() => [] as Record<string, unknown>[]);
-vi.mock('<repo>/src/lib/Fluid.svelte', () => ({
+vi.mock('../../Fluid.svelte', () => ({
 	default: (_payload: unknown, props: Record<string, unknown>) => {
 		seen.push({ ...props });
 	}
