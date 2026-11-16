@@ -69,7 +69,7 @@ canvas; a thin Svelte 5 component (`Fluid.svelte`) owns the DOM, the
 ┌─────────────────────────────────────────────────────────────────┐
 │ Engine support modules (all framework-agnostic)                 │
 │                                                                 │
-│  shaders.ts          22 verbatim shader source strings          │
+│  shaders.ts          GLSL source strings (core Navier–Stokes     │
 │  gl-utils.ts         compileShader, makeProgram, Material,      │
 │                      createFBO, createDoubleFBO, resizeFBO,     │
 │                      disposeFBO/disposeDoubleFBO,               │

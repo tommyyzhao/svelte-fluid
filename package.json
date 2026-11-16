@@ -36,8 +36,7 @@
 		"!dist/**/*.test.*",
 		"!dist/**/*.spec.*",
 		"!dist/**/__benches__/**",
-		"!dist/**/__screenshots__/**",
-		"!dist/engine/webgpu/**"
+		"!dist/**/__screenshots__/**"
 	],
 	"sideEffects": false,
 	"svelte": "./dist/index.js",
@@ -107,6 +106,10 @@
 		"reveal",
 		"distortion",
 		"image-effects",
-		"creative-coding"
+		"creative-coding",
+		"webgl2",
+		"liquid",
+		"fluid-dynamics",
+		"typescript"
 	]
 }

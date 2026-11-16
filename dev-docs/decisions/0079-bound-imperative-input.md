@@ -10,7 +10,7 @@ Accepted (2026-10-01)
 one whole entry per frame, so `randomSplats(1e6)` became a single frame of two
 million blits and a 60 Hz caller grew the stack forever. `splat()` and hot
 config numbers accepted `NaN`/`Infinity`, which permanently poison
-half-float fields. The WebGPU R&D branch (its ADR 0069) bounded the same input.
+half-float fields. An archived research branch (`refs/archive/rd-webgpu-replacement`, its ADR 0069; not shipped) bounded the same input.
 
 ## Decision
 

@@ -6,14 +6,14 @@
 
 # svelte-fluid
 
-Fluid simulation for Svelte 5.
+Drop-in WebGL fluid for Svelte 5: one `<Fluid />` tag for hero backgrounds, splash cursors, text and shape masks, reveals and image distortion. No runtime dependencies.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/tommyyzhao/svelte-fluid/main/static/hero.webp" alt="svelte-fluid showcase: text-masked fluid, glass orb with chromatic refraction, reveal-scratch effect, and image distortion" width="720" />
 </p>
 
 <p align="center">
-  <strong><a href="https://svelte-fluid.dev/">Live demo</a></strong>
+  <strong><a href="https://svelte-fluid.dev/">Live demo</a></strong> · <strong><a href="https://svelte-fluid.dev/docs">Docs</a></strong> · <strong><a href="https://www.npmjs.com/package/svelte-fluid">npm</a></strong>
 </p>
 
 ### Why svelte-fluid?
@@ -30,6 +30,7 @@ This one is built for Svelte 5 from the ground up:
 - **Lazy loading + auto-pause** — defer engine creation until viewport entry
 - **Interface primitives** — `InkPaper`, `LiquidButton`, `LiquidSegmented`, `LiquidDropZone`, `LiquidCaustics`, `LiquidToggle` and `EnamelText`: native controls with a shared-WebGL2 surface and plain-control fallback
 - **Imperative API** — `splat()` and `randomSplats()` via `bind:this`
+- **Flow scenes** — solver-native inflows, outlets, thermal scalars and obstructions, with tracer visualization and disturbance as rig noise (not turbulence synthesis); see [configuration](https://svelte-fluid.dev/docs/configuration)
 
 ## Install
 
@@ -557,7 +558,7 @@ changes.
 ## Acknowledgments
 
 Built on [PavelDoGreat/WebGL-Fluid-Simulation](https://github.com/PavelDoGreat/WebGL-Fluid-Simulation),
-Pavel Dobryakov's iconic 2017 fluid sim. Shaders reused unchanged; both MIT-licensed.
+Pavel Dobryakov's iconic 2017 fluid sim. Core Navier–Stokes shaders are derived from it; everything else (components, container shapes, glass, flow scenes) is new. Both MIT-licensed.
 
 The reveal and distortion effects were inspired by
 [Ksenia Kondrashova's](https://codepen.io/ksenia-k) creative WebGL

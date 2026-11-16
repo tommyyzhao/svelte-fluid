@@ -6,7 +6,7 @@ Accepted (2026-10-02)
 
 ## Context
 
-The private WebGPU R&D branch (`rd/webgpu-replacement`, ADRs 0070–0078 there)
+The archived research branch (`refs/archive/rd-webgpu-replacement`, ADRs 0070–0078 there; not shipped)
 produced several material studies. The owner liked six of them: thin film,
 enamel, velvet, snap foil, stress glass and liquid selection. The 1.0 goal says
 to promote only those, only where each has a concrete UI job, and ported to
@@ -36,7 +36,7 @@ Each promoted material becomes a sibling model engine on the shared gl-host
 
 - The library gains two material primitives rather than six. Each one has a
   single job and is reviewed alone; docs never show a composition demo.
-- Thin film, velvet and stress glass stay on the R&D branch until a concrete
+- Thin film, velvet and stress glass stay on the archived branch until a concrete
   job and an owner review justify them.
 - If `EnamelText` fails its kill gate, only `FoilSwitch` ships, and this ADR's
   table is updated.
