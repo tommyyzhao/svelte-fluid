@@ -141,7 +141,7 @@ describe('flow visualization precedence', () => {
 			"return !!colorBy && colorBy !== 'dye' && !config.REVEAL && !config.DISTORTION && !concentrationDyeActive(config);"
 		);
 		expect(engineSrc).toMatch(
-			/if \(this\.flowVisualizationActiveFor\(config\)\) keywords\.push\('FLOW_VISUALIZATION'\);[\s\S]*if \(config\.DISTORTION\) keywords\.push\('DISTORTION'\);[\s\S]*else if \(config\.REVEAL\) keywords\.push\('REVEAL'\);/
+			/if \(this\.flowVisualizationActiveFor\(config\)\) keywords\.push\('FLOW_VISUALIZATION'\);[\s\S]*if \(config\.DISTORTION\) \{\s*keywords\.push\('DISTORTION'\);[\s\S]*\} else if \(config\.REVEAL\) keywords\.push\('REVEAL'\);/
 		);
 	});
 

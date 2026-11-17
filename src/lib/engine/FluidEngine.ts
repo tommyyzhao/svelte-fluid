@@ -249,6 +249,21 @@ interface FlowOutletBatchEntry {
 	keep: number;
 }
 
+/** @internal Preview-only direction field for image distortion. */
+export type DistortionField = 'velocity' | 'acceleration' | 'pressure-gradient';
+
+/**
+ * @internal Display keyword for a distortion field; `null` keeps the original
+ * velocity shader byte-identical. Throws on anything else so a typo in a
+ * preview route cannot silently fall back.
+ */
+export function distortionFieldKeyword(mode: unknown): 'DISTORTION_ACCEL' | 'DISTORTION_PGRAD' | null {
+	if (mode === 'velocity') return null;
+	if (mode === 'acceleration') return 'DISTORTION_ACCEL';
+	if (mode === 'pressure-gradient') return 'DISTORTION_PGRAD';
+	throw new RangeError(`svelte-fluid: unknown distortion field ${String(mode)}`);
+}
+
 type ReadField = 'velocity' | 'dye' | 'pressure' | 'divergence' | 'curl' | 'scalar' | 'emission';
 
 type ResourceInitMode = 'fresh' | 'preserve';
@@ -877,6 +892,16 @@ export class FluidEngine implements FluidHandle {
 	private distortionLoadedUrl: string | null = null;
 	private distortionTextureW = 0;
 	private distortionTextureH = 0;
+	// Internal preview of acceleration-warped distortion; 'velocity' is the shipped path.
+	private distortionField: DistortionField = 'velocity';
+	private distortionSoftness = 1;
+	/** Velocity at the previous presented frame; allocated only in 'acceleration' mode. */
+	private accelPrev: FBO | null = null;
+	/** False until accelPrev holds a presented frame, so the first frame has a = 0. */
+	private accelValid = false;
+	/** Solver time (simTime) at which accelPrev was captured. */
+	private accelSnapTime = 0;
+	private lastStepDt = 1 / 60;
 
 	// --- Prescribed grid textures (8-bit encoded, decoded in shader) ---
 	private prescribedVelocityTexture: WebGLTexture | null = null;
@@ -1955,6 +1980,7 @@ export class FluidEngine implements FluidHandle {
 				if (prescribedChanged) this.initPrescribedGridTextures();
 				if (glassChanged) this.initGlassFramebuffer();
 				if (displayChanged) this.updateKeywords(preparedDisplayVariant);
+				if (distortionChanged) this.syncAccelTarget();
 				if (stickyChanged || stickyMaskChanged) this.initStickyMaskTexture();
 				if (distortionImageChanged) this.loadDistortionImage(b.DISTORTION_IMAGE_URL);
 			} finally {
@@ -2079,6 +2105,8 @@ export class FluidEngine implements FluidHandle {
 		this.distortionLoadedUrl = null;
 		this.distortionTextureW = 0;
 		this.distortionTextureH = 0;
+		this.accelPrev = null;
+		this.accelValid = false;
 		this.maskTexture = null;
 		this.maskData = null;
 		this.maskW = 0;
@@ -2180,6 +2208,9 @@ export class FluidEngine implements FluidHandle {
 		// FBOs
 		disposeDoubleFBO(gl, this.dye);
 		disposeDoubleFBO(gl, this.velocity);
+		disposeFBO(gl, this.accelPrev ?? undefined);
+		this.accelPrev = null;
+		this.accelValid = false;
 		disposeFBO(gl, this.velocitySource);
 		disposeFBO(gl, this.divergence);
 		disposeFBO(gl, this.curlFBO);
@@ -3098,10 +3129,72 @@ export class FluidEngine implements FluidHandle {
 			// along, and the loop is the hottest path in the engine. See ADR-0038.
 			this.pressure = createDoubleFBO(gl, simRes.width, simRes.height, r.internalFormat, r.format, texType, gl.NEAREST);
 			this.replaceOutletRelaxChains(nextOutletChains);
+			// Sim size may have changed: rebuild so the first frame after is a = 0.
+			this.syncAccelTarget(true);
 		} catch (error) {
 			if (!preparedOutletChains) for (const chain of nextOutletChains) for (const fbo of chain) disposeFBO(gl, fbo);
 			throw error;
 		}
+	}
+
+	/**
+	 * Own the previous-velocity target: present exactly while distortion runs in
+	 * 'acceleration' mode. `rebuild` drops a live target first (sim resize).
+	 */
+	private syncAccelTarget(rebuild = false): void {
+		const gl = this.gl;
+		const need = this.distortionField === 'acceleration' && this.config.DISTORTION;
+		if (this.accelPrev && (!need || rebuild)) {
+			disposeFBO(gl, this.accelPrev);
+			this.accelPrev = null;
+		}
+		if (!need) {
+			this.accelValid = false;
+			return;
+		}
+		if (this.accelPrev) return;
+		const rg = this.ext.formatRG;
+		this.accelPrev = createFBO(
+			gl,
+			this.velocity.width,
+			this.velocity.height,
+			rg.internalFormat,
+			rg.format,
+			this.ext.halfFloatTexType,
+			this.ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST
+		);
+		this.accelValid = false;
+	}
+
+	/**
+	 * @internal Preview-only: choose the field that directs image distortion.
+	 * 'velocity' is the shipped behaviour. 'acceleration' warps by
+	 * (v_now - v_prev) / dt between presented frames; 'pressure-gradient' by -grad p.
+	 * `softness` (k) is in the same units; warp is offset * a / (|a| + k).
+	 * Not part of the public surface: decide canonical naming before exposing.
+	 */
+	previewDistortionField(mode: DistortionField, softness: number = this.distortionSoftness): void {
+		distortionFieldKeyword(mode);
+		if (!(Number.isFinite(softness) && softness > 0)) {
+			throw new RangeError('svelte-fluid: distortion softness must be a positive finite number');
+		}
+		if (this.disposed) return;
+		this.distortionSoftness = softness;
+		if (mode !== this.distortionField) {
+			this.distortionField = mode;
+			// A lost context rebuilds keywords and the target on restore.
+			if (!this.contextLost && !this.failed) {
+				this.transition('distortion field', () =>
+					this.withGl(() => {
+						this.updateKeywords();
+						this.syncAccelTarget();
+					})
+				);
+			}
+		}
+		this.wake();
+		this.invalidateRender();
+		if (this.still) this.renderOnce();
 	}
 
 	private replaceOutletRelaxChains(next: [FBO[], FBO[]]): void {
@@ -4016,8 +4109,11 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		) keywords.push('MASK_SDF');
 		if (this.flowVisualizationActiveFor(config)) keywords.push('FLOW_VISUALIZATION');
 		// DISTORTION and REVEAL are mutually exclusive display modes
-		if (config.DISTORTION) keywords.push('DISTORTION');
-		else if (config.REVEAL) keywords.push('REVEAL');
+		if (config.DISTORTION) {
+			keywords.push('DISTORTION');
+			const field = distortionFieldKeyword(this.distortionField);
+			if (field) keywords.push(field);
+		} else if (config.REVEAL) keywords.push('REVEAL');
 		return keywords;
 	}
 
@@ -5568,6 +5664,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	private step(dt: number): void {
 		// Disturbance follows executed solver time on RAF and deterministic paths alike.
 		this.simTime += dt;
+		this.lastStepDt = dt;
 		if (!this.solverMayContainContent) {
 			if (!flowCanDriveSolver(this.config.FLOW)) { this.advanceTracers(dt); return; }
 			this.solverMayContainContent = true;
@@ -5902,6 +5999,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 				this.config.DISTORTION_BLEED_X,
 				this.config.DISTORTION_BLEED_Y
 			);
+			if (this.distortionField !== 'velocity') this.bindDistortionField();
 		} else if (this.config.REVEAL) {
 			gl.uniform1f(this.displayMaterial.uniforms.uRevealSensitivity, this.config.REVEAL_SENSITIVITY);
 			gl.uniform1f(this.displayMaterial.uniforms.uRevealCurve, this.config.REVEAL_CURVE);
@@ -5913,6 +6011,41 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			gl.uniform3f(this.displayMaterial.uniforms.uRevealFringeColor, fc.r, fc.g, fc.b);
 		}
 		this.blit(target);
+		if (this.config.DISTORTION && this.distortionField === 'acceleration') this.snapshotAccelVelocity();
+	}
+
+	/** Uniforms and aux texture (unit 7) for the internal acceleration/pressure-gradient warp. */
+	private bindDistortionField(): void {
+		const gl = this.gl;
+		const u = this.displayMaterial.uniforms;
+		gl.uniform1f(u.uAccelSoftness, this.distortionSoftness);
+		if (this.distortionField === 'pressure-gradient') {
+			// The projection subtracts grad p once per step, so p / dt is the pressure acceleration.
+			gl.uniform1i(u.uDistortionAux, this.pressure.read.attach(7));
+			gl.uniform2f(u.uAccelTexel, this.pressure.texelSizeX, this.pressure.texelSizeY);
+			gl.uniform1f(u.uAccelInvDt, 1 / Math.max(this.lastStepDt, 1e-6));
+			return;
+		}
+		const prev = this.requireOptionalFBO(this.accelPrev, 'acceleration previous-velocity');
+		// dt is solver time since the previous presented frame; 0 (a = 0) on the first frame
+		// after (re)allocation and on redraws where the solver did not advance.
+		const dt = this.accelValid ? this.simTime - this.accelSnapTime : 0;
+		gl.uniform1i(u.uDistortionAux, prev.attach(7));
+		gl.uniform1f(u.uAccelInvDt, dt > 1e-9 ? 1 / dt : 0);
+	}
+
+	/** Capture velocity for the next frame's Δv, only when solver time moved (or first/rewound). */
+	private snapshotAccelVelocity(): void {
+		const prev = this.accelPrev;
+		if (!prev) return;
+		const dt = this.simTime - this.accelSnapTime;
+		if (this.accelValid && dt >= -1e-9 && dt <= 1e-9) return;
+		const gl = this.gl;
+		this.copyProgram.bind();
+		gl.uniform1i(this.copyProgram.uniforms.uTexture, this.velocity.read.attach(0));
+		this.blit(prev);
+		this.accelSnapTime = this.simTime;
+		this.accelValid = true;
 	}
 
 	/**

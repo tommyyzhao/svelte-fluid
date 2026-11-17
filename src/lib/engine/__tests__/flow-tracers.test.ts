@@ -532,7 +532,7 @@ describe('passive flow tracers', () => {
 				.map((n) => n.toString(16).padStart(2, '0'))
 				.join('');
 		expect(await hash(displayShaderSource)).toBe(
-			'0c895b991edafe60106a66312943154cddf769104ac3c773c44d6471297bcc56'
+			'4e21b76e37ee5996465f6e7ab155c7f267be311fae04dd586cba4c9917ccd67e'
 		);
 	});
 });

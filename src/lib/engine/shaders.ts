@@ -393,8 +393,32 @@ export const displayShaderSource = `
     uniform vec2 uBleed;
 #endif
 
+#if defined(DISTORTION) && (defined(DISTORTION_ACCEL) || defined(DISTORTION_PGRAD))
+    // Internal preview: previous velocity (ACCEL) or pressure (PGRAD) on one unit.
+    uniform sampler2D uDistortionAux;
+    uniform vec2 uAccelTexel;
+    uniform float uAccelInvDt;
+    uniform float uAccelSoftness;
+#endif
+
 ${SRGB_TRANSFER_GLSL}
 ${TONE_MAP_GLSL}
+
+#if defined(DISTORTION) && defined(DISTORTION_PGRAD)
+    // The pressure target is NEAREST (the solver samples texel centres), so
+    // interpolate by hand or the warp would show the sim grid.
+    float pressureAt(vec2 uv) {
+        vec2 st = uv / uAccelTexel - 0.5;
+        vec2 i = floor(st);
+        vec2 f = st - i;
+        vec2 c = (i + 0.5) * uAccelTexel;
+        float p00 = texture2D(uDistortionAux, c).x;
+        float p10 = texture2D(uDistortionAux, c + vec2(uAccelTexel.x, 0.0)).x;
+        float p01 = texture2D(uDistortionAux, c + vec2(0.0, uAccelTexel.y)).x;
+        float p11 = texture2D(uDistortionAux, c + uAccelTexel).x;
+        return mix(mix(p00, p10, f.x), mix(p01, p11, f.x), f.y);
+    }
+#endif
 
 #if defined(SHADING) || defined(SPECULAR) || defined(REFRACTION)
 ${DYE_GEOMETRY_GLSL}
@@ -700,8 +724,22 @@ ${DYE_GEOMETRY_GLSL}
         imgUv /= max(uDistortionScale, 0.01);
         imgUv += 0.5;
 
+    #if defined(DISTORTION_ACCEL) || defined(DISTORTION_PGRAD)
+        // Acceleration-directed distortion; softness keeps ~0 acceleration still.
+        #ifdef DISTORTION_ACCEL
+        vec2 acc = (texture2D(uVelocity, vUv).xy - texture2D(uDistortionAux, vUv).xy) * uAccelInvDt;
+        #else
+        // Same sign as the projection step (velocity -= grad p), as a rate.
+        vec2 acc = -vec2(
+            pressureAt(vUv + vec2(uAccelTexel.x, 0.0)) - pressureAt(vUv - vec2(uAccelTexel.x, 0.0)),
+            pressureAt(vUv + vec2(0.0, uAccelTexel.y)) - pressureAt(vUv - vec2(0.0, uAccelTexel.y))
+        ) * uAccelInvDt;
+        #endif
+        imgUv -= uDistortionPower * offset * acc / (length(acc) + uAccelSoftness);
+    #else
         // Apply velocity-directed distortion
         imgUv -= uDistortionPower * normalize(vel) * offset;
+    #endif
     #ifdef REFRACTION
         // Convert a canvas-UV ray displacement into the fitted image's units.
         vec2 shift = dyeRefraction(vUv, n, h) / max(1.0 - 2.0 * uBleed, 0.01);
