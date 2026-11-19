@@ -20,7 +20,7 @@
 		},
 		{
 			id: 'pressure-gradient',
-			label: 'pressure-gradient',
+			label: 'pressure',
 			caption: 'Pressure part of the acceleration, −∇p. The push that keeps the flow incompressible, without the carried-along part.',
 			softness: 60
 		}
