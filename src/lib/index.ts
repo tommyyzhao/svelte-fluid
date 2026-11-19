@@ -61,6 +61,8 @@ export type {
 	FlowVisualizationField,
 	FlowTransfer,
 	FlowSource,
+	FlowPulse,
+	FlowDyeCycle,
 	FlowOutlet,
 	FlowScalarField,
 	FlowForce,

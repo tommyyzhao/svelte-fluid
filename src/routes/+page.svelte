@@ -27,7 +27,6 @@
 	import { presetUsageSnippet, presetScaffoldSnippet } from '$lib/presets/snippet.js';
 	import { parsePresetParam, presetToEditorState } from './components/presetTransfer.js';
 	import Card from './components/Card.svelte';
-	import TeslaFlame from './components/TeslaFlame.svelte';
 	import {
 		DEFAULT_THEME_ID,
 		THEME_GROUPS,
@@ -1006,11 +1005,11 @@
 				</Card>
 				<Card
 					title="TeslaValve"
-					blurb="Pulsed flame-salt jet: copper, potassium and sodium emission; cold walls remove heat. A tuned showcase; the snippet is the plain preset."
+					blurb="Pulsed flame-salt jet: copper, potassium and sodium emission; cold walls remove heat."
 					snippet="<TeslaValve />" fullSnippet={presetScaffoldSnippet('TeslaValve')}
 					onCustomize={() => openInPlayground('TeslaValve')}
 				>
-					<TeslaFlame seed={704} aria-label="TeslaValve flow scene" />
+					<TeslaValve seed={704} lazy aria-label="TeslaValve flow scene" />
 				</Card>
 			</div>
 		</section>

@@ -47,8 +47,8 @@ const presets = {
 
 describe('preset pointer interaction defaults', () => {
 	for (const [name, source] of Object.entries(presets)) {
-		it(`${name} enables hover splats by default`, () => {
-			expect(source).toContain('splatOnHover = true');
+		it(`${name} ${name === 'TeslaValve' ? 'disables' : 'enables'} hover splats by default`, () => {
+			expect(source).toContain(`splatOnHover = ${name === 'TeslaValve' ? 'false' : 'true'}`);
 			expect(source).toContain('{splatOnHover}');
 		});
 	}
@@ -156,7 +156,7 @@ describe('flow-sensitive obstruction demos', () => {
 		expect(airfoil).toContain("' C 22 43, 42 41, 62 44'");
 	});
 
-	it('TeslaValve uses one channel-shaped container with bypass loops, not separate tongue obstructions', () => {
+	it('TeslaValve is a pulsed flame-salt jet through one channel-shaped container', () => {
 		const shape = TESLA_VALVE_CONFIG.containerShape!;
 		expect(shape).toMatchObject({
 			type: 'svgPath',
@@ -165,28 +165,43 @@ describe('flow-sensitive obstruction demos', () => {
 			maskResolution: 2048
 		});
 		const flow = TESLA_VALVE_CONFIG.flow!;
-		expect(flow.forces).toEqual([{ kind: 'pressureGradient', vector: { x: 28, y: 0 } }]);
-		// Inlet auto-splat band drives readable dye packets through the channel.
-		expect(TESLA_VALVE_CONFIG.autoSplatRate).toBe(5);
-		expect(TESLA_VALVE_CONFIG.autoSplatCount).toBe(4);
-		expect(TESLA_VALVE_CONFIG.autoSplatVelocityX).toBe(190);
-		expect(TESLA_VALVE_CONFIG.autoSplatCenterX).toBe(0.035);
-		expect(TESLA_VALVE_CONFIG.autoSplatBandWidth).toBe(0.024);
-		expect(TESLA_VALVE_CONFIG.autoSplatCenterY).toBe(0.49);
-		expect(TESLA_VALVE_CONFIG.autoSplatBandHeight).toBe(0.18);
-		expect(TESLA_VALVE_CONFIG.viscosity).toBe(0.026667);
-		expect(TESLA_VALVE_CONFIG.viscosityIterations).toBe(10);
+		expect(flow).toMatchObject({ mode: 'live', walls: 'no-slip' });
+		expect(flow.forces).toEqual([{ kind: 'pressureGradient', vector: { x: 56, y: 0 } }]);
+		expect(flow.sources).toHaveLength(1);
+		expect(flow.sources![0]).toMatchObject({
+			kind: 'line',
+			from: { x: 0.008, y: 0.389 },
+			to: { x: 0.008, y: 0.59 },
+			inflow: true,
+			profile: 'parabolic',
+			velocity: { x: 240, y: 0 },
+			scalars: { temperature: 1 },
+			pulse: { period: 1.2, floor: 1 / 3, sharpness: 12 },
+			dyeCycle: { period: 6 }
+		});
+		expect(flow.sources![0].dyeCycle!.colors).toHaveLength(3);
+		expect(flow.scalarFields).toMatchObject([{ name: 'temperature', wall: 'isothermal', temperatureRatio: 6 }]);
+		expect(flow.visualization?.emission).toEqual({ scalar: 'temperature', intensity: 2, excitation: 14 });
+		expect(flow.outlets).toMatchObject([{ edge: 'right', clearDye: 1, clearVelocity: false }]);
+		// The jet is a flow source now, not the legacy inlet auto-splat band.
+		expect(TESLA_VALVE_CONFIG.autoSplatRate).toBeUndefined();
 		expect(TESLA_VALVE_CONFIG).toMatchObject({
 			simResolution: 128,
-			pressureIterations: 26,
-			dyeResolution: 512
+			dyeResolution: 384,
+			pressureIterations: 60,
+			viscosity: 0.005,
+			viscosityIterations: 20,
+			maxTimeStep: 1 / 120,
+			bloom: true,
+			bloomResolution: 256,
+			bloomIterations: 6,
+			glass: true,
+			toneMapping: 'agx',
+			transparent: true,
+			autoPerformance: true,
+			autoPerformanceMinPressureIterations: 24
 		});
-		// One physical container — no separate tongue obstructions, no per-source
-		// line tracers, no scalar fields, no speed visualization.
 		expect(TESLA_VALVE_CONFIG.obstructions).toBeUndefined();
-		expect(flow.sources).toBeUndefined();
-		expect(flow.scalarFields).toBeUndefined();
-		expect(flow.visualization).toBeUndefined();
 	});
 
 	it('GasFlare uses an upward hot jet with scalar buoyancy from a physical nozzle slot', () => {

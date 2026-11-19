@@ -65,6 +65,24 @@ export interface FlowBoundary {
 	bottom?: FlowBoundaryKind;
 }
 
+/** Periodic velocity gain for a {@link FlowSource}, clocked by solver time (pauses with the solver). */
+export interface FlowPulse {
+	/** Solver seconds per pulse. Finite, > 0. */
+	period: number;
+	/** Gain between pulses, 0-1. Default 0. Peak gain is always 1. */
+	floor?: number;
+	/** Raised-cosine exponent; larger = narrower pulse. Finite, >= 1. Default 12. */
+	sharpness?: number;
+}
+
+/** Cycles a {@link FlowSource}'s dye through `colors` (linear RGB interpolation, wrapping), clocked by solver time. */
+export interface FlowDyeCycle {
+	/** At least two finite, non-negative colours. */
+	colors: ReadonlyArray<RGB>;
+	/** Solver seconds per full cycle. Finite, > 0. */
+	period: number;
+}
+
 interface FlowSourceBase {
 	/** Relax supplied dye/scalars toward a fixed composition; velocity stays additive. Default false. */
 	inflow?: boolean;
@@ -72,6 +90,10 @@ interface FlowSourceBase {
 	velocity?: Vec2;
 	/** RGB dye injected every frame. Components use the same 0-1/HDR range as {@link PresetSplat.color}. */
 	dye?: RGB;
+	/** Scales `velocity` by gain(t) = floor + (1 - floor) * max(0, cos(2 * pi * t / period)) ^ sharpness. Dye and scalars stay constant. */
+	pulse?: FlowPulse;
+	/** Overrides `dye` when set. */
+	dyeCycle?: FlowDyeCycle;
 	/** Named scalar values injected every frame, e.g. `{ temperature: 1 }` or `{ ink: 0.8 }`. */
 	scalars?: Partial<Record<FlowScalarName, number>>;
 	/**

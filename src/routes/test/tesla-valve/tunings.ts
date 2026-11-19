@@ -1,5 +1,5 @@
 import type { FluidConfig } from '$lib/engine/types.js';
-import { TESLA_VALVE_CONFIG } from '$lib/presets/registry.js';
+import { LEGACY_TESLA_VALVE_CONFIG } from './legacy-config.js';
 import {
 	INITIAL_JET_DYE,
 	JET_DYES,
@@ -14,9 +14,9 @@ const gentle = {
 	description:
 		'Original experiment: gentler flow with fewer, softer bursts at the inlet.',
 	config: {
-		...TESLA_VALVE_CONFIG,
+		...LEGACY_TESLA_VALVE_CONFIG,
 		flow: {
-			...TESLA_VALVE_CONFIG.flow,
+			...LEGACY_TESLA_VALVE_CONFIG.flow,
 			forces: [{ kind: 'pressureGradient', vector: { x: 14, y: 0 } }]
 		},
 		autoSplatVelocityX: 65,
@@ -32,9 +32,9 @@ const cushioned = {
 	description:
 		'Original experiment: a gentler push, thicker fluid, and more slowing throughout the flow and at walls.',
 	config: {
-		...TESLA_VALVE_CONFIG,
+		...LEGACY_TESLA_VALVE_CONFIG,
 		flow: {
-			...TESLA_VALVE_CONFIG.flow,
+			...LEGACY_TESLA_VALVE_CONFIG.flow,
 			forces: [{ kind: 'pressureGradient', vector: { x: 12, y: 0 } }]
 		},
 		autoSplatVelocityX: 45,
@@ -159,7 +159,7 @@ const flame = {
 		clockCap: 1 / 120
 	},
 	config: {
-		...TESLA_VALVE_CONFIG,
+		...LEGACY_TESLA_VALVE_CONFIG,
 		simResolution: 256,
 		dyeResolution: 512,
 		substeps: 2,
@@ -193,7 +193,7 @@ const flame = {
 		toneMapping: 'agx',
 		sunrays: false,
 		flow: {
-			...TESLA_VALVE_CONFIG.flow,
+			...LEGACY_TESLA_VALVE_CONFIG.flow,
 			mode: 'live',
 			walls: 'no-slip',
 			forces: [
@@ -269,7 +269,7 @@ export function paperConfig(
 	// FWHM ≈ 0.9 sim cells; needle centres are separated by 4 cells at grid 512.
 	const radius = 0.000035;
 	return {
-		...TESLA_VALVE_CONFIG,
+		...LEGACY_TESLA_VALVE_CONFIG,
 		simResolution,
 		dyeResolution: 768,
 		substeps: 2,

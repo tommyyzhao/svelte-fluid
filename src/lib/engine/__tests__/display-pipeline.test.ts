@@ -99,6 +99,7 @@ describe('linear display pipeline', () => {
 	});
 	it('leaves every preset on the 0.8.0 default look', () => {
 		expect(GAS_FLARE_CONFIG).toMatchObject({ bloomThreshold: 0.48, bloomIntensity: 1.0 });
-		expect(PRESETS.filter((p) => p.config.toneMapping !== undefined)).toEqual([]);
+		// TeslaValve is the flame-salt look, which needs AgX (ADR 0132).
+		expect(PRESETS.filter((p) => p.config.toneMapping !== undefined).map((p) => p.id)).toEqual(['TeslaValve']);
 	});
 });

@@ -79,7 +79,7 @@ function componentPropReference(): string[] {
 }
 
 function structuredTypeReference(): string[] {
-	const names = ['RGB', 'Vec2', 'PresetSplat', 'FlowConfig', 'FlowBoundary', 'FlowOutlet', 'FlowScalarField', 'FlowGridField', 'FlowVisualization', 'Obstruction', 'StickyMask', 'InkBrush', 'LiquidSegmentedOption'];
+	const names = ['RGB', 'Vec2', 'PresetSplat', 'FlowConfig', 'FlowBoundary', 'FlowOutlet', 'FlowScalarField', 'FlowGridField', 'FlowPulse', 'FlowDyeCycle', 'FlowVisualization', 'Obstruction', 'StickyMask', 'InkBrush', 'LiquidSegmentedOption'];
 	const aliases = ['ToneMapping', 'LiquidTone', 'FlowMode', 'FlowBoundaryKind', 'FlowSourceKind', 'FlowProfile', 'FlowScalarName', 'FlowAdvection', 'FlowVisualizationField', 'FlowTransfer', 'ContainerShape', 'FlowSource', 'FlowForce', 'PrescribedFlowField', 'PresetBaseProps', 'InteractivePresetProps'];
 	return [
 		'## Structured values (nested config types)', '',

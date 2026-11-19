@@ -39,6 +39,8 @@ export interface PresetDefinition {
 	blurb: string;
 	/** Canonical pinned config — the props the wrapper passes to `<Fluid>`. */
 	config: PresetConfig;
+	/** Wrapper markup the preset renders around `<Fluid>`; the scaffold snippet reproduces it. */
+	frame?: { aspect: number; wallColor: string };
 }
 
 // ----------------------------------------------------------------------------
@@ -573,45 +575,96 @@ const TESLA_VALVE_CHANNEL: ContainerShape = {
 	d: TESLA_VALVE_PATH
 };
 
+// Pulsed flame-salt jet (ADR 0132). Values are the lab `flame-jet` tuning at card budget:
+// x2 grid ratio for the 256 grid, then x0.5 for the 128 grid (net x1 on drive, 56 and 240).
+const SALT_COPPER: RGB = { r: 0.002, g: 2.4, b: 1.8 };
+const SALT_POTASSIUM: RGB = { r: 1.8, g: 0.002, b: 2.4 };
+const SALT_SODIUM: RGB = { r: 2.4, g: 1.2, b: 0.002 };
+
 const TESLA_VALVE_FLOW: FlowConfig = {
 	mode: 'live',
+	walls: 'no-slip',
 	boundary: { left: 'open', right: 'open', top: 'wall', bottom: 'wall' },
-	forces: [{ kind: 'pressureGradient', vector: { x: 28, y: 0 } }],
-	outlets: [{ edge: 'right', from: 0.16, to: 0.84, width: 0.08, clearDye: 0.32, clearScalars: true, clearVelocity: true }]
+	forces: [{ kind: 'pressureGradient', vector: { x: 56, y: 0 } }],
+	sources: [
+		{
+			kind: 'line',
+			from: { x: 0.008, y: 0.389 },
+			to: { x: 0.008, y: 0.59 },
+			radius: 0.02,
+			profile: 'parabolic',
+			rate: 60,
+			inflow: true,
+			velocity: { x: 240, y: 0 },
+			dye: SALT_COPPER,
+			scalars: { temperature: 1 },
+			pulse: { period: 1.2, floor: 1 / 3, sharpness: 12 },
+			dyeCycle: { period: 6, colors: [SALT_COPPER, SALT_POTASSIUM, SALT_SODIUM] }
+		}
+	],
+	scalarFields: [
+		{
+			name: 'temperature',
+			dissipation: 0,
+			diffusivity: 0.0016,
+			diffusionIterations: 11,
+			wall: 'isothermal',
+			radiativeCooling: 0,
+			temperatureRatio: 6
+		}
+	],
+	visualization: { emission: { scalar: 'temperature', intensity: 2, excitation: 14 } },
+	outlets: [{ edge: 'right', from: 0.16, to: 0.84, width: 0.08, clearDye: 1, clearScalars: false, clearVelocity: false }]
 };
+
+/**
+ * Wrapper markup the preset needs beyond `<Fluid>`: white walls around the black channel
+ * need an SVG under the transparent canvas, and the nozzle matches the pipe mouth only at 3:1.
+ */
+export const TESLA_VALVE_FRAME = { aspect: 3, wallColor: '#fff' } as const;
 
 export const TESLA_VALVE_CONFIG: PresetConfig = {
 	containerShape: TESLA_VALVE_CHANNEL,
 	flow: TESLA_VALVE_FLOW,
-	curl: 15,
-	densityDissipation: 0.36,
-	velocityDissipation: 0.085,
-	maxTimeStep: 1 / 60,
+	simResolution: 128,
+	dyeResolution: 384,
 	substeps: 1,
-	viscosity: 0.026667,
-	viscosityIterations: 10,
-	wallFriction: 0.14,
-	wallFrictionWidth: 2,
+	// dt is clamped to maxTimeStep x substeps: one step per frame, below real time at 60 Hz.
+	maxTimeStep: 1 / 120,
 	pressure: 0.9,
-	pressureIterations: 26,
+	pressureIterations: 60,
+	viscosity: 0.005,
+	viscosityIterations: 20,
+	advectionScheme: 'maccormack',
+	curl: 0,
+	velocityDissipation: 0,
+	densityDissipation: 0,
+	wallFriction: 0,
 	splatRadius: 0.085,
 	splatForce: 6000,
-	autoSplatRate: 5,
-	autoSplatCount: 4,
-	autoSplatVelocityX: 190,
-	autoSplatVelocityY: 0,
-	autoSplatCenterX: 0.035,
-	autoSplatBandWidth: 0.024,
-	autoSplatCenterY: 0.49,
-	autoSplatBandHeight: 0.18,
+	initialSplatCount: 0,
 	shading: false,
 	colorful: false,
-	bloom: false,
 	sunrays: false,
-	simResolution: 128,
-	dyeResolution: 512,
-	initialSplatCount: 0,
-	backColor: { r: 5, g: 9, b: 12 }
+	glass: true,
+	glassThickness: 0.03,
+	glassRefraction: 0.5,
+	glassReflectivity: 0.04,
+	glassChromatic: 0.15,
+	bloom: true,
+	bloomResolution: 256,
+	bloomIterations: 6,
+	bloomIntensity: 0.5,
+	bloomThreshold: 1,
+	toneMapping: 'agx',
+	// Sheds pressure iterations if a slower GPU misses 60 Hz.
+	autoPerformance: true,
+	autoPerformanceMinPressureIterations: 24,
+	transparent: true,
+	// Off by default: the emission overlay hides hover dye (ADR 0132). Mirrors the wrapper defaults so snippets are truthful.
+	pointerInput: false,
+	splatOnHover: false,
+	backColor: { r: 0, g: 0, b: 0 }
 };
 
 // ----------------------------------------------------------------------------
@@ -639,7 +692,7 @@ export const PRESETS: readonly PresetDefinition[] = [
 	{ id: 'GasFlare', name: 'Gas Flare', category: 'flow', blurb: 'A hot buoyant jet rising from a flare-stack nozzle.', config: GAS_FLARE_CONFIG },
 	{ id: 'Venturi', name: 'Venturi', category: 'flow', blurb: "Bernoulli's principle: flow accelerating through a pinched throat.", config: VENTURI_CONFIG },
 	{ id: 'Karman', name: 'Kármán Vortex Street', category: 'flow', blurb: 'Flow past a cylinder, evoking a von Kármán vortex street.', config: KARMAN_CONFIG },
-	{ id: 'TeslaValve', name: 'Tesla Valve', category: 'flow', blurb: 'Throughflow routing through a passive Tesla-valve channel.', config: TESLA_VALVE_CONFIG }
+	{ id: 'TeslaValve', name: 'Tesla Valve', category: 'flow', blurb: 'Pulsed flame-salt jet through a passive Tesla-valve channel: copper, potassium and sodium emission; cold walls remove heat.', config: TESLA_VALVE_CONFIG, frame: TESLA_VALVE_FRAME }
 ];
 
 /** Lookup by preset id. */

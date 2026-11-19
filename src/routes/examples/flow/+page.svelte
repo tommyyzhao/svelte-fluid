@@ -41,7 +41,7 @@
 			<div class="stage">
 				<TeslaValve seed={108} lazy aria-label="Tesla valve flow scene" />
 			</div>
-			<figcaption>TeslaValve — forward throughflow with bypass recirculation, not a hard stop</figcaption>
+			<figcaption>TeslaValve — pulsed flame-salt jet with bypass recirculation, not a hard stop</figcaption>
 		</figure>
 
 		<figure class="card">

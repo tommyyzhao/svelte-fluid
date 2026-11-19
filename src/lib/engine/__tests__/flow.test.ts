@@ -186,6 +186,14 @@ describe('prescribed field shader wiring', () => {
 	});
 });
 
+describe('source pulse clock', () => {
+	it('reads solver time, never the wall clock', () => {
+		const body = engineSrc.split('private applyFlowSources(')[1].split('private flowSourceBatchEntry(')[0];
+		expect(body).toContain('this.simTime');
+		expect(body).not.toContain('performance.now');
+	});
+});
+
 describe('solver pass order', () => {
 	it('advects velocity before the projection so the displayed velocity is divergence-clean', () => {
 		expect(engineSrc).toMatch(

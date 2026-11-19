@@ -34,6 +34,7 @@
  */
 
 import type { DoubleFBO, ExtInfo, FBO, ResolvedConfig } from './internal-types.js';
+import { flowDyeAt, flowPulseGain, validateFlowSourceClock } from './flow-source-clock.js';
 import type {
 	FlowConfig,
 	FlowForce,
@@ -636,6 +637,7 @@ export function validateThermalFlow(flow: FlowConfig | null | undefined): void {
 		if (!Number.isFinite(emission.intensity) || !Number.isFinite(emission.excitation) || !emission.scalar) throw new RangeError('svelte-fluid: emission requires scalar, intensity and excitation');
 	}
 	for (const source of flow?.sources ?? []) {
+		validateFlowSourceClock(source);
 		if (!source.inflow) continue;
 		nonnegative(source.rate, 'inflow.rate');
 		for (const value of Object.values(source.scalars ?? {})) nonnegative(value, 'inflow scalar');
@@ -4626,6 +4628,8 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		const velocityBatch: FlowSourceBatchEntry[] = [];
 		const dyeBatch: FlowSourceBatchEntry[] = [];
 		const scalarBatch: FlowSourceBatchEntry[] = [];
+		// step() has already advanced simTime, so the first step samples t = 0.
+		const t = this.simTime - dt;
 
 		for (const source of flow.sources) {
 			const sourceThickness = source.kind === 'line' ? source.thickness : undefined;
@@ -4635,27 +4639,29 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			const scaleBase = rate * dt;
 			if (!Number.isFinite(scaleBase) || scaleBase <= 0) continue;
 			if (includeVelocity && source.velocity) {
+				const gain = source.pulse ? flowPulseGain(source.pulse, t) : 1;
 				velocityBatch.push(
 					this.flowSourceBatchEntry(
 						source,
 						{
-							r: source.velocity.x * scaleBase,
-							g: source.velocity.y * scaleBase,
+							r: source.velocity.x * scaleBase * gain,
+							g: source.velocity.y * scaleBase * gain,
 							b: 0
 						},
 						radius
 					)
 				);
 			}
-			if (source.dye) {
+			const dye = source.dyeCycle ? flowDyeAt(source.dyeCycle, t) : source.dye;
+			if (dye) {
 				this.dyeMayContainContent = true;
 				dyeBatch.push(
 					this.flowSourceBatchEntry(
 						source,
 						{
-							r: source.dye.r * (source.inflow ? 1 : scaleBase),
-							g: source.dye.g * (source.inflow ? 1 : scaleBase),
-							b: source.dye.b * (source.inflow ? 1 : scaleBase)
+							r: dye.r * (source.inflow ? 1 : scaleBase),
+							g: dye.g * (source.inflow ? 1 : scaleBase),
+							b: dye.b * (source.inflow ? 1 : scaleBase)
 						},
 						radius,
 						S.DYE_SPLAT_DOSE * scaleBase,

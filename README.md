@@ -275,7 +275,7 @@ container shapes, and solver-native flow scenes. Useful as starting points for b
 | `<GasFlare />` | A hot buoyant jet rising from a flare-stack nozzle |
 | `<Venturi />` | Bernoulli's principle: flow accelerating through a pinched throat |
 | `<Karman />` | Flow past a cylinder, evoking a von Kármán vortex street |
-| `<TeslaValve />` | Throughflow routing through a passive Tesla-valve channel |
+| `<TeslaValve />` | Pulsed flame-salt jet through a passive Tesla-valve channel, on white walls |
 
 ```svelte
 <script lang="ts">

@@ -538,6 +538,22 @@ interface FlowGridField {LB}
 	velocity remains additive. Dye alpha remains deposited thickness, never temperature.
 	Source <code>rate</code> is per second; <code>velocity</code> is simulation texels per second.
 </p>
+
+<h3>Pulsed sources and dye cycles (opt-in)</h3>
+
+<p>
+	<code>FlowSource.pulse</code> scales the source <code>velocity</code> by
+	<code>floor + (1 − floor) · max(0, cos(2π t / period))<sup>sharpness</sup></code>; peak gain is
+	always 1, <code>floor</code> defaults to 0 and <code>sharpness</code> to 12.
+	<code>FlowSource.dyeCycle</code> replaces <code>dye</code> with a linear, wrapping cycle through
+	<code>colors</code> (at least two) every <code>period</code> seconds. Both are clocked by solver
+	time <code>t</code>, so they pause with the solver and repeat exactly under
+	<code>deterministicMode</code>. Dye and scalars stay constant under a pulse. Invalid values throw a
+	<code>RangeError</code> at configuration time. They are hot values: changing them needs no rebuild.
+</p>
+
+<pre><code>interface FlowPulse {LB} period: number; floor?: number; sharpness?: number {RB}
+interface FlowDyeCycle {LB} colors: ReadonlyArray&lt;RGB&gt;; period: number {RB}</code></pre>
 <p>
 	<code>diffusivity</code> defaults to 0 and uses the same model-relative, resolution-scaled
 	coefficient convention as <code>viscosity</code>, not calibrated SI units. For a model-relative
@@ -627,6 +643,7 @@ interface FlowGridField {LB}
 <ul>
 	<li><code>ContextProbeAttributes</code> — the parameter type of <code>isWebGLAvailable()</code>.</li>
 	<li><code>Obstruction</code>, <code>FlowSourceKind</code>, <code>FlowProfile</code>, <code>FlowScalarName</code>, <code>FlowAdvection</code>, <code>FlowVisualizationField</code>, <code>FlowTransfer</code> — parts of <code>FlowConfig</code> and <code>containerShape</code> / <code>obstructions</code>.</li>
+	<li><code>FlowPulse</code>, <code>FlowDyeCycle</code> — the periodic velocity gain and dye colour cycle of a <code>FlowSource</code>.</li>
 	<li><code>PresetBaseProps</code>, <code>InteractivePresetProps</code> — the props shared by the preset wrappers.</li>
 </ul>
 

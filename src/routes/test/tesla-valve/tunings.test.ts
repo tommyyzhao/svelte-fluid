@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import page from './+page.svelte?raw';
-import { TESLA_VALVE_CONFIG } from '$lib/presets/registry.js';
+import { LEGACY_TESLA_VALVE_CONFIG } from './legacy-config.js';
 import { jetFlow } from './jet-pulse.js';
 import { viscosityAlpha } from '$lib/engine/FluidEngine.js';
 
-const baseline = structuredClone(TESLA_VALVE_CONFIG);
+const baseline = structuredClone(LEGACY_TESLA_VALVE_CONFIG);
 const { getTuning, TUNINGS } = await import('./tunings.js');
 
 const recipes = [
@@ -161,7 +161,7 @@ describe('Tesla valve test tunings', () => {
 			} else {
 				expect(flow).toEqual(baseFlow);
 			}
-			expect(config.flow).not.toBe(TESLA_VALVE_CONFIG.flow);
+			expect(config.flow).not.toBe(LEGACY_TESLA_VALVE_CONFIG.flow);
 			expect(config.initialSplatCount).toBe(0);
 			expect(config.pressure).toBe(0.9);
 			expect(config.maxTimeStep).toBe(1 / 60);
@@ -308,7 +308,7 @@ describe('Tesla valve test tunings', () => {
 		for (const tuning of TUNINGS.filter(
 			({ id }) => id !== 'flame-jet' && !id.startsWith('paper-')
 		))
-			expect(tuning.config.glass).toBe(TESLA_VALVE_CONFIG.glass);
+			expect(tuning.config.glass).toBe(LEGACY_TESLA_VALVE_CONFIG.glass);
 	});
 
 	it('paper variants use pressure only, fixed composition and no artificial stirring', () => {
@@ -441,6 +441,6 @@ describe('Tesla valve test tunings', () => {
 	});
 
 	it('does not mutate the canonical registry', () => {
-		expect(TESLA_VALVE_CONFIG).toEqual(baseline);
+		expect(LEGACY_TESLA_VALVE_CONFIG).toEqual(baseline);
 	});
 });
