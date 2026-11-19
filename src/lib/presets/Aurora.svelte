@@ -9,8 +9,7 @@
 
   The pinned configuration lives in `registry.ts` (AURORA_CONFIG); see that
   file and ADR-0040. Note `sunraysWeight: 1.4` is intentionally above the
-  whiteout-resistant ceiling — the slow brightening wash is the desired look
-  (see `dev-docs/learnings/presets.md`).
+  whiteout-resistant ceiling — the slow brightening wash is the desired look.
 -->
 
 <script lang="ts" module>

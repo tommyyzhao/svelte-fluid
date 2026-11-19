@@ -88,7 +88,7 @@ All affected candidate scenes remain FAIL under all-clean-repeats, including the
 unpaired matrix. No row is certified by selecting its later PASS.
 
 Full median/p95/max matrix and every paired row appear in the dated
-[benchmark section](../benchmarks/gpu-budget.md#solverdisplay-negative-optimisation-lane--2026-10-06).
+benchmark section (maintainers' benchmark notes, not published).
 Raw evidence: `/tmp/opt-solver/before/capture.json`,
 `/tmp/opt-solver/sunrays-after/capture.json`,
 `/tmp/opt-solver/sunrays-pairs/p{1,2,3}-{baseline,candidate}/capture.json`.

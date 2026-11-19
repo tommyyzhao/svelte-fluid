@@ -218,7 +218,7 @@ that the single-page demo didn't have.
 QS|- **The five preset components** (`LavaLamp`, `Plasma`, `InkInWater`,
   NR|  `FrozenSwirl`, `Aurora`) in `src/lib/presets/`. Each is
   ~50 LOC of declarative `<Fluid />` props plus a `presetSplats[]`
-  literal. See `dev-docs/learnings/presets.md` for the tuning rationale.
+  literal. The tuning rationale lives in the maintainers' notes (not published).
 
 ## Recovering shader source
 

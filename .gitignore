@@ -34,6 +34,7 @@ vite.config.ts.timestamp-*
 .beads/
 /memory/
 dev-docs/launch/
+CLAUDE.local.md
 
 # Release dogfood harnesses (local-only)
 /examples/dogfood-v010/

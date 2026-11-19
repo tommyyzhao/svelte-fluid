@@ -11,7 +11,7 @@ The owner chose **“Stabilise measurement, then sweep.”** This protocol is fi
 shader or preset change belongs to this decision. Native means Metal execution
 measurement of the local-main WebGL2/ANGLE runtime, not the WebGPU replacement.
 
-The existing [post-optimisation matrix](../benchmarks/gpu-budget.md#post-optimisation-full-matrix--2026-10-06)
+The existing post-optimisation matrix (maintainers' benchmark notes, not published)
 contains 31 unchanged own-tier scenes / 136 clean 60-frame repeats. Their median
 scene p95 range is **0.530916 ms**, maximum **1.703376 ms**. The 27 own scenes with
 two clean post-opt seed-5 repeats have median absolute p95 difference

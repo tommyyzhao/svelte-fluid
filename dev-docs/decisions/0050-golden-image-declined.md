@@ -59,7 +59,7 @@ side-by-side human-verification pattern already used for `maccormack-flow-retune
   obstruction fill, container masking) remain uncaught by automation. Changes to
   `shaders.ts` display code or the `render()` path should get a manual real-browser
   look before merging, same as any other visual change.
-- `dev-docs/epics/0001-engine-first-principles-upgrade.md` §7's golden-image bullet
+- §7's golden-image bullet in the engine-first-principles-upgrade epic (maintainers' notes, not published)
   is superseded by this ADR (cut, not merely deferred).
 - Revisit only on demonstrated need — e.g. a real compositing regression that
   shipped and that manual QA missed — not speculatively. If revisited, the renderer-

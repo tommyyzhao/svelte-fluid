@@ -90,8 +90,8 @@ describe('preset config registry', () => {
 	});
 
 	// GPU budget guard: the 192-class solver is pass-count bound, so a second
-	// substep doubles frame cost (Karman was 10.5 ms at 2 x 1/120 s; see
-	// dev-docs/benchmarks/gpu-budget.md). Presets run one step per 60 Hz frame.
+	// substep doubles frame cost (Karman was 10.5 ms at 2 x 1/120 s on an M1 Max).
+	// Presets run one step per 60 Hz frame.
 	it('every preset runs at most one solver step per 60 Hz frame', () => {
 		for (const p of PRESETS) {
 			const maxTimeStep = p.config.maxTimeStep ?? 1 / 60;

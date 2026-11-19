@@ -15,7 +15,7 @@ direction before you write code.
 ## Hard rules
 
 These are non-negotiable. They exist because previous violations
-caused real bugs (see [`dev-docs/learnings/`](dev-docs/learnings/)).
+caused real bugs.
 
 1. **bun-first.** No npm, pnpm or yarn for dev. Helper one-shots use `bun -e`.
    Existing tracked scripts (`prepack` runs `node scripts/check-public-declarations.mjs`;
@@ -28,8 +28,7 @@ caused real bugs (see [`dev-docs/learnings/`](dev-docs/learnings/)).
 3. **`.js` extensions on every relative TypeScript import.** This
    project uses `moduleResolution: NodeNext` which requires explicit
    extensions: write `import { X } from './foo.js'` even when `foo`
-   is `foo.ts`. The single most common contribution footgun — see
-   [`dev-docs/learnings/typescript-and-svelte5.md`](dev-docs/learnings/typescript-and-svelte5.md).
+   is `foo.ts`. The single most common contribution footgun.
 4. **Engine changes require an ADR.** If your change touches anything
    in `src/lib/engine/` beyond a tuning value or a comment, write a
    new ADR in [`dev-docs/decisions/`](dev-docs/decisions/) first explaining the *why*. Use the
@@ -76,7 +75,6 @@ svelte-fluid/
 ├── dev-docs/                      ← contributor & maintainer docs
 │   ├── architecture.md            ← system design, module boundaries
 │   ├── porting-notes.md           ← upstream symbol map
-│   ├── learnings/                 ← gotchas and lessons learned
 │   └── decisions/                 ← architectural decision records
 ├── CONTRIBUTING.md                ← you are here
 ├── README.md                      ← consumer-facing docs
@@ -187,10 +185,18 @@ the lockfile, caches its browser binary, and uploads the Vitest log plus any
 Playwright result directories when it fails. It requires no repository secrets.
 
 If your change can move pixels (shaders, display pass, lighting, surfaces,
-presets), also follow the before/after procedure in
-[`dev-docs/learnings/visual-review.md`](dev-docs/learnings/visual-review.md):
-shots at DPR 2 and 3, a side-by-side, a pixel MAE table for presets and
-contact sheets for components.
+presets), also do a before/after visual review. Tests prove invariants, not
+appearance, so the PR must include:
+
+- Captures on the base commit and on your change, at DPR 2 and DPR 3, same
+  seed, size and config, on the same machine and browser (hardware Chrome).
+- A side-by-side at 100% that you looked at. Say in the PR what you saw.
+- Presets: a pixel MAE table (mean absolute RGBA error, 0-255, DPR 2 and 3).
+  `0.00` means identical; explain any non-zero row.
+- Components: one contact sheet each (before above after, light and dark, DPR 2 and 3).
+
+Keep the captures out of the repo (`/tmp`) and attach the sheets to the PR.
+The numbers are evidence, not a CI gate.
 
 If you touched anything in `src/lib/engine/`, also do these manual
 checks in a real browser:
@@ -212,6 +218,14 @@ checks in a real browser:
   *what*.
 - Keep ports of `script.js` mechanical — see
   [`dev-docs/porting-notes.md`](dev-docs/porting-notes.md) for the symbol map.
+- Svelte 5 gotchas: `<script module>` runs once per module, so per-instance
+  state and `export const handle` belong in plain `<script>`. Read a prop at
+  the script root only through `untrack(() => prop)`; otherwise Svelte warns
+  that it captures only the initial value.
+- Import each type from one place. Importing the same type in both
+  `<script module>` and `<script>` gives a "Duplicate identifier" error.
+- A new `FluidConfig` field that is missing from `Fluid.svelte` (destructure and
+  `buildConfig()`) type-checks and silently does nothing. Verify in the browser.
 
 ## Filing issues
 

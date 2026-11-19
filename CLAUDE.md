@@ -97,4 +97,3 @@ route as part of the same change — not as a follow-up.
 | [`dev-docs/architecture.md`](dev-docs/architecture.md) | System design, module boundaries, ownership diagram, public API surface |
 | [`dev-docs/porting-notes.md`](dev-docs/porting-notes.md) | Upstream `script.js` symbol map — read before modifying the engine |
 | [`dev-docs/decisions/`](dev-docs/decisions/) | ADRs documenting every major design choice |
-| [`dev-docs/learnings/`](dev-docs/learnings/) | Gotchas with symptom/cause/fix — check before debugging |

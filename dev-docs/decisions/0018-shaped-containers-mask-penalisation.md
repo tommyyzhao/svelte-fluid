@@ -121,8 +121,7 @@ A `containerShapeEqual` function was extracted from `FluidEngine.ts` to a new `c
   below perceptual threshold for all normal use cases.
 - The `applyMask` blit changes the active GL program. Any physics pass
   immediately following a mask call that implicitly reuses a prior program
-  must explicitly re-bind it. See the "GL program rebind" learning in
-  `dev-docs/learnings/presets.md`.
+  must explicitly re-bind it. See the "GL program rebind" note in the maintainers' preset notes (not published).
 
 **Rejected alternatives:**
 

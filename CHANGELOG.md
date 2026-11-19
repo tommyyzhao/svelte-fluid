@@ -126,7 +126,7 @@
   - Bloom suppresses single-pixel fireflies (Karis average on the first downsample) at unchanged cost.
   - Transparent, reveal and distortion output is strictly premultiplied, so there is no light fringe over page content.
 
-- [`befc547`](https://github.com/tommyyzhao/svelte-fluid/commit/befc547259ad66f37f979d3201076fa104ffd56b) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Lighting from independently deposited thickness (ADR-0100 supersedes ADR-0087's geometry claim).
+- [`e619d04`](https://github.com/tommyyzhao/svelte-fluid/commit/e619d045571abb5296d09974b777b8681c01ccaa) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Lighting from independently deposited thickness (ADR-0100 supersedes ADR-0087's geometry claim).
 
   - `shading` now uses the same thickness-derived unit normal as specular/refraction. Pigment RGB, including black, does not determine height. The passive thin layer is not a calibrated free-surface solve. Shaded presets intentionally differ from 0.8.0; no parity or RGB-proxy mode is retained.
   - New opt-in `specular` (0–1): a Fresnel highlight from a studio key light.
@@ -140,8 +140,7 @@
 - [`32b94e7`](https://github.com/tommyyzhao/svelte-fluid/commit/32b94e759f95c695ab642d9e4a1bea94d084aab3) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Rendering now uses the native device pixel ratio by default (`maxPixelRatio` default `2` → `null`).
 
   - DPR 3 screens (most phones, some laptops) now get crisp edges instead of an upscaled DPR 2 canvas. DPR 1 and 2 screens are unaffected.
-  - Cost: measured on an M1 Max, every preset stays under 2 ms per frame at a full 1440×900 viewport on DPR 3 (worst is GasFlare at 1.76 ms). See `dev-docs/benchmarks/gpu-budget.md`.
-  - To keep the old behaviour, pass `maxPixelRatio={2}` to `<Fluid>` or to any wrapper or preset. This is worth doing for full-bleed backgrounds on low-end integrated GPUs.
+  - Cost: measured on an M1 Max, every preset stays under 2 ms per frame at a full 1440×900 viewport on DPR 3 (worst is GasFlare at 1.76 ms).  - To keep the old behaviour, pass `maxPixelRatio={2}` to `<Fluid>` or to any wrapper or preset. This is worth doing for full-bleed backgrounds on low-end integrated GPUs.
   - An invalid cap (`0`, a negative number or `NaN`) now falls back to native DPR, the new default, instead of 2.
   - Mounted Fluid canvases follow DPR changes at unchanged fractional CSS dimensions through rearmed resolution media queries; explicit caps remain respected. Without resolution notifications, DPR updates remain CSS-resize-driven; this does not expand legacy browser support or change the reduced-motion listener requirements.
 
@@ -272,7 +271,7 @@
   - Bloom suppresses single-pixel fireflies (Karis average on the first downsample) at unchanged cost.
   - Transparent, reveal and distortion output is strictly premultiplied, so there is no light fringe over page content.
 
-- [`befc547`](https://github.com/tommyyzhao/svelte-fluid/commit/befc547259ad66f37f979d3201076fa104ffd56b) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Lighting from independently deposited thickness (ADR-0100 supersedes ADR-0087's geometry claim).
+- [`e619d04`](https://github.com/tommyyzhao/svelte-fluid/commit/e619d045571abb5296d09974b777b8681c01ccaa) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Lighting from independently deposited thickness (ADR-0100 supersedes ADR-0087's geometry claim).
 
   - `shading` now uses the same thickness-derived unit normal as specular/refraction. Pigment RGB, including black, does not determine height. The passive thin layer is not a calibrated free-surface solve. Shaded presets intentionally differ from 0.8.0; no parity or RGB-proxy mode is retained.
   - New opt-in `specular` (0–1): a Fresnel highlight from a studio key light.
@@ -286,8 +285,7 @@
 - [`32b94e7`](https://github.com/tommyyzhao/svelte-fluid/commit/32b94e759f95c695ab642d9e4a1bea94d084aab3) Thanks [@tommyyzhao](https://github.com/tommyyzhao)! - Rendering now uses the native device pixel ratio by default (`maxPixelRatio` default `2` → `null`).
 
   - DPR 3 screens (most phones, some laptops) now get crisp edges instead of an upscaled DPR 2 canvas. DPR 1 and 2 screens are unaffected.
-  - Cost: measured on an M1 Max, every preset stays under 2 ms per frame at a full 1440×900 viewport on DPR 3 (worst is GasFlare at 1.76 ms). See `dev-docs/benchmarks/gpu-budget.md`.
-  - To keep the old behaviour, pass `maxPixelRatio={2}` to `<Fluid>` or to any wrapper or preset. This is worth doing for full-bleed backgrounds on low-end integrated GPUs.
+  - Cost: measured on an M1 Max, every preset stays under 2 ms per frame at a full 1440×900 viewport on DPR 3 (worst is GasFlare at 1.76 ms).  - To keep the old behaviour, pass `maxPixelRatio={2}` to `<Fluid>` or to any wrapper or preset. This is worth doing for full-bleed backgrounds on low-end integrated GPUs.
   - An invalid cap (`0`, a negative number or `NaN`) now falls back to native DPR, the new default, instead of 2.
   - Mounted Fluid canvases follow DPR changes at unchanged fractional CSS dimensions through rearmed resolution media queries; explicit caps remain respected. Without resolution notifications, DPR updates remain CSS-resize-driven; this does not expand legacy browser support or change the reduced-motion listener requirements.
 
@@ -1517,7 +1515,7 @@ finalised. Kept as historical record; superseded by the consolidated entries abo
   ADR-before-engine-changes, no new runtime deps. Release workflow
   expanded with semver policy and explicit CHANGELOG step.
 - `docs/porting-notes.md` "seven preset components" → "six".
-- `docs/learnings/presets.md` Plasma sunrays state corrected — Plasma
+- Plasma sunrays notes corrected — Plasma
   keeps sunrays on at weight 0.35, contradicting the previous text.
 - `Aurora.svelte` header documents the intentional `sunraysWeight: 1.4`
   trade-off (above the safe ceiling derived in the learnings doc) and

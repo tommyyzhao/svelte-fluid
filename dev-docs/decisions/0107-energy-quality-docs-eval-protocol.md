@@ -248,7 +248,7 @@ Committed before Round 6 captures. Spatial/resolution changes remain outside
 E2 scope under Amendment 1. For these changes, explicit owner visual approval
 of a committed review packet replaces the E2 gate; E2 cannot certify them.
 The owner approved half dye resolution on **2026-10-08**, without naming
-presets, after reviewing the [committed dye-resolution packet](../benchmarks/owner-review/dye-resolution/README.md)
+presets, after reviewing the committed dye-resolution packet (maintainers' benchmark notes, not published)
 (reference source `0456ebd`). This approves the generic default 1024→512;
 explicit preset/prop values remain unchanged. Never special-case preset names.
 

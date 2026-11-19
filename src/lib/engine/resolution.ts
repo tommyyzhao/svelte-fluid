@@ -1,6 +1,6 @@
 /**
  * `null` = native DPR. Measured under the 2 ms frame budget for every preset at
- * a full 1440x900 viewport on DPR 3 (dev-docs/benchmarks/gpu-budget.md).
+ * a full 1440x900 viewport on DPR 3 (maintainers' benchmark notes, not published).
  */
 export const DEFAULT_MAX_PIXEL_RATIO: number | null = null;
 

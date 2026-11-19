@@ -169,8 +169,7 @@ harness/eval errors before further library changes. No held-out-specific fixes.
 
 `scripts/component-eval.mjs --self-check` is pure logic; `baseline --cpu-only` (archived locally)
 performs all GPU-free work first; `baseline --hardware` resumes it. Results go
-to `evals/components/*.json`, screenshots to `evals/components/baseline/`, and (archived locally)
-`dev-docs/benchmarks/component-eval.md` is the static results page/work queue. (archived locally)
+to `evals/components/*.json`, screenshots to `evals/components/baseline/`, and the maintainers' component-eval notes (not published, archived locally) is the static results page/work queue.
 Each missing cell has an explicit reason; no component fixes in this lane.
 
 Only installed headless Chrome at

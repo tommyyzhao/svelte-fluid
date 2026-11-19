@@ -9,8 +9,7 @@
 
   The pinned configuration lives in `registry.ts` (LAVA_LAMP_CONFIG); see
   that file's design notes and ADR-0040 for why. The rationale for the
-  individual values is preserved in the registry comments and
-  `dev-docs/learnings/presets.md`.
+  individual values is preserved in the registry comments.
 -->
 
 <script lang="ts" module>

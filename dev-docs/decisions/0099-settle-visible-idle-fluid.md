@@ -85,7 +85,7 @@ Settling now takes at least the time until the probe's fence signals, about
 one frame. Time to settle is otherwise unchanged. A browser test checks that
 the probe's maxima equal a full `readField` maximum on a splatted field with
 odd sizes, to half-float precision. Measured cost is in
-`dev-docs/benchmarks/gpu-budget.md`.
+the maintainers' benchmark notes (not published).
 
 Final measured validation HEAD `b278b11`: default/GasFlare/Karman at 1440x900
 CSS DPR 3 cost 0.90 ms median CPU per check, max 1.20/1.20/1.10 ms,
@@ -127,7 +127,7 @@ Hardware parity tests compare staged maxima against full issue-time readbacks at
 odd sizes on both tiers while fields continue evolving; each later stage is
 asserted to draw at most once. Cancellation is tested before and after fencing.
 Independent stage measurements and remaining release blockers are recorded in
-`dev-docs/benchmarks/strict-budget-followup.md`.
+the maintainers' strict-budget follow-up notes (not published).
 
 ## Amendment (2026-10-02): byte threshold fallback and renderer limits
 

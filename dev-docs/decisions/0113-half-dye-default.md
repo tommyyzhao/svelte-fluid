@@ -6,12 +6,12 @@
 ## Context
 
 The TRAIN-only, noisy R1 cost ladder reports Plasma 1.83→1.22 and Karman
-2.43→1.83 ms/frame for dye 1024→512. [Per-encoder attribution](../benchmarks/gpu-budget.md#e1-per-encoder-attribution-train-only)
+2.43→1.83 ms/frame for dye 1024→512. Per-encoder attribution (maintainers' benchmark notes, not published)
 finds Plasma dye advection area-like (126 µs); Karman dye-source/outlet
 allocate about 29% of busy time. These are diagnostic budgets, not additive
 or universally significant savings.
 
-The owner reviewed the [committed six-TRAIN-preset packet](../benchmarks/owner-review/dye-resolution/README.md)
+The owner reviewed the committed six-TRAIN-preset packet (maintainers' benchmark notes, not published)
 and approved half dye resolution **2026-10-08**, without naming presets.
 ADR 0107 Amendment 4 registers that approval as the visual gate because E2
 cannot certify resolution changes.
@@ -32,7 +32,7 @@ SvgPath small n2, eight scenes not started. Amendment 6 primary split verdict
 Matched13-scene active headline saving 23.405%, untouched 23.646%, descriptive
 only. The lead's stop is judgement, not a mathematically proven primary failure.
 Held-out not run; gain unproven, generic default restored to 1024.
-Full tables: energy-eval.md: `dev-docs/benchmarks/energy-eval.md` (archived locally).
+Full tables: the maintainers' energy-eval notes (not published, archived locally).
 
 ## Consequences
 

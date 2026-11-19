@@ -7,7 +7,7 @@
 
 ## Context
 
-TeslaValve exceeds the native-DPR GPU budget. The [per-preset quality sweep](../benchmarks/gpu-budget.md#per-preset-quality-sweep) certified a lower-quality candidate on M1 Max at DPR2 under [ADR 0105](./0105-stable-gpu-budget-protocol.md): N600/R3, W200, seed5, every clean run's p95 strictly <2 ms, no pooling or favorable retries.
+TeslaValve exceeds the native-DPR GPU budget. The per-preset quality sweep (maintainers' benchmark notes, not published) certified a lower-quality candidate on M1 Max at DPR2 under [ADR 0105](./0105-stable-gpu-budget-protocol.md): N600/R3, W200, seed5, every clean run's p95 strictly <2 ms, no pooling or favorable retries.
 
 | Own-tier CSS size | Before p95 r1/r2/r3 (ms) | Candidate p95 r1/r2/r3 (ms) |
 |---|---|---|

@@ -10,10 +10,6 @@ Contributing guidelines live in [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 | --- | --- |
 | [`architecture.md`](./architecture.md) | High-level architecture diagram, module boundaries, control flow, and lifecycle. |
 | [`porting-notes.md`](./porting-notes.md) | Mapping of upstream `script.js` symbols and lines to the refactored class/module structure, plus a list of intentional behavioral differences. |
-| [`epics/`](./epics/) | Multi-step engine initiatives, one file per epic. |
-| [`plans/`](./plans/) | Implementation plans for open work. |
-| [`benchmarks/`](./benchmarks/) | Measured performance notes: GPU frame-time budget harness and results. |
-| [`learnings/`](./learnings/) | Lessons captured during the port — things tried, things broken, things fixed. Organized by topic. |
 | [`decisions/`](./decisions/) | ADR-style log of every key architectural decision, in chronological order. Each ADR is small and self-contained. |
 
 ## How to use these docs
@@ -24,13 +20,10 @@ Contributing guidelines live in [`CONTRIBUTING.md`](../CONTRIBUTING.md).
   before changing anything in `src/lib/engine/`.
 - **Adding a new feature?** Add an ADR in [`decisions/`](./decisions/) and
   update [`architecture.md`](./architecture.md) if module boundaries shift.
-- **Debugging a weird issue?** Check [`learnings/`](./learnings/) — the same
-  trap may already be documented.
-- **Looking for unmerged research?** Unmerged engine branches and work-in-progress
-  snapshots are kept as hidden refs, e.g. `refs/archive/thermal-tracers-closeout` (thermal
+- **Looking for unmerged research?** Unmerged engine branches are kept under
+  `refs/archive/*`, e.g. `refs/archive/thermal-tracers-closeout` (thermal
   transport and tracers, ADRs 0114–0127 there; renumbered 0117–0130 on main) and `refs/archive/rd-webgpu-replacement`.
   Fetch them with `git fetch origin 'refs/archive/*:refs/remotes/origin-archive/*'`.
-  Removed research harnesses and evals live in commit `aa2cf1e`.
 
 ## Document conventions
 
@@ -38,3 +31,6 @@ Contributing guidelines live in [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 - File paths use the project root (`svelte-fluid/`) as the base.
 - Source line references use `path/to/file.ts:lineNumber` so editors and
   GitHub can deep-link.
+- History was rewritten on 2026-11-19 to drop maintainer-only notes. Commit
+  SHAs quoted in ADRs and frozen test fixtures (e.g. `b66d623`, `bb6f3b4`)
+  refer to the history before that date; release tags and file contents are unchanged.

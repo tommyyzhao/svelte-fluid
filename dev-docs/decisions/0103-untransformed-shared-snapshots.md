@@ -56,7 +56,7 @@ copy is gone; the necessary snapshot copy remains. Native labels are generic:
 this proves a copy removal, not a per-shader time ranking.
 
 Before/after native median/p95/max and every clean repeat are recorded in
-[the benchmark finding](../benchmarks/gpu-budget.md#shared-snapshot-investigation--2026-10-06).
+the maintainers' benchmark notes (not published).
 Run variability is substantial, including unchanged own controls. Paired
 percentile differences are not isolated snapshot timings. This change does
 **not** establish p95 <2 ms for the failing scenes or close ADR 0101's goal.

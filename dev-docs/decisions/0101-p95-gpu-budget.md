@@ -6,7 +6,7 @@
 ## Context
 
 The 1.0 performance target required every frame (max) to execute in <2 ms GPU
-per instance at native DPR. The [native Metal measurements](../benchmarks/gpu-budget.md#native-metal-execution-measurement--2026-10-0506)
+per instance at native DPR. The native Metal measurements (maintainers' benchmark notes, not published)
 recorded in `aec018e` found 18 PASS / 25 FAIL across 43 scenes on an M1 Max at
 native DPR 2. Median, p95 and max were already reported separately.
 
@@ -56,7 +56,7 @@ Failing rows: own 1440×900 (default), Plasma, AnnularFluid, Toroidal, GasFlare,
 Karman and TeslaValve; own 800×500 Karman and TeslaValve; shared 1440×900 Karman,
 GasFlare, LavaLamp and (default); own fractional 480.25×300.5 Karman; shared
 800×500 InkPaper held wet. Their existing p95 values and verdicts are
-[re-tabulated in the benchmark](../benchmarks/gpu-budget.md#owner-adopted-p95-verdict--2026-10-06).
+re-tabulated in the maintainers' benchmark notes (not published).
 
 Per-shader GPU shares remain unproved. Solver iteration and bloom workload
 inventories identify candidates, not measured hot-pass rankings. Runtime tuning

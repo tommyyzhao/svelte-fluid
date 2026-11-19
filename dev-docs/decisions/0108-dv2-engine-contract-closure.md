@@ -66,11 +66,11 @@ independent deposited thickness; RGB is pigment, never the normal/height proxy.
 geometry, source deposition/transport, normals/optics, shared uniform isolation,
 resize and target-allocation lifecycle. The representation adds no texture,
 framebuffer or persistent bytes. Passing lifecycle tests is not budget certification;
-[goal verification](../benchmarks/2026-10-03-goal-verification.md) retains timing and
+goal verification (maintainers' benchmark notes, not published) retains timing and
 appearance evidence limits.
 
 **Owner appearance approval pending.** The durable
-[review packet](../benchmarks/owner-review/lighting/README.md) contains all ten
+review packet (maintainers' benchmark notes, not published) contains all ten
 registry-shaded presets, seed 5, native DPR 2, 1440×900 CSS, about five seconds after
 component readiness. It is current-look evidence, not a paired historical comparison,
 calibrated geometry or approval.

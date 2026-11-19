@@ -9,8 +9,7 @@ KM|The persistent-canvas presets (LavaLamp, Plasma) have a hard
 constraint: in steady state, dye must never fade. Any
 `densityDissipation > 0` is exponential decay with a long half-life,
 so the canvas eventually drains to black — see the "Steady-state
-`densityDissipation: 0` is the only 'no fading' mode" entry in
-`dev-docs/learnings/presets.md`.
+`densityDissipation: 0` is the only 'no fading' mode" entry in the maintainers' preset notes (not published).
 
 But `densityDissipation: 0` from frame zero is a footgun. With the
 splat shader being additive (`gl_FragColor = vec4(base + splat, 1.0)`),
