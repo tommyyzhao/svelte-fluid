@@ -719,13 +719,19 @@
 			<td><code>distortion</code></td>
 			<td><code>boolean</code></td>
 			<td><code>false</code></td>
-			<td>Enable distortion mode. Cursor movement ripples and warps the image.</td>
+			<td>Enable distortion mode. Cursor movement ripples and warps the image; see <code>distortionField</code> for how.</td>
 		</tr>
 		<tr>
 			<td><code>distortionPower</code></td>
 			<td><code>number</code></td>
 			<td><code>0.4</code></td>
-			<td>How strongly velocity warps UV coordinates, 0-1.</td>
+			<td>How strongly the chosen field warps UV coordinates, 0-1. Each <code>distortionField</code> is scaled so the same value looks comparably strong.</td>
+		</tr>
+		<tr>
+			<td><code>distortionField</code></td>
+			<td><code>'pressure' | 'acceleration' | 'velocity'</code></td>
+			<td><code>'pressure'</code></td>
+			<td>What pushes the image around. <code>'pressure'</code>: it bulges where fluid crowds together and sinks into the centre of swirls. <code>'acceleration'</code>: it moves only where the flow speeds up, slows or turns, so steady flow leaves it still. <code>'velocity'</code>: it slides along the flow (the look before 1.4). Changing it recompiles the display shader; <code>'acceleration'</code> also keeps one extra velocity-sized texture. Unknown values throw a <code>RangeError</code>.</td>
 		</tr>
 		<tr>
 			<td><code>distortionImageUrl</code></td>

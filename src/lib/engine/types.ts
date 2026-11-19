@@ -869,10 +869,24 @@ export interface FluidConfig {
 	 */
 	distortion?: boolean;
 	/**
-	 * How strongly the velocity field warps the image UV coordinates.
+	 * How strongly the chosen field warps the image UV coordinates.
 	 * 0 = no distortion, 1 = very strong. Default 0.4. Hot-updatable.
+	 * Each `distortionField` is scaled so the same value looks comparably strong.
 	 */
 	distortionPower?: number;
+	/**
+	 * Which field pushes the image around.
+	 * - `'pressure'` (default): the image bulges where fluid crowds together and
+	 *   sinks into the centre of swirls.
+	 * - `'acceleration'`: the image moves only where the flow speeds up, slows
+	 *   down or turns, so steady flow leaves it still.
+	 * - `'velocity'`: the image slides along the flow (the look before 1.4).
+	 *
+	 * Changing it recompiles the display shader; `'acceleration'` also keeps one
+	 * extra simulation-sized texture while distortion is on. Unknown values throw
+	 * a `RangeError`. Only used when `distortion` is true.
+	 */
+	distortionField?: 'pressure' | 'acceleration' | 'velocity';
 	/**
 	 * URL of the image to distort. The engine loads the image asynchronously
 	 * and uploads it as a WebGL texture. Changing the URL at runtime triggers
@@ -1209,7 +1223,7 @@ export interface FluidDistortionProps
 	 */
 	src: string;
 	/**
-	 * How strongly the velocity field warps the image UV coordinates.
+	 * How strongly the chosen field warps the image UV coordinates.
 	 * 0 = no distortion, 1 = very strong. Default 0.4.
 	 * @deprecated Use `distortionPower`; it wins when both are set. Will be removed in 2.0.
 	 */

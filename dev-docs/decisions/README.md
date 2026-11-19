@@ -123,6 +123,7 @@ and follows a lightweight Context → Decision → Consequences template.
 | [0128](./0128-no-slip-viscosity-final-mask.md) | Crop no-slip viscosity exactly once before projection | Accepted |
 | [0129](./0129-thermal-mask-supercover.md) | Conservative thermal mask-space segment traversal | Accepted |
 | [0130](./0130-shared-presentation-progress.md) | Shared presentation progress under overlapping snapshots | Accepted |
+| [0131](./0131-distortion-fields.md) | Selectable distortion field, pressure by default | Accepted |
 
 ADRs 0067-0078 exist only on the archived research branch (`refs/archive/rd-webgpu-replacement`; not shipped); the numbering gap here is intentional.
 

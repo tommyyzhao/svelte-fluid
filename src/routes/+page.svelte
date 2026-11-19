@@ -189,6 +189,7 @@
 	// Distortion-only
 	let distortionStrength = $state(0.35);
 	let distortionIntensity = $state(24);
+	let distortionField = $state<'pressure' | 'acceleration' | 'velocity'>('pressure');
 
 	// Flow playground
 	let flowBoundaryPreset = $state<FlowBoundaryPreset>('channel');
@@ -238,6 +239,7 @@
 		stickyText?: string;
 		distortionStrength?: number;
 		distortionIntensity?: number;
+		distortionField?: 'pressure' | 'acceleration' | 'velocity';
 		revealAutoReveal?: boolean;
 		revealFadeBack?: boolean;
 		revealSensitivity?: number;
@@ -367,7 +369,8 @@
 			containerType: 'none',
 			glass: false,
 			distortionStrength: 0.4,
-			distortionIntensity: 24
+			distortionIntensity: 24,
+			distortionField: 'pressure'
 		}
 	};
 
@@ -405,6 +408,7 @@
 		if (p.stickyText !== undefined) stickyText = p.stickyText;
 		if (p.distortionStrength !== undefined) distortionStrength = p.distortionStrength;
 		if (p.distortionIntensity !== undefined) distortionIntensity = p.distortionIntensity;
+		if (p.distortionField !== undefined) distortionField = p.distortionField;
 		if (p.revealAutoReveal !== undefined) revealAutoReveal = p.revealAutoReveal;
 		if (p.revealFadeBack !== undefined) revealFadeBack = p.revealFadeBack;
 		if (p.revealSensitivity !== undefined) revealSensitivity = p.revealSensitivity;
@@ -470,10 +474,12 @@
 			'<FluidReveal velocityDissipation={0.95} pressureIterations={10}>\n\t<div>Revealed</div>\n</FluidReveal>',
 		revealAuto:
 			'<FluidReveal\n\tautoAnimate\n\tautoAnimateSpeed={0.8}\n\tfadeBack={false}\n\trevealSensitivity={0.15}\n\tvelocityDissipation={0.95}\n>\n\t<div>Auto reveal</div>\n</FluidReveal>',
-		distortSubtle:
-			'<FluidDistortion src="/bosch-garden.jpg" distortionPower={0.3} intensity={20} distortionFit="cover" initialSplats={6} />',
-		distortStrong:
-			'<FluidDistortion src="/bosch-garden.jpg" distortionPower={0.45} intensity={28} distortionFit="cover" initialSplats={6} />'
+		distortPressure:
+			'<FluidDistortion src="/bosch-garden.jpg" distortionField="pressure" distortionPower={0.3} intensity={20} initialSplats={6} />',
+		distortAcceleration:
+			'<FluidDistortion src="/bosch-garden.jpg" distortionField="acceleration" distortionPower={0.3} intensity={20} initialSplats={6} />',
+		distortVelocity:
+			'<FluidDistortion src="/bosch-garden.jpg" distortionField="velocity" distortionPower={0.3} intensity={20} initialSplats={6} />'
 	};
 
 	function markCustom() {
@@ -775,6 +781,8 @@
 			lines.push(`\tsrc="${base}/bosch-garden.jpg"`);
 			lines.push(`\tdistortionPower={${distortionStrength}}`);
 			lines.push(`\tintensity={${distortionIntensity}}`);
+			// pressure is the component default, so only the others are spelled out.
+			if (distortionField !== 'pressure') lines.push(`\tdistortionField="${distortionField}"`);
 		}
 		if (mode === 'reveal') {
 			if (revealAutoReveal) lines.push(`\tautoAnimate`);
@@ -1407,19 +1415,20 @@
 		<section class="section">
 			<header class="section-head">
 				<h2>Distortion</h2>
-				<p>An image, warped by the velocity field.</p>
+				<p>An image, warped by the fluid. Same splats, three ways to push the picture.</p>
 			</header>
-			<div class="grid grid-2">
+			<div class="grid grid-3 grid-fill">
 				<Card
-					title="Subtle"
-					blurb="distortionPower 0.3, intensity 20."
-					snippet={SNIPPETS.distortSubtle}
+					title="Pressure"
+					blurb="Bulges where fluid crowds together, sinks into swirl centres. The default."
+					snippet={SNIPPETS.distortPressure}
 					height={280}
-					onCustomize={() => openInPlayground('Distortion')}
+					onCustomize={() => { openInPlayground('Distortion'); distortionField = 'pressure'; distortKey++; }}
 				>
 					<FluidDistortion
 						src="{base}/bosch-garden.jpg"
 						seed={311}
+						distortionField="pressure"
 						distortionPower={0.3}
 						intensity={20}
 						distortionScale={1.0}
@@ -1429,17 +1438,37 @@
 					/>
 				</Card>
 				<Card
-					title="Strong"
-					blurb="distortionPower 0.45, intensity 28."
-					snippet={SNIPPETS.distortStrong}
+					title="Acceleration"
+					blurb="Moves only where the flow speeds up, slows or turns."
+					snippet={SNIPPETS.distortAcceleration}
 					height={280}
-					onCustomize={() => openInPlayground('Distortion')}
+					onCustomize={() => { openInPlayground('Distortion'); distortionField = 'acceleration'; distortKey++; }}
 				>
 					<FluidDistortion
 						src="{base}/bosch-garden.jpg"
-						seed={322}
-						distortionPower={0.45}
-						intensity={28}
+						seed={311}
+						distortionField="acceleration"
+						distortionPower={0.3}
+						intensity={20}
+						distortionScale={1.0}
+						distortionFit="cover"
+						initialSplats={6}
+						lazy
+					/>
+				</Card>
+				<Card
+					title="Velocity"
+					blurb="Slides along the flow, the look before 1.4."
+					snippet={SNIPPETS.distortVelocity}
+					height={280}
+					onCustomize={() => { openInPlayground('Distortion'); distortionField = 'velocity'; distortKey++; }}
+				>
+					<FluidDistortion
+						src="{base}/bosch-garden.jpg"
+						seed={311}
+						distortionField="velocity"
+						distortionPower={0.3}
+						intensity={20}
 						distortionScale={1.0}
 						distortionFit="cover"
 						initialSplats={6}
@@ -1606,6 +1635,7 @@
 									seed={42}
 									src="{base}/bosch-garden.jpg"
 									distortionPower={distortionStrength}
+									{distortionField}
 									intensity={distortionIntensity}
 									distortionScale={1.0}
 									distortionFit="cover"
@@ -2163,6 +2193,14 @@
 								/>
 								<span class="knob-value">{distortionIntensity}</span>
 							</label>
+							<label class="knob-row">
+								<span class="knob-label">distortionField</span>
+								<select bind:value={distortionField} onchange={() => { distortKey++; markCustom(); }} class="select">
+									<option value="pressure">pressure</option>
+									<option value="acceleration">acceleration</option>
+									<option value="velocity">velocity</option>
+								</select>
+							</label>
 						</div>
 					{/if}
 
@@ -2529,6 +2567,10 @@
 	.grid-2 {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
+	/* Cards with different blurb lengths should still end on one line. */
+	.grid-fill {
+		align-items: stretch;
+	}
 
 	.reveal-content {
 		display: flex;
@@ -2868,6 +2910,10 @@
 	@media (max-width: 860px) {
 		.grid-3 {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+		/* An odd card out spans the row instead of leaving a hole. */
+		.grid-fill > :global(:last-child:nth-child(odd)) {
+			grid-column: 1 / -1;
 		}
 	}
 	@media (max-width: 700px) {

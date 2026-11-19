@@ -1,13 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { FluidEngine, _setContextTier } from '../FluidEngine.js';
-import type { DistortionField } from '../FluidEngine.js';
 import { createFBO, disposeFBO } from '../gl-utils.js';
 import type { FBO } from '../internal-types.js';
 import { softwareGL } from './renderer.js';
 
 /**
- * Internal acceleration / pressure-gradient distortion preview. Raw logs for
- * a run go to archive/evidence (see the preview task); nothing here is public API.
+ * Public `distortionField`: pressure (default), acceleration, velocity.
  */
 
 /** FNV-1a of the velocity-mode frame, captured from main @ 490b540 on hardware Chrome. */
@@ -70,7 +68,7 @@ async function make(tier: 'own' | 'shared', extra: Record<string, unknown> = {},
 			seed: 7, pointerInput: false, initialSplatCount: 0, autoSplatRate: 0,
 			simResolution: 64, dyeResolution: 128, pressureIterations: 8, curl: 0,
 			bloom: false, sunrays: false, shading: false,
-			distortion: true, distortionPower: 0.02, distortionImageUrl: URL,
+			distortion: true, distortionField: 'velocity', distortionPower: 0.02, distortionImageUrl: URL,
 			velocityDissipation: 0, densityDissipation: 0, splatRadius: 100,
 			...extra
 		}
@@ -136,7 +134,7 @@ describe('velocity mode is unchanged', () => {
 		e.splat(0.3, 0.6, 900, -400, { r: 0.8, g: 0, b: 0 });
 		e.advance(10, 1 / 60);
 		const a = fnv(frame(e));
-		e.previewDistortionField('velocity', 5);
+		e.setConfig({ distortionField: 'velocity' });
 		expect(fnv(frame(e))).toBe(a);
 	});
 });
@@ -147,11 +145,10 @@ describe('acceleration mode', () => {
 		// Wide, near-uniform splat; no dissipation so the flow stays steady.
 		e.splat(0.5, 0.5, 600, 250, { r: 0.8, g: 0, b: 0 });
 		e.advance(120, 1 / 60);
-		const k = 40;
 
 		const vel = displacement(e, frame(e));
 
-		e.previewDistortionField('acceleration', k);
+		e.setConfig({ distortionField: 'acceleration' });
 		// First frame after allocation: a = 0, identical to the undistorted image.
 		const first = frame(e);
 		e.setConfig({ distortionPower: 0 });
@@ -172,24 +169,40 @@ describe('acceleration mode', () => {
 		expect(kick).toBeGreaterThan(steady * 5);
 	});
 
-	it('pressure-gradient mode renders and adds no state', async () => {
+	it('pressure mode renders and adds no state', async () => {
 		const e = await make('own');
 		e.splat(0.5, 0.5, 4000, -3000, { r: 0.8, g: 0, b: 0 });
 		e.advance(2, 1 / 60);
-		e.previewDistortionField('pressure-gradient', 10);
+		e.setConfig({ distortionField: 'pressure' });
 		expect(harness(e).accelPrev).toBeNull();
 		const warped = displacement(e, frame(e));
-		console.info(`pressure-gradient displacement=${warped.toFixed(2)}`);
+		console.info(`pressure displacement=${warped.toFixed(2)}`);
 		expect(Number.isFinite(warped)).toBe(true);
 		expect(harness(e).gl.getError()).toBe(harness(e).gl.NO_ERROR);
 	});
 
-	it('rejects invalid modes and softness without changing state', async () => {
+	it('rejects an unknown field without changing state', async () => {
 		const e = await make('own');
-		expect(() => e.previewDistortionField('nope' as DistortionField, 1)).toThrow(RangeError);
-		expect(() => e.previewDistortionField('acceleration', 0)).toThrow(RangeError);
-		expect(() => e.previewDistortionField('acceleration', NaN)).toThrow(RangeError);
+		expect(() => e.setConfig({ distortionField: 'nope' as never })).toThrow(RangeError);
 		expect(harness(e).accelPrev).toBeNull();
+	});
+
+	it('hot-switches velocity -> acceleration -> pressure -> velocity, allocating and freeing the target', async () => {
+		const e = await make('own');
+		const h = harness(e);
+		e.splat(0.5, 0.5, 2000, 0, { r: 0.8, g: 0, b: 0 });
+		e.advance(3, 1 / 60);
+		const hashes: string[] = [fnv(frame(e))];
+		expect(h.accelPrev).toBeNull();
+		for (const [mode, owns] of [['acceleration', true], ['pressure', false], ['velocity', false]] as const) {
+			e.setConfig({ distortionField: mode });
+			expect(h.accelPrev !== null).toBe(owns);
+			hashes.push(fnv(frame(e)));
+			expect(h.gl.getError()).toBe(h.gl.NO_ERROR);
+		}
+		// Returning to velocity reproduces the original frame exactly.
+		expect(hashes[3]).toBe(hashes[0]);
+		expect(new Set(hashes).size).toBeGreaterThan(1);
 	});
 });
 
@@ -216,15 +229,15 @@ describe('previous-velocity target ownership', () => {
 		const c = counted();
 		const e = await make('own', {}, c.canvas);
 		expect(c.counter.live).toBe(plainLive);
-		e.previewDistortionField('acceleration', 10);
+		e.setConfig({ distortionField: 'acceleration' });
 		expect(harness(e).accelPrev).not.toBeNull();
 		expect(c.counter.live).toBe(plainLive + 1);
 
-		e.previewDistortionField('pressure-gradient', 10);
+		e.setConfig({ distortionField: 'pressure' });
 		expect(harness(e).accelPrev).toBeNull();
 		expect(c.counter.live).toBe(plainLive);
 
-		e.previewDistortionField('acceleration', 10);
+		e.setConfig({ distortionField: 'acceleration' });
 		e.setConfig({ distortion: false });
 		expect(harness(e).accelPrev).toBeNull();
 		expect(c.counter.live).toBe(plainLive);
@@ -239,7 +252,7 @@ describe('previous-velocity target ownership', () => {
 	it.each(['own', 'shared'] as const)('%s tier: rebuilt on sim resize and canvas resize, first frame is a = 0', async (tier) => {
 		const e = await make(tier);
 		const h = harness(e);
-		e.previewDistortionField('acceleration', 10);
+		e.setConfig({ distortionField: 'acceleration' });
 		e.splat(0.5, 0.5, 2000, 0, { r: 0.8, g: 0, b: 0 });
 		e.advance(2, 1 / 60);
 		frame(e);

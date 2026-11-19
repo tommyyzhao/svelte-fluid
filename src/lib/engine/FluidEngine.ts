@@ -249,20 +249,24 @@ interface FlowOutletBatchEntry {
 	keep: number;
 }
 
-/** @internal Preview-only direction field for image distortion. */
-export type DistortionField = 'velocity' | 'acceleration' | 'pressure-gradient';
-
 /**
- * @internal Display keyword for a distortion field; `null` keeps the original
- * velocity shader byte-identical. Throws on anything else so a typo in a
- * preview route cannot silently fall back.
+ * @internal Display keyword for a `distortionField`; `null` keeps the original
+ * velocity shader byte-identical. Throws on anything else so a typo cannot
+ * silently fall back to another look.
  */
 export function distortionFieldKeyword(mode: unknown): 'DISTORTION_ACCEL' | 'DISTORTION_PGRAD' | null {
 	if (mode === 'velocity') return null;
 	if (mode === 'acceleration') return 'DISTORTION_ACCEL';
-	if (mode === 'pressure-gradient') return 'DISTORTION_PGRAD';
+	if (mode === 'pressure') return 'DISTORTION_PGRAD';
 	throw new RangeError(`svelte-fluid: unknown distortion field ${String(mode)}`);
 }
+
+// ponytail: softness (the k in a / (|a| + k)) and the per-mode gain are fixed
+// constants; not tunable. Expose `distortionSoftness` if users ask. The gain
+// makes one `distortionPower` look comparably strong across fields (ADR 0131);
+// velocity stays 1 and uses the original shader line.
+const DISTORTION_SOFTNESS = 60;
+const DISTORTION_GAIN = { pressure: 4, acceleration: 3, velocity: 1 } as const;
 
 type ReadField = 'velocity' | 'dye' | 'pressure' | 'divergence' | 'curl' | 'scalar' | 'emission';
 
@@ -363,6 +367,7 @@ export const DEFAULTS: ResolvedConfig = {
 	REVEAL_FRINGE_COLOR: { r: 0.6, g: 0.7, b: 0.85 },
 	DISTORTION: false,
 	DISTORTION_POWER: 0.4,
+	DISTORTION_FIELD: 'pressure' as const,
 	DISTORTION_IMAGE_URL: null,
 	DISTORTION_FIT: 'cover' as const,
 	DISTORTION_SCALE: 1.0,
@@ -513,6 +518,10 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 	if (input.revealFringeColor !== undefined) out.REVEAL_FRINGE_COLOR = input.revealFringeColor;
 	if (input.distortion !== undefined) out.DISTORTION = input.distortion;
 	if (input.distortionPower !== undefined) out.DISTORTION_POWER = input.distortionPower;
+	if (input.distortionField !== undefined) {
+		distortionFieldKeyword(input.distortionField);
+		out.DISTORTION_FIELD = input.distortionField;
+	}
 	if (input.distortionImageUrl !== undefined) out.DISTORTION_IMAGE_URL = input.distortionImageUrl ?? null;
 	if (input.distortionFit !== undefined) out.DISTORTION_FIT = input.distortionFit;
 	if (input.distortionScale !== undefined) out.DISTORTION_SCALE = input.distortionScale;
@@ -892,9 +901,6 @@ export class FluidEngine implements FluidHandle {
 	private distortionLoadedUrl: string | null = null;
 	private distortionTextureW = 0;
 	private distortionTextureH = 0;
-	// Internal preview of acceleration-warped distortion; 'velocity' is the shipped path.
-	private distortionField: DistortionField = 'velocity';
-	private distortionSoftness = 1;
 	/** Velocity at the previous presented frame; allocated only in 'acceleration' mode. */
 	private accelPrev: FBO | null = null;
 	/** False until accelPrev holds a presented frame, so the first frame has a = 0. */
@@ -1846,7 +1852,7 @@ export class FluidEngine implements FluidHandle {
 	 * - **Recompiles the display shader** when these change: `shading`, `bloom`,
 	 *   `sunrays`, `toneMapping`, `specular` or `refraction` crossing 0,
 	 *   `minContrast` crossing 1, `contrastMode`, `contrastColor` appearing or
-	 *   clearing, `transparent`, `reveal`, `distortion`, `flow`, and
+	 *   clearing, `transparent`, `reveal`, `distortion`, `distortionField`, `flow`, and
 	 *   `obstructionColor` appearing or clearing. Other values of these fields
 	 *   are hot uniforms.
 	 * - **Rebuilds render targets or textures**: `simResolution`, `dyeResolution`,
@@ -1854,7 +1860,8 @@ export class FluidEngine implements FluidHandle {
 	 *   group is rebuilt; contents are preserved). Also `containerShape`,
 	 *   `obstructions`, `openBoundary` (solid mask), `glass` (scene target),
 	 *   `sticky` and `stickyMask` (sticky mask), `flow` (prescribed grids, scalar
-	 *   storage), and `distortionImageUrl` (starts a new async image load).
+	 *   storage), and `distortionImageUrl` (starts a new async image load), and
+	 *   `distortionField` (`acceleration` keeps one extra previous-velocity target).
 	 * - **Construct-only**, ignored here: `seed`, `initialSplatCount`,
 	 *   `initialSplatCountMin`, `initialSplatCountMax`, `presetSplats`,
 	 *   `requireHardwareAcceleration` and `advectionScheme`. They shape the opening
@@ -1887,6 +1894,7 @@ export class FluidEngine implements FluidHandle {
 		const glassChanged = a.GLASS !== b.GLASS || shapeChanged;
 		const revealChanged = a.REVEAL !== b.REVEAL;
 		const distortionChanged = a.DISTORTION !== b.DISTORTION;
+		const distortionFieldChanged = a.DISTORTION_FIELD !== b.DISTORTION_FIELD;
 		const distortionImageChanged = a.DISTORTION_IMAGE_URL !== b.DISTORTION_IMAGE_URL;
 		const stickyChanged = a.STICKY !== b.STICKY;
 		const stickyMaskChanged = !stickyMaskEqual(a.STICKY_MASK, b.STICKY_MASK);
@@ -1980,7 +1988,7 @@ export class FluidEngine implements FluidHandle {
 				if (prescribedChanged) this.initPrescribedGridTextures();
 				if (glassChanged) this.initGlassFramebuffer();
 				if (displayChanged) this.updateKeywords(preparedDisplayVariant);
-				if (distortionChanged) this.syncAccelTarget();
+				if (distortionChanged || distortionFieldChanged) this.syncAccelTarget();
 				if (stickyChanged || stickyMaskChanged) this.initStickyMaskTexture();
 				if (distortionImageChanged) this.loadDistortionImage(b.DISTORTION_IMAGE_URL);
 			} finally {
@@ -1994,7 +2002,7 @@ export class FluidEngine implements FluidHandle {
 		const resourceChanged =
 			outletRelaxChanged || tracersChanged || simChanged || dyeChanged || scalarNeedChanged || bloomResourceChanged || sunraysResourceChanged ||
 			shapeChanged || obstructionsChanged || openBoundaryChanged || prescribedChanged || displayChanged || glassChanged ||
-			kwChanged || revealChanged || distortionChanged || obstructionColorChanged ||
+			kwChanged || revealChanged || distortionChanged || distortionFieldChanged || obstructionColorChanged ||
 			stickyChanged || stickyMaskChanged || distortionImageChanged;
 		// Outlet chains are only staged when outletRelaxChanged/simChanged, both resource changes.
 		if (resourceChanged) this.transition('reconfigure', () => this.profileLifecycle('reconfigure', applyResourceChanges));
@@ -3143,7 +3151,7 @@ export class FluidEngine implements FluidHandle {
 	 */
 	private syncAccelTarget(rebuild = false): void {
 		const gl = this.gl;
-		const need = this.distortionField === 'acceleration' && this.config.DISTORTION;
+		const need = this.config.DISTORTION_FIELD === 'acceleration' && this.config.DISTORTION;
 		if (this.accelPrev && (!need || rebuild)) {
 			disposeFBO(gl, this.accelPrev);
 			this.accelPrev = null;
@@ -3164,37 +3172,6 @@ export class FluidEngine implements FluidHandle {
 			this.ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST
 		);
 		this.accelValid = false;
-	}
-
-	/**
-	 * @internal Preview-only: choose the field that directs image distortion.
-	 * 'velocity' is the shipped behaviour. 'acceleration' warps by
-	 * (v_now - v_prev) / dt between presented frames; 'pressure-gradient' by -grad p.
-	 * `softness` (k) is in the same units; warp is offset * a / (|a| + k).
-	 * Not part of the public surface: decide canonical naming before exposing.
-	 */
-	previewDistortionField(mode: DistortionField, softness: number = this.distortionSoftness): void {
-		distortionFieldKeyword(mode);
-		if (!(Number.isFinite(softness) && softness > 0)) {
-			throw new RangeError('svelte-fluid: distortion softness must be a positive finite number');
-		}
-		if (this.disposed) return;
-		this.distortionSoftness = softness;
-		if (mode !== this.distortionField) {
-			this.distortionField = mode;
-			// A lost context rebuilds keywords and the target on restore.
-			if (!this.contextLost && !this.failed) {
-				this.transition('distortion field', () =>
-					this.withGl(() => {
-						this.updateKeywords();
-						this.syncAccelTarget();
-					})
-				);
-			}
-		}
-		this.wake();
-		this.invalidateRender();
-		if (this.still) this.renderOnce();
 	}
 
 	private replaceOutletRelaxChains(next: [FBO[], FBO[]]): void {
@@ -4111,7 +4088,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		// DISTORTION and REVEAL are mutually exclusive display modes
 		if (config.DISTORTION) {
 			keywords.push('DISTORTION');
-			const field = distortionFieldKeyword(this.distortionField);
+			const field = distortionFieldKeyword(config.DISTORTION_FIELD);
 			if (field) keywords.push(field);
 		} else if (config.REVEAL) keywords.push('REVEAL');
 		return keywords;
@@ -5999,7 +5976,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 				this.config.DISTORTION_BLEED_X,
 				this.config.DISTORTION_BLEED_Y
 			);
-			if (this.distortionField !== 'velocity') this.bindDistortionField();
+			if (this.config.DISTORTION_FIELD !== 'velocity') this.bindDistortionField();
 		} else if (this.config.REVEAL) {
 			gl.uniform1f(this.displayMaterial.uniforms.uRevealSensitivity, this.config.REVEAL_SENSITIVITY);
 			gl.uniform1f(this.displayMaterial.uniforms.uRevealCurve, this.config.REVEAL_CURVE);
@@ -6011,15 +5988,17 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			gl.uniform3f(this.displayMaterial.uniforms.uRevealFringeColor, fc.r, fc.g, fc.b);
 		}
 		this.blit(target);
-		if (this.config.DISTORTION && this.distortionField === 'acceleration') this.snapshotAccelVelocity();
+		if (this.config.DISTORTION && this.config.DISTORTION_FIELD === 'acceleration') this.snapshotAccelVelocity();
 	}
 
-	/** Uniforms and aux texture (unit 7) for the internal acceleration/pressure-gradient warp. */
+	/** Uniforms and aux texture (unit 7) for the acceleration and pressure warps. */
 	private bindDistortionField(): void {
 		const gl = this.gl;
 		const u = this.displayMaterial.uniforms;
-		gl.uniform1f(u.uAccelSoftness, this.distortionSoftness);
-		if (this.distortionField === 'pressure-gradient') {
+		const field = this.config.DISTORTION_FIELD;
+		gl.uniform1f(u.uAccelSoftness, DISTORTION_SOFTNESS);
+		gl.uniform1f(u.uDistortionGain, DISTORTION_GAIN[field]);
+		if (field === 'pressure') {
 			// The projection subtracts grad p once per step, so p / dt is the pressure acceleration.
 			gl.uniform1i(u.uDistortionAux, this.pressure.read.attach(7));
 			gl.uniform2f(u.uAccelTexel, this.pressure.texelSizeX, this.pressure.texelSizeY);

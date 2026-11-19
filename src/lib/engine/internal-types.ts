@@ -88,6 +88,7 @@ export interface ResolvedConfig {
 	REVEAL_FRINGE_COLOR: RGB;
 	DISTORTION: boolean;
 	DISTORTION_POWER: number;
+	DISTORTION_FIELD: 'pressure' | 'acceleration' | 'velocity';
 	DISTORTION_IMAGE_URL: string | null;
 	DISTORTION_FIT: 'cover' | 'contain';
 	DISTORTION_SCALE: number;

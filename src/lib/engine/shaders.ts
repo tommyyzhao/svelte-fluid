@@ -394,11 +394,12 @@ export const displayShaderSource = `
 #endif
 
 #if defined(DISTORTION) && (defined(DISTORTION_ACCEL) || defined(DISTORTION_PGRAD))
-    // Internal preview: previous velocity (ACCEL) or pressure (PGRAD) on one unit.
+    // Previous velocity (ACCEL) or pressure (PGRAD) on one unit.
     uniform sampler2D uDistortionAux;
     uniform vec2 uAccelTexel;
     uniform float uAccelInvDt;
     uniform float uAccelSoftness;
+    uniform float uDistortionGain;
 #endif
 
 ${SRGB_TRANSFER_GLSL}
@@ -735,7 +736,7 @@ ${DYE_GEOMETRY_GLSL}
             pressureAt(vUv + vec2(0.0, uAccelTexel.y)) - pressureAt(vUv - vec2(0.0, uAccelTexel.y))
         ) * uAccelInvDt;
         #endif
-        imgUv -= uDistortionPower * offset * acc / (length(acc) + uAccelSoftness);
+        imgUv -= uDistortionPower * uDistortionGain * offset * acc / (length(acc) + uAccelSoftness);
     #else
         // Apply velocity-directed distortion
         imgUv -= uDistortionPower * normalize(vel) * offset;

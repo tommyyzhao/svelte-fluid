@@ -183,8 +183,8 @@ Full props, live examples and contrast notes: [docs/components](https://svelte-f
 
 All props are optional. CamelCase wraps the original SCREAMING_CASE
 config from the upstream project. This table is a curated subset of the
-93 config fields; see [`/docs/configuration`](https://svelte-fluid.dev/docs/configuration)
-for the full reference. Wrapper props such as `distortionPower`, `revealSensitivity`
+94 config fields; see [`/docs/configuration`](https://svelte-fluid.dev/docs/configuration)
+for the full reference. Wrapper props such as `distortionPower`, `distortionField`, `revealSensitivity`
 and `stickyStrength` are documented on [`/docs/components`](https://svelte-fluid.dev/docs/components).
 Older wrapper prop names still work as `@deprecated` aliases and are removed in 2.0.
 
