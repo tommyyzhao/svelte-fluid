@@ -515,7 +515,8 @@ describe('settle visible idle fluid (ADR 0099)', () => {
 
 	it.each(['distortion', 'reveal'] as const)('%s amplifies sub-epsilon dye; only exact zero may settle', async (mode) => {
 		for (const bytes of [false, true]) {
-			const e = engine({ initialSplatCount: 0, densityDissipation: 0, [mode]: true, distortionPower: 100, revealSensitivity: 100, revealCurve: 0.2 }, false);
+			// Velocity field: it warps by dye alone, with no solver step, so it is the worst-case amplifier (ADR 0131).
+			const e = engine({ initialSplatCount: 0, densityDissipation: 0, [mode]: true, distortionField: 'velocity', distortionPower: 100, revealSensitivity: 100, revealCurve: 0.2 }, false);
 			const p = e as unknown as { canReadSettleFloat(): boolean; issueSettleProbe(): void; advanceSettleProbe(): void; pollSettleProbe(): boolean | null; settleProbe: { ready?: boolean; sync?: WebGLSync } | null };
 			if (bytes) p.canReadSettleFloat = () => false;
 			const check = async () => {
