@@ -17,6 +17,11 @@ import teslaValve from './TeslaValve.svelte?raw';
 
 import { PRESETS, PRESET_BY_ID, getPreset } from './registry.js';
 
+it('TeslaValve declares its wall frame', () => {
+	expect(PRESET_BY_ID.TeslaValve.frame).toEqual({ aspect: 3, wallColor: '#fff' });
+	expect(JSON.parse(JSON.stringify(PRESET_BY_ID.TeslaValve))).toEqual(PRESET_BY_ID.TeslaValve);
+});
+
 /** id → (component source, exported config const name) for the drift guard. */
 const SOURCES: Record<string, { source: string; configVar: string }> = {
 	LavaLamp: { source: lavaLamp, configVar: 'LAVA_LAMP_CONFIG' },
@@ -94,6 +99,12 @@ describe('preset config registry', () => {
 	// Presets run one step per 60 Hz frame.
 	it('every preset runs at most one solver step per 60 Hz frame', () => {
 		for (const p of PRESETS) {
+			// The engine clamps dt to maxTimeStep x substeps, so TeslaValve's 1/120 is
+			// one step per frame (sim runs below real time at 60 Hz), not two.
+			if (p.id === 'TeslaValve') {
+				expect(p.config.substeps, p.id).toBe(1);
+				continue;
+			}
 			const maxTimeStep = p.config.maxTimeStep ?? 1 / 60;
 			const steps = Math.max(p.config.substeps ?? 1, Math.ceil(1 / 60 / maxTimeStep - 1e-9));
 			expect(steps, p.id).toBe(1);

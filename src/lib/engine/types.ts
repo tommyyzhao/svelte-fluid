@@ -65,6 +65,24 @@ export interface FlowBoundary {
 	bottom?: FlowBoundaryKind;
 }
 
+/** Periodic velocity gain for a {@link FlowSource}, clocked by solver time (pauses with the solver). */
+export interface FlowPulse {
+	/** Solver seconds per pulse. Finite, > 0. */
+	period: number;
+	/** Gain between pulses, 0-1. Default 0. Peak gain is always 1. */
+	floor?: number;
+	/** Raised-cosine exponent; larger = narrower pulse. Finite, >= 1. Default 12. */
+	sharpness?: number;
+}
+
+/** Cycles a {@link FlowSource}'s dye through `colors` (linear RGB interpolation, wrapping), clocked by solver time. */
+export interface FlowDyeCycle {
+	/** At least two finite, non-negative colours. */
+	colors: ReadonlyArray<RGB>;
+	/** Solver seconds per full cycle. Finite, > 0. */
+	period: number;
+}
+
 interface FlowSourceBase {
 	/** Relax supplied dye/scalars toward a fixed composition; velocity stays additive. Default false. */
 	inflow?: boolean;
@@ -72,6 +90,10 @@ interface FlowSourceBase {
 	velocity?: Vec2;
 	/** RGB dye injected every frame. Components use the same 0-1/HDR range as {@link PresetSplat.color}. */
 	dye?: RGB;
+	/** Scales `velocity` by gain(t) = floor + (1 - floor) * max(0, cos(2 * pi * t / period)) ^ sharpness. Dye and scalars stay constant. */
+	pulse?: FlowPulse;
+	/** Overrides `dye` when set. */
+	dyeCycle?: FlowDyeCycle;
 	/** Named scalar values injected every frame, e.g. `{ temperature: 1 }` or `{ ink: 0.8 }`. */
 	scalars?: Partial<Record<FlowScalarName, number>>;
 	/**
@@ -869,10 +891,24 @@ export interface FluidConfig {
 	 */
 	distortion?: boolean;
 	/**
-	 * How strongly the velocity field warps the image UV coordinates.
+	 * How strongly the chosen field warps the image UV coordinates.
 	 * 0 = no distortion, 1 = very strong. Default 0.4. Hot-updatable.
+	 * Each `distortionField` is scaled so the same value looks comparably strong.
 	 */
 	distortionPower?: number;
+	/**
+	 * Which field pushes the image around.
+	 * - `'pressure'` (default): the image bulges where fluid crowds together and
+	 *   sinks into the centre of swirls.
+	 * - `'acceleration'`: the image moves only where the flow speeds up, slows
+	 *   down or turns, so steady flow leaves it still.
+	 * - `'velocity'`: the image slides along the flow (the look before 1.4).
+	 *
+	 * Changing it recompiles the display shader; `'acceleration'` also keeps one
+	 * extra simulation-sized texture while distortion is on. Unknown values throw
+	 * a `RangeError`. Only used when `distortion` is true.
+	 */
+	distortionField?: 'pressure' | 'acceleration' | 'velocity';
 	/**
 	 * URL of the image to distort. The engine loads the image asynchronously
 	 * and uploads it as a WebGL texture. Changing the URL at runtime triggers
@@ -1209,7 +1245,7 @@ export interface FluidDistortionProps
 	 */
 	src: string;
 	/**
-	 * How strongly the velocity field warps the image UV coordinates.
+	 * How strongly the chosen field warps the image UV coordinates.
 	 * 0 = no distortion, 1 = very strong. Default 0.4.
 	 * @deprecated Use `distortionPower`; it wins when both are set. Will be removed in 2.0.
 	 */

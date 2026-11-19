@@ -254,7 +254,7 @@ ${SCRIPT_CLOSE}
 <!-- ============================================================ -->
 <h2 id="fluiddistortion">&lt;FluidDistortion&gt;</h2>
 
-<p>The fluid velocity field warps an underlying image like liquid glass. Move your cursor to create ripples.</p>
+<p>The fluid warps an underlying image like liquid glass. Move your cursor to create ripples. By default the image bulges where fluid crowds together and sinks into the centre of swirls (<code>distortionField="pressure"</code>); <code>"acceleration"</code> moves it only where the flow speeds up, slows or turns, and <code>"velocity"</code> slides it along the flow.</p>
 
 <p><strong>Input:</strong> Mouse, touch and pen movement over the wrapper ripples the image; the first pointer or touch interaction stops auto-distortion. Keyboard has no interactive role: the canvas is decorative (<code>aria-hidden</code>) and the content stays fully keyboard-operable.</p>
 
@@ -268,7 +268,8 @@ ${SCRIPT_CLOSE}
 	<thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
 	<tbody>
 		<tr><td><code>src</code></td><td><code>string</code></td><td>—</td><td>URL of the image to distort. <strong>Required.</strong></td></tr>
-		<tr><td><code>distortionPower</code></td><td><code>number</code></td><td><code>0.4</code></td><td>How strongly velocity warps the image. 0–1.</td></tr>
+		<tr><td><code>distortionPower</code></td><td><code>number</code></td><td><code>0.4</code></td><td>How strongly the field warps the image. 0–1. Every <code>distortionField</code> is scaled to look comparably strong.</td></tr>
+		<tr><td><code>distortionField</code></td><td><code>'pressure' | 'acceleration' | 'velocity'</code></td><td><code>'pressure'</code></td><td>What warps the image: pressure (bulges where fluid crowds, sinks into swirl centres), acceleration (moves only where the flow speeds up, slows or turns) or velocity (slides along the flow, the pre-1.4 look).</td></tr>
 		<tr><td><code>intensity</code></td><td><code>number</code></td><td><code>24</code></td><td>How much dye each interaction injects.</td></tr>
 		<tr><td><code>distortionFit</code></td><td><code>'cover' | 'contain'</code></td><td><code>'cover'</code></td><td>How the image fits the canvas.</td></tr>
 		<tr><td><code>distortionScale</code></td><td><code>number</code></td><td><code>1.0</code></td><td>Image scale. &gt;1 zooms out, &lt;1 zooms in.</td></tr>

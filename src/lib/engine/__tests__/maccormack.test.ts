@@ -79,6 +79,11 @@ describe('maccormack: default-off + capability gate', () => {
 describe('maccormack: presets stay default-off', () => {
 	it('resolves every preset to semi-Lagrangian', () => {
 		for (const preset of PRESETS) {
+			// TeslaValve opts in: the pulsed jet needs the sharper advection (ADR 0132).
+			if (preset.id === 'TeslaValve') {
+				expect(preset.config.advectionScheme).toBe('maccormack');
+				continue;
+			}
 			expect(Object.hasOwn(preset.config, 'advectionScheme'), preset.id).toBe(false);
 			expect(resolveConfig(preset.config, DEFAULTS).ADVECTION_SCHEME, preset.id).toBe('semilagrangian');
 		}

@@ -35,3 +35,7 @@ Owner acceptance or rejection remains pending. Review the synchronized baseline/
 - Karman remains over budget and unchanged: shared 1440×900 p95 **2.04 / 2.04 / 2.08 ms (FAIL)**; own 1440×900 **INCOMPLETE**.
 - GasFlare remains over budget and unchanged: deepest screened setting **2.23 ms (FAIL)**.
 - No new GPU captures or browser review are part of preparing this change; certification is cited from the existing sweep.
+
+## Amendment (2026-11-19)
+
+[ADR 0132](./0132-teslavalve-flame-salt-jet.md) replaces the TeslaValve look. The sim 128 / dye 512 / pressure 26 numbers above are superseded by the flame budget (sim 128 / dye 384 / pressure 60, with thermal emission, glass and bloom), and the 2 ms p95 certification no longer applies to TeslaValve.

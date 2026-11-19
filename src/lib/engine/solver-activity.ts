@@ -15,7 +15,7 @@ export function flowCanDriveSolver(flow: FlowConfig | null | undefined): boolean
 		if (!Number.isFinite(rate) || rate <= 0) return false;
 		if (source.velocity && (source.velocity.x !== 0 || source.velocity.y !== 0)) return true;
 		// Black pigment still deposits thickness.
-		if (source.dye) return true;
+		if (source.dye || source.dyeCycle) return true;
 		return Object.values(source.scalars ?? {}).some((value) => value !== undefined && value !== 0);
 	});
 	if (hasSource) return true;

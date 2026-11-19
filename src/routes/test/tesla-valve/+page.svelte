@@ -57,7 +57,7 @@
 
 <main>
 	<div class="content">
-		<p class="eyebrow">Laboratory only · not a preset change</p>
+		<p class="eyebrow">Laboratory only · the preset is the card-budget variant of the flame-salt jet</p>
 		<h1>Tesla valve flow experiments</h1>
 		<p>These are laboratory-only 2D experiments, not validated real-world predictions or reproductions of a 3D experiment. Forward means left to right through the valve; backward means right to left. The research comparisons study the blue and green dye threads photographed by <a class="citation" href="https://www.nature.com/articles/s41467-021-23009-y">Nguyen et al. (2021), Figs. 3–4</a>. Pressure stays steady, fluid slows to zero at walls, and light shines through the dye. Overlapping dyes absorb more light and look darker. Tinted water fills the channel before blue and green dye enter.</p>
 		<p>The lower-speed forward and backward experiments use a 2D flow model with water-storage regions outside the picture. Reynolds number (Re) compares the effects of flow speed and viscosity; measured values are 199.23 and 199.73. A repeatable 1% inlet disturbance represents equipment noise, not added dye stirring. The patent outline has eleven repeated sections but differs from the photo (mean width 0.837 vs 0.9 cm; shape overlap score 0.71, where 1 means identical). The slower backward experiment at Re 50 is steady, but its disturbance measures only 0.77%. At Re 200, flow stays smooth even with 3.53% inlet disturbance. Diodicity compares the backward (reverse) pressure to the forward pressure needed for the same flow rate, not forward and backward flow rates: 1.08 here versus the paper’s 1.59 at matched Reynolds number.</p>

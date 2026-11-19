@@ -87,11 +87,43 @@ export function configAssetNotes(config: PresetConfig): string[] {
 export function presetScaffoldSnippet(id: string, height = 420): string {
 	const recipe = presetConfigSnippet(id);
 	if (!recipe) return '';
-	const fluid = recipe
-		.split('\n')
-		.map((l) => `\t${l}`)
-		.join('\n');
-	const assets = configAssetNotes(PRESET_BY_ID[id].config);
+	const def = PRESET_BY_ID[id];
+	const assets = configAssetNotes(def.config);
+	const frame = def.frame;
+	const indent = (text: string, tabs: number) =>
+		text
+			.split('\n')
+			.map((l) => '\t'.repeat(tabs) + l)
+			.join('\n');
+	if (frame) {
+		// The wrapper draws walls under a transparent canvas; reproduce that markup, with the
+		// path declared once and shared by the SVG and `<Fluid>`.
+		const { containerShape, ...rest } = def.config;
+		const attrs = ['{containerShape}', ...configToAttributeLines(rest)]
+			.map((l) => '\t\t\t\t' + l.replace(/\n/g, '\n\t\t\t\t'))
+			.join('\n');
+		const fluid = `\t\t\t<Fluid\n${attrs}\n\t\t\t/>`;
+		const back = (def.config.backColor ?? { r: 0, g: 0, b: 0 }) as { r: number; g: number; b: number };
+		return [
+			'<' + 'script>',
+			"\timport { Fluid } from 'svelte-fluid';",
+			'',
+			`\tconst containerShape = ${configValueLiteral(containerShape).replace(/\n/g, '\n\t')};`,
+			'<' + '/script>',
+			'',
+			...(assets.length ? [...assets, ''] : []),
+			`<div style="width: 100%; height: ${height}px">`,
+			`\t<div style="height: 100%; display: grid; place-items: center; container-type: size; background: ${frame.wallColor}">`,
+			`\t\t<div style="position: relative; width: min(100cqw, calc(100cqh * ${frame.aspect})); aspect-ratio: ${frame.aspect}">`,
+			`\t\t\t<svg viewBox={containerShape.viewBox.join(' ')} style="position: absolute; inset: 0; width: 100%; height: 100%" aria-hidden="true">`,
+			`\t\t\t\t<path d={containerShape.d} fill="rgb(${back.r} ${back.g} ${back.b})" fill-rule="evenodd" />`,
+			'\t\t\t</svg>',
+			fluid,
+			'\t\t</div>',
+			'\t</div>',
+			'</div>'
+		].join('\n');
+	}
 	return [
 		'<' + 'script>',
 		"\timport { Fluid } from 'svelte-fluid';",
@@ -99,7 +131,7 @@ export function presetScaffoldSnippet(id: string, height = 420): string {
 		'',
 		...(assets.length ? [...assets, ''] : []),
 		`<div style="width: 100%; height: ${height}px">`,
-		fluid,
+		indent(recipe, 1),
 		'</div>'
 	].join('\n');
 }

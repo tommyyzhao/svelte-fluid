@@ -135,6 +135,13 @@ describe('presetScaffoldSnippet', () => {
 		expect(s).toContain("kind: 'pressureGradient'");
 	});
 
+	it('reproduces the TeslaValve wall frame and shares the channel path', () => {
+		const s = presetScaffoldSnippet('TeslaValve');
+		for (const part of ['<svg', 'pulse:', 'dyeCycle:', 'transparent', '#fff', 'aspect-ratio', '{containerShape}']) expect(s).toContain(part);
+		expect(s).not.toContain('TeslaFlame');
+		expect(s.split('M 0 93.5').length - 1).toBe(1);
+	});
+
 	it('honors a custom height', () => {
 		expect(presetScaffoldSnippet('LavaLamp', 600)).toContain('height: 600px');
 	});

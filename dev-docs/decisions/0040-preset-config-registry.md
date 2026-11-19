@@ -79,3 +79,7 @@ promoted to a public, documented export later without breaking anyone.
   one preset does not pull the whole registry.
 - One new internal module ships in the package. If we later want a public
   `presets` API, the promotion is additive.
+
+## Amendment (2026-11-19)
+
+`PresetDefinition` gains an optional `frame` (`{ aspect, wallColor }`) for presets that need wrapper markup beyond `<Fluid>`; TeslaValve is the first (ADR 0132). The wrapper renders it, and `presetScaffoldSnippet` reproduces it so the from-scratch snippet stays truthful. The drift guard is unchanged: components still spread their `*_CONFIG` and derive `backColor` from it.

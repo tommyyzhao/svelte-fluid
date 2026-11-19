@@ -187,7 +187,11 @@
 
 <h2 id="teslavalve">TeslaValve</h2>
 
-<p>A passive Tesla-valve-like channel with a straight conduit and patent-style alternating bypass loops. A pressure-gradient drive carries discrete multicolor left-edge splats through a high-viscosity channel, making dye packets and side-bucket recirculation easier to inspect; forward throughflow is expected.</p>
+<p>A pulsed flame-salt jet through a passive Tesla-valve-like channel. Copper blue-green, potassium lilac and sodium amber salts cycle through the inlet every six solver seconds while the inlet push pulses; the salts glow as thermal emission, and cold isothermal walls remove heat, not salt. The channel is black on white walls under a glass cover. Forward throughflow is expected.</p>
+
+<p><strong>Pulse and cycle:</strong> the engine drives both from solver time with <code>FlowSource.pulse</code> and <code>FlowSource.dyeCycle</code> (see the <a href="/docs/api">API reference</a>), so the preset is a plain config with no wrapper timers.</p>
+
+<p><strong>Frame:</strong> the white walls and the 3:1 letterbox are wrapper markup around the transparent canvas, so <code>class</code>, <code>style</code>, <code>width</code> and <code>height</code> apply to that frame, which fills its parent. The from-scratch snippet reproduces the frame. <code>pointerInput</code> and <code>splatOnHover</code> default to off here, because the emission overlay hides hover dye; pass them to turn them on.</p>
 
 <p><strong>Geometry:</strong> a cropped reference SVG path defines the conduit, side-channel buckets, and internal slots as one even-odd container mask. The filled SVG region is the physical fluid domain, so the slots and walls are solved as part of the same boundary.</p>
 

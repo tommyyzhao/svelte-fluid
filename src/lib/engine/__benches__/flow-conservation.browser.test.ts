@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { commands } from 'vitest/browser';
 import { FluidEngine } from '../FluidEngine.js';
 import type { FluidConfig } from '../types.js';
-import { GAS_FLARE_CONFIG, KARMAN_CONFIG, TESLA_VALVE_CONFIG, VENTURI_CONFIG } from '../../presets/registry.js';
+import { GAS_FLARE_CONFIG, KARMAN_CONFIG, VENTURI_CONFIG } from '../../presets/registry.js';
+import { LEGACY_TESLA_VALVE_CONFIG } from '../../../routes/test/tesla-valve/legacy-config.js';
 import { getTuning } from '../../../routes/test/tesla-valve/tunings.js';
 import { jetFlow } from '../../../routes/test/tesla-valve/jet-pulse.js';
 
@@ -41,7 +42,7 @@ const scenes: Scene[] = [
 	{ name: 'VENTURI', config: cast(VENTURI_CONFIG), css: [800, 400], axis: 'x', range: [0.15, 0.85] },
 	{ name: 'GAS_FLARE', config: cast(GAS_FLARE_CONFIG), css: [600, 600], axis: 'y', range: [0.35, 0.85] },
 	{ name: 'KARMAN', config: cast(KARMAN_CONFIG), css: [800, 400], axis: 'x', range: [0.15, 0.85] },
-	{ name: 'TESLA_VALVE', config: cast(TESLA_VALVE_CONFIG), css: [960, 202], axis: 'x', range: [0.15, 0.85] },
+	{ name: 'TESLA_VALVE', config: cast(LEGACY_TESLA_VALVE_CONFIG), css: [960, 202], axis: 'x', range: [0.15, 0.85] },
 	// Controlled follow-ups: isolate projection/open-edge, outlet damping, geometry.
 	{ name: 'CHANNEL_OPEN', config: channel(false), css: [800, 400], axis: 'x', range: [0.15, 0.85] },
 	{ name: 'CHANNEL_OPEN_OUTLET', config: channel(true), css: [800, 400], axis: 'x', range: [0.15, 0.85] },
@@ -52,7 +53,7 @@ const scenes: Scene[] = [
 	// Sensitivity diagnostics: 8x Jacobi iterations alone cannot separate
 	// solver under-convergence from open-edge leakage or establish causation.
 	{ name: 'VENTURI_p8x', config: cast({ ...VENTURI_CONFIG, pressureIterations: 208 }), css: [800, 400], axis: 'x', range: [0.15, 0.85] },
-	{ name: 'TESLA_VALVE_p8x', config: cast({ ...TESLA_VALVE_CONFIG, pressureIterations: 208 }), css: [960, 202], axis: 'x', range: [0.15, 0.85] },
+	{ name: 'TESLA_VALVE_p8x', config: cast({ ...LEGACY_TESLA_VALVE_CONFIG, pressureIterations: 208 }), css: [960, 202], axis: 'x', range: [0.15, 0.85] },
 	{
 		name: 'flame-jet',
 		config: cast({ ...flame.config, glass: false, transparent: true }),

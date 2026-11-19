@@ -141,7 +141,7 @@ describe('flow visualization precedence', () => {
 			"return !!colorBy && colorBy !== 'dye' && !config.REVEAL && !config.DISTORTION && !concentrationDyeActive(config);"
 		);
 		expect(engineSrc).toMatch(
-			/if \(this\.flowVisualizationActiveFor\(config\)\) keywords\.push\('FLOW_VISUALIZATION'\);[\s\S]*if \(config\.DISTORTION\) keywords\.push\('DISTORTION'\);[\s\S]*else if \(config\.REVEAL\) keywords\.push\('REVEAL'\);/
+			/if \(this\.flowVisualizationActiveFor\(config\)\) keywords\.push\('FLOW_VISUALIZATION'\);[\s\S]*if \(config\.DISTORTION\) \{\s*keywords\.push\('DISTORTION'\);[\s\S]*\} else if \(config\.REVEAL\) keywords\.push\('REVEAL'\);/
 		);
 	});
 
@@ -183,6 +183,14 @@ describe('prescribed field shader wiring', () => {
 		expect(engineSrc).toMatch(
 			/if \(prescribedOnly\) \{[\s\S]*this\.advectDye\(dt\);[\s\S]*this\.advectScalar\(dt\);[\s\S]*return;[\s\S]*\}[\s\S]*this\.advectVelocity\(dt\);/
 		);
+	});
+});
+
+describe('source pulse clock', () => {
+	it('reads solver time, never the wall clock', () => {
+		const body = engineSrc.split('private applyFlowSources(')[1].split('private flowSourceBatchEntry(')[0];
+		expect(body).toContain('this.simTime');
+		expect(body).not.toContain('performance.now');
 	});
 });
 

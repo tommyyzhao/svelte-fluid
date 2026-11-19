@@ -34,6 +34,7 @@
  */
 
 import type { DoubleFBO, ExtInfo, FBO, ResolvedConfig } from './internal-types.js';
+import { flowDyeAt, flowPulseGain, validateFlowSourceClock } from './flow-source-clock.js';
 import type {
 	FlowConfig,
 	FlowForce,
@@ -249,6 +250,25 @@ interface FlowOutletBatchEntry {
 	keep: number;
 }
 
+/**
+ * @internal Display keyword for a `distortionField`; `null` keeps the original
+ * velocity shader byte-identical. Throws on anything else so a typo cannot
+ * silently fall back to another look.
+ */
+export function distortionFieldKeyword(mode: unknown): 'DISTORTION_ACCEL' | 'DISTORTION_PGRAD' | null {
+	if (mode === 'velocity') return null;
+	if (mode === 'acceleration') return 'DISTORTION_ACCEL';
+	if (mode === 'pressure') return 'DISTORTION_PGRAD';
+	throw new RangeError(`svelte-fluid: unknown distortion field ${String(mode)}`);
+}
+
+// ponytail: softness (the k in a / (|a| + k)) and the per-mode gain are fixed
+// constants; not tunable. Expose `distortionSoftness` if users ask. The gain
+// makes one `distortionPower` look comparably strong across fields (ADR 0131);
+// velocity stays 1 and uses the original shader line.
+const DISTORTION_SOFTNESS = 60;
+const DISTORTION_GAIN = { pressure: 4, acceleration: 3, velocity: 1 } as const;
+
 type ReadField = 'velocity' | 'dye' | 'pressure' | 'divergence' | 'curl' | 'scalar' | 'emission';
 
 type ResourceInitMode = 'fresh' | 'preserve';
@@ -348,6 +368,7 @@ export const DEFAULTS: ResolvedConfig = {
 	REVEAL_FRINGE_COLOR: { r: 0.6, g: 0.7, b: 0.85 },
 	DISTORTION: false,
 	DISTORTION_POWER: 0.4,
+	DISTORTION_FIELD: 'pressure' as const,
 	DISTORTION_IMAGE_URL: null,
 	DISTORTION_FIT: 'cover' as const,
 	DISTORTION_SCALE: 1.0,
@@ -498,6 +519,10 @@ export function resolveConfig(input: FluidConfig | undefined, base: ResolvedConf
 	if (input.revealFringeColor !== undefined) out.REVEAL_FRINGE_COLOR = input.revealFringeColor;
 	if (input.distortion !== undefined) out.DISTORTION = input.distortion;
 	if (input.distortionPower !== undefined) out.DISTORTION_POWER = input.distortionPower;
+	if (input.distortionField !== undefined) {
+		distortionFieldKeyword(input.distortionField);
+		out.DISTORTION_FIELD = input.distortionField;
+	}
 	if (input.distortionImageUrl !== undefined) out.DISTORTION_IMAGE_URL = input.distortionImageUrl ?? null;
 	if (input.distortionFit !== undefined) out.DISTORTION_FIT = input.distortionFit;
 	if (input.distortionScale !== undefined) out.DISTORTION_SCALE = input.distortionScale;
@@ -612,6 +637,7 @@ export function validateThermalFlow(flow: FlowConfig | null | undefined): void {
 		if (!Number.isFinite(emission.intensity) || !Number.isFinite(emission.excitation) || !emission.scalar) throw new RangeError('svelte-fluid: emission requires scalar, intensity and excitation');
 	}
 	for (const source of flow?.sources ?? []) {
+		validateFlowSourceClock(source);
 		if (!source.inflow) continue;
 		nonnegative(source.rate, 'inflow.rate');
 		for (const value of Object.values(source.scalars ?? {})) nonnegative(value, 'inflow scalar');
@@ -877,6 +903,13 @@ export class FluidEngine implements FluidHandle {
 	private distortionLoadedUrl: string | null = null;
 	private distortionTextureW = 0;
 	private distortionTextureH = 0;
+	/** Velocity at the previous presented frame; allocated only in 'acceleration' mode. */
+	private accelPrev: FBO | null = null;
+	/** False until accelPrev holds a presented frame, so the first frame has a = 0. */
+	private accelValid = false;
+	/** Solver time (simTime) at which accelPrev was captured. */
+	private accelSnapTime = 0;
+	private lastStepDt = 1 / 60;
 
 	// --- Prescribed grid textures (8-bit encoded, decoded in shader) ---
 	private prescribedVelocityTexture: WebGLTexture | null = null;
@@ -1821,7 +1854,7 @@ export class FluidEngine implements FluidHandle {
 	 * - **Recompiles the display shader** when these change: `shading`, `bloom`,
 	 *   `sunrays`, `toneMapping`, `specular` or `refraction` crossing 0,
 	 *   `minContrast` crossing 1, `contrastMode`, `contrastColor` appearing or
-	 *   clearing, `transparent`, `reveal`, `distortion`, `flow`, and
+	 *   clearing, `transparent`, `reveal`, `distortion`, `distortionField`, `flow`, and
 	 *   `obstructionColor` appearing or clearing. Other values of these fields
 	 *   are hot uniforms.
 	 * - **Rebuilds render targets or textures**: `simResolution`, `dyeResolution`,
@@ -1829,7 +1862,8 @@ export class FluidEngine implements FluidHandle {
 	 *   group is rebuilt; contents are preserved). Also `containerShape`,
 	 *   `obstructions`, `openBoundary` (solid mask), `glass` (scene target),
 	 *   `sticky` and `stickyMask` (sticky mask), `flow` (prescribed grids, scalar
-	 *   storage), and `distortionImageUrl` (starts a new async image load).
+	 *   storage), and `distortionImageUrl` (starts a new async image load), and
+	 *   `distortionField` (`acceleration` keeps one extra previous-velocity target).
 	 * - **Construct-only**, ignored here: `seed`, `initialSplatCount`,
 	 *   `initialSplatCountMin`, `initialSplatCountMax`, `presetSplats`,
 	 *   `requireHardwareAcceleration` and `advectionScheme`. They shape the opening
@@ -1862,6 +1896,7 @@ export class FluidEngine implements FluidHandle {
 		const glassChanged = a.GLASS !== b.GLASS || shapeChanged;
 		const revealChanged = a.REVEAL !== b.REVEAL;
 		const distortionChanged = a.DISTORTION !== b.DISTORTION;
+		const distortionFieldChanged = a.DISTORTION_FIELD !== b.DISTORTION_FIELD;
 		const distortionImageChanged = a.DISTORTION_IMAGE_URL !== b.DISTORTION_IMAGE_URL;
 		const stickyChanged = a.STICKY !== b.STICKY;
 		const stickyMaskChanged = !stickyMaskEqual(a.STICKY_MASK, b.STICKY_MASK);
@@ -1955,6 +1990,7 @@ export class FluidEngine implements FluidHandle {
 				if (prescribedChanged) this.initPrescribedGridTextures();
 				if (glassChanged) this.initGlassFramebuffer();
 				if (displayChanged) this.updateKeywords(preparedDisplayVariant);
+				if (distortionChanged || distortionFieldChanged) this.syncAccelTarget();
 				if (stickyChanged || stickyMaskChanged) this.initStickyMaskTexture();
 				if (distortionImageChanged) this.loadDistortionImage(b.DISTORTION_IMAGE_URL);
 			} finally {
@@ -1968,7 +2004,7 @@ export class FluidEngine implements FluidHandle {
 		const resourceChanged =
 			outletRelaxChanged || tracersChanged || simChanged || dyeChanged || scalarNeedChanged || bloomResourceChanged || sunraysResourceChanged ||
 			shapeChanged || obstructionsChanged || openBoundaryChanged || prescribedChanged || displayChanged || glassChanged ||
-			kwChanged || revealChanged || distortionChanged || obstructionColorChanged ||
+			kwChanged || revealChanged || distortionChanged || distortionFieldChanged || obstructionColorChanged ||
 			stickyChanged || stickyMaskChanged || distortionImageChanged;
 		// Outlet chains are only staged when outletRelaxChanged/simChanged, both resource changes.
 		if (resourceChanged) this.transition('reconfigure', () => this.profileLifecycle('reconfigure', applyResourceChanges));
@@ -2079,6 +2115,8 @@ export class FluidEngine implements FluidHandle {
 		this.distortionLoadedUrl = null;
 		this.distortionTextureW = 0;
 		this.distortionTextureH = 0;
+		this.accelPrev = null;
+		this.accelValid = false;
 		this.maskTexture = null;
 		this.maskData = null;
 		this.maskW = 0;
@@ -2180,6 +2218,9 @@ export class FluidEngine implements FluidHandle {
 		// FBOs
 		disposeDoubleFBO(gl, this.dye);
 		disposeDoubleFBO(gl, this.velocity);
+		disposeFBO(gl, this.accelPrev ?? undefined);
+		this.accelPrev = null;
+		this.accelValid = false;
 		disposeFBO(gl, this.velocitySource);
 		disposeFBO(gl, this.divergence);
 		disposeFBO(gl, this.curlFBO);
@@ -3098,10 +3139,41 @@ export class FluidEngine implements FluidHandle {
 			// along, and the loop is the hottest path in the engine. See ADR-0038.
 			this.pressure = createDoubleFBO(gl, simRes.width, simRes.height, r.internalFormat, r.format, texType, gl.NEAREST);
 			this.replaceOutletRelaxChains(nextOutletChains);
+			// Sim size may have changed: rebuild so the first frame after is a = 0.
+			this.syncAccelTarget(true);
 		} catch (error) {
 			if (!preparedOutletChains) for (const chain of nextOutletChains) for (const fbo of chain) disposeFBO(gl, fbo);
 			throw error;
 		}
+	}
+
+	/**
+	 * Own the previous-velocity target: present exactly while distortion runs in
+	 * 'acceleration' mode. `rebuild` drops a live target first (sim resize).
+	 */
+	private syncAccelTarget(rebuild = false): void {
+		const gl = this.gl;
+		const need = this.config.DISTORTION_FIELD === 'acceleration' && this.config.DISTORTION;
+		if (this.accelPrev && (!need || rebuild)) {
+			disposeFBO(gl, this.accelPrev);
+			this.accelPrev = null;
+		}
+		if (!need) {
+			this.accelValid = false;
+			return;
+		}
+		if (this.accelPrev) return;
+		const rg = this.ext.formatRG;
+		this.accelPrev = createFBO(
+			gl,
+			this.velocity.width,
+			this.velocity.height,
+			rg.internalFormat,
+			rg.format,
+			this.ext.halfFloatTexType,
+			this.ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST
+		);
+		this.accelValid = false;
 	}
 
 	private replaceOutletRelaxChains(next: [FBO[], FBO[]]): void {
@@ -4016,8 +4088,11 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		) keywords.push('MASK_SDF');
 		if (this.flowVisualizationActiveFor(config)) keywords.push('FLOW_VISUALIZATION');
 		// DISTORTION and REVEAL are mutually exclusive display modes
-		if (config.DISTORTION) keywords.push('DISTORTION');
-		else if (config.REVEAL) keywords.push('REVEAL');
+		if (config.DISTORTION) {
+			keywords.push('DISTORTION');
+			const field = distortionFieldKeyword(config.DISTORTION_FIELD);
+			if (field) keywords.push(field);
+		} else if (config.REVEAL) keywords.push('REVEAL');
 		return keywords;
 	}
 
@@ -4553,6 +4628,8 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 		const velocityBatch: FlowSourceBatchEntry[] = [];
 		const dyeBatch: FlowSourceBatchEntry[] = [];
 		const scalarBatch: FlowSourceBatchEntry[] = [];
+		// step() has already advanced simTime, so the first step samples t = 0.
+		const t = this.simTime - dt;
 
 		for (const source of flow.sources) {
 			const sourceThickness = source.kind === 'line' ? source.thickness : undefined;
@@ -4562,27 +4639,29 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			const scaleBase = rate * dt;
 			if (!Number.isFinite(scaleBase) || scaleBase <= 0) continue;
 			if (includeVelocity && source.velocity) {
+				const gain = source.pulse ? flowPulseGain(source.pulse, t) : 1;
 				velocityBatch.push(
 					this.flowSourceBatchEntry(
 						source,
 						{
-							r: source.velocity.x * scaleBase,
-							g: source.velocity.y * scaleBase,
+							r: source.velocity.x * scaleBase * gain,
+							g: source.velocity.y * scaleBase * gain,
 							b: 0
 						},
 						radius
 					)
 				);
 			}
-			if (source.dye) {
+			const dye = source.dyeCycle ? flowDyeAt(source.dyeCycle, t) : source.dye;
+			if (dye) {
 				this.dyeMayContainContent = true;
 				dyeBatch.push(
 					this.flowSourceBatchEntry(
 						source,
 						{
-							r: source.dye.r * (source.inflow ? 1 : scaleBase),
-							g: source.dye.g * (source.inflow ? 1 : scaleBase),
-							b: source.dye.b * (source.inflow ? 1 : scaleBase)
+							r: dye.r * (source.inflow ? 1 : scaleBase),
+							g: dye.g * (source.inflow ? 1 : scaleBase),
+							b: dye.b * (source.inflow ? 1 : scaleBase)
 						},
 						radius,
 						S.DYE_SPLAT_DOSE * scaleBase,
@@ -5568,6 +5647,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 	private step(dt: number): void {
 		// Disturbance follows executed solver time on RAF and deterministic paths alike.
 		this.simTime += dt;
+		this.lastStepDt = dt;
 		if (!this.solverMayContainContent) {
 			if (!flowCanDriveSolver(this.config.FLOW)) { this.advanceTracers(dt); return; }
 			this.solverMayContainContent = true;
@@ -5902,6 +5982,7 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 				this.config.DISTORTION_BLEED_X,
 				this.config.DISTORTION_BLEED_Y
 			);
+			if (this.config.DISTORTION_FIELD !== 'velocity') this.bindDistortionField();
 		} else if (this.config.REVEAL) {
 			gl.uniform1f(this.displayMaterial.uniforms.uRevealSensitivity, this.config.REVEAL_SENSITIVITY);
 			gl.uniform1f(this.displayMaterial.uniforms.uRevealCurve, this.config.REVEAL_CURVE);
@@ -5913,6 +5994,43 @@ gl.uniform1i(this.applyMaskProgram.uniforms.uTarget, target.read.attach(0));
 			gl.uniform3f(this.displayMaterial.uniforms.uRevealFringeColor, fc.r, fc.g, fc.b);
 		}
 		this.blit(target);
+		if (this.config.DISTORTION && this.config.DISTORTION_FIELD === 'acceleration') this.snapshotAccelVelocity();
+	}
+
+	/** Uniforms and aux texture (unit 7) for the acceleration and pressure warps. */
+	private bindDistortionField(): void {
+		const gl = this.gl;
+		const u = this.displayMaterial.uniforms;
+		const field = this.config.DISTORTION_FIELD;
+		gl.uniform1f(u.uAccelSoftness, DISTORTION_SOFTNESS);
+		gl.uniform1f(u.uDistortionGain, DISTORTION_GAIN[field]);
+		if (field === 'pressure') {
+			// The projection subtracts grad p once per step, so p / dt is the pressure acceleration.
+			gl.uniform1i(u.uDistortionAux, this.pressure.read.attach(7));
+			gl.uniform2f(u.uAccelTexel, this.pressure.texelSizeX, this.pressure.texelSizeY);
+			gl.uniform1f(u.uAccelInvDt, 1 / Math.max(this.lastStepDt, 1e-6));
+			return;
+		}
+		const prev = this.requireOptionalFBO(this.accelPrev, 'acceleration previous-velocity');
+		// dt is solver time since the previous presented frame; 0 (a = 0) on the first frame
+		// after (re)allocation and on redraws where the solver did not advance.
+		const dt = this.accelValid ? this.simTime - this.accelSnapTime : 0;
+		gl.uniform1i(u.uDistortionAux, prev.attach(7));
+		gl.uniform1f(u.uAccelInvDt, dt > 1e-9 ? 1 / dt : 0);
+	}
+
+	/** Capture velocity for the next frame's Δv, only when solver time moved (or first/rewound). */
+	private snapshotAccelVelocity(): void {
+		const prev = this.accelPrev;
+		if (!prev) return;
+		const dt = this.simTime - this.accelSnapTime;
+		if (this.accelValid && dt >= -1e-9 && dt <= 1e-9) return;
+		const gl = this.gl;
+		this.copyProgram.bind();
+		gl.uniform1i(this.copyProgram.uniforms.uTexture, this.velocity.read.attach(0));
+		this.blit(prev);
+		this.accelSnapTime = this.simTime;
+		this.accelValid = true;
 	}
 
 	/**

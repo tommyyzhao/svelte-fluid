@@ -90,6 +90,7 @@ const rich: Required<FluidConfig> = {
 	revealFringeColor: { r: 0.3, g: 0.2, b: 0.1 },
 	distortion: true,
 	distortionPower: 0.6,
+	distortionField: 'acceleration',
 	distortionImageUrl: '/img.png',
 	distortionFit: 'contain',
 	distortionScale: 1.5,
